@@ -3,10 +3,12 @@
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cachedFetch } from "@/lib/fetch-cache";
+import { useTranslation } from "@/lib/useTranslation";
 import { Heart } from "lucide-react";
 import type { CheckIn } from "@/types";
 
 export function Testemunha() {
+  const { t } = useTranslation();
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -24,7 +26,6 @@ export function Testemunha() {
 
     const recent = checkIns.slice(0, 7);
 
-    // Dias em que a pessoa não estava bem mas fez check-in mesmo assim
     const hardDays = recent.filter((ci) => {
       const energy = ci.energy_level;
       const feeling = (ci.feeling || "").toLowerCase();
@@ -38,7 +39,6 @@ export function Testemunha() {
       );
     });
 
-    // Dias com poucos hábitos positivos (foi honesto sobre não fazer)
     const honestDays = recent.filter((ci) => {
       if (!ci.positives) return false;
       const positives = Array.isArray(ci.positives) ? ci.positives : [];
@@ -51,28 +51,24 @@ export function Testemunha() {
 
     if (hardDays.length >= 2) {
       messages.push(
-        `Em ${hardDays.length} dias dessa semana, voce nao estava bem. E mesmo assim veio aqui. Isso nao e habito. E coragem de se olhar.`
+        t("testemunha_hard_days_plural", { n: String(hardDays.length) })
       );
     } else if (hardDays.length === 1) {
-      messages.push(
-        `Teve um dia dificil essa semana. Voce registrou. Nao fugiu. Nao se escondeu. Isso importa.`
-      );
+      messages.push(t("testemunha_hard_days_single"));
     }
 
     if (honestDays.length >= 3 && hardDays.length === 0) {
-      messages.push(
-        `Voce tem sido honesto(a) nos registros. Nem todo dia e cheio de conquistas — e voce nao finge que e. Essa honestidade e rara.`
-      );
+      messages.push(t("testemunha_honest"));
     }
 
     if (recent.length >= 5) {
       messages.push(
-        `${recent.length} check-ins em 7 dias. Nao e sobre o numero. E sobre estar presente com voce mesmo(a).`
+        t("testemunha_presence", { n: String(recent.length) })
       );
     }
 
     return messages.length > 0 ? messages : null;
-  }, [checkIns, loaded]);
+  }, [checkIns, loaded, t]);
 
   if (!recognition) return null;
 
@@ -82,7 +78,7 @@ export function Testemunha() {
         <div className="flex items-center gap-2">
           <Heart className="size-4 text-rose-500" />
           <span className="text-sm font-medium text-rose-700 dark:text-rose-300">
-            So pra voce saber
+            {t("so_pra_voce_saber")}
           </span>
         </div>
         <div className="space-y-2">

@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { getLocalDateFromISO } from "@/lib/utils";
+import { useTranslation } from "@/lib/useTranslation";
 import { sumMacros } from "@/lib/meal-utils";
 import type { CheckIn, Meal } from "@/types";
 
@@ -18,6 +19,7 @@ interface DayNode {
 }
 
 export function DayThread() {
+  const { t } = useTranslation();
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -82,15 +84,14 @@ export function DayThread() {
   return (
     <Card className="rounded-2xl">
       <CardContent className="p-4 space-y-3">
-        <p className="text-sm font-medium">🧵 O fio da semana</p>
+        <p className="text-sm font-medium">🧵 {t("fio_titulo")}</p>
         <p className="text-[11px] text-muted-foreground">
-          Como os dias se conectam. Setas mostram a direcao do fluxo.
+          {t("fio_descricao")}
         </p>
 
         <div className="space-y-0">
           {days.map((day, i) => {
             const prevDay = i > 0 ? days[i - 1] : null;
-            // Conexao: dormiu bem no dia anterior → energia hoje
             const sleepArrow =
               prevDay?.sleptWell === false && day.energy !== null && day.energy <= 5
                 ? "↓"
@@ -100,24 +101,22 @@ export function DayThread() {
 
             return (
               <div key={day.date}>
-                {/* Linha conectora */}
                 {i > 0 && (
                   <div className="flex items-center gap-2 pl-4 ml-2 border-l-2 border-muted py-0.5">
                     <div className="h-4 w-0" />
                     {sleepArrow && (
                       <span className="text-[10px] text-muted-foreground">
-                        {sleepArrow} sono da véspera
+                        {sleepArrow} {t("sono_vespera")}
                       </span>
                     )}
                     {prevDay && !prevDay.hasCheckIn && !prevDay.mealCount && day.hasCheckIn && (
                       <span className="text-[10px] text-muted-foreground">
-                        retomou depois de um dia sem registro
+                        {t("retomou_dia")}
                       </span>
                     )}
                   </div>
                 )}
 
-                {/* Nó do dia */}
                 <div className={`flex items-center gap-3 py-2 px-3 rounded-xl ${
                   day.hasCheckIn || day.mealCount > 0 ? "bg-muted/30" : "opacity-40"
                 }`}>
@@ -141,19 +140,19 @@ export function DayThread() {
                       )}
                     </div>
                   ) : (
-                    <span className="text-[10px] text-muted-foreground">sem registro</span>
+                    <span className="text-[10px] text-muted-foreground">{t("sem_registro")}</span>
                   )}
 
                   {day.mealCount > 0 && (
                     <div className="flex items-center gap-1 ml-auto text-[10px] text-muted-foreground">
-                      <span>{day.mealCount} ref</span>
+                      <span>{day.mealCount} {t("ref_abrev")}</span>
                       <span>{day.kcal} kcal</span>
                     </div>
                   )}
 
                   {!day.mealCount && day.hasCheckIn && (
                     <span className="ml-auto text-[10px] text-muted-foreground">
-                      sem refeições
+                      {t("sem_refeicoes_curto")}
                     </span>
                   )}
                 </div>

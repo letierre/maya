@@ -4,16 +4,19 @@ import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { getLocalDateFromISO } from "@/lib/utils";
+import { useTranslation } from "@/lib/useTranslation";
 import { Compass } from "lucide-react";
 import type { CheckIn, Meal } from "@/types";
 
 interface SystemInsight {
-  title: string;
-  body: string;
+  titleKey: string;
+  bodyKey: string;
+  vars: Record<string, string>;
   type: "observation" | "pattern" | "highlight";
 }
 
 export function SystemForces() {
+  const { t } = useTranslation();
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -36,7 +39,6 @@ export function SystemForces() {
 
     const results: SystemInsight[] = [];
 
-    // Agrupa check-ins por dia da semana
     const byDayOfWeek = new Map<number, CheckIn[]>();
     for (const ci of checkIns.slice(0, 28)) {
       const d = new Date(ci.date + "T12:00:00");
@@ -46,7 +48,6 @@ export function SystemForces() {
       byDayOfWeek.set(dow, arr);
     }
 
-    // Dias úteis (1-5) vs fim de semana (0, 6)
     const weekdayCheckIns: CheckIn[] = [];
     const weekendCheckIns: CheckIn[] = [];
     for (const [dow, cis] of byDayOfWeek) {
@@ -76,66 +77,59 @@ export function SystemForces() {
     const weEnergy = avgEnergy(weekendCheckIns);
     const wdSleep = avgSleep(weekdayCheckIns);
     const weSleep = avgSleep(weekendCheckIns);
-    const wdHabits = avgHabits(weekdayCheckIns);
-    const weHabits = avgHabits(weekendCheckIns);
 
-    // Padrão 1: Energia cai durante a semana
     if (wdEnergy !== null && weEnergy !== null && wdEnergy < weEnergy - 0.5 && weekdayCheckIns.length >= 5) {
       results.push({
-        title: "Sua energia muda com os dias",
-        body: `Sua energia media em dias uteis (${wdEnergy.toFixed(1)}/10) e menor que nos fins de semana (${weEnergy.toFixed(1)}/10). Isso pode ter a ver com o ritmo das obrigacoes — e nao significa que voce esta fazendo algo errado. Significa que seu corpo responde ao contexto.`,
+        titleKey: "sistema_energia_titulo",
+        bodyKey: "sistema_energia_body",
+        vars: { wd: wdEnergy.toFixed(1), we: weEnergy.toFixed(1) },
         type: "pattern",
       });
     }
 
-    // Padrão 2: Sono pior durante a semana
     if (wdSleep !== null && weSleep !== null && wdSleep < weSleep - 0.1 && weekdayCheckIns.length >= 5) {
       results.push({
-        title: "Dormir e mais dificil durante a semana",
-        body: `Voce dorme bem em ${Math.round(wdSleep * 100)}% dos dias uteis, contra ${Math.round(weSleep * 100)}% nos fins de semana. Nao e so voce — e dificil dormir bem quando a cabeca esta cheia de compromissos. Isso nao e um fracasso pessoal.`,
+        titleKey: "sistema_sono_titulo",
+        bodyKey: "sistema_sono_body",
+        vars: { wd: String(Math.round(wdSleep * 100)), we: String(Math.round(weSleep * 100)) },
         type: "observation",
       });
     }
 
-    // Padrão 3: Muitos dias com energia baixa
     const lowEnergyDays = checkIns.slice(0, 28).filter(
       (c) => c.energy_level !== null && c.energy_level !== undefined && c.energy_level <= 4
     );
     if (lowEnergyDays.length >= 5) {
       results.push({
-        title: "Muitos dias com a bateria baixa",
-        body: `Em ${lowEnergyDays.length} dos ultimos 28 dias, sua energia esteve em 4 ou menos. Isso nao e preguica. E sinal de que algo no seu entorno esta drenando mais do que deveria. Vale olhar com carinho para o que esta consumindo voce.`,
+        titleKey: "sistema_bateria_titulo",
+        bodyKey: "sistema_bateria_body",
+        vars: { n: String(lowEnergyDays.length) },
         type: "highlight",
       });
     }
 
-    // Padrão 4: Dias com check-in sem refeições (pode indicar sobrecarga)
-    const daysWithCIOnly = new Set<string>();
-    const daysWithMeals = new Set<string>();
-    for (const ci of checkIns.slice(0, 28)) daysWithCIOnly.add(ci.date);
-    for (const m of meals) {
-      const localDay = getLocalDateFromISO(m.data_hora);
-      daysWithMeals.add(localDay);
-      daysWithCIOnly.delete(localDay);
-    }
-    // Remove days that don't have check-in (we only care about days with check-in but no meals)
     const ciDates = new Set(checkIns.slice(0, 28).map((c) => c.date));
-    for (const d of [...daysWithCIOnly]) {
-      if (!ciDates.has(d)) daysWithCIOnly.delete(d);
+    const daysWithMeals = new Set<string>();
+    const daysWithCIAndNoMeals = new Set<string>();
+    for (const m of meals) {
+      daysWithMeals.add(getLocalDateFromISO(m.data_hora));
+    }
+    for (const date of ciDates) {
+      if (!daysWithMeals.has(date)) {
+        daysWithCIAndNoMeals.add(date);
+      }
     }
 
-    if (daysWithCIOnly.size >= 4) {
+    if (daysWithCIAndNoMeals.size >= 4) {
       results.push({
-        title: "Dias em que comer ficou em segundo plano",
-        body: `Em ${daysWithCIOnly.size} dias do ultimo mes, voce fez check-in mas nao registrou refeicoes. As vezes o dia engole a gente e comer bem fica dificil. Isso fala mais sobre o ritmo do seu contexto do que sobre qualquer falha sua.`,
+        titleKey: "sistema_comer_titulo",
+        bodyKey: "sistema_comer_body",
+        vars: { n: String(daysWithCIAndNoMeals.size) },
         type: "observation",
       });
     }
 
-    // Se não encontrou nada significativo, retorna vazio
     if (results.length === 0) return [];
-
-    // Limita a 3 insights
     return results.slice(0, 3);
   }, [checkIns, meals, loaded]);
 
@@ -152,10 +146,10 @@ export function SystemForces() {
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Compass className="size-4 text-sky-500" />
-          <span className="text-sm font-medium">O que o contexto revela</span>
+          <span className="text-sm font-medium">{t("contexto_revela")}</span>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Nem tudo que acontece com voce e sobre voce. As vezes e sobre o sistema ao redor.
+          {t("contexto_descricao")}
         </p>
 
         <div className="space-y-2.5">
@@ -167,10 +161,10 @@ export function SystemForces() {
                 className={`p-3 rounded-xl border ${style.bg} ${style.border}`}
               >
                 <p className="text-xs font-medium mb-1">
-                  {style.icon} {insight.title}
+                  {style.icon} {t(insight.titleKey)}
                 </p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  {insight.body}
+                  {t(insight.bodyKey, insight.vars)}
                 </p>
               </div>
             );
@@ -178,7 +172,7 @@ export function SystemForces() {
         </div>
 
         <p className="text-[10px] text-muted-foreground italic">
-          Estas observacoes nao sao diagnosticos. Sao convites para olhar para fora — para o que o mundo faz com voce.
+          {t("contexto_disclaimer")}
         </p>
       </CardContent>
     </Card>

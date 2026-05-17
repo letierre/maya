@@ -296,6 +296,56 @@ const translations: Record<Lang, Record<string, string>> = {
     // Integração check-in
     comeu_bem_auto: "Baseado nas suas {{n}} refeições de hoje",
     registrar_agora: "Registrar agora",
+
+    // Features — O Fio (DayThread)
+    fio_titulo: "O fio da semana",
+    fio_descricao: "Como os dias se conectam. Setas mostram a direção do fluxo.",
+    sem_registro: "sem registro",
+    sem_refeicoes_curto: "sem refeições",
+    ref_abrev: "ref",
+    sono_vespera: "sono da véspera",
+    retomou_dia: "retomou depois de um dia sem registros",
+
+    // Features — O Menor Passo (GentleDayCard)
+    bom_dia_titulo: "Bom dia",
+    corpo_pede_gentileza: "Hoje o corpo pede gentileza",
+    dia_de_leveza: "Hoje é dia de leveza",
+    ainda_nao_fez_msg: "Ainda não fez o check-in. Se quiser, quando puder. Sem pressa.",
+    energia_bem_baixa_msg: "Sua energia está bem baixa hoje. Isso acontece. Seu corpo não está contra você — ele está pedindo cuidado. Hoje, o menor passo já é vitória.",
+    energia_meio_baixa_msg: "Energia meio baixa. Dias assim pedem menos exigência e mais gentileza. O que parecer possível, já basta.",
+    ideias_nao_obrigacao: "Nenhum desses é obrigação. São ideias. O que você fizer hoje já é suficiente.",
+
+    // Features — A Testemunha (Testemunha)
+    so_pra_voce_saber: "Só pra você saber",
+    testemunha_hard_days_plural: "Em {{n}} dias desta semana, você não estava bem. E mesmo assim veio aqui. Isso não é hábito. É coragem de se olhar.",
+    testemunha_hard_days_single: "Teve um dia difícil esta semana. Você registrou. Não fugiu. Não se escondeu. Isso importa.",
+    testemunha_honest: "Você tem sido honesto(a) nos registros. Nem todo dia é cheio de conquistas — e você não finge que é. Essa honestidade é rara.",
+    testemunha_presence: "{{n}} check-ins em 7 dias. Não é sobre o número. É sobre estar presente com você mesmo(a).",
+
+    // Features — O Sistema (SystemForces)
+    contexto_revela: "O que o contexto revela",
+    contexto_descricao: "Nem tudo que acontece com você é sobre você. Às vezes é sobre o sistema ao redor.",
+    contexto_disclaimer: "Estas observações não são diagnósticos. São convites para olhar para fora — para o que o mundo faz com você.",
+    sistema_energia_titulo: "Sua energia muda com os dias",
+    sistema_energia_body: "Sua energia média em dias úteis ({{wd}}/10) é menor que nos fins de semana ({{we}}/10). Isso pode ter a ver com o ritmo das obrigações — e não significa que você está fazendo algo errado. Significa que seu corpo responde ao contexto.",
+    sistema_sono_titulo: "Dormir é mais difícil durante a semana",
+    sistema_sono_body: "Você dorme bem em {{wd}}% dos dias úteis, contra {{we}}% nos fins de semana. Não é só você — é difícil dormir bem quando a cabeça está cheia de compromissos. Isso não é um fracasso pessoal.",
+    sistema_bateria_titulo: "Muitos dias com a bateria baixa",
+    sistema_bateria_body: "Em {{n}} dos últimos 28 dias, sua energia esteve em 4 ou menos. Isso não é preguiça. É sinal de que algo no seu entorno está drenando mais do que deveria. Vale olhar com carinho para o que está consumindo você.",
+    sistema_comer_titulo: "Dias em que comer ficou em segundo plano",
+    sistema_comer_body: "Em {{n}} dias do último mês, você fez check-in mas não registrou refeições. Às vezes o dia engole a gente e comer bem fica difícil. Isso fala mais sobre o ritmo do seu contexto do que sobre qualquer falha sua.",
+
+    // Features — O Retrato (MonthlyPortrait)
+    retrato_titulo: "Seu retrato do mês",
+    preparando_retrato: "Preparando seu retrato...",
+    retrato_disclaimer: "Um reflexo dos seus últimos 30 dias. Não é um diagnóstico — é um convite a se ver de outro ângulo.",
+
+    // Features — O Espelho (WeeklyMirror)
+    espelho_titulo: "Seu espelho da semana",
+    preparando_espelho: "Preparando seu espelho da semana...",
+    espelho_disclaimer: "Gerado a partir dos seus dados. Não é um diagnóstico — é um reflexo.",
+
+    // Features — Madrugada (Maya time awareness — sistema, não precisa de i18n visível)
   },
 
   es: {
@@ -576,6 +626,54 @@ const translations: Record<Lang, Record<string, string>> = {
     // Integración check-in
     comeu_bem_auto: "Basado en tus {{n}} comidas de hoy",
     registrar_agora: "Registrar ahora",
+
+    // Features — O Fio (DayThread)
+    fio_titulo: "El hilo de la semana",
+    fio_descricao: "Cómo los días se conectan. Las flechas muestran la dirección del flujo.",
+    sem_registro: "sin registro",
+    sem_refeicoes_curto: "sin comidas",
+    ref_abrev: "comida",
+    sono_vespera: "sueño de la víspera",
+    retomou_dia: "retomaste después de un día sin registros",
+
+    // Features — O Menor Passo (GentleDayCard)
+    bom_dia_titulo: "Buenos días",
+    corpo_pede_gentileza: "Hoy el cuerpo pide gentileza",
+    dia_de_leveza: "Hoy es día de ligereza",
+    ainda_nao_fez_msg: "Aún no has hecho el check-in. Si quieres, cuando puedas. Sin prisa.",
+    energia_bem_baixa_msg: "Tu energía está muy baja hoy. Eso pasa. Tu cuerpo no está en tu contra — está pidiendo cuidado. Hoy, el paso más pequeño ya es una victoria.",
+    energia_meio_baixa_msg: "Energía medio baja. Días así piden menos exigencia y más gentileza. Lo que parezca posible, ya basta.",
+    ideias_nao_obrigacao: "Nada de esto es obligación. Son ideas. Lo que hagas hoy ya es suficiente.",
+
+    // Features — A Testemunha (Testemunha)
+    so_pra_voce_saber: "Solo para que sepas",
+    testemunha_hard_days_plural: "En {{n}} días de esta semana, no estabas bien. Y aún así viniste aquí. Eso no es hábito. Es coraje para mirarse.",
+    testemunha_hard_days_single: "Tuviste un día difícil esta semana. Lo registraste. No huiste. No te escondiste. Eso importa.",
+    testemunha_honest: "Has sido honesto(a) en los registros. No todo día está lleno de logros — y no finges que sí. Esa honestidad es rara.",
+    testemunha_presence: "{{n}} check-ins en 7 días. No se trata del número. Se trata de estar presente contigo mismo(a).",
+
+    // Features — O Sistema (SystemForces)
+    contexto_revela: "Lo que el contexto revela",
+    contexto_descricao: "No todo lo que te pasa es por tu culpa. A veces se trata del sistema a tu alrededor.",
+    contexto_disclaimer: "Estas observaciones no son diagnósticos. Son invitaciones para mirar hacia afuera — hacia lo que el mundo hace contigo.",
+    sistema_energia_titulo: "Tu energía cambia con los días",
+    sistema_energia_body: "Tu energía promedio en días hábiles ({{wd}}/10) es menor que en los fines de semana ({{we}}/10). Esto puede estar relacionado con el ritmo de las obligaciones — y no significa que estés haciendo algo mal. Significa que tu cuerpo responde al contexto.",
+    sistema_sono_titulo: "Dormir es más difícil entre semana",
+    sistema_sono_body: "Duermes bien en {{wd}}% de los días hábiles, contra {{we}}% en los fines de semana. No es solo cosa tuya — es difícil dormir bien cuando la cabeza está llena de compromisos. No es un fracaso personal.",
+    sistema_bateria_titulo: "Muchos días con la batería baja",
+    sistema_bateria_body: "En {{n}} de los últimos 28 días, tu energía estuvo en 4 o menos. No es pereza. Es señal de que algo en tu entorno está consumiéndote más de lo que debería. Vale mirar con cariño eso que te está agotando.",
+    sistema_comer_titulo: "Días en que comer quedó en segundo plano",
+    sistema_comer_body: "En {{n}} días del último mes, hiciste check-in pero no registraste comidas. A veces el día nos traga y comer bien se vuelve difícil. Esto habla más del ritmo de tu contexto que de cualquier falla tuya.",
+
+    // Features — O Retrato (MonthlyPortrait)
+    retrato_titulo: "Tu retrato del mes",
+    preparando_retrato: "Preparando tu retrato...",
+    retrato_disclaimer: "Un reflejo de tus últimos 30 días. No es un diagnóstico — es una invitación a verte desde otro ángulo.",
+
+    // Features — O Espelho (WeeklyMirror)
+    espelho_titulo: "Tu espejo de la semana",
+    preparando_espelho: "Preparando tu espejo de la semana...",
+    espelho_disclaimer: "Generado a partir de tus datos. No es un diagnóstico — es un reflejo.",
   },
 
   en: {
@@ -856,6 +954,54 @@ const translations: Record<Lang, Record<string, string>> = {
     // Check-in integration
     comeu_bem_auto: "Based on your {{n}} meals today",
     registrar_agora: "Log now",
+
+    // Features — O Fio (DayThread)
+    fio_titulo: "The week's thread",
+    fio_descricao: "How the days connect. Arrows show the flow direction.",
+    sem_registro: "no entry",
+    sem_refeicoes_curto: "no meals",
+    ref_abrev: "meal",
+    sono_vespera: "previous night's sleep",
+    retomou_dia: "returned after a day with no entries",
+
+    // Features — O Menor Passo (GentleDayCard)
+    bom_dia_titulo: "Good morning",
+    corpo_pede_gentileza: "Today your body asks for gentleness",
+    dia_de_leveza: "Today calls for lightness",
+    ainda_nao_fez_msg: "Haven't done your check-in yet. When you can. No rush.",
+    energia_bem_baixa_msg: "Your energy is really low today. It happens. Your body isn't against you — it's asking for care. Today, the smallest step is already a win.",
+    energia_meio_baixa_msg: "Energy is a bit low. Days like this ask for less pressure and more gentleness. Whatever feels possible is enough.",
+    ideias_nao_obrigacao: "None of this is an obligation. Just ideas. Whatever you do today is already enough.",
+
+    // Features — A Testemunha (Testemunha)
+    so_pra_voce_saber: "Just so you know",
+    testemunha_hard_days_plural: "On {{n}} days this week, you weren't okay. And you still showed up. That's not a habit. That's courage to look at yourself.",
+    testemunha_hard_days_single: "You had a hard day this week. You logged it. You didn't run. You didn't hide. That matters.",
+    testemunha_honest: "You've been honest in your logs. Not every day is full of wins — and you don't pretend it is. That honesty is rare.",
+    testemunha_presence: "{{n}} check-ins in 7 days. It's not about the number. It's about being present with yourself.",
+
+    // Features — O Sistema (SystemForces)
+    contexto_revela: "What the context reveals",
+    contexto_descricao: "Not everything that happens to you is about you. Sometimes it's about the system around you.",
+    contexto_disclaimer: "These observations are not diagnoses. They are invitations to look outward — at what the world does to you.",
+    sistema_energia_titulo: "Your energy shifts with the days",
+    sistema_energia_body: "Your average energy on weekdays ({{wd}}/10) is lower than on weekends ({{we}}/10). This may have to do with obligations — and doesn't mean you're doing anything wrong. It means your body responds to context.",
+    sistema_sono_titulo: "Sleep is harder during the workweek",
+    sistema_sono_body: "You sleep well on {{wd}}% of weekdays, versus {{we}}% on weekends. It's not just you — it's hard to sleep well with a full mind. This isn't a personal failure.",
+    sistema_bateria_titulo: "Many days on low battery",
+    sistema_bateria_body: "On {{n}} of the last 28 days, your energy was at 4 or lower. This isn't laziness. It's a sign that something around you is draining more than it should. Worth looking kindly at what's weighing on you.",
+    sistema_comer_titulo: "Days when eating took a back seat",
+    sistema_comer_body: "On {{n}} days this month, you checked in but didn't log any meals. Sometimes the day swallows us whole and eating well becomes hard. This says more about your context than about any failure of yours.",
+
+    // Features — O Retrato (MonthlyPortrait)
+    retrato_titulo: "Your portrait this month",
+    preparando_retrato: "Preparing your portrait...",
+    retrato_disclaimer: "A reflection of your last 30 days. It's not a diagnosis — it's an invitation to see yourself from another angle.",
+
+    // Features — O Espelho (WeeklyMirror)
+    espelho_titulo: "Your week's mirror",
+    preparando_espelho: "Preparing your weekly mirror...",
+    espelho_disclaimer: "Generated from your data. Not a diagnosis — a reflection.",
   },
 };
 
