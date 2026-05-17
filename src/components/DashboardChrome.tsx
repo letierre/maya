@@ -87,7 +87,7 @@ export function MainWrapper({ children }: { children: React.ReactNode }) {
 
   if (isDashboard) {
     return (
-      <main className="flex-1 w-full pb-28">
+      <main className="flex-1 w-full">
         {children}
       </main>
     );

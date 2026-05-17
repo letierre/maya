@@ -9,6 +9,14 @@ import { useTranslation } from "@/lib/useTranslation";
 import { photoUrl } from "@/lib/photo-storage";
 import { sumMacros, nutritionScore, getDailyKcalGoal, DEFAULT_DAILY_KCAL } from "@/lib/meal-utils";
 import { ArrowRight, ChevronRight, MoreVertical } from "lucide-react";
+import Link from "next/link";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { LogoutButton } from "@/components/LogoutButton";
 import type { CheckIn, Meal } from "@/types";
 
 const HABIT_DISPLAY: Record<string, [string, string]> = {
@@ -495,15 +503,40 @@ export default function DashboardPage() {
         `,
       }}
     >
-      {/* Floating kebab */}
-      <button
-        type="button"
-        className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-white/55 backdrop-blur-md border-0 flex items-center justify-center shadow-sm cursor-pointer"
-        style={{ color: "var(--foreground)" }}
-        aria-label="Menu"
-      >
-        <MoreVertical className="w-4 h-4" />
-      </button>
+      {/* Floating kebab — dropdown */}
+      <div className="absolute top-4 right-4 z-10">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button
+                type="button"
+                className="w-9 h-9 rounded-full bg-white/55 backdrop-blur-md border-0 flex items-center justify-center shadow-sm cursor-pointer"
+                style={{ color: "var(--foreground)" }}
+                aria-label="Menu"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+            }
+          />
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              render={
+                <Link href="/perfil" className="w-full text-left px-2 py-1.5 text-sm block">
+                  Meu Perfil
+                </Link>
+              }
+            />
+            <DropdownMenuItem
+              render={
+                <Link href="/nutricao" className="w-full text-left px-2 py-1.5 text-sm block">
+                  🍽️ Nutrição
+                </Link>
+              }
+            />
+            <DropdownMenuItem render={<LogoutButton />} />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {/* ── GREETING ──────────────────────────────────────────── */}
       <div className="px-6 pt-6 pb-2">
@@ -641,17 +674,17 @@ export default function DashboardPage() {
               return (
                 <div key={tier.rom} className="flex-1 relative">
                   <div
-                    className="h-[5px] rounded-full"
+                    className="h-2 rounded-full"
                     style={{
-                      background: reached ? tier.color : "var(--muted)",
+                      background: reached ? tier.color : "oklch(.88 .01 160)",
                       border: isCurrent
-                        ? "1px solid oklch(.5 .12 160 / .5)"
+                        ? "1.5px solid oklch(.5 .12 160 / .5)"
                         : "none",
                     }}
                   />
                   {isCurrent && (
                     <div
-                      className="absolute -top-[2px] -left-[3px] w-2.5 h-2.5 rounded-full bg-primary border-2 border-white shadow-md"
+                      className="absolute -top-[3px] -left-[4px] w-3.5 h-3.5 rounded-full bg-primary border-2 border-white shadow-md"
                     />
                   )}
                 </div>
@@ -737,18 +770,29 @@ export default function DashboardPage() {
                 >
                   {day.label}
                 </span>
-                <span className="text-sm">
-                  {day.sleep === true ? "😴" : day.sleep === false ? "😵" : "—"}
-                </span>
-                <span
-                  className="text-[13px] font-bold tabular-nums w-[32px]"
-                  style={{ color: energyColor }}
-                >
-                  {day.energy !== null ? `${day.energy}/10` : "—"}
-                </span>
+                {day.sleep === true && (
+                  <span className="text-sm leading-none">🌙</span>
+                )}
+                {day.energy !== null && (
+                  <span
+                    className="text-[13px] font-bold tabular-nums w-[32px]"
+                    style={{ color: energyColor }}
+                  >
+                    {day.energy}/10
+                  </span>
+                )}
                 {day.cuidados !== null && (
-                  <span className="text-[11px] tabular-nums px-1.5 py-0.5 rounded-full"
-                        style={{ background: "oklch(.5 .12 160 / .1)", color: "var(--foreground)" }}>
+                  <span
+                    className="text-[13px] font-bold tabular-nums"
+                    style={{
+                      color:
+                        day.cuidados >= 7
+                          ? "#059669"
+                          : day.cuidados >= 5
+                            ? "#b45309"
+                            : "#dc2626",
+                    }}
+                  >
                     {day.cuidados}/{totalHabits}
                   </span>
                 )}
@@ -884,7 +928,7 @@ export default function DashboardPage() {
         </div>
       </Section>
 
-      <div style={{ height: 90 }} />
+      <div style={{ height: 120 }} />
     </div>
   );
 }
