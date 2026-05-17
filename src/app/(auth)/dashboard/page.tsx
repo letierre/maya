@@ -368,40 +368,43 @@ export default function DashboardPage() {
 
   // ── Evolução ─────────────────────────────────────────────────
 
+  const scoreKeys = enabledKeys.filter((k) => k !== "suicidal_thoughts");
+
   const sparkData = useMemo(() => {
     const ciByDay = new Map<string, CheckIn>();
     for (const ci of checkIns) ciByDay.set(ci.date, ci);
 
-    const points: { date: string; energy: number | null }[] = [];
+    const points: { date: string; score: number }[] = [];
     for (let i = 13; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const ci = ciByDay.get(ds);
+      const score = ci
+        ? scoreKeys.filter((k) => (ci as Record<string, unknown>)[k] === true).length
+        : 0;
       points.push({
         date: d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }).replace(".", ""),
-        energy: (ci as any)?.energy_level ?? null,
+        score,
       });
     }
     return points;
-  }, [checkIns]);
+  }, [checkIns, scoreKeys]);
 
-  const sparkEnergies = sparkData.map((p) => p.energy ?? 0);
-  const sparkHasAny = sparkData.some((p) => p.energy !== null);
+  const sparkScores = sparkData.map((p) => p.score);
+  const sparkHasData = sparkData.some((p) => p.score > 0);
   const sparkAvg =
-    sparkData.filter((p) => p.energy !== null).length > 0
-      ? sparkEnergies.reduce((a, b) => a + b, 0) /
-        sparkData.filter((p) => p.energy !== null).length
+    sparkData.filter((p) => p.score > 0).length > 0
+      ? sparkScores.reduce((a, b) => a + b, 0) / sparkData.length
       : 0;
 
   const sparkTrend =
-    sparkData.filter((p) => p.energy !== null).length >= 2
+    sparkData.filter((p) => p.score > 0).length >= 2
       ? (() => {
-          const valid = sparkData.filter((p) => p.energy !== null);
-          const firstHalf = valid.slice(0, Math.floor(valid.length / 2));
-          const secondHalf = valid.slice(Math.floor(valid.length / 2));
-          const avg1 = firstHalf.reduce((a, b) => a + (b.energy ?? 0), 0) / firstHalf.length;
-          const avg2 = secondHalf.reduce((a, b) => a + (b.energy ?? 0), 0) / secondHalf.length;
+          const firstHalf = sparkData.slice(0, 7);
+          const secondHalf = sparkData.slice(7);
+          const avg1 = firstHalf.reduce((a, b) => a + b.score, 0) / firstHalf.length;
+          const avg2 = secondHalf.reduce((a, b) => a + b.score, 0) / secondHalf.length;
           if (avg2 - avg1 > 0.5) return t("subindo");
           if (avg1 - avg2 > 0.5) return t("caindo");
           return t("estavel");
@@ -746,16 +749,14 @@ export default function DashboardPage() {
       </Section>
 
       {/* ── EVOLUÇÃO ──────────────────────────────────────────── */}
-      {sparkHasAny && (
+      {checkIns.length >= 2 && sparkHasData && (
         <Section
           label={t("evolucao")}
           extra={
-            sparkData.filter((p) => p.energy !== null).length >= 2
-              ? `${t("media_energia", { n: sparkAvg.toFixed(1) })} · ${sparkTrend}`
-              : undefined
+            `${t("media_energia", { n: sparkAvg.toFixed(1) })} · ${sparkTrend}`
           }
         >
-          <Sparkline data={sparkEnergies} />
+          <Sparkline data={sparkScores} maxVal={scoreKeys.length || 1} />
           <div className="flex justify-between mt-1 text-[10px] text-muted-foreground font-mono">
             {sparkDateLabels.map((l, i) => (
               <span key={i}>{l}</span>
@@ -875,11 +876,11 @@ export default function DashboardPage() {
 
 // ── Sparkline SVG ──────────────────────────────────────────────
 
-function Sparkline({ data }: { data: number[] }) {
+function Sparkline({ data, maxVal }: { data: number[]; maxVal: number }) {
   const W = 320;
   const H = 100;
   const P = 4;
-  const max = 10;
+  const max = maxVal || 1;
   const min = 0;
 
   if (data.length === 0) return null;

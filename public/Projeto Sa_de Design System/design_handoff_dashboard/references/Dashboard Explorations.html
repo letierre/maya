@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard — Explorações</title>
+  <link rel="stylesheet" href="colors_and_type.css">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f1f0ec; font-family: var(--font-sans); }
+    /* iPhone-ish bezel for each artboard so it reads as a real device */
+    .device {
+      position: relative;
+      width: 100%; height: 100%;
+      border-radius: 38px;
+      overflow: hidden;
+      background: var(--background);
+      box-shadow: inset 0 0 0 1px oklch(.25 .02 160 / .08);
+    }
+    /* status bar */
+    .device::before {
+      content: '9:41';
+      position: absolute; top: 0; left: 0; right: 0; z-index: 50;
+      height: 44px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 28px 0;
+      font-family: -apple-system, "SF Pro", system-ui;
+      font-weight: 600; font-size: 15px;
+      pointer-events: none;
+      color: inherit;
+    }
+    .device.hero-dark::before { color: #fff; }
+    .device::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 60;
+      height: 70px;
+      background: linear-gradient(180deg, transparent 0%, var(--background) 30%);
+      pointer-events: none;
+    }
+    /* dynamic island */
+    .island {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      width: 110px; height: 32px; border-radius: 9999px;
+      background: #000; z-index: 51;
+    }
+    /* home indicator */
+    .homeind {
+      position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+      width: 130px; height: 5px; border-radius: 9999px;
+      background: oklch(.25 .02 160 / .35); z-index: 70;
+    }
+    .device.hero-dark .homeind { background: rgba(255,255,255,.7); }
+    /* push dashboard content past the status bar / island */
+    .device > .surface { position: absolute; inset: 50px 0 0; overflow: hidden; }
+    @keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="dashboards/MagazineDashboard.jsx"></script>
+  <script type="text/babel" src="dashboards/AtmosphericDashboard.jsx"></script>
+  <script type="text/babel">
+    function Page() {
+      return (
+        <DesignCanvas style={{ height: '100vh', background: '#f1f0ec' }}>
+          <DCSection
+            id="dashboards"
+            title="Dashboard — explorações profissionais"
+            subtitle="2 direções com mais impacto visual. Toque numa artboard pra abrir em tela cheia."
+          >
+            <DCArtboard id="a" label="A · Magazine — Maya como capa cinemática" width={390} height={844}>
+              <div className="device hero-dark" data-screen-label="01 Dashboard A — Magazine">
+                <div className="island" />
+                <div className="surface">
+                  <MagazineDashboard />
+                </div>
+                <div className="homeind" />
+              </div>
+            </DCArtboard>
+
+            <DCArtboard id="b" label="B · Atmosférico — gradiente + presença em camadas" width={390} height={844}>
+              <div className="device" data-screen-label="02 Dashboard B — Atmospheric">
+                <div className="island" />
+                <div className="surface">
+                  <AtmosphericDashboard />
+                </div>
+                <div className="homeind" />
+              </div>
+            </DCArtboard>
+          </DCSection>
+
+          <DCPostIt top={120} left={40} width={220} rotate={-3}>
+            Magazine: Maya é a <strong>capa</strong> do app. A frase do dia é tipograficamente o protagonista. Tudo abaixo é editorial — sem cards, divisores finos.
+          </DCPostIt>
+
+          <DCPostIt top={520} left={40} width={220} rotate={2}>
+            Atmosférico: a tela inteira tem <strong>gradiente</strong>, "14" aparece como marca d'água no fundo, a Maya é um bloco de presença com CTA. Mais respiração, menos rigidez.
+          </DCPostIt>
+        </DesignCanvas>
+      );
+    }
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<Page />);
+  </script>
+</body>
+</html>
