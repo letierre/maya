@@ -280,6 +280,23 @@ export async function POST(request: Request) {
 
     const admin = getSupabaseAdmin();
 
+    // Verifica se já existe retrato para o mês atual (cache)
+    const currentMonth = new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo", month: "numeric", year: "numeric" });
+    // formato: "5/2026"
+
+    const { data: existingPrefs } = await admin
+      .from("user_preferences")
+      .select("context")
+      .eq("user_id", user.id)
+      .single();
+
+    const existingCtx = (existingPrefs?.context as Record<string, unknown>) || {};
+
+    if (existingCtx.monthly_portrait_month === currentMonth && existingCtx.monthly_portrait) {
+      return NextResponse.json({ narrative: existingCtx.monthly_portrait as string, cached: true });
+    }
+
+    // Busca todos os dados para gerar novo retrato
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const cutoff = getLocalDate(thirtyDaysAgo);
@@ -309,27 +326,18 @@ export async function POST(request: Request) {
       .gte("data_hora", thirtyDaysAgo.toISOString())
       .order("data_hora", { ascending: false });
 
-    const { data: prefs } = await admin
-      .from("preferences")
-      .select("context")
-      .eq("user_id", user.id)
-      .single();
-
-    const ctx = (prefs?.context as Record<string, unknown>) || {};
-    const name = (ctx.name as string) || "";
-    const gender = (ctx.gender as string) || "nao_dizer";
+    const name = (existingCtx.name as string) || "";
+    const gender = (existingCtx.gender as string) || "nao_dizer";
 
     const { data: memories } = await admin
-      .from("memories")
+      .from("user_memories")
       .select("id, fact, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20);
 
-    const { data: porques } = await admin
-      .from("porques")
-      .select("id, text, photo_path")
-      .eq("user_id", user.id);
+    // Porques vêm do context, não de uma tabela separada
+    const porques = (existingCtx.porques as Array<{ id: string; text: string; photoPath: string | null }>) || [];
 
     const { data: allCheckIns } = await admin
       .from("check_ins")
@@ -353,6 +361,11 @@ export async function POST(request: Request) {
       else break;
     }
 
+    // Se não tem dados suficientes, não gera retrato
+    if (recentCheckIns.length === 0 && (meals || []).length === 0 && recentDiary.length === 0) {
+      return NextResponse.json({ narrative: null });
+    }
+
     const systemPrompt = buildMonthlyPortraitPrompt({
       name,
       gender,
@@ -360,7 +373,7 @@ export async function POST(request: Request) {
       diary: recentDiary,
       meals: meals || [],
       memories: memories || [],
-      porques: porques || [],
+      porques,
       streak,
       totalCheckIns: dates.length,
       lang,
@@ -392,6 +405,15 @@ export async function POST(request: Request) {
 
     const aiData = await response.json();
     const text = aiData?.content?.[0]?.text?.trim() || "";
+
+    if (text) {
+      // Salva no context para cache mensal
+      const updatedCtx = { ...existingCtx, monthly_portrait: text, monthly_portrait_month: currentMonth };
+      await admin
+        .from("user_preferences")
+        .update({ context: updatedCtx })
+        .eq("user_id", user.id);
+    }
 
     return NextResponse.json({ narrative: text || null });
 

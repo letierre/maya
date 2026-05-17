@@ -5,12 +5,28 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useTranslation } from "@/lib/useTranslation";
 import { Loader2, Brush } from "lucide-react";
 
+function getMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export function MonthlyPortrait() {
   const { t, lang } = useTranslation();
   const [narrative, setNarrative] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const monthKey = getMonthKey();
+    const cacheKey = `monthly_portrait_${monthKey}_${lang}`;
+
+    // Verifica localStorage primeiro (evita até chamar a API)
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      setNarrative(cached);
+      setLoading(false);
+      return;
+    }
+
     fetch("/api/reflect/monthly", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -18,7 +34,10 @@ export function MonthlyPortrait() {
     })
       .then((r) => r.json())
       .then((data) => {
-        if (data.narrative) setNarrative(data.narrative);
+        if (data.narrative) {
+          setNarrative(data.narrative);
+          localStorage.setItem(cacheKey, data.narrative);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
