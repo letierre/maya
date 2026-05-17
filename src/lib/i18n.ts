@@ -338,7 +338,7 @@ const translations: Record<Lang, Record<string, string>> = {
     // Features — O Retrato (MonthlyPortrait)
     retrato_titulo: "Seu retrato do mês",
     preparando_retrato: "Preparando seu retrato...",
-    retrato_disclaimer: "Um reflexo dos seus últimos 30 dias. Não é um diagnóstico — é um convite a se ver de outro ângulo.",
+    retrato_disclaimer: "Observações a partir dos seus últimos 30 dias de registro. Com poucos dados, serão observações simples. Com mais dados, padrões podem aparecer. Não é um diagnóstico.",
 
     // Features — O Espelho (WeeklyMirror)
     espelho_titulo: "Seu espelho da semana",
@@ -668,7 +668,7 @@ const translations: Record<Lang, Record<string, string>> = {
     // Features — O Retrato (MonthlyPortrait)
     retrato_titulo: "Tu retrato del mes",
     preparando_retrato: "Preparando tu retrato...",
-    retrato_disclaimer: "Un reflejo de tus últimos 30 días. No es un diagnóstico — es una invitación a verte desde otro ángulo.",
+    retrato_disclaimer: "Observaciones a partir de tus últimos 30 días de registro. Con pocos datos, serán observaciones simples. Con más datos, pueden aparecer patrones. No es un diagnóstico.",
 
     // Features — O Espelho (WeeklyMirror)
     espelho_titulo: "Tu espejo de la semana",
@@ -996,7 +996,7 @@ const translations: Record<Lang, Record<string, string>> = {
     // Features — O Retrato (MonthlyPortrait)
     retrato_titulo: "Your portrait this month",
     preparando_retrato: "Preparing your portrait...",
-    retrato_disclaimer: "A reflection of your last 30 days. It's not a diagnosis — it's an invitation to see yourself from another angle.",
+    retrato_disclaimer: "Observations from your last 30 days of logging. With little data, observations will be simple. With more data, patterns may appear. Not a diagnosis.",
 
     // Features — O Espelho (WeeklyMirror)
     espelho_titulo: "Your week's mirror",
