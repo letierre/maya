@@ -350,6 +350,23 @@ const translations: Record<Lang, Record<string, string>> = {
     progresso_subtitle: "{{n}} check-ins · cada dia consecutivo te sobe um degrau",
     atual: "Atual",
 
+    // Dashboard — Atmospheric redesign
+    bom_dia: "Bom dia",
+    boa_tarde: "Boa tarde",
+    boa_noite: "Boa noite",
+    maya_agora: "Maya · agora há pouco",
+    conversar_com_maya: "Conversar com Maya",
+    meu_porque_label: "Meu Porquê",
+    sua_sequencia: "Sua sequência",
+    cuidados_de_hoje: "Cuidados de hoje",
+    ver_todos: "Ver todos",
+    retrato_maya_preparou: "Maya preparou um novo reflexo dos seus últimos 30 dias.",
+    media_energia: "Média {{n}}/10",
+    subindo: "subindo",
+    estavel: "estável",
+    caindo: "caindo",
+    dias_ate_tier: "{{n}} dias até {{tier}}",
+
     // Features — Madrugada (Maya time awareness — sistema, não precisa de i18n visível)
   },
 
@@ -679,6 +696,23 @@ const translations: Record<Lang, Record<string, string>> = {
     progresso_titulo: "Progreso",
     progresso_subtitle: "{{n}} check-ins · cada día consecutivo te sube un escalón",
     atual: "Actual",
+
+    // Dashboard — Atmospheric redesign
+    bom_dia: "Buenos días",
+    boa_tarde: "Buenas tardes",
+    boa_noite: "Buenas noches",
+    maya_agora: "Maya · hace un momento",
+    conversar_com_maya: "Hablar con Maya",
+    meu_porque_label: "Mi Porqué",
+    sua_sequencia: "Tu secuencia",
+    cuidados_de_hoje: "Cuidados de hoy",
+    ver_todos: "Ver todos",
+    retrato_maya_preparou: "Maya preparó un nuevo reflejo de tus últimos 30 días.",
+    media_energia: "Media {{n}}/10",
+    subindo: "subiendo",
+    estavel: "estable",
+    caindo: "bajando",
+    dias_ate_tier: "{{n}} días hasta {{tier}}",
 
     // Features — O Espelho (WeeklyMirror)
     espelho_titulo: "Tu espejo de la semana",
@@ -1012,6 +1046,23 @@ const translations: Record<Lang, Record<string, string>> = {
     progresso_titulo: "Progress",
     progresso_subtitle: "{{n}} check-ins · each consecutive day lifts you up one step",
     atual: "Current",
+
+    // Dashboard — Atmospheric redesign
+    bom_dia: "Good morning",
+    boa_tarde: "Good afternoon",
+    boa_noite: "Good evening",
+    maya_agora: "Maya · just now",
+    conversar_com_maya: "Talk to Maya",
+    meu_porque_label: "My Why",
+    sua_sequencia: "Your streak",
+    cuidados_de_hoje: "Today's self-care",
+    ver_todos: "See all",
+    retrato_maya_preparou: "Maya prepared a new reflection of your last 30 days.",
+    media_energia: "Average {{n}}/10",
+    subindo: "rising",
+    estavel: "steady",
+    caindo: "falling",
+    dias_ate_tier: "{{n}} days until {{tier}}",
 
     // Features — O Espelho (WeeklyMirror)
     espelho_titulo: "Your week's mirror",
