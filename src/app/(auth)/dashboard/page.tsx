@@ -41,9 +41,8 @@ function greetingTimeOfDay(t: (k: string) => string) {
   return t("boa_noite");
 }
 
-function formatDayMonth(dateStr: string) {
-  const d = new Date(dateStr + "T12:00:00");
-  return d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }).replace(".", "");
+function formatDayNum(dateStr: string) {
+  return new Date(dateStr + "T12:00:00").getDate().toString();
 }
 
 function formatWeekdayShort(dateStr: string) {
@@ -334,12 +333,17 @@ export default function DashboardPage() {
     }
 
     const today = getLocalDate();
+    const habitKeys = enabledKeys.filter(
+      (k) => k !== "suicidal_thoughts" && k !== "felt_judged",
+    );
+
     const days: {
       label: string;
       energy: number | null;
       sleep: boolean | null;
       meals: number;
       kcal: number;
+      cuidados: number | null;
       today: boolean;
     }[] = [];
 
@@ -360,11 +364,14 @@ export default function DashboardPage() {
         sleep: ci?.slept_well ?? null,
         meals: analyzed.length,
         kcal: Math.round(total.calorias_kcal),
+        cuidados: ci
+          ? habitKeys.filter((k) => (ci as Record<string, unknown>)[k] === true).length
+          : null,
         today: ds === today,
       });
     }
     return days;
-  }, [checkIns, allMeals]);
+  }, [checkIns, allMeals, enabledKeys]);
 
   // ── Evolução ─────────────────────────────────────────────────
 
@@ -479,7 +486,7 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="relative min-h-screen"
+      className="relative min-h-screen overflow-x-hidden"
       style={{
         background: `
           radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.95 .04 80 / .55) 0%, transparent 50%),
@@ -511,53 +518,55 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* ── MAYA PRESENCE BLOCK ───────────────────────────────── */}
-      <div className="mx-4 mt-3.5">
-        <div
-          className="relative rounded-[22px] overflow-hidden border p-5"
-          style={{
-            background:
-              "linear-gradient(135deg, oklch(.5 .12 160 / .08) 0%, oklch(.5 .12 160 / .02) 100%)",
-            borderColor: "oklch(.5 .12 160 / .15)",
-          }}
-        >
-          {/* Decorative rings */}
+      {/* ── MAYA PRESENCE BLOCK — só aparece quando há nudge contextual ── */}
+      {mayaNudgeText && (
+        <div className="mx-4 mt-3.5">
           <div
-            className="absolute -right-10 -top-10 w-40 h-40 rounded-full border"
-            style={{ borderColor: "oklch(.5 .12 160 / .12)" }}
-          />
-          <div
-            className="absolute -right-5 -top-5 w-30 h-30 rounded-full border"
-            style={{ borderColor: "oklch(.5 .12 160 / .08)" }}
-          />
-
-          <div className="relative flex gap-3.5 items-start">
-            <span className="w-14 h-14 rounded-full overflow-hidden flex-none border-2 border-white shadow-lg">
-              <img
-                src="/Maya.png"
-                alt="Maya"
-                className="w-full h-full object-cover"
-              />
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10.5px] font-bold tracking-wider uppercase text-primary m-0">
-                {t("maya_agora")}
-              </p>
-              <p className="mt-1.5 text-base leading-[1.4] font-medium tracking-tight">
-                {mayaNudgeText || t("maya_welcome")}
-              </p>
-            </div>
-          </div>
-
-          <Button
-            className="mt-3.5 w-full h-[38px] rounded-xl text-[13px] font-semibold gap-1.5"
-            onClick={() => router.push("/insights")}
+            className="relative rounded-[22px] overflow-hidden border p-5"
+            style={{
+              background:
+                "linear-gradient(135deg, oklch(.5 .12 160 / .08) 0%, oklch(.5 .12 160 / .02) 100%)",
+              borderColor: "oklch(.5 .12 160 / .15)",
+            }}
           >
-            {t("conversar_com_maya")}
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
+            {/* Decorative rings — clipadas pelo overflow-hidden do pai */}
+            <div
+              className="absolute -right-10 -top-10 w-40 h-40 rounded-full border pointer-events-none"
+              style={{ borderColor: "oklch(.5 .12 160 / .12)" }}
+            />
+            <div
+              className="absolute -right-5 -top-5 w-[120px] h-[120px] rounded-full border pointer-events-none"
+              style={{ borderColor: "oklch(.5 .12 160 / .08)" }}
+            />
+
+            <div className="relative flex gap-3.5 items-start">
+              <span className="w-14 h-14 rounded-full overflow-hidden flex-none border-2 border-white shadow-lg">
+                <img
+                  src="/Maya.png"
+                  alt="Maya"
+                  className="w-full h-full object-cover"
+                />
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10.5px] font-bold tracking-wider uppercase text-primary m-0">
+                  {t("maya_agora")}
+                </p>
+                <p className="mt-1.5 text-base leading-[1.4] font-medium tracking-tight">
+                  {mayaNudgeText}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              className="mt-3.5 w-full h-[38px] rounded-xl text-[13px] font-semibold gap-1.5"
+              onClick={() => router.push("/insights")}
+            >
+              {t("conversar_com_maya")}
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── MEU PORQUÊ ────────────────────────────────────────── */}
       {porques.length > 0 && (
@@ -642,7 +651,7 @@ export default function DashboardPage() {
                   />
                   {isCurrent && (
                     <div
-                      className="absolute -top-[2px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white shadow-md"
+                      className="absolute -top-[2px] -left-[3px] w-2.5 h-2.5 rounded-full bg-primary border-2 border-white shadow-md"
                     />
                   )}
                 </div>
@@ -737,10 +746,16 @@ export default function DashboardPage() {
                 >
                   {day.energy !== null ? `${day.energy}/10` : "—"}
                 </span>
+                {day.cuidados !== null && (
+                  <span className="text-[11px] tabular-nums px-1.5 py-0.5 rounded-full"
+                        style={{ background: "oklch(.5 .12 160 / .1)", color: "var(--foreground)" }}>
+                    {day.cuidados}/{totalHabits}
+                  </span>
+                )}
                 <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
                   {day.meals > 0
                     ? `${day.meals} ${t("ref_abrev")} · ${day.kcal} kcal`
-                    : "—"}
+                    : ""}
                 </span>
               </div>
             );
@@ -845,7 +860,7 @@ export default function DashboardPage() {
             >
               <div>
                 <div className="text-[13px] font-semibold leading-none tabular-nums">
-                  {formatDayMonth(ci.date)}
+                  {formatDayNum(ci.date)}
                 </div>
                 <div className="text-[9.5px] font-semibold tracking-wider uppercase text-muted-foreground mt-0.5">
                   {formatWeekdayShort(ci.date)}
