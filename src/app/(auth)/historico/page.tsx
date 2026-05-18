@@ -90,7 +90,7 @@ export default function HistoricoPage() {
     [enabledKeys]
   );
   const habitKeys = useMemo(
-    () => enabledKeys.filter((k) => k !== "suicidal_thoughts"),
+    () => enabledKeys.filter((k) => k !== "suicidal_thoughts" && k !== "felt_judged"),
     [enabledKeys]
   );
   const monthGroups = useMemo(() => groupByMonth(checkIns), [checkIns]);
@@ -217,21 +217,22 @@ export default function HistoricoPage() {
                     {/* Score + habits row */}
                     <div className="flex items-center gap-2 mb-1">
                       {/* Habit emoji strip */}
-                      <div className="flex items-center gap-[3px] flex-1 min-w-0">
+                      <div className="flex items-center gap-[4px] flex-1 min-w-0">
                         {habitKeys.map((key) => {
                           const done = (ci as Record<string, unknown>)[key] === true;
-                          return (
+                          return done ? (
+                            <span key={key} style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>
+                              {HABIT_EMOJI[key] ?? "•"}
+                            </span>
+                          ) : (
                             <span
                               key={key}
                               style={{
-                                fontSize: 15,
-                                lineHeight: 1,
-                                opacity: done ? 1 : 0.18,
-                                flexShrink: 0,
+                                display: "inline-block", width: 7, height: 7,
+                                borderRadius: "50%", flexShrink: 0,
+                                background: "oklch(.5 .02 160 / .22)",
                               }}
-                            >
-                              {HABIT_EMOJI[key] ?? "•"}
-                            </span>
+                            />
                           );
                         })}
                       </div>
