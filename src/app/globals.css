@@ -138,6 +138,13 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* ContentEditable placeholder */
+[contenteditable]:empty::before {
+  content: attr(data-placeholder);
+  color: oklch(.25 .02 160 / .32);
+  pointer-events: none;
+}
+
 /* App mobile — esconder scrollbar nativa mantendo scroll funcional */
 * {
   scrollbar-width: none;

@@ -1,5 +1,4 @@
-import { BottomNav } from "@/components/BottomNav";
-import { HeaderWrapper, MainWrapper } from "@/components/DashboardChrome";
+import { HeaderWrapper, MainWrapper, BottomNavWrapper } from "@/components/DashboardChrome";
 
 export default function AuthLayout({
   children,
@@ -9,12 +8,8 @@ export default function AuthLayout({
   return (
     <div className="flex flex-col min-h-full">
       <HeaderWrapper />
-
-      <MainWrapper>
-        {children}
-      </MainWrapper>
-
-      <BottomNav />
+      <MainWrapper>{children}</MainWrapper>
+      <BottomNavWrapper />
     </div>
   );
 }

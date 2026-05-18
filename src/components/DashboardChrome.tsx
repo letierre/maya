@@ -9,11 +9,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogoutButton } from "@/components/LogoutButton";
+import { BottomNav } from "@/components/BottomNav";
 import { EllipsisVertical } from "lucide-react";
+
+const FULLBLEED_ROUTES = ["/dashboard", "/diario", "/diario/novo"];
+const HIDE_BOTTOMNAV_ROUTES = ["/diario/novo"];
 
 export function HeaderWrapper() {
   const pathname = usePathname();
-  if (pathname === "/dashboard") return null;
+  if (FULLBLEED_ROUTES.includes(pathname)) return null;
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-sm">
@@ -83,19 +87,18 @@ export function HeaderWrapper() {
 
 export function MainWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isDashboard = pathname === "/dashboard";
-
-  if (isDashboard) {
-    return (
-      <main className="flex-1 w-full">
-        {children}
-      </main>
-    );
+  if (FULLBLEED_ROUTES.includes(pathname)) {
+    return <main className="flex-1 w-full">{children}</main>;
   }
-
   return (
     <main className="flex-1 max-w-4xl mx-auto w-full p-4 sm:p-6 pb-28">
       {children}
     </main>
   );
+}
+
+export function BottomNavWrapper() {
+  const pathname = usePathname();
+  if (HIDE_BOTTOMNAV_ROUTES.includes(pathname)) return null;
+  return <BottomNav />;
 }
