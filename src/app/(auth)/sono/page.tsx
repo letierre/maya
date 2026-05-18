@@ -14,6 +14,13 @@ import { requestPushSubscription, hasPushPermission } from "@/lib/push-utils";
 import type { SleepLog, SleepStats } from "@/types";
 import { getLocalDate } from "@/lib/utils";
 
+interface SleepConfig {
+  bedtime: string;        // "23:30"
+  wake_time: string;      // "07:00"
+  target_hours: number;   // 8
+  reminder_time: string;  // "22:30" — push reminder time
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const QUALITY_EMOJI = ["", "😩", "😕", "😐", "🙂", "😊"];
@@ -169,10 +176,125 @@ function SleepHistoryRow({ log }: { log: SleepLog }) {
   );
 }
 
+// ── Sleep config card ─────────────────────────────────────────────────────────
+
+function SleepConfigCard({ config, onChange, onSave, saving }: {
+  config: SleepConfig;
+  onChange: (c: SleepConfig) => void;
+  onSave: () => void;
+  saving: boolean;
+}) {
+  const TARGET_OPTIONS = [6, 7, 7.5, 8, 8.5, 9];
+
+  return (
+    <Card className="rounded-2xl">
+      <CardContent className="p-4 space-y-4">
+        <p className="text-sm font-semibold">⚙️ Minhas configurações de sono</p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {/* Bedtime */}
+          <div>
+            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+              Dormir às
+            </p>
+            <input
+              type="time"
+              value={config.bedtime}
+              onChange={(e) => onChange({ ...config, bedtime: e.target.value })}
+              style={{
+                width: "100%", padding: "9px 10px", borderRadius: 10,
+                border: "1px solid oklch(.7 .04 280 / .35)",
+                fontFamily: "inherit", fontSize: 14, fontWeight: 600,
+                background: "oklch(.97 .01 280)", color: "var(--foreground)", outline: "none",
+              }}
+            />
+          </div>
+
+          {/* Wake time */}
+          <div>
+            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+              Acordar às
+            </p>
+            <input
+              type="time"
+              value={config.wake_time}
+              onChange={(e) => onChange({ ...config, wake_time: e.target.value })}
+              style={{
+                width: "100%", padding: "9px 10px", borderRadius: 10,
+                border: "1px solid oklch(.7 .04 280 / .35)",
+                fontFamily: "inherit", fontSize: 14, fontWeight: 600,
+                background: "oklch(.97 .01 280)", color: "var(--foreground)", outline: "none",
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Target hours */}
+        <div>
+          <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+            Meta de sono
+          </p>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {TARGET_OPTIONS.map((h) => (
+              <button key={h} type="button" onClick={() => onChange({ ...config, target_hours: h })} style={{
+                padding: "7px 12px", borderRadius: 9999, cursor: "pointer",
+                border: config.target_hours === h ? "none" : "1px solid oklch(.7 .04 280 / .4)",
+                background: config.target_hours === h ? "oklch(.5 .12 280)" : "oklch(.96 .01 280)",
+                fontFamily: "inherit", fontSize: 12, fontWeight: 600,
+                color: config.target_hours === h ? "#fff" : "oklch(.4 .06 280)",
+                transition: "all .15s ease",
+              }}>
+                {h % 1 === 0 ? `${h}h` : `${h}h`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Reminder time */}
+        <div>
+          <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+            Lembrete noturno
+          </p>
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "var(--muted-foreground)" }}>
+            Notificação push antes de dormir (requer notificações ativas)
+          </p>
+          <input
+            type="time"
+            value={config.reminder_time}
+            onChange={(e) => onChange({ ...config, reminder_time: e.target.value })}
+            style={{
+              width: "100%", padding: "9px 10px", borderRadius: 10,
+              border: "1px solid oklch(.7 .04 280 / .35)",
+              fontFamily: "inherit", fontSize: 14, fontWeight: 600,
+              background: "oklch(.97 .01 280)", color: "var(--foreground)", outline: "none",
+            }}
+          />
+        </div>
+
+        <button type="button" onClick={onSave} disabled={saving} style={{
+          width: "100%", height: 44, borderRadius: 12, border: 0,
+          cursor: saving ? "not-allowed" : "pointer",
+          background: "oklch(.5 .12 280)", color: "#fff",
+          fontFamily: "inherit", fontSize: 14, fontWeight: 700,
+          opacity: saving ? 0.7 : 1, transition: "opacity .15s ease",
+        }}>
+          {saving ? "Salvando…" : "Salvar configurações"}
+        </button>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Cycle calculator ──────────────────────────────────────────────────────────
 
-function CycleCalculator() {
-  const [bedtime, setBedtime] = useState("23:00");
+function CycleCalculator({ defaultBedtime = "23:00" }: { defaultBedtime?: string }) {
+  const [bedtime, setBedtime] = useState(defaultBedtime);
+  const [synced, setSynced] = useState(defaultBedtime);
+
+  if (defaultBedtime !== synced) {
+    setSynced(defaultBedtime);
+    setBedtime(defaultBedtime);
+  }
 
   const idealWakes = (() => {
     const [h, m] = bedtime.split(":").map(Number);
@@ -232,6 +354,13 @@ function CycleCalculator() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
+const DEFAULT_CONFIG: SleepConfig = {
+  bedtime: "23:00",
+  wake_time: "07:00",
+  target_hours: 8,
+  reminder_time: "22:30",
+};
+
 export default function SonoPage() {
   const [logs, setLogs] = useState<SleepLog[]>([]);
   const [stats, setStats] = useState<SleepStats | null>(null);
@@ -239,13 +368,26 @@ export default function SonoPage() {
   const [showModal, setShowModal] = useState(false);
   const [pushGranted, setPushGranted] = useState<boolean | null>(null);
   const [pushLoading, setPushLoading] = useState(false);
+  const [config, setConfig] = useState<SleepConfig>(DEFAULT_CONFIG);
+  const [configSaving, setConfigSaving] = useState(false);
 
   const loadLogs = useCallback(async () => {
-    const data = await fetch("/api/sleep?limit=30").then((r) => r.json()).catch(() => []);
-    if (Array.isArray(data)) {
-      setLogs(data);
-      setStats(computeSleepStats(data));
+    const [sleepData, prefsData] = await Promise.all([
+      fetch("/api/sleep?limit=30").then((r) => r.json()).catch(() => []),
+      fetch("/api/preferences").then((r) => r.json()).catch(() => ({})),
+    ]);
+
+    if (Array.isArray(sleepData)) {
+      setLogs(sleepData);
+      setStats(computeSleepStats(sleepData));
     }
+
+    // Load saved sleep config from preferences context
+    const ctx = prefsData?.context ?? {};
+    if (ctx.sleep_config) {
+      setConfig({ ...DEFAULT_CONFIG, ...(ctx.sleep_config as Partial<SleepConfig>) });
+    }
+
     setLoading(false);
   }, []);
 
@@ -255,6 +397,21 @@ export default function SonoPage() {
     setPushGranted(hasPushPermission());
   }, []);
 
+  const handleSaveConfig = async () => {
+    setConfigSaving(true);
+    try {
+      // Fetch current prefs to merge context
+      const prefs = await fetch("/api/preferences").then((r) => r.json()).catch(() => ({}));
+      const ctx = { ...(prefs?.context ?? {}), sleep_config: config };
+      await fetch("/api/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ context: ctx }),
+      });
+    } catch { /* ignore */ }
+    setConfigSaving(false);
+  };
+
   const handleEnablePush = async () => {
     setPushLoading(true);
     const ok = await subscribeToPush();
@@ -263,7 +420,6 @@ export default function SonoPage() {
   };
 
   const weeklyLogs = stats?.weeklyLogs ?? [];
-  const todayLog = logs.find((l) => l.date === getLocalDate());
 
   if (loading) {
     return (
@@ -403,7 +559,7 @@ export default function SonoPage() {
         )}
 
         {/* ── Cycle calculator ── */}
-        <CycleCalculator />
+        <CycleCalculator defaultBedtime={config.bedtime} />
 
         {/* ── Push notification opt-in ── */}
         {pushGranted === false && (
@@ -443,6 +599,14 @@ export default function SonoPage() {
             </p>
           </div>
         )}
+
+        {/* ── Sleep config ── */}
+        <SleepConfigCard
+          config={config}
+          onChange={setConfig}
+          onSave={handleSaveConfig}
+          saving={configSaving}
+        />
 
         {/* ── History ── */}
         {logs.length > 0 && (
