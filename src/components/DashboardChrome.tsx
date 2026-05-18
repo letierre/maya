@@ -12,7 +12,7 @@ import { LogoutButton } from "@/components/LogoutButton";
 import { BottomNav } from "@/components/BottomNav";
 import { EllipsisVertical } from "lucide-react";
 
-const FULLBLEED_ROUTES = ["/dashboard", "/diario", "/diario/novo", "/check-in"];
+const FULLBLEED_ROUTES = ["/dashboard", "/diario", "/diario/novo", "/check-in", "/historico"];
 const HIDE_BOTTOMNAV_ROUTES = ["/diario/novo", "/check-in"];
 
 export function HeaderWrapper() {
