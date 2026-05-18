@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/useTranslation";
-import { getLocalDate, getLocalDateFromISO } from "@/lib/utils";
+import { getLocalDate, getLocalDateFromISO, getWeekMondayDate, getWeekSundayDate } from "@/lib/utils";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { sumMacros, dailyQuality, nutritionScore, mealTypeEmoji, mealTypeLabel, classificationLabel, classificationColor, getDailyKcalGoal, DEFAULT_DAILY_KCAL } from "@/lib/meal-utils";
 import { MealCard } from "@/components/MealCard";
@@ -78,20 +78,23 @@ export default function NutricaoPage() {
     return map;
   }, [meals]);
 
-  // Dados da semana (datas locais)
+  // Dados da semana atual (Seg–Dom)
   const weekDays = useMemo(() => {
-    const days: { date: string; label: string; meals: Meal[]; kcal: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = getLocalDateFromISO(d.toISOString());
+    const mondayDate = getWeekMondayDate();
+    const days: { date: string; label: string; meals: Meal[]; kcal: number; score: number }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(mondayDate + "T12:00:00");
+      d.setDate(d.getDate() + i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const dayMeals = mealsByDay.get(dateStr) || [];
+      const analyzed = dayMeals.filter((m) => m.macros && m.status_analise === "analisado");
       const kcal = sumMacros(dayMeals.filter((m) => m.macros)).calorias_kcal;
       days.push({
         date: dateStr,
         label: d.toLocaleDateString("pt-BR", { weekday: "short" }),
         meals: dayMeals,
         kcal,
+        score: nutritionScore(analyzed),
       });
     }
     return days;
@@ -380,6 +383,9 @@ export default function NutricaoPage() {
       {/* ========== VISÃO SEMANAL ========== */}
       {tab === "semana" && (
         <div className="space-y-6">
+          {/* Espelho da semana em destaque */}
+          <WeeklyMirror />
+
           <NutritionSummary
             meals={weekDays.flatMap((d) => d.meals)}
             label={t("resumo_da_semana")}
@@ -388,8 +394,6 @@ export default function NutricaoPage() {
 
           {/* Relatório semanal inteligente */}
           <WeeklyReport meals={meals} weekDays={weekDays} />
-
-          <WeeklyMirror />
 
           {/* Lista de refeições da semana */}
           <div className="space-y-3">

@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
-import { getLocalDate } from "@/lib/utils";
+import { getWeekMondayDate, getWeekSundayDate } from "@/lib/utils";
 import { sumMacros } from "@/lib/meal-utils";
 
 type Lang = "pt" | "es" | "en";
@@ -63,53 +63,48 @@ function buildWeeklyPrompt(data: {
   const nome = data.userName || "usuário";
 
   const systemByLang: Record<Lang, string> = {
-    pt: `Você é um ESPELHO — você reflete de volta o que vê, sem julgar, sem prescrever, sem dar conselhos.
+    pt: `Você é o assistente do app de saúde e acompanhou a semana de ${nome} de perto, vendo os dados dia a dia.
 
-Seu trabalho: escrever uma narrativa curta sobre a semana de ${nome} baseada nos dados abaixo.
+Seu trabalho: escrever uma reflexão semanal usando o que você observou. Fale na voz do app, como se o app estivesse falando diretamente com o usuário: "Vi que você...", "Percebi que...", "Na segunda, você...".
 
 REGRAS:
-- NUNCA diga o que a pessoa "deve" ou "precisa" fazer
-- NUNCA julgue os dados como bons ou ruins
-- APENAS reflita padrões: "quando X aconteceu, Y apareceu"
-- Use o nome da pessoa naturalmente
-- Tom: cálido, humano, como quem se importa
-- Escreva 3-5 parágrafos curtos
+- Comece com "Vi que..." ou "Percebi que..." relacionado a algo que realmente aparece nos dados
+- Conecte padrões que você observou: alimentação, humor, sono, escrita — o que aparecer nos dados
+- Tom: acolhedor e próximo, como um amigo que prestou atenção sem julgamento
+- 3-5 parágrafos curtos
+- Se os dados de alimentação forem escassos ou a qualidade nutricional baixa, mencione isso com cuidado, sem drama
+- NUNCA diga o que a pessoa "deve" ou "precisa" fazer — apenas observe e conecte
 - Use português brasileiro natural, com acentos e gramática corretos
 - NUNCA use markdown, asteriscos, travessões
-- Apenas pontuação comum: vírgula, ponto final, dois pontos
-- Comece com um parágrafo que acolhe a semana como um todo`,
+- Apenas pontuação comum: vírgula, ponto final, dois pontos`,
 
-    es: `Eres un ESPEJO — reflejas de vuelta lo que ves, sin juzgar, sin prescribir, sin dar consejos.
+    es: `Eres el asistente de la app de salud y seguiste de cerca la semana de ${nome}, viendo los datos día a día.
 
-Tu trabajo: escribir una narrativa corta sobre la semana de ${nome} basada en los datos abajo.
+Tu trabajo: escribir una reflexión semanal usando lo que observaste. Habla en la voz de la app, como si la app le hablara directamente al usuario: "Vi que...", "Noté que...", "El lunes, tú...".
 
 REGLAS:
-- NUNCA digas lo que la persona "debe" o "necesita" hacer
-- NUNCA juzgues los datos como buenos o malos
-- SOLO refleja patrones: "cuando X sucedió, Y apareció"
-- Usa el nombre de la persona naturalmente
-- Tono: cálido, humano, como alguien que se preocupa
-- Escribe 3-5 párrafos cortos
+- Empieza con "Vi que..." o "Noté que..." relacionado con algo que realmente aparece en los datos
+- Conecta patrones que observaste: alimentación, estado de ánimo, sueño, escritura
+- Tono: cercano y acogedor, como un amigo que estuvo atento sin juzgar
+- 3-5 párrafos cortos
+- NUNCA digas lo que la persona "debe" o "necesita" hacer — solo observa y conecta
 - Usa español natural
 - NUNCA uses markdown, asteriscos, guiones largos
-- Solo puntuación común: coma, punto final, dos puntos
-- Comienza con un párrafo que acoge la semana como un todo`,
+- Solo puntuación común: coma, punto final, dos puntos`,
 
-    en: `You are a MIRROR — you reflect back what you see, without judging, without prescribing, without giving advice.
+    en: `You are the health app's assistant and followed ${nome}'s week closely, seeing the data day by day.
 
-Your job: write a short narrative about ${nome}'s week based on the data below.
+Your job: write a weekly reflection using what you observed. Speak in the app's voice, as if the app were talking directly to the user: "I noticed that...", "I saw that...", "On Monday, you...".
 
 RULES:
-- NEVER say what the person "should" or "needs to" do
-- NEVER judge the data as good or bad
-- ONLY reflect patterns: "when X happened, Y appeared"
-- Use the person's name naturally
-- Tone: warm, human, like someone who cares
-- Write 3-5 short paragraphs
+- Start with "I noticed..." or "I saw..." related to something that actually appears in the data
+- Connect patterns you observed: food, mood, sleep, journaling — whatever shows up in the data
+- Tone: warm and close, like a friend who paid attention without judgment
+- 3-5 short paragraphs
+- NEVER say what the person "should" or "needs to" do — only observe and connect
 - Use natural English
 - NEVER use markdown, asterisks, or em dashes
-- Only common punctuation: comma, period, colon
-- Start with a paragraph that embraces the week as a whole`,
+- Only common punctuation: comma, period, colon`,
   };
 
   return `${systemByLang[lang] || systemByLang.pt}
@@ -135,13 +130,18 @@ export async function POST(request: Request) {
     const lang: Lang = body.lang || "pt";
 
     const admin = getSupabaseAdmin();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const mondayDate = getWeekMondayDate(); // YYYY-MM-DD SP timezone
+    const sundayDate = getWeekSundayDate(); // YYYY-MM-DD SP timezone
+    // Convert Mon 00:00 SP to UTC for timestamp queries (SP = UTC-3)
+    const mondayUTC = new Date(mondayDate + "T03:00:00.000Z").toISOString();
+    // Sunday 23:59 SP = Monday 02:59 UTC next day
+    const sundayUTC = new Date(sundayDate + "T03:00:00.000Z");
+    sundayUTC.setDate(sundayUTC.getDate() + 1);
 
     const [mealsRes, checkInsRes, diaryRes, prefsRes] = await Promise.all([
-      admin.from("meals").select("*").eq("user_id", user.id).gte("data_hora", sevenDaysAgo.toISOString()).order("data_hora"),
-      admin.from("check_ins").select("*").eq("user_id", user.id).gte("date", sevenDaysAgo.toISOString().slice(0, 10)).order("date"),
-      admin.from("diary_entries").select("*").eq("user_id", user.id).gte("date", sevenDaysAgo.toISOString().slice(0, 10)).order("date").limit(5),
+      admin.from("meals").select("*").eq("user_id", user.id).gte("data_hora", mondayUTC).lt("data_hora", sundayUTC.toISOString()).order("data_hora"),
+      admin.from("check_ins").select("*").eq("user_id", user.id).gte("date", mondayDate).lte("date", sundayDate).order("date"),
+      admin.from("diary_entries").select("*").eq("user_id", user.id).gte("date", mondayDate).lte("date", sundayDate).order("date").limit(7),
       admin.from("preferences").select("context").eq("user_id", user.id).single(),
     ]);
 

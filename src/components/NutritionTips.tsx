@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { sumMacros, getDailyKcalGoal } from "@/lib/meal-utils";
-import { getLocalDate, getLocalDateFromISO } from "@/lib/utils";
+import { getLocalDateFromISO, getWeekMondayDate, getWeekSundayDate } from "@/lib/utils";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { Lightbulb, Apple, Coffee, Moon, Zap } from "lucide-react";
 import type { Meal, CheckIn } from "@/types";
@@ -39,10 +39,12 @@ export function NutritionTips() {
   const tips = useMemo<Tip[]>(() => {
     const result: Tip[] = [];
 
-    // Últimos 7 dias de refeições
+    // Semana atual (Seg–Dom)
+    const mondayDate = getWeekMondayDate();
+    const sundayDate = getWeekSundayDate();
     const recentMeals = meals.filter((m) => {
-      const diff = (new Date().getTime() - new Date(m.data_hora).getTime()) / (1000 * 60 * 60 * 24);
-      return diff <= 7;
+      const d = getLocalDateFromISO(m.data_hora);
+      return d >= mondayDate && d <= sundayDate;
     });
     const analyzed = recentMeals.filter((m) => m.macros && m.status_analise === "analisado");
 

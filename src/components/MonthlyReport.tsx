@@ -111,7 +111,7 @@ export function MonthlyReport({ meals, monthStats }: { meals: Meal[]; monthStats
       <Card className="rounded-2xl">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">🌈 Variedade alimentar</p>
+            <p className="text-sm font-medium">🥗 Variedade alimentar</p>
             <span className={`text-sm font-bold ${analysis.varietyColor}`}>
               {analysis.varietyScore}
             </span>
@@ -184,8 +184,15 @@ export function MonthlyReport({ meals, monthStats }: { meals: Meal[]; monthStats
         <Card className="rounded-2xl border-amber-200/50 dark:border-amber-800/30 bg-amber-50/20 dark:bg-amber-950/10">
           <CardContent className="p-4 space-y-3">
             <p className="text-sm font-medium">🔍 Possíveis lacunas</p>
+            {monthStats.total < 15 && (
+              <p className="text-xs text-amber-700 bg-amber-100/60 rounded-lg px-3 py-2">
+                Você registrou apenas {monthStats.total} {monthStats.total === 1 ? "refeição" : "refeições"} com análise este mês. As lacunas abaixo provavelmente subestimam a realidade.
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
-              Baseado nos alimentos registrados, estes nutrientes podem estar em falta:
+              {monthStats.total < 15
+                ? "Com os dados disponíveis, estes nutrientes provavelmente estão em falta:"
+                : "Baseado nos alimentos registrados, estes nutrientes podem estar em falta:"}
             </p>
             <div className="space-y-2">
               {analysis.nutrientGaps.map((gap) => (
@@ -199,7 +206,7 @@ export function MonthlyReport({ meals, monthStats }: { meals: Meal[]; monthStats
               ))}
             </div>
             <p className="text-[10px] text-muted-foreground italic">
-              Esta análise é baseada nos alimentos registrados e pode não refletir sua ingestão real completa.
+              Análise baseada nos alimentos registrados. Pode não refletir sua ingestão real completa.
             </p>
           </CardContent>
         </Card>

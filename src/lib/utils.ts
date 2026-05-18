@@ -41,6 +41,24 @@ export function formatLocalDate(d: Date): string {
   return spDate(d.getTime());
 }
 
+/** Returns the Monday date (YYYY-MM-DD) of the current week in São Paulo timezone. */
+export function getWeekMondayDate(): string {
+  const today = getLocalDate();
+  const d = new Date(today + "T12:00:00");
+  const dow = d.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  const daysToMonday = dow === 0 ? -6 : 1 - dow;
+  d.setDate(d.getDate() + daysToMonday);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Returns the Sunday date (YYYY-MM-DD) of the current week in São Paulo timezone. */
+export function getWeekSundayDate(): string {
+  const mon = getWeekMondayDate();
+  const d = new Date(mon + "T12:00:00");
+  d.setDate(d.getDate() + 6);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 /**
  * Counts consecutive days from the most recent check-in.
  * Timezone-independent: uses date arithmetic, not "today" strings.
