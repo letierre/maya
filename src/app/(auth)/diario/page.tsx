@@ -2,10 +2,18 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useTranslation } from "@/lib/useTranslation";
 import { Plus, ImageIcon, BookOpen, Sparkles, MoreVertical } from "lucide-react";
 import { photoUrl } from "@/lib/photo-storage";
 import { getLocalDate } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { LogoutButton } from "@/components/LogoutButton";
 import type { DiaryEntry } from "@/types";
 
 const MOOD_EMOJIS: Record<number, string> = {
@@ -76,14 +84,31 @@ export default function DiarioPage() {
       }}
     >
       {/* Floating kebab */}
-      <button
-        type="button"
-        className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-white/55 backdrop-blur-md border-0 flex items-center justify-center shadow-sm cursor-pointer"
-        style={{ color: "var(--foreground)" }}
-        aria-label="Menu"
-      >
-        <MoreVertical className="w-4 h-4" />
-      </button>
+      <div className="absolute top-4 right-4 z-10">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <span className="w-9 h-9 rounded-full bg-white/55 backdrop-blur-md flex items-center justify-center shadow-sm cursor-pointer"
+                style={{ color: "var(--foreground)" }}>
+                <MoreVertical className="w-4 h-4" />
+              </span>
+            }
+          />
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem render={
+              <Link href="/perfil" className="w-full text-left px-2 py-1.5 text-sm block">
+                Meu Perfil
+              </Link>
+            } />
+            <DropdownMenuItem render={
+              <Link href="/nutricao" className="w-full text-left px-2 py-1.5 text-sm block">
+                🍽️ Nutrição
+              </Link>
+            } />
+            <DropdownMenuItem render={<LogoutButton />} />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {/* Header */}
       <div className="px-6 pt-6 pb-2">

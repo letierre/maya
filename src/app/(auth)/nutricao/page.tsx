@@ -160,44 +160,84 @@ export default function NutricaoPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-muted-foreground">{t("carregando")}</p>
+      <div
+        style={{
+          minHeight: "100dvh",
+          background: `radial-gradient(ellipse 80% 50% at 80% 0%, oklch(.88 .07 160 / .45) 0%, transparent 55%),
+                       linear-gradient(180deg, oklch(.98 .005 160) 0%, oklch(.94 .025 160) 100%)`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        <p style={{ color: "var(--muted-foreground)", fontSize: 13 }}>{t("carregando")}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div
+      className="relative min-h-screen overflow-x-hidden pb-32"
+      style={{
+        background: `
+          radial-gradient(ellipse 100% 55% at 80% 0%, oklch(.88 .07 160 / .4) 0%, transparent 55%),
+          radial-gradient(ellipse 70% 40% at 0% 100%, oklch(.95 .04 80 / .45) 0%, transparent 50%),
+          linear-gradient(180deg, oklch(.98 .005 160) 0%, oklch(.94 .025 160) 100%)
+        `,
+        fontFamily: "var(--font-sans)",
+        color: "var(--foreground)",
+      }}
+    >
+      {/* Floating + button */}
+      <button
+        type="button"
+        onClick={() => router.push("/nutricao/registrar")}
+        className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full flex items-center justify-center shadow-md cursor-pointer border-0"
+        style={{ background: "var(--primary)", color: "#fff" }}
+        aria-label="Registrar refeição"
+      >
+        <Plus className="w-4 h-4" />
+      </button>
+
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{t("nutricao")}</h1>
-          <p className="text-muted-foreground text-sm">{todayDisplay}</p>
-        </div>
-        <Button
-          size="icon"
-          className="rounded-full size-10"
-          onClick={() => router.push("/nutricao/registrar")}
-        >
-          <Plus className="size-5" />
-        </Button>
+      <div className="px-6 pt-6 pb-4">
+        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+          {todayDisplay}
+        </p>
+        <h1 className="mt-1 text-[36px] font-bold tracking-tight leading-[1.05]">
+          Nutrição
+        </h1>
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-muted rounded-xl p-1">
-        {(["dia", "semana", "mes"] as TabView[]).map((tview) => (
-          <button
-            key={tview}
-            type="button"
-            onClick={() => setTab(tview)}
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
-              tab === tview ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tview === "dia" ? "Dia" : tview === "semana" ? "Semana" : "Mês"}
-          </button>
-        ))}
+      <div className="px-6 pb-4">
+        <div
+          className="inline-flex w-full p-1 rounded-2xl"
+          style={{
+            background: "oklch(1 0 0 / .55)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid oklch(.5 .12 160 / .12)",
+          }}
+        >
+          {(["dia", "semana", "mes"] as TabView[]).map((tview) => (
+            <button
+              key={tview}
+              type="button"
+              onClick={() => setTab(tview)}
+              className="flex-1 py-2 text-sm font-semibold rounded-xl transition-all"
+              style={{
+                background: tab === tview ? "var(--primary)" : "transparent",
+                color: tab === tview ? "#fff" : "var(--muted-foreground)",
+                boxShadow: tab === tview ? "0 2px 8px -2px oklch(.5 .12 160 / .35)" : "none",
+                border: 0, cursor: "pointer", fontFamily: "inherit",
+              }}
+            >
+              {tview === "dia" ? "Dia" : tview === "semana" ? "Semana" : "Mês"}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* Content */}
+      <div className="px-4 space-y-5">
 
       {/* ========== VISÃO DIÁRIA ========== */}
       {tab === "dia" && (
@@ -403,6 +443,7 @@ export default function NutricaoPage() {
           )}
         </div>
       )}
+    </div>
     </div>
   );
 }
