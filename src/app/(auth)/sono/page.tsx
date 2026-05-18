@@ -59,19 +59,26 @@ function fmt12(ts: string | null): string {
 
 type PushState = "unknown" | "granted" | "denied" | "loading" | "unsupported";
 
-async function subscribeToPush(): Promise<boolean> {
+type PushResult = "granted" | "denied" | "error";
+
+async function subscribeToPush(): Promise<PushResult> {
   const sub = await requestPushSubscription();
-  if (!sub) return false;
+  if (!sub) {
+    // Distinguish user-denied from other failures
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "denied") {
+      return "denied";
+    }
+    return "error";
+  }
+  // Browser permission is the critical part — save to server best-effort
   try {
     await fetch("/api/push/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(sub),
     });
-    return true;
-  } catch {
-    return false;
-  }
+  } catch { /* retry on next visit */ }
+  return "granted";
 }
 
 // ── Input style shared ────────────────────────────────────────────────────────
@@ -371,6 +378,7 @@ export default function SonoPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [pushState, setPushState] = useState<PushState>("unknown");
+  const [pushError, setPushError] = useState(false);
   const [config, setConfig] = useState<SleepConfig>(DEFAULT_CONFIG);
   const [configSaving, setConfigSaving] = useState(false);
 
@@ -412,8 +420,17 @@ export default function SonoPage() {
 
   const handleEnablePush = async () => {
     setPushState("loading");
-    const ok = await subscribeToPush();
-    setPushState(ok ? "granted" : "denied");
+    const result = await subscribeToPush();
+    if (result === "granted") {
+      setPushState("granted");
+    } else if (result === "denied") {
+      setPushState("denied");
+    } else {
+      // Transient error — go back to unknown so user can try again
+      setPushState("unknown");
+      setPushError(true);
+      setTimeout(() => setPushError(false), 4000);
+    }
   };
 
   const handleSaveConfig = async () => {
@@ -604,6 +621,15 @@ export default function SonoPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 12, background: PL, border: PB }}>
             <BellRing className="size-4 animate-pulse" style={{ color: P }} />
             <p style={{ margin: 0, fontSize: 13, fontWeight: 500 }}>Aguardando permissão…</p>
+          </div>
+        )}
+
+        {pushError && pushState === "unknown" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 12, background: "oklch(.95 .02 60 / .5)", border: "1px solid oklch(.7 .06 60 / .3)" }}>
+            <BellOff className="size-4" style={{ color: "oklch(.55 .1 60)" }} />
+            <p style={{ margin: 0, fontSize: 12, color: "oklch(.4 .08 60)", fontWeight: 500 }}>
+              Não foi possível ativar. Verifique a conexão e tente novamente.
+            </p>
           </div>
         )}
 
