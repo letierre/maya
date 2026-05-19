@@ -81,6 +81,17 @@ async function subscribeToPush(): Promise<{ result: PushResult; errorMsg?: strin
 
 // ── Input style shared ────────────────────────────────────────────────────────
 
+// O wrapper carrega a borda e o radius — o input fica transparente e sem borda.
+// Isso evita que o input[type="time"] (com largura mínima nativa no mobile)
+// apareça cortado: o wrapper faz o clip mas a borda visual é dele, não do input.
+const timeInputWrap: React.CSSProperties = {
+  overflow: "hidden",
+  minWidth: 0,
+  borderRadius: 10,
+  border: "1px solid oklch(.7 .04 160 / .3)",
+  background: "oklch(.97 .005 160)",
+};
+
 const timeInputStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: "100%",
@@ -88,20 +99,14 @@ const timeInputStyle: React.CSSProperties = {
   minWidth: 0,
   display: "block",
   padding: "9px 10px",
-  borderRadius: 10,
-  border: "1px solid oklch(.7 .04 160 / .3)",
+  border: "none",
+  borderRadius: 0,
   fontFamily: "inherit",
   fontSize: 14,
   fontWeight: 600,
-  background: "oklch(.97 .005 160)",
+  background: "transparent",
   color: "var(--foreground)",
   outline: "none",
-};
-
-// Container que evita overflow do input[type="time"] em mobile
-const timeInputWrap: React.CSSProperties = {
-  overflow: "hidden",
-  minWidth: 0,
 };
 
 // ── Manual log modal ──────────────────────────────────────────────────────────
@@ -516,12 +521,14 @@ function CycleCalculator({ defaultBedtime = "23:00" }: { defaultBedtime?: string
         </p>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <label style={{ fontSize: 13, color: "var(--muted-foreground)", flexShrink: 0 }}>Dormir às</label>
-          <input
-            type="time"
-            value={bedtime}
-            onChange={(e) => setBedtime(e.target.value)}
-            style={{ ...timeInputStyle, flex: 1 }}
-          />
+          <div style={{ ...timeInputWrap, flex: 1 }}>
+            <input
+              type="time"
+              value={bedtime}
+              onChange={(e) => setBedtime(e.target.value)}
+              style={timeInputStyle}
+            />
+          </div>
         </div>
         <div>
           <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>

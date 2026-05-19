@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Camera, Moon, CheckCircle2, Grid2x2, BookOpen, MessageCircle, BarChart2, User, Settings } from "lucide-react";
-// CheckCircle2 used in MORE_ITEMS (check-in entry)
+import { Home, Camera, Moon, CheckCircle2, Grid2x2, BookOpen, MessageCircle, BarChart2, User, Settings, Utensils } from "lucide-react";
 import { useTranslation } from "@/lib/useTranslation";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useState } from "react";
@@ -11,6 +10,7 @@ import { useState } from "react";
 // ── More sheet items ──────────────────────────────────────────────────────────
 
 const MORE_ITEMS = [
+  { href: "/nutricao",        icon: Utensils,      label: "Nutrição" },
   { href: "/diario",          icon: BookOpen,      label: "Diário" },
   { href: "/check-in",        icon: CheckCircle2,  label: "Check-in" },
   { href: "/historico",       icon: BarChart2,      label: "Histórico" },
@@ -28,41 +28,42 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      {/* Backdrop */}
       <div
         onClick={onClose}
         style={{
           position: "fixed", inset: 0, zIndex: 60,
-          background: "oklch(.1 .02 280 / .35)",
-          backdropFilter: "blur(3px)",
+          background: "oklch(.1 .02 160 / .35)",
+          backdropFilter: "blur(4px)",
           animation: "fadeIn .15s ease",
         }}
       />
-      {/* Sheet */}
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 70,
-        borderRadius: "20px 20px 0 0",
-        background: "oklch(.99 .004 280)",
-        boxShadow: "0 -4px 32px oklch(.2 .04 280 / .12)",
-        padding: "16px 24px calc(env(safe-area-inset-bottom) + 16px)",
+        borderRadius: "22px 22px 0 0",
+        background: "oklch(.99 .004 160)",
+        boxShadow: "0 -4px 32px oklch(.2 .04 160 / .12)",
+        padding: "16px 20px calc(env(safe-area-inset-bottom) + 20px)",
         animation: "slideUp .2s ease",
       }}>
-        <div style={{ width: 36, height: 4, borderRadius: 9999, background: "oklch(.82 .02 280)", margin: "0 auto 20px" }} />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+        <div style={{ width: 36, height: 4, borderRadius: 9999, background: "oklch(.82 .02 160)", margin: "0 auto 18px" }} />
+        <p style={{ margin: "0 0 14px", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
+          Mais recursos
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
           {MORE_ITEMS.map(({ href, icon: Icon, label }) => (
             <button
               key={href}
               type="button"
               onClick={() => go(href)}
               style={{
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-                padding: "12px 4px", borderRadius: 14, border: 0, cursor: "pointer",
-                background: "oklch(.95 .01 280)",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 7,
+                padding: "14px 4px", borderRadius: 16, border: 0, cursor: "pointer",
+                background: "oklch(.95 .015 160)",
                 transition: "background .12s ease",
               }}
             >
-              <Icon size={22} style={{ color: "oklch(.45 .08 280)" }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: "oklch(.4 .06 280)" }}>{label}</span>
+              <Icon size={22} style={{ color: "oklch(.4 .1 160)" }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: "oklch(.38 .08 160)" }}>{label}</span>
             </button>
           ))}
         </div>
@@ -94,7 +95,7 @@ export function BottomNav() {
     display: "flex", flexDirection: "column", alignItems: "center",
     justifyContent: "center", gap: 3, height: "100%", flex: 1,
     minWidth: 0, padding: "0 4px",
-    color: active ? "var(--primary)" : "oklch(.55 .04 280)",
+    color: active ? "var(--primary)" : "oklch(.55 .04 160)",
     textDecoration: "none",
     transition: "color .15s ease",
   });
@@ -103,9 +104,9 @@ export function BottomNav() {
     <>
       <nav style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
-        height: 64, background: "oklch(.99 .004 280 / .95)",
+        height: 64, background: "oklch(.99 .004 160 / .95)",
         backdropFilter: "blur(12px)",
-        borderTop: "1px solid oklch(.88 .02 280 / .6)",
+        borderTop: "1px solid oklch(.88 .02 160 / .6)",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}>
         <div style={{
@@ -130,7 +131,7 @@ export function BottomNav() {
             style={{
               display: "flex", flexDirection: "column", alignItems: "center",
               justifyContent: "center", gap: 3, height: "100%", flex: 1,
-              minWidth: 0, textDecoration: "none", color: "oklch(.55 .04 280)",
+              minWidth: 0, textDecoration: "none", color: "oklch(.55 .04 160)",
               marginTop: -20,
             }}
           >
@@ -142,7 +143,7 @@ export function BottomNav() {
             }}>
               <Camera size={22} color="#fff" />
             </span>
-            <span style={{ fontSize: 10, fontWeight: 600, lineHeight: 1, color: "oklch(.55 .04 280)" }}>
+            <span style={{ fontSize: 10, fontWeight: 600, lineHeight: 1, color: "oklch(.55 .04 160)" }}>
               {t("nutricao")}
             </span>
           </Link>
