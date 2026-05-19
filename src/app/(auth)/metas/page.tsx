@@ -443,7 +443,7 @@ export default function MetasPage() {
           boxShadow: "0 4px 20px oklch(.4 .12 200 / .4)",
         }}
       >
-        <Sparkles size={16} /> Coach Maya
+        <Sparkles size={16} /> Maya
       </button>
 
       <style>{`

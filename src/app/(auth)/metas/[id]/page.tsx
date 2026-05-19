@@ -130,7 +130,8 @@ function StageCard({
   const [open, setOpen] = useState(stage.status !== "concluida");
   const [adding, setAdding] = useState(false);
   const [newAction, setNewAction] = useState("");
-  const [newIfThen, setNewIfThen] = useState("");
+  const [ifThenCond, setIfThenCond] = useState("");
+  const [ifThenAct, setIfThenAct]   = useState("");
   const [showIfThen, setShowIfThen] = useState(false);
 
   const actions = stage.goal_actions ?? [];
@@ -139,8 +140,11 @@ function StageCard({
 
   const handleAddAction = () => {
     if (!newAction.trim()) return;
-    onAddAction(newAction.trim(), newIfThen.trim() || undefined);
-    setNewAction(""); setNewIfThen(""); setAdding(false); setShowIfThen(false);
+    const ifThen = ifThenCond.trim() && ifThenAct.trim()
+      ? `${ifThenCond.trim()}, então ${ifThenAct.trim()}`
+      : undefined;
+    onAddAction(newAction.trim(), ifThen);
+    setNewAction(""); setIfThenCond(""); setIfThenAct(""); setAdding(false); setShowIfThen(false);
   };
 
   return (
@@ -232,17 +236,41 @@ function StageCard({
                 }}
               />
               {showIfThen ? (
-                <input
-                  type="text"
-                  value={newIfThen}
-                  onChange={(e) => setNewIfThen(e.target.value)}
-                  placeholder="SE [situação], ENTÃO farei isso..."
-                  style={{
-                    padding: "10px 12px", borderRadius: 10, border: "1.5px solid oklch(.75 .06 220)",
-                    background: "oklch(.97 .02 220)", fontFamily: "inherit", fontSize: 12,
-                    color: "oklch(.3 .06 220)", outline: "none",
-                  }}
-                />
+                <div style={{
+                  borderRadius: 10, border: "1.5px solid oklch(.75 .06 220)",
+                  background: "oklch(.97 .02 220)", padding: "10px 12px",
+                  display: "flex", flexDirection: "column", gap: 6,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".06em", color: "oklch(.45 .1 220)", flexShrink: 0 }}>SE</span>
+                    <input
+                      autoFocus
+                      type="text"
+                      value={ifThenCond}
+                      onChange={(e) => setIfThenCond(e.target.value)}
+                      placeholder="[situação ou gatilho]"
+                      style={{
+                        flex: 1, border: "none", background: "transparent",
+                        fontFamily: "inherit", fontSize: 12, color: "oklch(.3 .06 220)",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".06em", color: "oklch(.45 .1 220)", flexShrink: 0 }}>ENTÃO</span>
+                    <input
+                      type="text"
+                      value={ifThenAct}
+                      onChange={(e) => setIfThenAct(e.target.value)}
+                      placeholder="[farei isso]"
+                      style={{
+                        flex: 1, border: "none", background: "transparent",
+                        fontFamily: "inherit", fontSize: 12, color: "oklch(.3 .06 220)",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                </div>
               ) : (
                 <button type="button" onClick={() => setShowIfThen(true)} style={{
                   textAlign: "left", padding: 0, border: 0, background: "none",
@@ -253,7 +281,7 @@ function StageCard({
                 </button>
               )}
               <div style={{ display: "flex", gap: 8 }}>
-                <button type="button" onClick={() => { setAdding(false); setNewAction(""); setShowIfThen(false); }} style={{
+                <button type="button" onClick={() => { setAdding(false); setNewAction(""); setIfThenCond(""); setIfThenAct(""); setShowIfThen(false); }} style={{
                   flex: 1, padding: "9px 12px", borderRadius: 10, border: "1.5px solid oklch(.85 .02 160)",
                   background: "#fff", fontFamily: "inherit", fontSize: 13, cursor: "pointer",
                   color: "oklch(.5 .04 160)",
@@ -674,7 +702,7 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
           <div>
             <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#fff" }}>Falar com Maya</p>
             <p style={{ margin: 0, fontSize: 12, color: "oklch(1 0 0 / .75)" }}>
-              Sua coach IA tem acesso a todas suas metas
+              Maya tem acesso a todas suas metas e ao seu diário
             </p>
           </div>
         </button>
