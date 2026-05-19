@@ -91,7 +91,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-background to-secondary/30">
+    <main className="flex-1 flex flex-col items-center justify-start overflow-y-auto p-6 pt-10 pb-12 bg-gradient-to-b from-background to-secondary/30">
       <div className="max-w-lg w-full space-y-6">
         <div className="text-center space-y-2">
           <div className="text-5xl">🌱</div>
