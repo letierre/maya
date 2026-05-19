@@ -83,8 +83,10 @@ async function subscribeToPush(): Promise<{ result: PushResult; errorMsg?: strin
 
 const timeInputStyle: React.CSSProperties = {
   width: "100%",
+  maxWidth: "100%",
   boxSizing: "border-box",
   minWidth: 0,
+  display: "block",
   padding: "9px 10px",
   borderRadius: 10,
   border: "1px solid oklch(.7 .04 160 / .3)",
@@ -96,11 +98,18 @@ const timeInputStyle: React.CSSProperties = {
   outline: "none",
 };
 
+// Container que evita overflow do input[type="time"] em mobile
+const timeInputWrap: React.CSSProperties = {
+  overflow: "hidden",
+  minWidth: 0,
+};
+
 // ── Manual log modal ──────────────────────────────────────────────────────────
 
 function ManualLogModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [quality, setQuality] = useState<number | null>(null);
   const [durationMin, setDurationMin] = useState<number | null>(null);
+  const [interruptions, setInterruptions] = useState<number>(0);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -109,12 +118,18 @@ function ManualLogModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     await fetch("/api/sleep", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: getLocalDate(), quality, duration_min: durationMin, source: "checkin" }),
+      body: JSON.stringify({ date: getLocalDate(), quality, duration_min: durationMin, interruptions, source: "checkin" }),
     });
     setSaving(false);
     onSaved();
     onClose();
   };
+
+  const label11 = (text: string) => (
+    <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+      {text}
+    </p>
+  );
 
   return (
     <div
@@ -126,17 +141,17 @@ function ManualLogModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
       }}
     >
       <div onClick={(e) => e.stopPropagation()} style={{
-        width: "100%", borderRadius: "24px 24px 0 0",
+        width: "100%", boxSizing: "border-box",
+        borderRadius: "24px 24px 0 0",
         background: "oklch(.99 .003 160)",
         padding: "24px 20px calc(env(safe-area-inset-bottom) + 28px)",
         boxShadow: "0 -8px 32px oklch(.2 .04 160 / .1)",
+        overflow: "hidden",
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 9999, background: "oklch(.85 .02 160)", margin: "0 auto 20px" }} />
         <h2 style={{ margin: "0 0 20px", fontSize: 19, fontWeight: 700 }}>Registrar sono</h2>
 
-        <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-          Como foi?
-        </p>
+        {label11("Como foi?")}
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           {[1, 2, 3, 4, 5].map((q) => (
             <button key={q} type="button" onClick={() => setQuality(q)} style={{
@@ -154,9 +169,22 @@ function ManualLogModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
           ))}
         </div>
 
-        <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-          Quanto dormiu?
-        </p>
+        {label11("Acordou durante a noite?")}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          {[0, 1, 2, 3, 4].map((n) => (
+            <button key={n} type="button" onClick={() => setInterruptions(n)} style={{
+              flex: 1, padding: "10px 4px", borderRadius: 12, border: 0, cursor: "pointer",
+              background: interruptions === n ? P : "oklch(.95 .005 160)",
+              fontFamily: "inherit", fontSize: 13, fontWeight: 700,
+              color: interruptions === n ? "#fff" : "oklch(.4 .06 160)",
+              transition: "all .15s ease",
+            }}>
+              {n === 4 ? "4+" : n === 0 ? "Não" : `${n}×`}
+            </button>
+          ))}
+        </div>
+
+        {label11("Quanto dormiu?")}
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 24 }}>
           {DURATION_CHIPS.map(({ label, value }) => (
             <button key={value} type="button" onClick={() => setDurationMin(durationMin === value ? null : value)} style={{
@@ -200,6 +228,7 @@ function EditSleepModal({ log, onClose, onSaved }: {
   const [startTime, setStartTime] = useState(toSPTime(log.sleep_start));
   const [endTime, setEndTime] = useState(toSPTime(log.sleep_end));
   const [quality, setQuality] = useState<number | null>(log.quality ?? null);
+  const [interruptions, setInterruptions] = useState<number>(log.interruptions ?? 0);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -208,12 +237,11 @@ function EditSleepModal({ log, onClose, onSaved }: {
     let sleepEnd: string | null = null;
     let durationMin: number | null = null;
 
-    if (endTime) {
+    if (startTime && endTime) {
       const [sh, sm] = startTime.split(":").map(Number);
       const [eh, em] = endTime.split(":").map(Number);
       const startMin = sh * 60 + sm;
       const endMin = eh * 60 + em;
-      // If end < start it crossed midnight: end is next calendar day
       const crossMidnight = endMin <= startMin;
       const endDate = crossMidnight
         ? new Date(new Date(log.date + "T12:00:00").getTime() + 86400000).toISOString().split("T")[0]
@@ -232,6 +260,7 @@ function EditSleepModal({ log, onClose, onSaved }: {
         sleep_end: sleepEnd,
         duration_min: durationMin,
         quality: quality ?? log.quality,
+        interruptions,
       }),
     });
     setSaving(false);
@@ -243,6 +272,12 @@ function EditSleepModal({ log, onClose, onSaved }: {
     weekday: "long", day: "numeric", month: "long",
   });
 
+  const label11 = (text: string) => (
+    <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+      {text}
+    </p>
+  );
+
   return (
     <div onClick={onClose} style={{
       position: "fixed", inset: 0, zIndex: 100,
@@ -250,33 +285,47 @@ function EditSleepModal({ log, onClose, onSaved }: {
       display: "flex", alignItems: "flex-end",
     }}>
       <div onClick={(e) => e.stopPropagation()} style={{
-        width: "100%", borderRadius: "24px 24px 0 0",
+        width: "100%", boxSizing: "border-box",
+        borderRadius: "24px 24px 0 0",
         background: "oklch(.99 .003 160)",
         padding: "24px 20px calc(env(safe-area-inset-bottom) + 28px)",
         boxShadow: "0 -8px 32px oklch(.2 .04 160 / .1)",
+        overflow: "hidden",
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 9999, background: "oklch(.85 .02 160)", margin: "0 auto 16px" }} />
         <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700 }}>Editar sono</h2>
         <p style={{ margin: "0 0 20px", fontSize: 12, color: "var(--muted-foreground)", textTransform: "capitalize" }}>{dayLabel}</p>
 
+        {/* Times */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
-          <div>
-            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-              Dormiu às
-            </p>
+          <div style={timeInputWrap}>
+            {label11("Dormiu às")}
             <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={timeInputStyle} />
           </div>
-          <div>
-            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-              Acordou às
-            </p>
+          <div style={timeInputWrap}>
+            {label11("Acordou às")}
             <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={timeInputStyle} />
           </div>
         </div>
 
-        <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-          Qualidade
-        </p>
+        {/* Interruptions */}
+        {label11("Acordou durante a noite?")}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          {[0, 1, 2, 3, 4].map((n) => (
+            <button key={n} type="button" onClick={() => setInterruptions(n)} style={{
+              flex: 1, padding: "10px 4px", borderRadius: 12, border: 0, cursor: "pointer",
+              background: interruptions === n ? P : "oklch(.95 .005 160)",
+              fontFamily: "inherit", fontSize: 13, fontWeight: 700,
+              color: interruptions === n ? "#fff" : "oklch(.4 .06 160)",
+              transition: "all .15s ease",
+            }}>
+              {n === 4 ? "4+" : n === 0 ? "Não" : `${n}×`}
+            </button>
+          ))}
+        </div>
+
+        {/* Quality */}
+        {label11("Qualidade")}
         <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
           {[1, 2, 3, 4, 5].map((q) => (
             <button key={q} type="button" onClick={() => setQuality(q)} style={{
@@ -358,9 +407,9 @@ function SleepConfigCard({ config, onChange, onSave, saving }: {
       <CardContent className="p-4 space-y-4">
         <p className="text-sm font-semibold">⚙️ Minhas configurações de sono</p>
 
-        {/* Bedtime + Wake — stacked to avoid overflow on narrow screens */}
+        {/* Bedtime + Wake — stacked, overflow-hidden prevents time input bleed */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div>
+          <div style={timeInputWrap}>
             <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
               Horário de dormir
             </p>
@@ -371,7 +420,7 @@ function SleepConfigCard({ config, onChange, onSave, saving }: {
               style={timeInputStyle}
             />
           </div>
-          <div>
+          <div style={timeInputWrap}>
             <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
               Horário de acordar
             </p>
@@ -413,12 +462,14 @@ function SleepConfigCard({ config, onChange, onSave, saving }: {
           <p style={{ margin: "0 0 8px", fontSize: 12, color: "var(--muted-foreground)" }}>
             Notificação push antes de dormir (requer notificações ativas)
           </p>
-          <input
-            type="time"
-            value={config.reminder_time}
-            onChange={(e) => onChange({ ...config, reminder_time: e.target.value })}
-            style={timeInputStyle}
-          />
+          <div style={timeInputWrap}>
+            <input
+              type="time"
+              value={config.reminder_time}
+              onChange={(e) => onChange({ ...config, reminder_time: e.target.value })}
+              style={timeInputStyle}
+            />
+          </div>
         </div>
 
         <button type="button" onClick={onSave} disabled={saving} style={{
