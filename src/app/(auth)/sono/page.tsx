@@ -81,24 +81,27 @@ async function subscribeToPush(): Promise<{ result: PushResult; errorMsg?: strin
 
 // ── Input style shared ────────────────────────────────────────────────────────
 
-// O wrapper carrega a borda e o radius — o input fica transparente e sem borda.
-// Isso evita que o input[type="time"] (com largura mínima nativa no mobile)
-// apareça cortado: o wrapper faz o clip mas a borda visual é dele, não do input.
+// Wrapper carrega borda e radius; o overflow:hidden evita que o input[type="time"]
+// (que tem largura mínima nativa no mobile) vaze para fora.
+// Altura explícita no wrapper + height:100% no input centraliza o texto
+// independente de como o browser renderiza o input sem borda.
 const timeInputWrap: React.CSSProperties = {
   overflow: "hidden",
   minWidth: 0,
   borderRadius: 10,
   border: "1px solid oklch(.7 .04 160 / .3)",
   background: "oklch(.97 .005 160)",
+  height: 42,
 };
 
 const timeInputStyle: React.CSSProperties = {
   width: "100%",
+  height: "100%",
   maxWidth: "100%",
   boxSizing: "border-box",
   minWidth: 0,
   display: "block",
-  padding: "9px 10px",
+  padding: "0 10px",
   border: "none",
   borderRadius: 0,
   fontFamily: "inherit",
