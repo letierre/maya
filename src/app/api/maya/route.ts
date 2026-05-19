@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { buildMayaSystemPrompt } from "@/lib/maya";
-import { calculateStreak } from "@/lib/utils";
+import { buildMayaSystemPrompt, GoalSummary, WeekPlanSummary } from "@/lib/maya";
+import { calculateStreak, getWeekMondayDate } from "@/lib/utils";
 import { NextResponse } from "next/server";
 
 async function callAnthropicChat(
@@ -53,17 +53,89 @@ export async function POST(request: Request) {
 
     const admin = getSupabaseAdmin();
 
-    const [prefsRes, checkInsRes, diaryRes, memoriesRes] = await Promise.all([
+    const weekStart = getWeekMondayDate();
+
+    const [prefsRes, checkInsRes, diaryRes, memoriesRes, goalsRes, weekPlanRes] = await Promise.all([
       admin.from("user_preferences").select("context").eq("user_id", user.id).single(),
       admin.from("check_ins").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(7),
-      admin.from("diary_entries").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(5),
+      admin.from("diary_entries").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(10),
       admin.from("user_memories").select("fact").eq("user_id", user.id).order("created_at", { ascending: false }),
+      admin.from("goals").select(`*, goal_stages(*, goal_actions(*))`)
+        .eq("user_id", user.id).eq("status", "ativa")
+        .order("created_at", { ascending: true })
+        .order("position", { foreignTable: "goal_stages", ascending: true }),
+      admin.from("weekly_plans").select(`*, weekly_reviews(*), weekly_focus_goals(goal_id)`)
+        .eq("user_id", user.id).eq("week_start", weekStart).maybeSingle(),
     ]);
 
     const context = (prefsRes.data?.context || {}) as Record<string, unknown>;
     const checkIns = checkInsRes.data || [];
     const diaryEntries = diaryRes.data || [];
     const memories = (memoriesRes.data || []).map((m: { fact: string }) => m.fact);
+    const rawGoals = goalsRes.data || [];
+    const weekPlanRaw = weekPlanRes.data;
+
+    // Build GoalSummary[]
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const activeGoals: GoalSummary[] = rawGoals.map((g: Record<string, unknown>) => {
+      const stages = (g.goal_stages as Record<string, unknown>[]) || [];
+      const totalStages = stages.length;
+      const doneStages = stages.filter((s) => s.status === "concluida").length;
+      const pct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
+
+      // Most recent update across goal, stages, actions
+      const timestamps: number[] = [new Date(g.updated_at as string).getTime()];
+      for (const s of stages) {
+        timestamps.push(new Date(s.updated_at as string).getTime());
+        for (const a of (s.goal_actions as Record<string, unknown>[]) || []) {
+          timestamps.push(new Date(a.updated_at as string).getTime());
+        }
+      }
+      const lastActive = new Date(Math.max(...timestamps));
+      lastActive.setHours(0, 0, 0, 0);
+      const daysInactive = Math.floor((today.getTime() - lastActive.getTime()) / 86_400_000);
+
+      // Next pending action from first non-concluded stage
+      let nextAction: string | null = null;
+      for (const s of stages) {
+        if (s.status !== "concluida") {
+          const pendingAction = ((s.goal_actions as Record<string, unknown>[]) || []).find((a) => a.status === "pendente");
+          if (pendingAction) { nextAction = pendingAction.title as string; break; }
+          break;
+        }
+      }
+
+      const daysUntilDeadline = g.target_date
+        ? Math.floor((new Date(g.target_date as string).getTime() - today.getTime()) / 86_400_000)
+        : null;
+
+      return {
+        title: g.title as string,
+        area: g.area as string,
+        pct,
+        daysInactive,
+        nextAction,
+        daysUntilDeadline,
+        guardianName: (g.guardian_name as string) || null,
+        reward: (g.reward as string) || null,
+        punishment: (g.punishment as string) || null,
+      };
+    });
+
+    // Build WeekPlanSummary
+    let weekPlan: WeekPlanSummary | null = null;
+    if (weekPlanRaw) {
+      const reviews = (weekPlanRaw.weekly_reviews as Record<string, unknown>[]) || [];
+      const review = reviews[0] ?? null;
+      weekPlan = {
+        mainFocus: weekPlanRaw.main_focus as string,
+        focusGoalCount: ((weekPlanRaw.weekly_focus_goals as unknown[]) || []).length,
+        hasReview: !!review,
+        reviewScore: review ? (review.week_score as number) : null,
+      };
+    }
 
     const streak = calculateStreak(checkIns.map((c: Record<string, unknown>) => c.date as string));
 
@@ -111,9 +183,11 @@ export async function POST(request: Request) {
       memories,
       porques: (context.porques as Array<{ id: string; text: string; photoPath: string | null }>) || [],
       streak,
+      activeGoals,
+      weekPlan,
     });
 
-    const reply = await callAnthropicChat(systemPrompt, messages, 250);
+    const reply = await callAnthropicChat(systemPrompt, messages, 400);
 
     // Extract new facts from the conversation (fire and forget)
     const lastUserMsg = [...messages].reverse().find(m => m.role === "user");

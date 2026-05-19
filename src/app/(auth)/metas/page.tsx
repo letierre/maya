@@ -433,7 +433,7 @@ export default function MetasPage() {
       {/* Coach button */}
       <button
         type="button"
-        onClick={() => router.push("/metas/coach")}
+        onClick={() => router.push("/insights")}
         style={{
           position: "fixed", bottom: 88, left: 20, zIndex: 40,
           display: "flex", alignItems: "center", gap: 8,

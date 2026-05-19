@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Target, Compass, ChevronLeft, ChevronRight, Check, Shield, Trophy, AlertOctagon } from "lucide-react";
-import type { GoalType, GoalArea } from "@/types";
+import { ChevronLeft, ChevronRight, Check, Shield, Trophy, AlertOctagon } from "lucide-react";
+import type { GoalArea } from "@/types";
 
 // ── Area config ───────────────────────────────────────────────────────────────
 
@@ -96,15 +96,22 @@ function Textarea({ value, onChange, placeholder, rows = 3 }: {
 
 // ── Main wizard ───────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 5;
+
+const STEP_TITLES = [
+  "Qual área da sua vida?",
+  "Defina sua meta",
+  "Primeira etapa",
+  "Quem vai te cobrar?",
+  "Suas apostas",
+];
 
 export default function NovaMetaPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  // Form state
-  const [type, setType]               = useState<GoalType | "">("");
+  // Form state — type is always "destino" for annual goals
   const [area, setArea]               = useState<GoalArea | "">("");
   const [title, setTitle]             = useState("");
   const [description, setDescription] = useState("");
@@ -117,12 +124,11 @@ export default function NovaMetaPage() {
   const [punishment, setPunishment]   = useState("");
 
   const canNext = () => {
-    if (step === 0) return type !== "";
-    if (step === 1) return area !== "";
-    if (step === 2) return title.trim().length >= 3 && whyItMatters.trim().length >= 10;
-    if (step === 3) return firstStage.trim().length >= 3;
-    if (step === 4) return true; // guardian optional
-    if (step === 5) return true; // stakes optional
+    if (step === 0) return area !== "";
+    if (step === 1) return title.trim().length >= 3 && whyItMatters.trim().length >= 10;
+    if (step === 2) return firstStage.trim().length >= 3;
+    if (step === 3) return true; // guardian optional
+    if (step === 4) return true; // stakes optional
     return false;
   };
 
@@ -137,8 +143,8 @@ export default function NovaMetaPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type, area, title, description, why_it_matters: whyItMatters,
-          target_date: type === "destino" && targetDate ? targetDate : null,
+          type: "destino", area, title, description, why_it_matters: whyItMatters,
+          target_date: targetDate || null,
           first_stage: firstStage,
           guardian_name: guardianName || null,
           guardian_contact: guardianContact || null,
@@ -182,80 +188,15 @@ export default function NovaMetaPage() {
           Nova meta
         </p>
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#fff", position: "relative", zIndex: 1 }}>
-          {step === 0 && "Que tipo de meta?"}
-          {step === 1 && "Qual área da sua vida?"}
-          {step === 2 && "Defina sua meta"}
-          {step === 3 && "Primeira etapa"}
-          {step === 4 && "Quem vai te cobrar?"}
-          {step === 5 && "Suas apostas"}
+          {STEP_TITLES[step]}
         </h1>
       </div>
 
       <div style={{ padding: "24px 16px" }}>
         <StepDots total={TOTAL_STEPS} current={step} />
 
-        {/* Step 0 — Type */}
+        {/* Step 0 — Area */}
         {step === 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <p style={{ margin: "0 0 16px", fontSize: 13, color: "oklch(.45 .04 160)", lineHeight: 1.6, textAlign: "center" }}>
-              Escolha o tipo certo para a sua intenção
-            </p>
-            {[
-              {
-                value: "destino" as GoalType,
-                icon: Target,
-                title: "Meta de Destino",
-                desc: "Tem um ponto final claro e mensurável. Você sabe quando chegou.",
-                examples: "Ex: Publicar meu livro, correr uma maratona, tirar R$ 50k",
-                hue: 160,
-              },
-              {
-                value: "direcao" as GoalType,
-                icon: Compass,
-                title: "Meta de Direção",
-                desc: "Uma direção contínua, sem linha de chegada. O foco é o caminho.",
-                examples: "Ex: Viver com mais saúde, ser um líder melhor, cultivar espiritualidade",
-                hue: 220,
-              },
-            ].map(({ value, icon: Icon, title: t, desc, examples, hue }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setType(value)}
-                style={{
-                  textAlign: "left", background: "#fff", border: type === value
-                    ? `2px solid oklch(.5 .12 ${hue})`
-                    : "2px solid oklch(.88 .02 160)",
-                  borderRadius: 18, padding: 18, cursor: "pointer",
-                  boxShadow: type === value ? `0 4px 20px oklch(.5 .12 ${hue} / .2)` : "none",
-                  transition: "all .2s ease",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-                  <div style={{
-                    width: 48, height: 48, borderRadius: 14, flexShrink: 0,
-                    background: type === value ? `oklch(.5 .12 ${hue})` : `oklch(.95 .04 ${hue})`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    transition: "background .2s ease",
-                  }}>
-                    <Icon size={22} color={type === value ? "#fff" : `oklch(.5 .12 ${hue})`} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "oklch(.2 .02 160)" }}>{t}</p>
-                      {type === value && <Check size={18} style={{ color: areaColor(hue) }} />}
-                    </div>
-                    <p style={{ margin: "0 0 8px", fontSize: 13, color: "oklch(.45 .04 160)", lineHeight: 1.5 }}>{desc}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "oklch(.6 .04 160)", fontStyle: "italic" }}>{examples}</p>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Step 1 — Area */}
-        {step === 1 && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
             {AREAS.map((a) => (
               <button
@@ -284,8 +225,8 @@ export default function NovaMetaPage() {
           </div>
         )}
 
-        {/* Step 2 — Title + Why + Date */}
-        {step === 2 && (
+        {/* Step 1 — Title + Why + Date */}
+        {step === 1 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {selectedArea && (
               <div style={{
@@ -294,9 +235,6 @@ export default function NovaMetaPage() {
               }}>
                 <span style={{ fontSize: 20 }}>{selectedArea.emoji}</span>
                 <span style={{ fontSize: 13, fontWeight: 600, color: areaColor(selectedArea.hue) }}>{selectedArea.label}</span>
-                <span style={{ fontSize: 11, color: "oklch(.5 .04 160)", marginLeft: 4 }}>
-                  · {type === "destino" ? "Meta de Destino" : "Meta de Direção"}
-                </span>
               </div>
             )}
 
@@ -324,33 +262,31 @@ export default function NovaMetaPage() {
               <Textarea value={description} onChange={setDescription} placeholder="Mais detalhes sobre essa meta..." rows={2} />
             </div>
 
-            {type === "destino" && (
-              <div>
-                <Label>Data alvo</Label>
-                <div style={{
-                  overflow: "hidden", borderRadius: 12,
-                  border: "1.5px solid oklch(.82 .03 160)",
-                  background: "oklch(.98 .005 160)", height: 48,
-                  display: "flex", alignItems: "center",
-                }}>
-                  <input
-                    type="date"
-                    value={targetDate}
-                    onChange={(e) => setTargetDate(e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
-                    style={{
-                      flex: 1, padding: "0 14px", border: "none", background: "transparent",
-                      fontFamily: "inherit", fontSize: 14, color: "oklch(.2 .02 160)", outline: "none",
-                    }}
-                  />
-                </div>
+            <div>
+              <Label>Data alvo (opcional)</Label>
+              <div style={{
+                overflow: "hidden", borderRadius: 12,
+                border: "1.5px solid oklch(.82 .03 160)",
+                background: "oklch(.98 .005 160)", height: 48,
+                display: "flex", alignItems: "center",
+              }}>
+                <input
+                  type="date"
+                  value={targetDate}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
+                  style={{
+                    flex: 1, padding: "0 14px", border: "none", background: "transparent",
+                    fontFamily: "inherit", fontSize: 14, color: "oklch(.2 .02 160)", outline: "none",
+                  }}
+                />
               </div>
-            )}
+            </div>
           </div>
         )}
 
-        {/* Step 3 — First stage */}
-        {step === 3 && (
+        {/* Step 2 — First stage */}
+        {step === 2 && (
           <div>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "oklch(.45 .04 160)", lineHeight: 1.6 }}>
               Toda meta grande precisa ser quebrada em etapas. Qual é o <strong>primeiro marco</strong> que você precisa atingir?
@@ -383,8 +319,8 @@ export default function NovaMetaPage() {
           </div>
         )}
 
-        {/* Step 4 — Guardian */}
-        {step === 4 && (
+        {/* Step 3 — Guardian */}
+        {step === 3 && (
           <div>
             <div style={{ textAlign: "center", marginBottom: 24 }}>
               <div style={{
@@ -427,8 +363,8 @@ export default function NovaMetaPage() {
           </div>
         )}
 
-        {/* Step 5 — Stakes */}
-        {step === 5 && (
+        {/* Step 4 — Stakes */}
+        {step === 4 && (
           <div>
             <div style={{ textAlign: "center", marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 14 }}>

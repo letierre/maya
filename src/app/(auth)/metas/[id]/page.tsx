@@ -664,7 +664,7 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
         </div>
 
         {/* Coach CTA */}
-        <button type="button" onClick={() => router.push("/metas/coach")} style={{
+        <button type="button" onClick={() => router.push("/insights")} style={{
           display: "flex", alignItems: "center", gap: 12, padding: "16px 18px",
           borderRadius: 18, border: 0, cursor: "pointer", textAlign: "left",
           background: "linear-gradient(135deg, oklch(.42 .14 200), oklch(.5 .12 160))",

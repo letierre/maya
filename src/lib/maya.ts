@@ -12,6 +12,25 @@ interface Porque {
   photoPath: string | null;
 }
 
+export interface GoalSummary {
+  title: string;
+  area: string;
+  pct: number;          // 0-100
+  daysInactive: number;
+  nextAction: string | null;
+  daysUntilDeadline: number | null;
+  guardianName: string | null;
+  reward: string | null;
+  punishment: string | null;
+}
+
+export interface WeekPlanSummary {
+  mainFocus: string;
+  focusGoalCount: number;
+  hasReview: boolean;
+  reviewScore: number | null;
+}
+
 interface MayaInput {
   profile: UserContext;
   recentCheckIns: { date: string; positives: string[]; negatives: string[]; feeling: string }[];
@@ -20,6 +39,8 @@ interface MayaInput {
   porques: Porque[];
   streak: number;
   currentHour?: number;
+  activeGoals?: GoalSummary[];
+  weekPlan?: WeekPlanSummary | null;
 }
 
 function timeAwarenessBlock(hour: number): string {
@@ -57,8 +78,14 @@ function timeAwarenessBlock(hour: number): string {
 - Se ela estiver reflexiva, reconheça que a noite traz uma intimidade diferente.`;
 }
 
+const AREA_LABELS: Record<string, string> = {
+  saude: "Saúde", carreira: "Carreira", financas: "Finanças",
+  relacionamentos: "Relacionamentos", desenvolvimento: "Desenvolvimento",
+  familia: "Família", lazer: "Lazer", espiritualidade: "Espiritualidade",
+};
+
 export function buildMayaSystemPrompt(input: MayaInput): string {
-  const { profile, recentCheckIns, recentDiary, memories, porques, streak, currentHour } = input;
+  const { profile, recentCheckIns, recentDiary, memories, porques, streak, currentHour, activeGoals, weekPlan } = input;
 
   const timeBlock = currentHour !== undefined ? timeAwarenessBlock(currentHour) : "";
 
@@ -75,8 +102,8 @@ export function buildMayaSystemPrompt(input: MayaInput): string {
 
   const diaryBlock = recentDiary.length > 0
     ? `## DIÁRIO RECENTE\n${recentDiary.map(d =>
-        `${d.date}: ${d.content.slice(0, 100)}${d.mood ? ` [humor: ${d.mood}/5]` : ""}`
-      ).join("\n")}`
+        `### ${d.date}${d.mood ? ` [humor: ${d.mood}/5]` : ""}\n${d.content.slice(0, 1500)}${d.content.length > 1500 ? "..." : ""}`
+      ).join("\n\n")}`
     : "";
 
   const porquesBlock = porques.length > 0
@@ -86,6 +113,26 @@ export function buildMayaSystemPrompt(input: MayaInput): string {
   const memoriesBlock = memories.length > 0
     ? `## O QUE EU SEI SOBRE VOCÊ\n${memories.map((m) => `- ${m}`).join("\n")}\n**Use essas memórias naturalmente se forem relevantes — NUNCA as liste.**`
     : "";
+
+  const goalsBlock = activeGoals && activeGoals.length > 0
+    ? `## METAS DO USUÁRIO (${activeGoals.length} ativa${activeGoals.length > 1 ? "s" : ""})
+${activeGoals.map((g) => {
+  const urgency = g.daysInactive >= 14 ? ` ⚠️ ${g.daysInactive}d sem atividade` : "";
+  const deadline = g.daysUntilDeadline !== null
+    ? (g.daysUntilDeadline < 0 ? ` | prazo vencido` : ` | ${g.daysUntilDeadline}d para o prazo`)
+    : "";
+  return `- "${g.title}" [${AREA_LABELS[g.area] ?? g.area}] — ${g.pct}% concluída${urgency}${deadline}${g.nextAction ? ` | próx: ${g.nextAction}` : ""}${g.guardianName ? ` | guardião: ${g.guardianName}` : ""}`;
+}).join("\n")}
+${weekPlan ? `Semana: foco em "${weekPlan.mainFocus}"${weekPlan.hasReview ? ` | revisão feita (${weekPlan.reviewScore}/5)` : " | revisão pendente"}` : "Sem plano semanal criado esta semana."}
+
+**Regras sobre metas:**
+- Mencione metas naturalmente quando relevante — não force toda conversa para metas
+- Se o usuário mencionar progresso, celebre genuinamente
+- Se uma meta está inativa há muito tempo (⚠️), pergunte com cuidado o que está acontecendo
+- Se o usuário parecer desmotivado, lembre do "por quê" da meta ou do guardião
+- NUNCA invente progresso ou ações que não estejam no contexto acima`
+    : "";
+
 
   return `Você é Maya, uma companheira virtual que conversa com pessoas para oferecer apoio emocional e ferramentas positivas de autoconhecimento.
 
@@ -157,6 +204,7 @@ Durante a conversa, você naturalmente aprende coisas sobre a pessoa. Quando iss
 
 ${porquesBlock}
 ${memoriesBlock}
+${goalsBlock}
 ${checkInBlock}
 ${diaryBlock}`;
 }

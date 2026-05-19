@@ -13,19 +13,17 @@ import { BottomNav } from "@/components/BottomNav";
 import { EllipsisVertical } from "lucide-react";
 
 const FULLBLEED_ROUTES = ["/dashboard", "/diario", "/diario/novo", "/check-in", "/historico", "/nutricao", "/sono", "/metas", "/planejamento"];
+const FULLBLEED_PREFIXES = ["/metas", "/planejamento"];
 const HIDE_BOTTOMNAV_ROUTES = ["/diario/novo", "/check-in", "/metas/nova", "/metas/coach"];
 
 export function HeaderWrapper() {
   const pathname = usePathname();
-  if (FULLBLEED_ROUTES.includes(pathname)) return null;
+  const isFullBleed = FULLBLEED_ROUTES.includes(pathname) || FULLBLEED_PREFIXES.some((p) => pathname.startsWith(p));
+  if (isFullBleed) return null;
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-sm">
-      <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-14">
-        <Link href="/dashboard" className="font-semibold text-primary text-lg flex items-center gap-2">
-          🌱 Diario
-        </Link>
-
+      <div className="max-w-4xl mx-auto flex items-center justify-end px-4 h-14">
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -94,8 +92,6 @@ export function HeaderWrapper() {
     </header>
   );
 }
-
-const FULLBLEED_PREFIXES = ["/metas", "/planejamento"];
 
 export function MainWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
