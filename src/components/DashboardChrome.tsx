@@ -12,8 +12,8 @@ import { LogoutButton } from "@/components/LogoutButton";
 import { BottomNav } from "@/components/BottomNav";
 import { EllipsisVertical } from "lucide-react";
 
-const FULLBLEED_ROUTES = ["/dashboard", "/diario", "/diario/novo", "/check-in", "/historico", "/nutricao", "/sono"];
-const HIDE_BOTTOMNAV_ROUTES = ["/diario/novo", "/check-in"];
+const FULLBLEED_ROUTES = ["/dashboard", "/diario", "/diario/novo", "/check-in", "/historico", "/nutricao", "/sono", "/metas", "/planejamento"];
+const HIDE_BOTTOMNAV_ROUTES = ["/diario/novo", "/check-in", "/metas/nova", "/metas/coach"];
 
 export function HeaderWrapper() {
   const pathname = usePathname();
@@ -95,9 +95,12 @@ export function HeaderWrapper() {
   );
 }
 
+const FULLBLEED_PREFIXES = ["/metas", "/planejamento"];
+
 export function MainWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  if (FULLBLEED_ROUTES.includes(pathname)) {
+  const isFullBleed = FULLBLEED_ROUTES.includes(pathname) || FULLBLEED_PREFIXES.some((p) => pathname.startsWith(p));
+  if (isFullBleed) {
     return <main className="flex-1 overflow-y-auto min-h-0 w-full">{children}</main>;
   }
   return (
@@ -107,8 +110,11 @@ export function MainWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
+const HIDE_BOTTOMNAV_PREFIXES = ["/metas/nova", "/metas/coach"];
+
 export function BottomNavWrapper() {
   const pathname = usePathname();
-  if (HIDE_BOTTOMNAV_ROUTES.includes(pathname)) return null;
+  const hide = HIDE_BOTTOMNAV_ROUTES.includes(pathname) || HIDE_BOTTOMNAV_PREFIXES.some((p) => pathname.startsWith(p));
+  if (hide) return null;
   return <BottomNav />;
 }

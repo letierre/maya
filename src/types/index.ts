@@ -146,3 +146,81 @@ export interface DailyNutritionSummary {
   refeicoes: Meal[];
   qualidade: "bom" | "atencao" | "sem_dados";
 }
+
+// ── Goals (Metas) ─────────────────────────────────────────────────────────────
+
+export type GoalType   = "destino" | "direcao";
+export type GoalStatus = "ativa" | "pausada" | "concluida" | "arquivada";
+export type GoalArea   =
+  | "saude" | "carreira" | "financas" | "relacionamentos"
+  | "desenvolvimento" | "familia" | "lazer" | "espiritualidade";
+
+export type GoalStageStatus  = "pendente" | "em_progresso" | "concluida";
+export type GoalActionStatus = "pendente" | "concluida";
+
+export interface GoalAction {
+  id: string;
+  stage_id: string;
+  title: string;
+  if_then: string | null;
+  status: GoalActionStatus;
+  due_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GoalStage {
+  id: string;
+  goal_id: string;
+  title: string;
+  description: string | null;
+  position: number;
+  status: GoalStageStatus;
+  due_date: string | null;
+  created_at: string;
+  updated_at: string;
+  actions?: GoalAction[];
+}
+
+export interface Goal {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  why_it_matters: string;
+  type: GoalType;
+  area: GoalArea;
+  status: GoalStatus;
+  target_date: string | null;
+  guardian_name: string | null;
+  guardian_contact: string | null;
+  reward: string | null;
+  punishment: string | null;
+  reward_claimed: boolean;
+  punishment_applied: boolean;
+  created_at: string;
+  updated_at: string;
+  stages?: GoalStage[];
+}
+
+export interface WeeklyPlan {
+  id: string;
+  user_id: string;
+  week_start: string;       // YYYY-MM-DD (segunda-feira)
+  main_focus: string;
+  linked_goal_id: string | null;
+  created_at: string;
+  updated_at: string;
+  focus_goals?: Goal[];
+  review?: WeeklyReview | null;
+}
+
+export interface WeeklyReview {
+  id: string;
+  weekly_plan_id: string;
+  biggest_win: string;
+  blocked_lesson: string;
+  main_learning: string;
+  week_score: number;
+  created_at: string;
+}

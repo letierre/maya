@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Camera, Moon, CheckCircle2, Grid2x2, BookOpen, MessageCircle, BarChart2, User, Settings, Utensils } from "lucide-react";
+import { Home, Camera, Moon, CheckCircle2, Grid2x2, BookOpen, MessageCircle, BarChart2, User, Settings, Utensils, Target, CalendarDays } from "lucide-react";
 import { useTranslation } from "@/lib/useTranslation";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useState } from "react";
@@ -10,12 +10,14 @@ import { useState } from "react";
 // ── More sheet items ──────────────────────────────────────────────────────────
 
 const MORE_ITEMS = [
+  { href: "/metas",           icon: Target,        label: "Metas" },
+  { href: "/planejamento",    icon: CalendarDays,  label: "Planejar" },
   { href: "/nutricao",        icon: Utensils,      label: "Nutrição" },
   { href: "/diario",          icon: BookOpen,      label: "Diário" },
   { href: "/check-in",        icon: CheckCircle2,  label: "Check-in" },
-  { href: "/historico",       icon: BarChart2,      label: "Histórico" },
-  { href: "/perfil",          icon: User,           label: "Perfil" },
-  { href: "/configurações",   icon: Settings,       label: "Config." },
+  { href: "/historico",       icon: BarChart2,     label: "Histórico" },
+  { href: "/perfil",          icon: User,          label: "Perfil" },
+  { href: "/configurações",   icon: Settings,      label: "Config." },
 ];
 
 function MoreSheet({ onClose }: { onClose: () => void }) {
@@ -49,7 +51,7 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
         <p style={{ margin: "0 0 14px", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
           Mais recursos
         </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
           {MORE_ITEMS.map(({ href, icon: Icon, label }) => (
             <button
               key={href}
