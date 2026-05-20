@@ -17,7 +17,7 @@ const HABIT_DISPLAY: Record<string, [string, string]> = {
   meditation_prayer_breathing: ["🧘", "Meditou/Orou"],
   creative_activity: ["🎨", "Criatividade"],
   ate_well: ["🍽️", "Comeu bem"],
-  bowel_movement: ["🚽", "Fez cocô"],
+  bowel_movement: ["🚽", "Intestino OK"],
   exercise_walk: ["🏃", "Exercício"],
   drank_water: ["💧", "Água 1L"],
   slept_well: ["😴", "Sono"],

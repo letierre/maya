@@ -46,7 +46,7 @@ export function buildAnalysisPrompt(input: AnalysisInput): string {
       c.did_something_enjoyable && "algo que gostou",
       c.worked_on_goals && "metas",
       c.talked_to_someone && "conversou",
-      c.bowel_movement && "cocô",
+      c.bowel_movement && "intestino OK",
       c.took_medication && "remédios",
     ].filter(Boolean);
     const negatives = [
