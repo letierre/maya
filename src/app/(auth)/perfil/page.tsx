@@ -23,9 +23,9 @@ const PL  = "oklch(.5 .12 160 / .12)";
 const PB  = "1px solid oklch(.5 .12 160 / .15)";
 
 const GENDER_OPTIONS = [
-  { id: "masculino",  label: "Masculino",         emoji: "⚡" },
-  { id: "feminino",   label: "Feminino",           emoji: "🌸" },
-  { id: "nao_dizer",  label: "Prefiro não dizer",  emoji: "🌱" },
+  { id: "masculino",  label: "Masculino"        },
+  { id: "feminino",   label: "Feminino"         },
+  { id: "nao_dizer",  label: "Prefiro não dizer"},
 ] as const;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -432,7 +432,7 @@ export default function PerfilPage() {
                   color: gender === opt.id ? "#fff" : "var(--foreground)",
                 }}
               >
-                {opt.emoji} {opt.label}
+                {opt.label}
               </button>
             ))}
           </div>
