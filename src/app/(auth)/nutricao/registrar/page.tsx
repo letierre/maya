@@ -288,13 +288,6 @@ export default function RegistrarRefeicaoPage() {
           </div>
         )}
 
-        {/* Observação */}
-        {analysisObs && (
-          <p className="text-sm text-muted-foreground italic bg-muted/40 rounded-xl p-3">
-            {analysisObs}
-          </p>
-        )}
-
         {/* Ações */}
         <div className="space-y-3">
           <Button className="w-full rounded-xl" onClick={confirmAnalysis} disabled={saving}>
