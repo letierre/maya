@@ -8,7 +8,6 @@ import {
   sleepScore,
   formatDuration,
   sleepCycleTimes,
-  DURATION_CHIPS,
 } from "@/lib/sleep-utils";
 import { requestPushSubscription, hasPushPermission } from "@/lib/push-utils";
 import type { SleepLog, SleepStats } from "@/types";
@@ -113,7 +112,6 @@ const timeInputStyle: React.CSSProperties = {
 
 function ManualLogModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [quality, setQuality] = useState<number | null>(null);
-  const [durationMin, setDurationMin] = useState<number | null>(null);
   const [interruptions, setInterruptions] = useState<number>(0);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -125,7 +123,7 @@ function ManualLogModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     const today = getLocalDate();
     const sleepStart = startTime ? `${today}T${startTime}:00-03:00` : null;
     let sleepEnd: string | null = null;
-    let computedDuration: number | null = durationMin;
+    let computedDuration: number | null = null;
 
     if (startTime && endTime) {
       const [sh, sm] = startTime.split(":").map(Number);
@@ -230,20 +228,6 @@ function ManualLogModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
             }}>
               {n === 4 ? "4+" : n === 0 ? "Não" : `${n}×`}
             </button>
-          ))}
-        </div>
-
-        {label11("Quanto dormiu?")}
-        <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 24 }}>
-          {DURATION_CHIPS.map(({ label, value }) => (
-            <button key={value} type="button" onClick={() => setDurationMin(durationMin === value ? null : value)} style={{
-              padding: "8px 14px", borderRadius: 9999, cursor: "pointer",
-              border: durationMin === value ? "none" : `1px solid oklch(.7 .04 160 / .4)`,
-              background: durationMin === value ? P : "oklch(.95 .005 160)",
-              fontFamily: "inherit", fontSize: 13, fontWeight: 600,
-              color: durationMin === value ? "#fff" : "oklch(.4 .06 160)",
-              transition: "all .15s ease",
-            }}>{label}</button>
           ))}
         </div>
 
