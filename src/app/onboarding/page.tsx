@@ -69,25 +69,30 @@ export default function OnboardingPage() {
     if (answers.has_medication) enabled.push("took_medication");
     if (answers.track_suicidal_thoughts) enabled.push("suicidal_thoughts");
 
-    const res = await fetch("/api/preferences", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        enabled_questions: enabled,
-        context: { ...answers, gender, language },
-        onboarding_completed: true,
-      }),
-    });
+    try {
+      const res = await fetch("/api/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled_questions: enabled,
+          context: { ...answers, gender, language },
+          onboarding_completed: true,
+        }),
+      });
 
-    if (!res.ok) {
+      if (!res.ok) {
+        toast.error(t("erro_salvar"));
+        setLoading(false);
+        return;
+      }
+
+      toast.success(t("diario_personalizado"));
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
       toast.error(t("erro_salvar"));
       setLoading(false);
-      return;
     }
-
-    toast.success(t("diario_personalizado"));
-    router.push("/dashboard");
-    router.refresh();
   };
 
   return (
