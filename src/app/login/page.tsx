@@ -3,87 +3,171 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
+const P  = "oklch(.5 .12 160)";
+const PB = "1px solid oklch(.5 .12 160 / .15)";
+
+const cardStyle: React.CSSProperties = {
+  background: "oklch(1 0 0 / .55)",
+  backdropFilter: "blur(12px)",
+  borderRadius: 24,
+  border: PB,
+  padding: "32px 28px",
+  width: "100%",
+  maxWidth: 420,
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  height: 44,
+  borderRadius: 11,
+  border: PB,
+  background: "oklch(1 0 0 / .6)",
+  padding: "0 14px",
+  fontSize: 14,
+  fontFamily: "var(--font-sans)",
+  color: "var(--foreground)",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+const btnPrimary: React.CSSProperties = {
+  width: "100%",
+  height: 48,
+  borderRadius: 13,
+  border: 0,
+  background: P,
+  color: "#fff",
+  fontSize: 15,
+  fontWeight: 700,
+  fontFamily: "var(--font-sans)",
+  cursor: "pointer",
+  transition: "opacity .15s",
+};
+
+function LoginForm() {
+  const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const confirmationFailed = searchParams.get("error") === "confirmation_failed";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
     const supabase = createClient();
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      toast.error(error.message === "Invalid login credentials"
-        ? "Email ou senha incorretos."
-        : error.message);
+    if (loginError) {
+      setError(
+        loginError.message === "Invalid login credentials"
+          ? "Email ou senha incorretos. Verifique se confirmou seu email."
+          : loginError.message
+      );
       setLoading(false);
       return;
     }
 
-    toast.success("Bem-vindo(a) de volta!");
     router.push("/dashboard");
     router.refresh();
   };
 
   return (
-    <main className="flex-1 flex items-center justify-center p-6 bg-gradient-to-b from-background to-secondary/30">
-      <Card className="w-full max-w-md rounded-2xl">
-        <CardHeader className="text-center">
-          <div className="text-4xl mb-2">🌱</div>
-          <CardTitle className="text-2xl">Entrar</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full rounded-xl" disabled={loading}>
-              {loading ? "Entrando..." : "Entrar"}
-            </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              Não tem conta?{" "}
-              <Link href="/cadastro" className="text-primary font-medium hover:underline">
-                Criar conta
-              </Link>
-            </p>
-          </form>
-        </CardContent>
-      </Card>
-    </main>
+    <div style={cardStyle}>
+      <div style={{ textAlign: "center", marginBottom: 28 }}>
+        <div style={{ fontSize: 44, marginBottom: 10 }}>🌱</div>
+        <h1 style={{ margin: "0 0 4px", fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em" }}>
+          Bem-vindo de volta
+        </h1>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--muted-foreground)" }}>
+          Continue sua jornada de saúde
+        </p>
+      </div>
+
+      {confirmationFailed && (
+        <div style={{
+          background: "oklch(.55 .1 15 / .1)",
+          border: "1px solid oklch(.55 .1 15 / .2)",
+          borderRadius: 12,
+          padding: "12px 14px",
+          marginBottom: 16,
+          fontSize: 13,
+          color: "oklch(.4 .1 15)",
+          lineHeight: 1.5,
+        }}>
+          Não foi possível confirmar o email. Tente o link novamente ou entre em contato.
+        </div>
+      )}
+
+      <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--muted-foreground)" }}>
+            Email
+          </label>
+          <input
+            type="email"
+            placeholder="seu@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--muted-foreground)" }}>
+            Senha
+          </label>
+          <input
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={inputStyle}
+          />
+        </div>
+
+        {error && (
+          <p style={{ margin: 0, fontSize: 13, color: "oklch(.5 .15 15)", background: "oklch(.55 .1 15 / .1)", padding: "10px 14px", borderRadius: 10 }}>
+            {error}
+          </p>
+        )}
+
+        <button type="submit" disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.6 : 1, marginTop: 4 }}>
+          {loading ? "Entrando…" : "Entrar"}
+        </button>
+
+        <p style={{ margin: 0, textAlign: "center", fontSize: 13, color: "var(--muted-foreground)" }}>
+          Não tem conta?{" "}
+          <Link href="/cadastro" style={{ color: P, fontWeight: 700, textDecoration: "none" }}>
+            Criar conta grátis
+          </Link>
+        </p>
+      </form>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <div style={{
+      minHeight: "100dvh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "24px 20px",
+      background: `radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.95 .04 80 / .4) 0%, transparent 60%),
+                   linear-gradient(180deg, oklch(.985 .004 160) 0%, oklch(.94 .022 160) 100%)`,
+      fontFamily: "var(--font-sans)",
+    }}>
+      <LoginForm />
+    </div>
   );
 }
