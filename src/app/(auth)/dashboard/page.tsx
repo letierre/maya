@@ -547,7 +547,7 @@ export default function DashboardPage() {
                 <p className="text-[10.5px] font-bold tracking-wider uppercase text-primary m-0">
                   {t("maya_agora")}
                 </p>
-                <p className="mt-1.5 text-base leading-[1.4] font-medium tracking-tight">
+                <p className="mt-1.5 text-base leading-[1.4] font-medium tracking-tight whitespace-pre-wrap">
                   {mayaNudgeText}
                 </p>
               </div>
