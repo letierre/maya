@@ -505,6 +505,7 @@ const translations: Record<Lang, Record<string, string>> = {
     fin_add_manual_desc: "Preencha os campos do lançamento",
     fin_add_foto: "Por foto",
     fin_add_foto_desc: "Tire ou carregue um recibo e a IA preenche",
+    fin_analisando: "Analisando recibo...",
     // Expense categories
     fin_cat_moradia: "Moradia",
     fin_cat_alimentacao: "Alimentação",
@@ -1060,6 +1061,7 @@ const translations: Record<Lang, Record<string, string>> = {
     fin_add_manual_desc: "Completa los campos del movimiento",
     fin_add_foto: "Por foto",
     fin_add_foto_desc: "Saca o sube un recibo y la IA completa los datos",
+    fin_analisando: "Analizando recibo...",
     fin_cat_moradia: "Vivienda",
     fin_cat_alimentacao: "Alimentación",
     fin_cat_transporte: "Transporte",
@@ -1663,6 +1665,7 @@ const translations: Record<Lang, Record<string, string>> = {
     fin_add_manual_desc: "Fill in the transaction fields yourself",
     fin_add_foto: "From photo",
     fin_add_foto_desc: "Take or upload a receipt and AI fills the details",
+    fin_analisando: "Analysing receipt...",
     fin_cat_moradia: "Housing",
     fin_cat_alimentacao: "Food",
     fin_cat_transporte: "Transport",

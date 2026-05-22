@@ -5,18 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { Home, Camera, Moon, CheckCircle2, Grid2x2, BookOpen, MessageCircle, BarChart2, User, Settings, Utensils, Target, CalendarDays, Wallet } from "lucide-react";
 import { useTranslation } from "@/lib/useTranslation";
 import { UserAvatar } from "@/components/UserAvatar";
-import { useState, useRef } from "react";
+import { useState } from "react";
 
 // ── Quick capture sheet ───────────────────────────────────────────────────────
 
-function QuickCaptureSheet({
-  onClose,
-  onFinancasPhoto,
-}: {
-  onClose: () => void;
-  onFinancasPhoto: () => void;
-}) {
+function QuickCaptureSheet({ onClose }: { onClose: () => void }) {
   const router = useRouter();
+
+  const go = (href: string) => { onClose(); router.push(href); };
 
   return (
     <>
@@ -42,10 +38,9 @@ function QuickCaptureSheet({
           Registrar por foto
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {/* Nutrição — vai direto para a página de registrar */}
           <button
             type="button"
-            onClick={() => { onClose(); router.push("/nutricao/registrar"); }}
+            onClick={() => go("/nutricao/registrar")}
             style={{
               display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
               padding: "20px 12px", borderRadius: 18,
@@ -66,11 +61,9 @@ function QuickCaptureSheet({
               <p style={{ margin: "2px 0 0", fontSize: 11, color: "oklch(.6 .03 160)" }}>Registrar refeição</p>
             </div>
           </button>
-
-          {/* Finanças — abre seletor de foto diretamente (dentro do gesto do usuário) */}
           <button
             type="button"
-            onClick={() => { onClose(); onFinancasPhoto(); }}
+            onClick={() => go("/financas/registrar")}
             style={{
               display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
               padding: "20px 12px", borderRadius: 18,
@@ -174,10 +167,8 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
 export function BottomNav() {
   const { t } = useTranslation();
   const pathname = usePathname();
-  const router = useRouter();
   const [showMore, setShowMore] = useState(false);
   const [showCapture, setShowCapture] = useState(false);
-  const finFileRef = useRef<HTMLInputElement>(null);
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";
@@ -196,34 +187,8 @@ export function BottomNav() {
     transition: "color .15s ease",
   });
 
-  const handleFinancasFileSelect = async (file: File) => {
-    const buffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    let binary = "";
-    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-    const base64 = btoa(binary);
-    sessionStorage.setItem(
-      "fin_photo_pending",
-      JSON.stringify({ base64, mediaType: file.type || "image/jpeg" })
-    );
-    router.push("/financas");
-  };
-
   return (
     <>
-      {/* Hidden file input para captura de gasto por foto via nav */}
-      <input
-        ref={finFileRef}
-        type="file"
-        accept="image/*"
-        style={{ display: "none" }}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) handleFinancasFileSelect(file);
-          e.target.value = "";
-        }}
-      />
-
       <nav style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
         height: 64, background: "oklch(.99 .004 160 / .95)",
@@ -295,12 +260,7 @@ export function BottomNav() {
       </nav>
 
       {showMore && <MoreSheet onClose={() => setShowMore(false)} />}
-      {showCapture && (
-        <QuickCaptureSheet
-          onClose={() => setShowCapture(false)}
-          onFinancasPhoto={() => finFileRef.current?.click()}
-        />
-      )}
+      {showCapture && <QuickCaptureSheet onClose={() => setShowCapture(false)} />}
     </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, Target, ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, Wallet, Camera } from "lucide-react";
 import type { FinancialTransaction, FinancialBudget, Goal } from "@/types";
@@ -477,9 +477,6 @@ export default function FinancasPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [showBudget, setShowBudget] = useState(false);
   const [editTx, setEditTx] = useState<FinancialTransaction | null>(null);
-  const [txDraft, setTxDraft] = useState<TxDraft | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentMonth = monthKey(monthOffset);
 
@@ -500,69 +497,10 @@ export default function FinancasPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Auto-analyze photo stored by BottomNav quick-capture flow
-  useEffect(() => {
-    const raw = sessionStorage.getItem("fin_photo_pending");
-    if (!raw) return;
-    sessionStorage.removeItem("fin_photo_pending");
-    try {
-      const { base64, mediaType } = JSON.parse(raw) as { base64: string; mediaType: string };
-      setAnalyzing(true);
-      fetch("/api/financas/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ photoBase64: base64, mediaType }),
-      })
-        .then((r) => r.json())
-        .then((data) => {
-          setTxDraft({
-            type: data.type ?? "despesa",
-            amount: data.amount ? String(data.amount) : "",
-            category: data.category ?? "",
-            description: data.description ?? "",
-            date: data.date ?? new Date().toISOString().slice(0, 10),
-          });
-          setShowAdd(true);
-        })
-        .catch(() => {})
-        .finally(() => setAnalyzing(false));
-    } catch { /* bad sessionStorage data */ }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const deleteTx = async (id: string) => {
     setTransactions((prev) => prev.filter((t) => t.id !== id));
     await fetch(`/api/financas/transactions/${id}`, { method: "DELETE" });
   };
-
-  const handlePhoto = async (file: File) => {
-    setAnalyzing(true);
-    try {
-      const buffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      let binary = "";
-      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-      const base64 = btoa(binary);
-      const res = await fetch("/api/financas/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ photoBase64: base64, mediaType: file.type || "image/jpeg" }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setTxDraft({
-          type: data.type ?? "despesa",
-          amount: data.amount ? String(data.amount) : "",
-          category: data.category ?? "",
-          description: data.description ?? "",
-          date: data.date ?? new Date().toISOString().slice(0, 10),
-        });
-        setShowAdd(true);
-      }
-    } catch { /* silent */ }
-    setAnalyzing(false);
-  };
-
-  const openPhoto = () => fileInputRef.current?.click();
 
   // ── Computed summaries ─────────────────────────────────────────────────────
   const totalReceitas = transactions.filter((t) => t.type === "receita").reduce((s, t) => s + t.amount, 0);
@@ -867,19 +805,6 @@ export default function FinancasPage() {
 
       </div>
 
-      {/* ── Hidden file input ── */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        style={{ display: "none" }}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) handlePhoto(file);
-          e.target.value = "";
-        }}
-      />
-
       {/* ── FAB ── */}
       <button
         type="button"
@@ -887,7 +812,7 @@ export default function FinancasPage() {
         style={{
           position: "fixed", bottom: 88, right: 20, zIndex: 40,
           width: 56, height: 56, borderRadius: "50%", border: 0, cursor: "pointer",
-          background: analyzing ? "oklch(.6 .08 160)" : fc(),
+          background: fc(),
           display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: "0 4px 20px oklch(.5 .14 160 / .45)",
           transition: "transform .15s ease",
@@ -895,11 +820,7 @@ export default function FinancasPage() {
         onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.08)"; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"; }}
       >
-        {analyzing ? (
-          <div style={{ width: 22, height: 22, borderRadius: "50%", border: "2.5px solid #fff", borderTopColor: "transparent", animation: "spin .8s linear infinite" }} />
-        ) : (
-          <Plus size={26} color="#fff" />
-        )}
+        <Plus size={26} color="#fff" />
       </button>
 
       {/* ── Add type sheet ── */}
@@ -907,7 +828,7 @@ export default function FinancasPage() {
         <AddTypeSheet
           lang={lang}
           onManual={() => setShowAdd(true)}
-          onPhoto={openPhoto}
+          onPhoto={() => router.push("/financas/registrar")}
           onClose={() => setShowAddType(false)}
         />
       )}
@@ -916,8 +837,7 @@ export default function FinancasPage() {
       {(showAdd || editTx) && (
         <TransactionModal
           initial={editTx}
-          prefill={!editTx && txDraft ? txDraft : undefined}
-          onClose={() => { setShowAdd(false); setEditTx(null); setTxDraft(null); }}
+          onClose={() => { setShowAdd(false); setEditTx(null); }}
           onSaved={load}
           lang={lang}
           currency={currency}
