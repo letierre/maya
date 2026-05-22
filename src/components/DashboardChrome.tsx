@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
 
 const FULLBLEED_ROUTES = ["/dashboard", "/diario", "/diario/novo", "/check-in", "/historico", "/nutricao", "/sono", "/metas", "/planejamento", "/perfil", "/configurações"];
-const FULLBLEED_PREFIXES = ["/metas", "/planejamento"];
+const FULLBLEED_PREFIXES = ["/metas", "/planejamento", "/financas"];
 const HIDE_BOTTOMNAV_ROUTES = ["/diario/novo", "/check-in", "/metas/nova", "/metas/coach"];
 
 export function HeaderWrapper() {
