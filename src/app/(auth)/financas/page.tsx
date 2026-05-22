@@ -102,7 +102,7 @@ function CategoryPicker({
   onEditCustom: () => void;
 }) {
   const cats = type === "despesa" ? EXPENSE_CATS : INCOME_CATS;
-  const cols = type === "despesa" ? "repeat(4, 1fr)" : "repeat(5, 1fr)";
+  const cols = type === "despesa" ? "repeat(4, minmax(0, 1fr))" : "repeat(5, minmax(0, 1fr))";
   const selectedCat = cats.find((c) => c.id === category);
   const subcats = category ? getSubcats(category, cats, customCat) : [];
 
@@ -481,7 +481,7 @@ function TransactionModal({
         borderRadius: "24px 24px 0 0", background: "#fff",
         padding: "20px 20px calc(env(safe-area-inset-bottom) + 28px)",
         boxShadow: "0 -8px 40px oklch(.2 .04 160 / .15)",
-        maxHeight: "92dvh", overflowY: "auto",
+        maxHeight: "92dvh", overflowY: "auto", overflowX: "hidden",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>

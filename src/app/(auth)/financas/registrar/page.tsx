@@ -38,7 +38,7 @@ function CategoryPicker({
   onEditCustom: () => void;
 }) {
   const cats = type === "despesa" ? EXPENSE_CATS : INCOME_CATS;
-  const cols = type === "despesa" ? "repeat(4, 1fr)" : "repeat(5, 1fr)";
+  const cols = type === "despesa" ? "repeat(4, minmax(0, 1fr))" : "repeat(5, minmax(0, 1fr))";
   const selectedCat = cats.find((c) => c.id === category);
   const subcats = category ? getSubcats(category, cats, customCat) : [];
 
