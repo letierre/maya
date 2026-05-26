@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { getLocalDate, calculateStreak } from "@/lib/utils";
+import { getLocalDate } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { Button } from "@/components/ui/button";
@@ -26,14 +26,6 @@ const HABIT_DISPLAY: Record<string, [string, string]> = {
   worked_on_goals: ["🎯", "Metas"],
 };
 
-const TIERS = [
-  { rom: "I",   key: "tier_iniciante", th: 0,  color: "#e4e4e7" },
-  { rom: "II",  key: "tier_bronze",    th: 3,  color: "#fde68a" },
-  { rom: "III", key: "tier_prata",     th: 7,  color: "#cbd5e1" },
-  { rom: "IV",  key: "tier_ouro",      th: 14, color: "#fde047" },
-  { rom: "V",   key: "tier_diamante",  th: 30, color: "#a5f3fc" },
-  { rom: "VI",  key: "tier_lendario",  th: 60, color: "#fbbf24" },
-];
 
 function greetingTimeOfDay(t: (k: string) => string) {
   const h = new Date().getHours();
@@ -284,25 +276,7 @@ export default function DashboardPage() {
 
   // ── Compute ──────────────────────────────────────────────────
 
-  const streak = useMemo(
-    () => calculateStreak(checkIns.map((c: CheckIn) => c.date)),
-    [checkIns],
-  );
-
   const firstName = userName.split(" ")[0];
-
-  const tierIdx = TIERS.reduce((acc, tier, i) => (streak >= tier.th ? i : acc), 0);
-  const curTier = TIERS[tierIdx];
-  const nextTier = TIERS[tierIdx + 1];
-
-  // % de progresso dentro do tier atual (0-100)
-  const tierProgress = nextTier
-    ? Math.min(100, Math.round(((streak - curTier.th) / (nextTier.th - curTier.th)) * 100))
-    : 100;
-
-  const streakExtra = nextTier
-    ? t("dias_ate_tier", { n: String(nextTier.th - streak), tier: t(nextTier.key) })
-    : undefined;
 
   const enabledNonSuicidal = enabledKeys.filter(
     (k) => k !== "suicidal_thoughts" && k !== "felt_judged",
@@ -616,53 +590,6 @@ export default function DashboardPage() {
           </div>
         </Section>
       )}
-
-      {/* ── SUA SEQUÊNCIA ─────────────────────────────────────── */}
-      <Section label={t("sua_sequencia")} extra={streakExtra}>
-        <div
-          className="absolute top-[-8px] right-[-4px] text-[96px] font-extrabold leading-none tracking-[-0.04em] tabular-nums select-none pointer-events-none"
-          style={{ color: "oklch(.5 .12 160 / .06)" }}
-        >
-          {streak}
-        </div>
-
-        <div className="relative -mt-1">
-          <div className="flex items-baseline gap-2">
-            <span className="text-[42px] font-bold tracking-[-0.03em] text-primary leading-none tabular-nums">
-              {streak}
-            </span>
-            <span className="text-sm font-medium">{t("dias_consecutivos")}</span>
-          </div>
-
-          <div className="flex gap-1 mt-3.5">
-            {TIERS.map((tier, i) => {
-              const isPast = i < tierIdx;
-              const isCurrent = i === tierIdx;
-              const fillPct = isPast ? 100 : isCurrent ? tierProgress : 0;
-              return (
-                <div key={tier.rom} className="flex-1 relative h-2">
-                  {/* track vazio */}
-                  <div className="absolute inset-0 rounded-full" style={{ background: "oklch(.88 .01 160)" }} />
-                  {/* preenchimento colorido */}
-                  {fillPct > 0 && (
-                    <div
-                      className="absolute inset-0 rounded-full"
-                      style={{ background: tier.color, width: `${fillPct}%` }}
-                    />
-                  )}
-                  {/* ponto de progresso no tier atual */}
-                  {isCurrent && (
-                    <div
-                      className="absolute -top-[3px] w-3.5 h-3.5 rounded-full bg-primary border-2 border-white shadow-md"
-                      style={{ left: `max(0px, calc(${tierProgress}% - 7px))` }}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </Section>
 
       {/* ── CUIDADOS DE HOJE ──────────────────────────────────── */}
       <Section

@@ -28,10 +28,10 @@ type HabitKey = typeof HABIT_ORDER[number];
 interface HabitCopy { emoji: string; label: string; a: string; b: string; }
 
 const HABIT_COPY: Record<string, HabitCopy> = {
-  drank_water:                 { emoji: "💧", label: "Bebeu água hoje?",              a: "Sim", b: "Hoje não"  },
+  drank_water:                 { emoji: "💧", label: "Bebeu água hoje?",              a: "Sim", b: "Hoje não"  }, // substituído por WaterStep — mantido para EditCheckInView
   slept_well:                  { emoji: "😴", label: "Dormiu bem ontem?",             a: "Sim", b: "Não muito" },
   took_medication:             { emoji: "💊", label: "Tomou seus remédios?",          a: "Sim", b: "Esqueci"   },
-  talked_to_someone:           { emoji: "🗣️", label: "Conversou com alguém?",         a: "Sim", b: "Não hoje"  },
+  talked_to_someone:           { emoji: "🗣️", label: "Conversou pessoalmente com alguém?", a: "Sim", b: "Não hoje"  },
   meditation_prayer_breathing: { emoji: "🧘", label: "Meditou, orou ou respirou?",    a: "Sim", b: "Não"       },
   creative_activity:           { emoji: "🎨", label: "Fez algo criativo?",            a: "Sim", b: "Não"       },
   exercise_walk:               { emoji: "🏃", label: "Caminhou ou se exercitou?",     a: "Sim", b: "Não"       },
@@ -58,6 +58,7 @@ interface CheckInAnswers {
   gratitude_photos: string[];
   suicidal_thoughts: boolean;
   drank_water: boolean;
+  water_cups: number;
   slept_well: boolean;
   sleep_quality: number | null;
   sleep_start_time: string;
@@ -83,6 +84,7 @@ function defaultAnswers(): CheckInAnswers {
     gratitude_photos: [],
     suicidal_thoughts: false,
     drank_water: false,
+    water_cups: 0,
     slept_well: false,
     sleep_quality: null,
     sleep_start_time: "",
@@ -714,6 +716,80 @@ function SleepStep({ onAnswer, onPrev }: {
   );
 }
 
+// ── Water Step ────────────────────────────────────────────────────────────────
+
+const WATER_GOAL = 4; // 4 copos × 250ml = 1L
+
+function WaterStep({ initialCups, onAnswer, onPrev }: {
+  initialCups: number;
+  onAnswer: (cups: number) => void;
+  onPrev: () => void;
+}) {
+  const [cups, setCups] = useState<number | null>(initialCups > 0 ? initialCups : null);
+
+  const handleSelect = (n: number) => {
+    setCups(n);
+    setTimeout(() => onAnswer(n), 320);
+  };
+
+  return (
+    <>
+      <div style={{ fontSize: 64, lineHeight: 1, marginBottom: 16 }}>💧</div>
+      <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
+        Quantos copos bebeu hoje?
+      </h1>
+      <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--muted-foreground)" }}>
+        1 copo = 250ml · meta: {WATER_GOAL} copos (1L)
+      </p>
+
+      <div style={{ display: "flex", gap: 6, marginTop: 28, justifyContent: "center" }}>
+        {Array.from({ length: 8 }).map((_, i) => {
+          const n = i + 1;
+          const filled = cups !== null && n <= cups;
+          const isGoal = n === WATER_GOAL;
+          return (
+            <button key={n} type="button" onClick={() => handleSelect(n)} style={{
+              flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
+              padding: "12px 2px", borderRadius: 14, border: 0, cursor: "pointer",
+              background: filled ? "oklch(.5 .12 160 / .15)" : "oklch(1 0 0 / .45)",
+              backdropFilter: "blur(8px)",
+              outline: isGoal && filled ? "2px solid oklch(.5 .12 160 / .5)" : "none",
+              transition: "all .15s ease",
+            }}>
+              <span style={{ fontSize: 22, opacity: filled ? 1 : 0.22, transition: "opacity .15s ease" }}>💧</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: filled ? "oklch(.35 .1 160)" : "var(--muted-foreground)", transition: "color .15s ease" }}>
+                {n}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {cups !== null && (
+        <p style={{ textAlign: "center", marginTop: 14, fontSize: 14, fontWeight: 600,
+          color: cups >= WATER_GOAL ? "oklch(.4 .12 160)" : "var(--muted-foreground)" }}>
+          {cups >= WATER_GOAL
+            ? `Meta atingida! ${cups} copo${cups === 1 ? "" : "s"} 🎉`
+            : `${cups} copo${cups === 1 ? "" : "s"} · faltam ${WATER_GOAL - cups} para 1L`}
+        </p>
+      )}
+
+      <button type="button" onClick={onPrev} style={{
+        position: "absolute", bottom: 28, left: 32,
+        background: "transparent", border: 0, cursor: "pointer",
+        fontFamily: "inherit", fontSize: 13, color: "var(--muted-foreground)",
+      }}>← Voltar</button>
+
+      <button type="button" onClick={() => onAnswer(cups ?? 0)} style={{
+        position: "absolute", bottom: 28, right: 32,
+        background: "transparent", border: 0, cursor: "pointer",
+        fontFamily: "inherit", fontSize: 12.5, color: "var(--muted-foreground)",
+        textDecoration: "underline",
+      }}>{cups === null ? "Não bebi" : "Continuar"}</button>
+    </>
+  );
+}
+
 // ── Habit Step ────────────────────────────────────────────────────────────────
 
 function HabitStep({ habitKey, context, onAnswer, onSkip, onPrev }: {
@@ -946,6 +1022,7 @@ export default function CheckInPage() {
           mood_tags: existing.mood_tags ?? [],
           gratitude: existing.gratitude ?? "",
           gratitude_photos: existing.gratitude_photos ?? [],
+          water_cups: existing.water_cups ?? 0,
           ...Object.fromEntries(
             [...HABIT_ORDER, "suicidal_thoughts", "ate_well"].map((k) => [k, existing[k] ?? false])
           ),
@@ -971,11 +1048,6 @@ export default function CheckInPage() {
           { duration: 12000 }
         );
       }
-      const achievData = await fetch("/api/achievements", { method: "POST" })
-        .then((r) => r.json()).catch(() => ({}));
-      achievData?.new_achievements?.forEach((a: { icon: string; label: string }) => {
-        toast.success(`${a.icon} ${a.label} desbloqueado`, { duration: 4000 });
-      });
       router.push("/dashboard");
       router.refresh();
     } catch {
@@ -1003,6 +1075,11 @@ export default function CheckInPage() {
   const handleHabitAnswer = useCallback((key: string, value: boolean) => {
     setAnswers((a) => ({ ...a, [key]: value }));
     setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 180);
+  }, [steps.length]);
+
+  const handleWaterAnswer = useCallback((cups: number) => {
+    setAnswers((a) => ({ ...a, water_cups: cups, drank_water: cups >= WATER_GOAL }));
+    setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 60);
   }, [steps.length]);
 
   const handleSleepAnswer = useCallback((quality: number, startTime: string, endTime: string) => {
@@ -1071,12 +1148,6 @@ export default function CheckInPage() {
             { duration: 12000 }
           );
         }
-        return fetch("/api/achievements", { method: "POST" }).then((r) => r.json());
-      })
-      .then((achievData) => {
-        achievData?.new_achievements?.forEach((a: { icon: string; label: string }) => {
-          toast.success(`${a.icon} ${a.label} desbloqueado`, { duration: 4000 });
-        });
       })
       .catch(() => {});
 
@@ -1121,6 +1192,9 @@ export default function CheckInPage() {
     if (cur.kind === "habit") {
       if (cur.habitKey === "slept_well") return (
         <SleepStep onAnswer={handleSleepAnswer} onPrev={goPrev} />
+      );
+      if (cur.habitKey === "drank_water") return (
+        <WaterStep initialCups={answers.water_cups} onAnswer={handleWaterAnswer} onPrev={goPrev} />
       );
       return (
         <HabitStep habitKey={cur.habitKey} context={context}

@@ -11,6 +11,7 @@ export interface CheckIn {
   bowel_movement: boolean;
   exercise_walk: boolean;
   drank_water: boolean;
+  water_cups: number;
   slept_well: boolean;
   suicidal_thoughts: boolean;
   did_something_enjoyable: boolean;
