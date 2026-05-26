@@ -20,7 +20,7 @@ const HABIT_DISPLAY: Record<string, [string, string]> = {
   ate_well: ["🍽️", "Comeu bem"],
   bowel_movement: ["🚽", "Intestino OK"],
   exercise_walk: ["🏃", "Exercício"],
-  drank_water: ["💧", "Água 1L"],
+  // drank_water shown as ml chip separately
   slept_well: ["😴", "Sono"],
   did_something_enjoyable: ["😊", "Algo que gostou"],
   worked_on_goals: ["🎯", "Metas"],
@@ -652,9 +652,23 @@ export default function DashboardPage() {
                   {emoji} {label}
                 </span>
               ))}
-              {completedHabits.length === 0 && (
-                <span className="text-sm text-muted-foreground italic">
-                  {t("nenhum_cuidado")}
+              {/* Water chip — always shows actual ml consumed */}
+              {todayCheckIn && (
+                <span
+                  className="px-2.5 py-[5px] rounded-full text-[11.5px] font-medium border inline-flex items-center gap-1"
+                  style={{
+                    background: (todayCheckIn.water_cups ?? 0) >= 4
+                      ? "oklch(.5 .12 160 / .12)"
+                      : "oklch(1 0 0 / .7)",
+                    borderColor: (todayCheckIn.water_cups ?? 0) >= 4
+                      ? "oklch(.5 .12 160 / .3)"
+                      : undefined,
+                    color: (todayCheckIn.water_cups ?? 0) >= 4
+                      ? "oklch(.35 .1 160)"
+                      : undefined,
+                  }}
+                >
+                  💧 {(todayCheckIn.water_cups ?? 0) * 250}ml
                 </span>
               )}
             </div>
