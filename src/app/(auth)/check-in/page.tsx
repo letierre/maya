@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { getLocalDate } from "@/lib/utils";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { MOOD_CHIPS, getMoodLabel } from "@/lib/checkin-moods";
+import { invalidateFetchCache } from "@/lib/fetch-cache";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -1146,6 +1147,7 @@ export default function CheckInPage() {
           { duration: 12000 }
         );
       }
+      invalidateFetchCache("/api/check-ins");
       router.push("/dashboard");
       router.refresh();
     } catch {
@@ -1249,7 +1251,7 @@ export default function CheckInPage() {
       })
       .catch(() => {});
 
-    const timer = setTimeout(() => { router.push("/dashboard"); router.refresh(); }, 1800);
+    const timer = setTimeout(() => { invalidateFetchCache("/api/check-ins"); router.push("/dashboard"); router.refresh(); }, 1800);
     return () => clearTimeout(timer);
   }, [isDone, router]);
 
