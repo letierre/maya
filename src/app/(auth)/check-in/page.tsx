@@ -297,49 +297,26 @@ function EditCheckInView({ answers, setAnswers, enabledKeys, context, gender, on
                       background: "oklch(1 0 0 / .55)", backdropFilter: "blur(8px)",
                       border: "1px solid oklch(.5 .12 160 / .12)",
                     }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                        <span style={{ fontSize: 21, flexShrink: 0, lineHeight: 1 }}>💧</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                        <span style={{ fontSize: 21, flexShrink: 0, lineHeight: 1 }}>🥛</span>
                         <span style={{ flex: 1, fontSize: 13.5, fontWeight: 500 }}>Copos de água hoje</span>
                         <span style={{ fontSize: 12, fontWeight: 700,
                           color: cups >= WATER_GOAL ? "oklch(.35 .1 160)" : "var(--muted-foreground)" }}>
-                          {cups}/{WATER_GOAL} copos{cups >= WATER_GOAL ? " ✓" : ""}
+                          {cups}/{WATER_GOAL}{cups >= WATER_GOAL ? " ✓" : ""}
                         </span>
                       </div>
-                      <div style={{ display: "flex", gap: 5 }}>
-                        {Array.from({ length: WATER_MAX }).map((_, i) => {
-                          const n = i + 1;
-                          const filled = n <= cups;
-                          return (
-                            <button key={n} type="button"
-                              onClick={() => setAnswers((a) => ({
-                                ...a,
-                                water_cups: n,
-                                drank_water: n >= WATER_GOAL,
-                              }))}
-                              style={{
-                                flex: 1, padding: "7px 2px", borderRadius: 10, border: 0,
-                                cursor: "pointer", display: "flex", flexDirection: "column",
-                                alignItems: "center", gap: 3,
-                                background: filled ? "oklch(.5 .12 160 / .15)" : "oklch(.96 .01 160)",
-                                outline: n === WATER_GOAL && filled ? "2px solid oklch(.5 .12 160 / .4)" : "none",
-                                transition: "all .12s ease",
-                              }}>
-                              <span style={{ fontSize: 16, opacity: filled ? 1 : 0.2, transition: "opacity .12s" }}>💧</span>
-                              <span style={{ fontSize: 9, fontWeight: 700,
-                                color: filled ? "oklch(.35 .1 160)" : "oklch(.6 .04 160)" }}>{n}</span>
-                            </button>
-                          );
+                      <WaterCupSelector
+                        cups={cups}
+                        size={42}
+                        onAdd={() => setAnswers((a) => {
+                          const n = Math.min((a.water_cups ?? 0) + 1, WATER_MAX);
+                          return { ...a, water_cups: n, drank_water: n >= WATER_GOAL };
                         })}
-                      </div>
-                      {cups > 0 && (
-                        <button type="button"
-                          onClick={() => setAnswers((a) => ({ ...a, water_cups: 0, drank_water: false }))}
-                          style={{ marginTop: 8, background: "transparent", border: 0, cursor: "pointer",
-                            fontFamily: "inherit", fontSize: 11, color: "var(--muted-foreground)",
-                            textDecoration: "underline" }}>
-                          Zerar
-                        </button>
-                      )}
+                        onRemoveLast={() => setAnswers((a) => {
+                          const n = Math.max((a.water_cups ?? 0) - 1, 0);
+                          return { ...a, water_cups: n, drank_water: n >= WATER_GOAL };
+                        })}
+                      />
                     </div>
                   );
                 }
@@ -776,53 +753,112 @@ function SleepStep({ onAnswer, onPrev }: {
 const WATER_GOAL = 4;  // 4 copos × 250ml = 1L
 const WATER_MAX  = 12; // 12 copos × 250ml = 3L
 
+function CupIcon({ filled, size = 28 }: { filled: boolean; size?: number }) {
+  const w = size * 0.85;
+  const h = size;
+  const fillColor = "oklch(.42 .13 160)";
+  const emptyStroke = "oklch(.65 .06 160 / .45)";
+  return (
+    <svg width={w} height={h} viewBox="0 0 22 28" fill="none">
+      <path d="M3 2 L5.5 22 H16.5 L19 2 H3Z"
+        fill={filled ? "oklch(.5 .13 160 / .22)" : "oklch(.88 .02 160 / .4)"}
+        stroke={filled ? fillColor : emptyStroke}
+        strokeWidth="1.6" strokeLinejoin="round"
+      />
+      <path d="M5.5 22 H16.5 L15.5 26 H6.5 Z"
+        fill={filled ? "oklch(.5 .13 160 / .3)" : "oklch(.88 .02 160 / .4)"}
+        stroke={filled ? fillColor : emptyStroke}
+        strokeWidth="1.6" strokeLinejoin="round"
+      />
+      {filled && (
+        <path d="M6.5 17 Q11 14 15.5 17 L16.5 22 H5.5 Z"
+          fill="oklch(.5 .15 200 / .35)"
+        />
+      )}
+    </svg>
+  );
+}
+
+function WaterCupSelector({ cups, size, onAdd, onRemoveLast }: {
+  cups: number;
+  size?: number;
+  onAdd: () => void;
+  onRemoveLast: () => void;
+}) {
+  const displayCount = Math.max(cups, WATER_GOAL);
+  const cupW = size ?? 52;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+      {Array.from({ length: displayCount }).map((_, i) => {
+        const filled = i < cups;
+        const isLastFilled = filled && i === cups - 1;
+        return (
+          <button key={i} type="button"
+            onClick={isLastFilled ? onRemoveLast : undefined}
+            style={{
+              width: cupW, height: cupW * 1.15,
+              borderRadius: 14, border: 0, cursor: isLastFilled ? "pointer" : "default",
+              background: filled ? "oklch(.5 .12 160 / .1)" : "oklch(1 0 0 / .45)",
+              backdropFilter: "blur(8px)",
+              outline: isLastFilled
+                ? "2.5px solid oklch(.5 .12 160 / .5)"
+                : i === WATER_GOAL - 1 && filled
+                  ? "2px solid oklch(.5 .12 160 / .25)"
+                  : "1px solid oklch(.5 .12 160 / .1)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "all .15s ease",
+              position: "relative",
+            }}>
+            <CupIcon filled={filled} size={cupW * 0.58} />
+            {isLastFilled && (
+              <span style={{
+                position: "absolute", top: 4, right: 5,
+                fontSize: 9, color: "oklch(.5 .12 160)", fontWeight: 700, lineHeight: 1,
+              }}>−</span>
+            )}
+          </button>
+        );
+      })}
+      {cups < WATER_MAX && (
+        <button type="button" onClick={onAdd} style={{
+          width: cupW, height: cupW * 1.15,
+          borderRadius: 14, border: "1.5px dashed oklch(.5 .12 160 / .3)",
+          cursor: "pointer",
+          background: "oklch(1 0 0 / .35)", backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "background .15s ease",
+        }}>
+          <span style={{ fontSize: 24, color: "oklch(.5 .12 160)", fontWeight: 300, lineHeight: 1 }}>+</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 function WaterStep({ initialCups, onAnswer, onPrev }: {
   initialCups: number;
   onAnswer: (cups: number) => void;
   onPrev: () => void;
 }) {
-  const [cups, setCups] = useState<number | null>(initialCups > 0 ? initialCups : null);
-
-  const handleSelect = (n: number) => {
-    setCups(n);
-    setTimeout(() => onAnswer(n), 320);
-  };
+  const [cups, setCups] = useState<number>(initialCups);
 
   return (
     <>
-      <div style={{ fontSize: 64, lineHeight: 1, marginBottom: 16 }}>💧</div>
-      <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
+      <h1 style={{ margin: "0 0 6px", fontSize: 26, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
         Quantos copos bebeu hoje?
       </h1>
-      <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--muted-foreground)" }}>
+      <p style={{ margin: "0 0 26px", fontSize: 13, color: "var(--muted-foreground)" }}>
         1 copo = 250ml · meta: {WATER_GOAL} copos (1L)
       </p>
 
-      <div style={{ display: "flex", gap: 6, marginTop: 28, justifyContent: "center" }}>
-        {Array.from({ length: WATER_MAX }).map((_, i) => {
-          const n = i + 1;
-          const filled = cups !== null && n <= cups;
-          const isGoal = n === WATER_GOAL;
-          return (
-            <button key={n} type="button" onClick={() => handleSelect(n)} style={{
-              flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
-              padding: "12px 2px", borderRadius: 14, border: 0, cursor: "pointer",
-              background: filled ? "oklch(.5 .12 160 / .15)" : "oklch(1 0 0 / .45)",
-              backdropFilter: "blur(8px)",
-              outline: isGoal && filled ? "2px solid oklch(.5 .12 160 / .5)" : "none",
-              transition: "all .15s ease",
-            }}>
-              <span style={{ fontSize: 22, opacity: filled ? 1 : 0.22, transition: "opacity .15s ease" }}>💧</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: filled ? "oklch(.35 .1 160)" : "var(--muted-foreground)", transition: "color .15s ease" }}>
-                {n}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <WaterCupSelector
+        cups={cups}
+        onAdd={() => setCups((c) => Math.min(c + 1, WATER_MAX))}
+        onRemoveLast={() => setCups((c) => Math.max(c - 1, 0))}
+      />
 
-      {cups !== null && (
-        <p style={{ textAlign: "center", marginTop: 14, fontSize: 14, fontWeight: 600,
+      {cups > 0 && (
+        <p style={{ marginTop: 16, fontSize: 14, fontWeight: 600,
           color: cups >= WATER_GOAL ? "oklch(.4 .12 160)" : "var(--muted-foreground)" }}>
           {cups >= WATER_GOAL
             ? `Meta atingida! ${cups} copo${cups === 1 ? "" : "s"} 🎉`
@@ -836,12 +872,12 @@ function WaterStep({ initialCups, onAnswer, onPrev }: {
         fontFamily: "inherit", fontSize: 13, color: "var(--muted-foreground)",
       }}>← Voltar</button>
 
-      <button type="button" onClick={() => onAnswer(cups ?? 0)} style={{
+      <button type="button" onClick={() => onAnswer(cups)} style={{
         position: "absolute", bottom: 28, right: 32,
         background: "transparent", border: 0, cursor: "pointer",
         fontFamily: "inherit", fontSize: 12.5, color: "var(--muted-foreground)",
         textDecoration: "underline",
-      }}>{cups === null ? "Não bebi" : "Continuar"}</button>
+      }}>{cups === 0 ? "Não bebi" : "Continuar"}</button>
     </>
   );
 }
