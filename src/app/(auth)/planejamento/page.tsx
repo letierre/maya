@@ -3,8 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Target, Check, ChevronDown, ChevronUp, Star, Sparkles,
-  Plus, Calendar, Clock, Pencil, Trash2, X,
+  Check, Star, Sparkles, Plus, Clock, Pencil, Trash2, X,
 } from "lucide-react";
 import type { Goal, GoalStage, GoalAction, WeeklyPlan, WeeklyReview, WeeklyTask, TaskArea } from "@/types";
 import { useTranslation } from "@/lib/useTranslation";
@@ -45,6 +44,25 @@ function weekLabel() {
   const sun = new Date(mon);
   sun.setDate(mon.getDate() + 6);
   const fmt = (d: Date) => d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+  return `${fmt(mon)} – ${fmt(sun)}`;
+}
+
+function getISOWeek(): number {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+}
+
+function weekRange(): string {
+  const now = new Date();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  const MONTHS = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];
+  const fmt = (d: Date) => `${d.getDate()} ${MONTHS[d.getMonth()]}`;
   return `${fmt(mon)} – ${fmt(sun)}`;
 }
 
@@ -512,61 +530,64 @@ function ReviewModal({ onClose, onSaved, lang = "pt" }: { onClose: () => void; o
   );
 }
 
-// ── Task row ──────────────────────────────────────────────────────────────────
+// ── Task row (Bento style) ────────────────────────────────────────────────────
 
-function TaskRow({ task, onToggle, onDelete, lang = "pt" }: {
-  task: WeeklyTask;
-  onToggle: () => void;
-  onDelete: () => void;
-  lang?: Lang;
+function TaskRow({ task, onToggle, onDelete }: {
+  task: WeeklyTask; onToggle: () => void; onDelete: () => void;
 }) {
   const conf = AREA_CONFIG[task.area] ?? AREA_CONFIG.outros;
   const done = task.status === "concluida";
-
+  const isHabit = task.task_type === "manutencao";
+  const hue = conf.hue;
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: 10, padding: "11px 14px",
-      borderRadius: 13, background: done ? "oklch(.97 .005 160)" : "#fff",
-      border: `1.5px solid ${done ? "oklch(.9 .01 160)" : "oklch(.88 .02 160)"}`,
-      transition: "all .15s ease",
+      display: "flex", alignItems: "center", gap: 10,
+      padding: "10px 12px", borderRadius: 12,
+      background: done ? "oklch(.97 .015 160)" : "#fff",
+      border: `1px solid oklch(.5 .12 ${hue} / .12)`,
     }}>
       <button type="button" onClick={onToggle} style={{
-        width: 22, height: 22, borderRadius: "50%", border: 0, flexShrink: 0, cursor: "pointer",
-        background: done ? "oklch(.5 .12 160)" : "oklch(.92 .02 160)",
+        width: 20, height: 20, flexShrink: 0, cursor: "pointer",
+        borderRadius: isHabit ? 9999 : 6,
+        background: done ? `oklch(.45 .12 ${hue})` : "transparent",
+        border: done ? "none" : `1.5px solid oklch(.5 .12 ${hue} / .4)`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        transition: "background .15s ease",
       }}>
-        {done && <Check size={12} color="#fff" />}
+        {done && (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m5 12 5 5 9-10" />
+          </svg>
+        )}
       </button>
-
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{
-          margin: 0, fontSize: 13, fontWeight: 600,
-          color: done ? "oklch(.6 .03 160)" : "oklch(.22 .02 160)",
+          margin: 0, fontSize: 13, fontWeight: 500, letterSpacing: "-0.005em",
+          color: done ? "oklch(.55 .03 160)" : "oklch(.2 .02 160)",
           textDecoration: done ? "line-through" : "none",
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
-          {task.title}
-        </p>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-          <span style={{ fontSize: 12 }}>{conf.emoji}</span>
-          <span style={{ fontSize: 11, color: ac(conf.hue), fontWeight: 600 }}>{tFn(lang, conf.labelKey)}</span>
+        }}>{task.title}</p>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 2 }}>
+          <span style={{ fontSize: 10 }}>{conf.emoji}</span>
           {task.scheduled_time && (
-            <>
-              <span style={{ fontSize: 10, color: "oklch(.7 .02 160)" }}>·</span>
-              <Clock size={10} style={{ color: "oklch(.6 .04 160)" }} />
-              <span style={{ fontSize: 11, color: "oklch(.5 .04 160)" }}>{task.scheduled_time.slice(0, 5)}</span>
-            </>
+            <span style={{ fontSize: 10, fontFamily: "var(--font-mono, ui-monospace)", color: "oklch(.55 .03 160)" }}>
+              {task.scheduled_time.slice(0, 5)}
+            </span>
           )}
-          {task.task_type === "crescimento" && (
-            <>
-              <span style={{ fontSize: 10, color: "oklch(.7 .02 160)" }}>·</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: "oklch(.45 .1 220)", background: "oklch(.93 .04 220)", padding: "1px 5px", borderRadius: 5 }}>🚀</span>
-            </>
+          {!isHabit ? (
+            <span style={{
+              fontSize: 8.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase",
+              padding: "1px 6px", borderRadius: 9999,
+              background: `oklch(.92 .08 ${hue} / .6)`, color: `oklch(.4 .14 ${hue})`,
+            }}>↑ Crescer</span>
+          ) : (
+            <span style={{
+              fontSize: 8.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase",
+              padding: "1px 6px", borderRadius: 9999,
+              background: "oklch(.95 .005 160)", color: "oklch(.55 .03 160)",
+            }}>↻ Hábito</span>
           )}
         </div>
       </div>
-
       <button type="button" onClick={onDelete} style={{
         border: 0, background: "none", cursor: "pointer", padding: 4, flexShrink: 0,
         color: "oklch(.75 .03 160)",
@@ -577,57 +598,190 @@ function TaskRow({ task, onToggle, onDelete, lang = "pt" }: {
   );
 }
 
-// ── Area coverage widget ──────────────────────────────────────────────────────
+// ── Pedra card ────────────────────────────────────────────────────────────────
 
-function AreaCoverage({ tasks, lang = "pt" }: { tasks: WeeklyTask[]; lang?: Lang }) {
-  const counts = ALL_AREAS.reduce<Record<string, number>>((acc, a) => {
-    acc[a] = tasks.filter((t) => t.area === a).length;
-    return acc;
-  }, {});
+function Pedra({ rank, size, text, linkedGoal }: {
+  rank: string; size: "lg" | "md" | "sm"; text: string; linkedGoal?: string;
+}) {
+  const SIZE_MAP = {
+    lg: { num: 32, py: 16, fs: 16,   accent: "oklch(.42 .14 220)", bg: "linear-gradient(135deg, oklch(.95 .06 220) 0%, oklch(.92 .08 210) 100%)" },
+    md: { num: 26, py: 13, fs: 14.5, accent: "oklch(.5 .12 220)",  bg: "linear-gradient(135deg, oklch(.96 .04 220) 0%, oklch(.94 .055 215) 100%)" },
+    sm: { num: 22, py: 11, fs: 13.5, accent: "oklch(.55 .1 220)",  bg: "linear-gradient(135deg, oklch(.97 .03 220) 0%, oklch(.95 .04 220) 100%)" },
+  };
+  const s = SIZE_MAP[size];
+  return (
+    <div style={{
+      display: "grid", gridTemplateColumns: `${s.num + 22}px 1fr`, gap: 14,
+      padding: `${s.py}px 16px`, borderRadius: 16, marginBottom: 8,
+      background: s.bg, border: "1px solid oklch(.5 .12 220 / .15)",
+      position: "relative", overflow: "hidden",
+    }}>
+      <span style={{
+        fontSize: s.num, fontWeight: 800, lineHeight: .9,
+        letterSpacing: "-0.04em", color: s.accent,
+        fontFamily: "var(--font-mono, ui-monospace)",
+        opacity: .65, alignSelf: "center",
+      }}>{rank}</span>
+      <div style={{ minWidth: 0, alignSelf: "center" }}>
+        <p style={{
+          margin: 0, fontSize: s.fs, fontWeight: 600, lineHeight: 1.3,
+          letterSpacing: "-0.01em", color: "oklch(.2 .04 220)",
+        }}>{text}</p>
+        {linkedGoal && (
+          <p style={{
+            margin: "3px 0 0", fontSize: 10.5, fontWeight: 700, letterSpacing: ".06em",
+            textTransform: "uppercase", color: s.accent, opacity: .8,
+          }}>↳ {linkedGoal}</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
-  const covered = ALL_AREAS.filter((a) => counts[a] > 0).length;
+// ── Areas radar SVG ───────────────────────────────────────────────────────────
+
+function AreasRadar({ counts }: { counts: Record<string, number> }) {
+  const AREAS_RADAR = [
+    { key: "saude",           label: "Saúde",    emoji: "💚", hue: 160 },
+    { key: "carreira",        label: "Carreira", emoji: "💼", hue: 220 },
+    { key: "financas",        label: "Finanças", emoji: "💰", hue: 85  },
+    { key: "relacionamentos", label: "Relac.",   emoji: "❤️", hue: 15  },
+    { key: "desenvolvimento", label: "Desenv.",  emoji: "🧠", hue: 270 },
+    { key: "familia",         label: "Família",  emoji: "🏡", hue: 40  },
+    { key: "lazer",           label: "Lazer",    emoji: "🌊", hue: 185 },
+    { key: "espiritualidade", label: "Espirit.", emoji: "✨", hue: 300 },
+    { key: "outros",          label: "Outros",   emoji: "⚪", hue: 200 },
+  ];
+  const N = AREAS_RADAR.length;
+  const MAX = 5;
+  const cx = 140, cy = 140, R = 92;
+
+  const pt = (i: number, v: number): [number, number] => {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / N;
+    const r = R * (Math.min(v, MAX) / MAX);
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  };
+  const ringPt = (i: number, ratio: number): [number, number] => {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / N;
+    return [cx + R * ratio * Math.cos(a), cy + R * ratio * Math.sin(a)];
+  };
+  const lblPt = (i: number): [number, number] => {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / N;
+    return [cx + (R + 22) * Math.cos(a), cy + (R + 22) * Math.sin(a)];
+  };
+
+  const polyPoints = AREAS_RADAR.map((a, i) => pt(i, counts[a.key] ?? 0).join(",")).join(" ");
+  const covered = AREAS_RADAR.filter((a) => (counts[a.key] ?? 0) > 0).length;
+  const uncovered = AREAS_RADAR.filter((a) => (counts[a.key] ?? 0) === 0).map((a) => a.label);
 
   return (
-    <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 160 / .08)", padding: "16px 18px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
-          {tFn(lang, "plan_cobertura_areas")}
+    <div style={{
+      borderRadius: 22, padding: "18px 18px 16px",
+      background: `
+        radial-gradient(circle at 50% 100%, oklch(.92 .08 180 / .35), transparent 60%),
+        linear-gradient(180deg, #fff 0%, oklch(.97 .015 180) 100%)
+      `,
+      border: "1px solid oklch(.5 .12 180 / .12)",
+      overflow: "hidden",
+    }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <p style={{ margin: 0, fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "oklch(.35 .14 180)" }}>
+          Roda das áreas
         </p>
-        <span style={{ fontSize: 12, fontWeight: 700, color: covered === ALL_AREAS.length ? "oklch(.45 .12 160)" : "oklch(.55 .04 160)" }}>
-          {covered}/{ALL_AREAS.length}
+        <span style={{ fontSize: 10.5, color: "oklch(.55 .03 160)" }}>
+          {covered} de {AREAS_RADAR.length} cobertas
         </span>
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {ALL_AREAS.map((a) => {
-          const conf = AREA_CONFIG[a];
-          const n = counts[a];
-          const active = n > 0;
-          return (
-            <div key={a} style={{
-              display: "flex", alignItems: "center", gap: 5,
-              padding: "5px 10px", borderRadius: 20,
-              background: active ? al(conf.hue) : "oklch(.94 .005 160)",
-              border: active ? `1.5px solid ${ac(conf.hue, .7, .06)}` : "1.5px solid oklch(.88 .01 160)",
-              transition: "all .2s ease",
-            }}>
-              <span style={{ fontSize: 13, filter: active ? "none" : "grayscale(1) opacity(.4)" }}>{conf.emoji}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: active ? ac(conf.hue) : "oklch(.65 .02 160)" }}>
-                {tFn(lang, conf.labelKey)}
-              </span>
-              {n > 0 && (
-                <span style={{ fontSize: 10, fontWeight: 800, color: ac(conf.hue), background: al(conf.hue), borderRadius: 9999, padding: "0 5px" }}>
-                  {n}
-                </span>
-              )}
-            </div>
-          );
-        })}
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 6 }}>
+        <svg viewBox="0 0 280 280" style={{ width: 280, height: 280 }}>
+          {[1, 0.75, 0.5, 0.25].map((r, idx) => (
+            <polygon key={idx}
+              points={AREAS_RADAR.map((_, i) => ringPt(i, r).join(",")).join(" ")}
+              fill="none" stroke="oklch(.5 .12 180 / .12)" strokeWidth="1" />
+          ))}
+          {AREAS_RADAR.map((_, i) => {
+            const [x, y] = ringPt(i, 1);
+            return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="oklch(.5 .12 180 / .12)" strokeWidth="1" />;
+          })}
+          <polygon points={polyPoints}
+            fill="oklch(.5 .12 180 / .22)"
+            stroke="oklch(.35 .14 180)" strokeWidth="1.8" strokeLinejoin="round" />
+          {AREAS_RADAR.map((a, i) => {
+            const v = counts[a.key] ?? 0;
+            if (v === 0) return null;
+            const [x, y] = pt(i, v);
+            return <circle key={a.key} cx={x} cy={y} r="3" fill="#fff" stroke="oklch(.35 .14 180)" strokeWidth="1.5" />;
+          })}
+          {AREAS_RADAR.map((a, i) => {
+            const [lx, ly] = lblPt(i);
+            const isZero = (counts[a.key] ?? 0) === 0;
+            return (
+              <g key={a.key + "lbl"} transform={`translate(${lx} ${ly})`}>
+                <text textAnchor="middle" dominantBaseline="middle" dy="-6"
+                  fontSize="14" opacity={isZero ? 0.4 : 1}>{a.emoji}</text>
+                <text textAnchor="middle" dominantBaseline="middle" dy="8"
+                  fontSize="9" fontWeight="700"
+                  fill={isZero ? "oklch(.7 .02 160)" : `oklch(.45 .14 ${a.hue})`}
+                  letterSpacing=".05em">
+                  {a.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
       </div>
-      {covered < ALL_AREAS.length && (
-        <p style={{ margin: "10px 0 0", fontSize: 11, color: "oklch(.55 .04 160)", fontStyle: "italic" }}>
-          {ALL_AREAS.length - covered} área{ALL_AREAS.length - covered > 1 ? "s" : ""} sem nenhuma tarefa esta semana.
+      {uncovered.length > 0 && (
+        <p style={{ margin: 0, fontSize: 11, color: "oklch(.55 .03 160)", textAlign: "center", fontStyle: "italic" }}>
+          {uncovered.join(", ")} sem tarefas esta semana.
         </p>
       )}
+    </div>
+  );
+}
+
+// ── Week heat strip ───────────────────────────────────────────────────────────
+
+function WeekHeat({ tasks, selectedDay, onSelect }: {
+  tasks: WeeklyTask[]; selectedDay: number; onSelect: (d: number) => void;
+}) {
+  const DAY_LABELS = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
+  const todayDow = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+  const days = DAY_LABELS.map((d, i) => {
+    const dt = tasks.filter((t) => t.day_of_week === i);
+    return { d, count: dt.length, done: dt.filter((t) => t.status === "concluida").length, today: i === todayDow };
+  });
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, padding: "0 10px" }}>
+      {days.map((day, i) => {
+        const sel = i === selectedDay;
+        return (
+          <button key={i} type="button" onClick={() => onSelect(i)} style={{
+            background: sel ? "oklch(.5 .12 160 / .12)" : "transparent",
+            border: sel ? "1.5px solid oklch(.5 .12 160 / .5)" : "1.5px solid transparent",
+            borderRadius: 12, padding: "8px 2px 6px", cursor: "pointer",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
+            fontFamily: "inherit",
+          }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase",
+              color: day.today ? "oklch(.35 .14 160)" : sel ? "oklch(.4 .12 160)" : "oklch(.55 .03 160)",
+            }}>{day.d}</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
+              {Array.from({ length: Math.max(day.count, 1) }).slice(0, 5).map((_, j) => (
+                <span key={j} style={{
+                  width: 5, height: 5, borderRadius: 9999,
+                  background: j < day.done ? "oklch(.5 .12 160)" :
+                    day.count > 0 ? "oklch(.5 .12 160 / .25)" : "oklch(.5 .12 160 / .08)",
+                }} />
+              ))}
+            </div>
+            <span style={{
+              fontSize: 9.5, fontWeight: 600,
+              color: day.count === 0 ? "oklch(.55 .03 160)" : "oklch(.25 .02 160)",
+            }}>{day.done}/{day.count}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -637,16 +791,19 @@ function AreaCoverage({ tasks, lang = "pt" }: { tasks: WeeklyTask[]; lang?: Lang
 export default function PlanejamentoPage() {
   const router = useRouter();
   const { lang } = useTranslation();
-  const [goals, setGoals]   = useState<GoalFull[]>([]);
-  const [plan, setPlan]     = useState<PlanData | null>(null);
+  const [goals, setGoals]     = useState<GoalFull[]>([]);
+  const [plan, setPlan]       = useState<PlanData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tasks, setTasks]   = useState<WeeklyTask[]>([]);
+  const [tasks, setTasks]     = useState<WeeklyTask[]>([]);
 
   const [showFocus, setShowFocus]     = useState(false);
   const [showReview, setShowReview]   = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
   const [addTaskDay, setAddTaskDay]   = useState<number>(0);
-  const [expandedDays, setExpandedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [selectedDay, setSelectedDay] = useState<number>(() => {
+    const d = new Date().getDay();
+    return d === 0 ? 6 : d - 1;
+  });
 
   const todayDow = () => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; };
   const openAdd = (day?: number) => { setAddTaskDay(day ?? todayDow()); setShowAddTask(true); };
@@ -681,16 +838,29 @@ export default function PlanejamentoPage() {
     await fetch(`/api/weekly-plans/tasks/${taskId}`, { method: "DELETE" });
   };
 
-  const toggleDay = (day: number) =>
-    setExpandedDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]);
+  const currentPlan   = plan?.current ?? null;
+  const review        = currentPlan?.weekly_reviews?.[0] ?? null;
+  const focuses       = [currentPlan?.main_focus, currentPlan?.main_focus_2, currentPlan?.main_focus_3].filter(Boolean) as string[];
+  const focusGoalIds  = (currentPlan?.weekly_focus_goals ?? []).map((f) => f.goal_id);
+  const focusGoals    = focusGoalIds.slice(0, 3).map((id) => goals.find((g) => g.id === id));
+  const doneTasks     = tasks.filter((t) => t.status === "concluida").length;
+  const totalTasks    = tasks.length;
 
-  const currentPlan = plan?.current ?? null;
-  const review = currentPlan?.weekly_reviews?.[0] ?? null;
-  const focuses = [
-    currentPlan?.main_focus,
-    currentPlan?.main_focus_2,
-    currentPlan?.main_focus_3,
-  ].filter(Boolean) as string[];
+  const taskCountsByArea = ALL_AREAS.reduce<Record<string, number>>((acc, a) => {
+    acc[a] = tasks.filter((t) => t.area === a).length;
+    return acc;
+  }, {});
+
+  const selectedDayTasks = tasks
+    .filter((t) => t.day_of_week === selectedDay)
+    .sort((a, b) => {
+      if (a.scheduled_time && b.scheduled_time) return a.scheduled_time.localeCompare(b.scheduled_time);
+      if (a.scheduled_time) return -1;
+      if (b.scheduled_time) return 1;
+      return a.position - b.position;
+    });
+  const doneSelectedDay = selectedDayTasks.filter((t) => t.status === "concluida").length;
+  const DAY_NAMES = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 
   if (loading) {
     return (
@@ -702,197 +872,185 @@ export default function PlanejamentoPage() {
   }
 
   return (
-    <div style={{ minHeight: "100dvh", background: "oklch(.98 .004 160)", paddingBottom: 110 }}>
+    <div style={{
+      minHeight: "100dvh",
+      background: `
+        radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.95 .04 80 / .35) 0%, transparent 50%),
+        linear-gradient(180deg, oklch(.97 .005 160) 0%, oklch(.94 .02 160) 100%)
+      `,
+      paddingBottom: 110,
+    }}>
 
-      {/* Header */}
-      <div style={{
-        background: "linear-gradient(160deg, oklch(.42 .14 200), oklch(.5 .12 160))",
-        padding: "52px 20px 28px", position: "relative", overflow: "hidden",
-      }}>
-        <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: "oklch(1 0 0 / .06)" }} />
-        <div style={{ position: "absolute", bottom: -20, left: -20, width: 100, height: 100, borderRadius: "50%", background: "oklch(1 0 0 / .04)" }} />
-        <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-          <div>
-            <p style={{ margin: "0 0 2px", fontSize: 13, color: "oklch(1 0 0 / .7)", fontWeight: 500 }}>{tFn(lang, "plan_title")}</p>
-            <h1 style={{ margin: "0 0 4px", fontSize: 26, fontWeight: 800, color: "#fff", letterSpacing: "-.5px" }}>{tFn(lang, "plan_semana_atual")}</h1>
-            <p style={{ margin: 0, fontSize: 13, color: "oklch(1 0 0 / .75)", fontWeight: 500 }}>
-              <Calendar size={13} style={{ display: "inline", marginRight: 4 }} />
-              {weekLabel()}
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{
-              fontSize: 13, fontWeight: 700, color: "#fff",
-              background: "oklch(1 0 0 / .15)", borderRadius: 10, padding: "6px 12px",
-            }}>
-              {tFn(lang, "plan_feitas", { done: String(tasks.filter((t) => t.status === "concluida").length), total: String(tasks.length) })}
-            </span>
-          </div>
-        </div>
+      {/* ═ GREETING ═ */}
+      <div style={{ padding: "22px 20px 4px" }}>
+        <p style={{ margin: 0, fontSize: 12, color: "oklch(.55 .03 160)", letterSpacing: ".05em", textTransform: "uppercase", fontWeight: 600 }}>
+          Planejamento · Semana {getISOWeek()}
+        </p>
+        <h1 style={{ margin: "4px 0 4px", fontSize: 30, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.05, color: "oklch(.2 .02 160)" }}>
+          Suas Pedras
+        </h1>
+        <p style={{ margin: 0, fontFamily: "var(--font-mono, ui-monospace)", fontSize: 11, color: "oklch(.55 .03 160)" }}>
+          {weekRange()} · {doneTasks} de {totalTasks} ✓
+        </p>
       </div>
 
-      <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ padding: "18px 14px 0" }}>
 
-        {/* Pedras principais */}
-        <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 160 / .08)", overflow: "hidden" }}>
-          <div style={{ height: 4, background: "linear-gradient(90deg, oklch(.42 .14 200), oklch(.5 .12 160))" }} />
-          <div style={{ padding: "14px 18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: focuses.length > 0 ? 12 : 0 }}>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
-                {tFn(lang, "plan_pedras")}
-              </p>
-              <button type="button" onClick={() => setShowFocus(true)} style={{
-                border: 0, background: "oklch(.93 .03 160)", borderRadius: 8, padding: "6px 10px",
-                cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
-                fontSize: 12, fontWeight: 700, color: "oklch(.45 .1 160)", fontFamily: "inherit",
-              }}>
-                <Pencil size={12} /> {focuses.length > 0 ? tFn(lang, "plan_editar") : tFn(lang, "plan_definir")}
-              </button>
-            </div>
-            {focuses.length > 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {focuses.map((f, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <div style={{
-                      width: 22, height: 22, borderRadius: "50%", flexShrink: 0, marginTop: 1,
-                      background: i === 0 ? "oklch(.5 .12 160)" : "oklch(.88 .04 160)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, fontWeight: 800, color: i === 0 ? "#fff" : "oklch(.5 .08 160)",
-                    }}>{i + 1}</div>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: i === 0 ? 700 : 600, color: "oklch(.22 .02 160)", lineHeight: 1.4 }}>{f}</p>
-                  </div>
+        {/* ═ PEDRAS ═ */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, padding: "0 6px" }}>
+            <p style={{ margin: 0, fontSize: 10.5, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "oklch(.45 .12 220)" }}>
+              Pedras da semana
+            </p>
+            <button type="button" onClick={() => setShowFocus(true)} style={{
+              background: "transparent", border: 0, padding: 0, cursor: "pointer", fontFamily: "inherit",
+              fontSize: 11, fontWeight: 600, color: "oklch(.45 .12 220)",
+              display: "inline-flex", alignItems: "center", gap: 4,
+            }}>
+              <Pencil size={11} />
+              {focuses.length > 0 ? "Editar" : "Definir"}
+            </button>
+          </div>
+          {focuses.length > 0 ? (
+            <>
+              {focuses[0] && (
+                <Pedra rank="I" size="lg" text={focuses[0]}
+                  linkedGoal={focusGoals[0] ? `${AREA_CONFIG[focusGoals[0].area]?.emoji ?? ""} ${focusGoals[0].title}` : undefined} />
+              )}
+              {focuses[1] && (
+                <Pedra rank="II" size="md" text={focuses[1]}
+                  linkedGoal={focusGoals[1] ? `${AREA_CONFIG[focusGoals[1].area]?.emoji ?? ""} ${focusGoals[1].title}` : undefined} />
+              )}
+              {focuses[2] && (
+                <Pedra rank="III" size="sm" text={focuses[2]}
+                  linkedGoal={focusGoals[2] ? `${AREA_CONFIG[focusGoals[2].area]?.emoji ?? ""} ${focusGoals[2].title}` : undefined} />
+              )}
+            </>
+          ) : (
+            <button type="button" onClick={() => setShowFocus(true)} style={{
+              width: "100%", padding: 16, borderRadius: 16,
+              border: "1.5px dashed oklch(.5 .12 220 / .35)",
+              background: "oklch(.96 .04 220 / .5)", cursor: "pointer", fontFamily: "inherit",
+              fontSize: 13, fontWeight: 600, color: "oklch(.45 .12 220)",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}>
+              <Plus size={16} /> Definir pedras da semana
+            </button>
+          )}
+        </div>
+
+        {/* ═ RADAR ═ */}
+        {tasks.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <AreasRadar counts={taskCountsByArea} />
+          </div>
+        )}
+
+        {/* ═ AGENDA ═ */}
+        <div style={{
+          borderRadius: 22, padding: "16px 4px 12px",
+          background: "#fff", border: "1px solid oklch(.5 .12 160 / .12)",
+          boxShadow: "0 1px 2px oklch(.25 .02 160 / .04)",
+          marginBottom: 20,
+        }}>
+          <p style={{ margin: "0 14px 12px", fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "oklch(.4 .12 160)" }}>
+            Sua semana
+          </p>
+          <WeekHeat tasks={tasks} selectedDay={selectedDay} onSelect={setSelectedDay} />
+          <div style={{ padding: "14px 14px 0", borderTop: "1px solid oklch(.5 .12 160 / .08)", marginTop: 12 }}>
+            <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "oklch(.25 .02 160)", letterSpacing: "-0.005em" }}>
+              {DAY_NAMES[selectedDay]}{" "}·{" "}
+              <span style={{ color: "oklch(.55 .03 160)", fontWeight: 500 }}>
+                {selectedDayTasks.length} {selectedDayTasks.length === 1 ? "item" : "itens"} · {doneSelectedDay} {doneSelectedDay === 1 ? "feito" : "feitos"}
+              </span>
+            </p>
+            {selectedDayTasks.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {selectedDayTasks.map((t) => (
+                  <TaskRow
+                    key={t.id}
+                    task={t}
+                    onToggle={() => toggleTask(t.id, t.status)}
+                    onDelete={() => deleteTask(t.id)}
+                  />
                 ))}
               </div>
-            ) : (
-              <p style={{ margin: 0, fontSize: 13, color: "oklch(.6 .03 160)", fontStyle: "italic" }}>
-                {tFn(lang, "plan_sem_pedras")}
+            )}
+            {selectedDayTasks.length === 0 && (
+              <p style={{ margin: "0 0 6px", fontSize: 13, color: "oklch(.6 .03 160)", fontStyle: "italic" }}>
+                Nenhuma tarefa para este dia.
               </p>
             )}
+            <button type="button" onClick={() => openAdd(selectedDay)} style={{
+              marginTop: 10, width: "100%", padding: "10px 14px", borderRadius: 12,
+              background: "oklch(.95 .04 160)", border: "1.5px dashed oklch(.5 .12 160 / .35)",
+              cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600,
+              color: "oklch(.4 .12 160)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+            }}>
+              <Plus size={13} /> Adicionar item
+            </button>
           </div>
         </div>
 
-        {/* Cobertura das áreas */}
-        {tasks.length > 0 && <AreaCoverage tasks={tasks} lang={lang} />}
-
-        {/* Tarefas por dia */}
-        <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 160 / .08)", overflow: "hidden" }}>
-          <div style={{ height: 4, background: "linear-gradient(90deg, oklch(.5 .12 160), oklch(.5 .12 220))" }} />
-          <div style={{ padding: "14px 18px 6px" }}>
-            <p style={{ margin: "0 0 14px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
-              {tFn(lang, "plan_tarefas_semana")}
-            </p>
-
-            {DAY_KEYS.map((dayKey, dayIdx) => {
-              const dayTasks = tasks
-                .filter((t) => t.day_of_week === dayIdx)
-                .sort((a, b) => {
-                  if (a.scheduled_time && b.scheduled_time) return a.scheduled_time.localeCompare(b.scheduled_time);
-                  if (a.scheduled_time) return -1;
-                  if (b.scheduled_time) return 1;
-                  return a.position - b.position;
-                });
-              const doneCount = dayTasks.filter((t) => t.status === "concluida").length;
-              const expanded = expandedDays.includes(dayIdx);
-
-              return (
-                <div key={dayIdx} style={{ marginBottom: 4 }}>
-                  <button type="button"
-                    onClick={() => toggleDay(dayIdx)}
-                    style={{
-                      width: "100%", display: "flex", alignItems: "center", gap: 10,
-                      padding: "10px 0", border: 0, background: "none", cursor: "pointer",
-                      fontFamily: "inherit",
-                    }}>
-                    <span style={{
-                      width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-                      background: dayTasks.length > 0 ? "oklch(.93 .04 160)" : "oklch(.95 .005 160)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, fontWeight: 800,
-                      color: dayTasks.length > 0 ? "oklch(.45 .12 160)" : "oklch(.7 .02 160)",
-                    }}>
-                      {tFn(lang, dayKey)}
-                    </span>
-                    <span style={{ flex: 1, textAlign: "left", fontSize: 13, fontWeight: 600, color: "oklch(.3 .04 160)" }}>
-                      {dayTasks.length === 0
-                        ? tFn(lang, "plan_sem_tarefas")
-                        : tFn(lang, "plan_concluidas", { done: String(doneCount), total: String(dayTasks.length) })
-                      }
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); openAdd(dayIdx); }}
-                      style={{
-                        border: 0, background: "oklch(.93 .03 160)", borderRadius: 8,
-                        padding: "5px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-                        fontSize: 11, fontWeight: 700, color: "oklch(.45 .1 160)", fontFamily: "inherit",
-                      }}
-                    >
-                      <Plus size={12} /> Add
-                    </button>
-                    {expanded ? <ChevronUp size={16} style={{ color: "oklch(.65 .04 160)", flexShrink: 0 }} /> : <ChevronDown size={16} style={{ color: "oklch(.65 .04 160)", flexShrink: 0 }} />}
-                  </button>
-
-                  {expanded && dayTasks.length > 0 && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 7, paddingBottom: 10, paddingLeft: 4 }}>
-                      {dayTasks.map((t) => (
-                        <TaskRow
-                          key={t.id}
-                          task={t}
-                          onToggle={() => toggleTask(t.id, t.status)}
-                          onDelete={() => deleteTask(t.id)}
-                          lang={lang}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {dayIdx < 6 && <div style={{ height: 1, background: "oklch(.92 .01 160)" }} />}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Revisão */}
+        {/* ═ REVISÃO ═ */}
         {!review ? (
-          <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 160 / .08)", overflow: "hidden" }}>
-            <div style={{ height: 4, background: "linear-gradient(90deg, oklch(.5 .14 50), oklch(.5 .12 85))" }} />
-            <div style={{ padding: "16px 18px" }}>
-              <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
-                {tFn(lang, "plan_revisao_semanal")}
+          <div style={{
+            borderRadius: 18, padding: "16px 18px", marginBottom: 20,
+            background: `
+              radial-gradient(circle at 100% 0, oklch(.92 .1 60 / .35), transparent 55%),
+              linear-gradient(180deg, oklch(.98 .02 70) 0%, oklch(.96 .04 60) 100%)
+            `,
+            border: "1px solid oklch(.78 .1 60 / .35)",
+            display: "flex", gap: 14, alignItems: "center",
+          }}>
+            <div style={{
+              width: 46, height: 46, borderRadius: 9999, flexShrink: 0,
+              background: "linear-gradient(135deg, oklch(.85 .15 60), oklch(.7 .18 50))",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 4px 12px -4px oklch(.6 .18 50 / .4)",
+            }}>
+              <Star size={22} color="#fff" fill="#fff" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "oklch(.45 .14 50)" }}>
+                Revisão da semana
               </p>
-              <p style={{ margin: "0 0 14px", fontSize: 13, color: "oklch(.5 .04 160)", lineHeight: 1.5 }}>
-                {tFn(lang, "plan_revisao_desc")}
+              <p style={{ margin: "3px 0 8px", fontSize: 13, color: "oklch(.3 .04 160)", lineHeight: 1.35 }}>
+                No domingo à noite, feche a semana com 4 perguntas. Leva 3 min.
               </p>
               <button type="button" onClick={() => setShowReview(true)} style={{
-                display: "flex", alignItems: "center", gap: 8, padding: "12px 18px", borderRadius: 12,
-                border: 0, cursor: "pointer", background: "oklch(.93 .04 160)",
-                color: "oklch(.4 .12 160)", fontFamily: "inherit", fontSize: 13, fontWeight: 700,
+                padding: "7px 14px", borderRadius: 10, border: 0, cursor: "pointer",
+                background: "oklch(.7 .18 50)", fontFamily: "inherit",
+                fontSize: 12, fontWeight: 700, color: "#fff",
               }}>
-                <Star size={16} /> {tFn(lang, "plan_fazer_revisao")}
+                Fazer revisão
               </button>
             </div>
           </div>
         ) : (
-          <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 160 / .08)", padding: "16px 18px" }}>
+          <div style={{
+            background: "#fff", borderRadius: 18,
+            boxShadow: "0 2px 16px oklch(.2 .04 160 / .08)", padding: "16px 18px",
+            marginBottom: 20,
+          }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
-                {tFn(lang, "plan_revisao_feita")}
+              <p style={{ margin: 0, fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "oklch(.45 .14 50)" }}>
+                Revisão da semana ✓
               </p>
-              <div style={{ display: "flex", gap: 2 }}>
+              <div style={{ display: "flex", gap: 1 }}>
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <span key={i} style={{ fontSize: 14, filter: i < review.week_score ? "none" : "grayscale(1) opacity(.3)" }}>⭐</span>
+                  <span key={i} style={{ fontSize: 13, color: i < review.week_score ? "oklch(.6 .18 60)" : "oklch(.5 .12 160 / .2)" }}>★</span>
                 ))}
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ padding: "10px 12px", borderRadius: 12, background: "oklch(.96 .04 160)" }}>
-                <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 700, color: "oklch(.45 .1 160)", textTransform: "uppercase" }}>{tFn(lang, "plan_maior_vitoria")}</p>
+                <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 700, color: "oklch(.45 .1 160)", textTransform: "uppercase" }}>Maior vitória</p>
                 <p style={{ margin: 0, fontSize: 13, color: "oklch(.3 .06 160)" }}>{review.biggest_win}</p>
               </div>
               {review.main_learning && (
                 <div style={{ padding: "10px 12px", borderRadius: 12, background: "oklch(.96 .04 220)" }}>
-                  <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 700, color: "oklch(.45 .1 220)", textTransform: "uppercase" }}>{tFn(lang, "plan_aprendizado")}</p>
+                  <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 700, color: "oklch(.45 .1 220)", textTransform: "uppercase" }}>Aprendizado</p>
                   <p style={{ margin: 0, fontSize: 13, color: "oklch(.3 .06 220)" }}>{review.main_learning}</p>
                 </div>
               )}
@@ -900,68 +1058,83 @@ export default function PlanejamentoPage() {
           </div>
         )}
 
-        {/* Histórico */}
+        {/* ═ MAYA PILL ═ */}
+        <div style={{ padding: "0 10px", marginBottom: 24 }}>
+          <button type="button" onClick={() => router.push("/insights?context=plan")} style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            background: "oklch(1 0 0 / .6)", backdropFilter: "blur(8px)",
+            border: "1px solid oklch(.5 .12 160 / .2)", borderRadius: 9999,
+            padding: "8px 14px 8px 8px", cursor: "pointer", fontFamily: "inherit",
+            fontSize: 12.5, fontWeight: 500, color: "oklch(.2 .02 160)",
+            letterSpacing: "-0.005em",
+          }}>
+            <span style={{
+              width: 22, height: 22, borderRadius: 9999, flexShrink: 0,
+              background: "linear-gradient(135deg, oklch(.55 .15 160), oklch(.45 .12 180))",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Sparkles size={12} color="#fff" />
+            </span>
+            Maya pode ajudar a equilibrar a roda
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ color: "oklch(.55 .03 160)", marginLeft: -2 }}>
+              <path d="M5 12h14M13 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* ═ HISTÓRICO ═ */}
         {(plan?.history ?? []).length > 0 && (
-          <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 160 / .08)", padding: "16px 18px" }}>
-            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
+          <div style={{ padding: "0 10px" }}>
+            <p style={{ margin: "0 0 10px", fontSize: 10.5, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "oklch(.55 .03 160)" }}>
               Semanas anteriores
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {(plan?.history ?? []).map((h) => {
-                const d = new Date(h.week_start + "T12:00:00");
-                const label = d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
-                const rev = (h as { weekly_reviews?: WeeklyReview[] }).weekly_reviews?.[0];
-                return (
-                  <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 12, background: "oklch(.97 .005 160)" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: "0 0 2px", fontSize: 12, fontWeight: 700, color: "oklch(.4 .06 160)" }}>Semana de {label}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: "oklch(.55 .04 160)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {h.main_focus || "Sem foco registrado"}
-                      </p>
-                    </div>
-                    {rev && (
-                      <div style={{ display: "flex", gap: 1, flexShrink: 0 }}>
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <span key={i} style={{ fontSize: 12, filter: i < rev.week_score ? "none" : "grayscale(1) opacity(.25)" }}>⭐</span>
-                        ))}
-                      </div>
-                    )}
+            {(plan?.history ?? []).map((h, i) => {
+              const d = new Date(h.week_start + "T12:00:00");
+              const MONTHS = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+              const mon = new Date(d);
+              mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+              const sun = new Date(mon);
+              sun.setDate(mon.getDate() + 6);
+              const label = `${mon.getDate()} ${MONTHS[mon.getMonth()]}–${sun.getDate()} ${MONTHS[sun.getMonth()]}`;
+              const rev = (h as { weekly_reviews?: WeeklyReview[] }).weekly_reviews?.[0];
+              return (
+                <div key={h.id} style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "11px 0",
+                  borderTop: i === 0 ? "none" : "1px solid oklch(.5 .12 160 / .1)",
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "oklch(.55 .03 160)" }}>
+                      {label}
+                    </p>
+                    <p style={{ margin: "2px 0 0", fontSize: 13, color: "oklch(.25 .02 160)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {h.main_focus || "Sem foco registrado"}
+                    </p>
                   </div>
-                );
-              })}
-            </div>
+                  {rev && (
+                    <div style={{ display: "flex", gap: 1, flexShrink: 0 }}>
+                      {Array.from({ length: 5 }).map((_, j) => (
+                        <span key={j} style={{ fontSize: 11, color: j < rev.week_score ? "oklch(.6 .18 60)" : "oklch(.5 .12 160 / .2)" }}>★</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
-
-        {/* Maya CTA */}
-        <button type="button" onClick={() => router.push("/insights")} style={{
-          display: "flex", alignItems: "center", gap: 12, padding: "16px 18px",
-          borderRadius: 18, border: 0, cursor: "pointer", textAlign: "left",
-          background: "linear-gradient(135deg, oklch(.42 .14 200), oklch(.5 .12 160))",
-          boxShadow: "0 4px 16px oklch(.42 .14 200 / .3)",
-        }}>
-          <Sparkles size={22} color="#fff" />
-          <div>
-            <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#fff" }}>Falar com Maya</p>
-            <p style={{ margin: 0, fontSize: 12, color: "oklch(1 0 0 / .75)" }}>
-              Maya tem acesso ao seu plano e suas metas
-            </p>
-          </div>
-        </button>
       </div>
 
       {/* FAB */}
-      <button
-        type="button"
-        onClick={() => openAdd()}
-        style={{
-          position: "fixed", bottom: 88, right: 20, zIndex: 40,
-          width: 52, height: 52, borderRadius: "50%", border: 0, cursor: "pointer",
-          background: "oklch(.5 .12 160)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 4px 20px oklch(.5 .12 160 / .4)",
-        }}
-      >
+      <button type="button" onClick={() => openAdd()} style={{
+        position: "fixed", bottom: 88, right: 20, zIndex: 40,
+        width: 52, height: 52, borderRadius: "50%", border: 0, cursor: "pointer",
+        background: "oklch(.5 .12 160)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: "0 4px 20px oklch(.5 .12 160 / .4)",
+      }}>
         <Plus size={22} color="#fff" />
       </button>
 
@@ -992,9 +1165,7 @@ export default function PlanejamentoPage() {
 
       {showReview && <ReviewModal onClose={() => setShowReview(false)} onSaved={load} lang={lang} />}
 
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg) } }
-      `}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   );
 }
