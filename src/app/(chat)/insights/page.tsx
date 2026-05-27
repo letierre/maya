@@ -21,7 +21,8 @@ function formatTime(): string {
 }
 
 function formatDate(): string {
-  return new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 const PT_DAYS = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
@@ -39,10 +40,10 @@ function getDateLabel(dateStr: string): string {
 
 function DateSeparator({ dateStr }: { dateStr: string }) {
   return (
-    <div className="flex items-center justify-center my-3">
+    <div className="flex items-center justify-center my-4">
       <span
-        className="px-3 py-1 rounded-lg text-[12px] text-[#667781] select-none"
-        style={{ background: "rgba(255,255,255,0.75)", boxShadow: "0 1px 0.5px rgba(11,20,26,.13)" }}
+        className="px-3 py-1 rounded-full text-[12px] font-medium select-none"
+        style={{ background: "#d1e7dd", color: "#3d6b55", boxShadow: "0 1px 2px rgba(0,0,0,.12)" }}
       >
         {getDateLabel(dateStr)}
       </span>
@@ -318,8 +319,8 @@ export default function MayaChatPage() {
         {messages.map((msg, i) => {
           const isAssistant = msg.role === "assistant";
           const status: "sent" | "delivered" | "read" = msg.seen ? "read" : "delivered";
-          const prevDate = i > 0 ? messages[i - 1].date : null;
-          const showSeparator = msg.date && msg.date !== prevDate;
+          const prevDate = i > 0 ? (messages[i - 1].date ?? null) : null;
+          const showSeparator = msg.date != null && msg.date !== prevDate;
 
           return (
             <div key={i}>
