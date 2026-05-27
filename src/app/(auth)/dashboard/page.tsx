@@ -151,7 +151,7 @@ export default function DashboardPage() {
       .catch(() => setMayaNudgeText(""));
   }, [router]);
 
-  // Auto-rotate porquê every 8s (sequential)
+  // Auto-rotate porquê every 30s (sequential)
   useEffect(() => {
     if (porques.length <= 1) return;
     const id = setInterval(() => {
@@ -161,9 +161,18 @@ export default function DashboardPage() {
         setPorquePhoto(pq.photoPath ? photoUrl(pq.photoPath) : null);
         return next;
       });
-    }, 8000);
+    }, 30000);
     return () => clearInterval(id);
   }, [porques]);
+
+  const goToPorque = (dir: 1 | -1) => {
+    setPorqueIndex((i) => {
+      const next = (i + dir + porques.length) % porques.length;
+      const pq = porques[next];
+      setPorquePhoto(pq.photoPath ? photoUrl(pq.photoPath) : null);
+      return next;
+    });
+  };
 
   // Carousel auto-advance every 8s
   useEffect(() => {
@@ -433,26 +442,47 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-[74px_1fr] gap-3.5 items-center">
-            <div
-              className="w-[74px] h-[74px] rounded-2xl overflow-hidden flex-none flex items-center justify-center border-2 border-white"
-              style={{
-                background: "linear-gradient(135deg, oklch(.9 .06 30) 0%, oklch(.82 .12 30) 100%)",
-                boxShadow: "0 4px 14px -6px oklch(.4 .12 30 / .35)",
-              }}
-            >
-              {porquePhoto ? (
-                <img src={porquePhoto} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <svg width="34" height="34" viewBox="0 0 24 24" fill="oklch(.45 .12 30 / .5)">
-                  <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
-                  <path d="M3 21a9 9 0 0 1 18 0Z" />
-                </svg>
-              )}
+          <div className="relative">
+            <div className="grid grid-cols-[74px_1fr] gap-3.5 items-center">
+              <div
+                className="w-[74px] h-[74px] rounded-2xl overflow-hidden flex-none flex items-center justify-center border-2 border-white"
+                style={{
+                  background: "linear-gradient(135deg, oklch(.9 .06 30) 0%, oklch(.82 .12 30) 100%)",
+                  boxShadow: "0 4px 14px -6px oklch(.4 .12 30 / .35)",
+                }}
+              >
+                {porquePhoto ? (
+                  <img src={porquePhoto} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="oklch(.45 .12 30 / .5)">
+                    <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+                    <path d="M3 21a9 9 0 0 1 18 0Z" />
+                  </svg>
+                )}
+              </div>
+              <p className="m-0 text-[16.5px] leading-[1.4] tracking-tight italic font-medium">
+                &ldquo;{porques[porqueIndex]?.text || "—"}&rdquo;
+              </p>
             </div>
-            <p className="m-0 text-[16.5px] leading-[1.4] tracking-tight italic font-medium">
-              &ldquo;{porques[porqueIndex]?.text || "—"}&rdquo;
-            </p>
+            {/* Edge tap zones — only shown when multiple porquês exist */}
+            {porques.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="absolute left-0 top-0 bottom-0 w-[38%] cursor-pointer"
+                  style={{ background: "transparent" }}
+                  aria-label="Porquê anterior"
+                  onClick={() => goToPorque(-1)}
+                />
+                <button
+                  type="button"
+                  className="absolute right-0 top-0 bottom-0 w-[38%] cursor-pointer"
+                  style={{ background: "transparent" }}
+                  aria-label="Próximo porquê"
+                  onClick={() => goToPorque(1)}
+                />
+              </>
+            )}
           </div>
         </div>
       )}
