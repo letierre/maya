@@ -579,15 +579,16 @@ export default function DashboardPage() {
             boxShadow: "0 6px 20px -10px oklch(.35 .1 260 / .4)",
           }}
         >
-          <p className="m-0 text-[10px] font-bold tracking-[.12em] uppercase text-white/60 mb-2">
+          <p className="m-0 text-[10px] font-bold tracking-[.12em] uppercase text-white/80 mb-2">
             Metas da semana
           </p>
-          <p className="m-0 text-[13px] text-white/70 py-1">
+          <p className="m-0 text-[13px] text-white/90 py-1">
             Suas metas semanais aparecerão aqui em breve.
           </p>
           <button
             type="button"
-            className="mt-2 bg-transparent border-0 p-0 cursor-pointer text-[12px] font-medium text-white/70 underline underline-offset-2"
+            onClick={() => router.push("/planejamento")}
+            className="mt-2 bg-transparent border-0 p-0 cursor-pointer text-[12px] font-semibold text-white/85 underline underline-offset-2"
           >
             + Adicionar primeira meta
           </button>
