@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/useTranslation";
 import { Send, ArrowLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface Message {
   role: "user" | "assistant";
@@ -70,8 +70,9 @@ function Ticks({ status }: { status: "sent" | "delivered" | "read" }) {
 export default function MayaChatPage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(() => searchParams.get("draft") ?? "");
   const [sending, setSending] = useState(false);
   const [typing, setTyping] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -105,6 +106,12 @@ export default function MayaChatPage() {
       window.visualViewport?.removeEventListener("scroll", onViewportChange);
     };
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("draft")) {
+      setTimeout(() => textareaRef.current?.focus(), 300);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const cache = loadProfileCache();

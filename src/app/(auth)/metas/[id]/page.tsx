@@ -696,7 +696,7 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* Maya pill */}
       <div style={{ padding: "24px 24px 0" }}>
-        <button type="button" onClick={() => router.push(`/metas/coach`)} style={{
+        <button type="button" onClick={() => router.push(`/insights?draft=${encodeURIComponent(`Quero falar sobre a minha meta: "${goal.title}"`)}`)} style={{
           display: "inline-flex", alignItems: "center", gap: 8,
           background: "oklch(1 0 0 / .6)", backdropFilter: "blur(8px)",
           border: `1px solid oklch(.5 .12 ${hue} / .2)`, borderRadius: 9999,
