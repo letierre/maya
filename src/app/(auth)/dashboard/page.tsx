@@ -9,7 +9,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { photoUrl } from "@/lib/photo-storage";
 import { sumMacros, nutritionScore, getDailyKcalGoal, DEFAULT_DAILY_KCAL } from "@/lib/meal-utils";
 import { ArrowRight, Pencil } from "lucide-react";
-import type { CheckIn, Meal } from "@/types";
+import type { CheckIn, Meal, WeeklyTask } from "@/types";
 
 // ── Constants ───────────────────────────────────────────────────
 
@@ -94,6 +94,7 @@ export default function DashboardPage() {
   const [kcalGoal, setKcalGoal] = useState(DEFAULT_DAILY_KCAL);
   const [userName, setUserName] = useState("");
   const [carouselIdx, setCarouselIdx] = useState(0);
+  const [todayTasks, setTodayTasks] = useState<WeeklyTask[]>([]);
 
   useEffect(() => {
     const d = new Date();
@@ -115,8 +116,9 @@ export default function DashboardPage() {
       fetch("/api/profile").then((r) => r.json()).catch(() => ({})),
       cachedFetch<Meal[]>(`/api/meals?date=${today}`),
       cachedFetch<Meal[]>("/api/meals"),
+      fetch("/api/weekly-plans").then((r) => r.json()).catch(() => null),
     ])
-      .then(([checkInsData, prefsData, profileData, todayMealsData, allMealsData]) => {
+      .then(([checkInsData, prefsData, profileData, todayMealsData, allMealsData, weeklyPlanData]) => {
         if (!prefsData.onboarding_completed) {
           router.push("/onboarding");
           return;
@@ -139,6 +141,10 @@ export default function DashboardPage() {
 
         if (Array.isArray(todayMealsData)) setTodayMeals(todayMealsData);
         if (Array.isArray(allMealsData)) setAllMeals(allMealsData);
+
+        const todayDow = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+        const allTasks: WeeklyTask[] = weeklyPlanData?.current?.weekly_tasks ?? [];
+        setTodayTasks(allTasks.filter((t: WeeklyTask) => t.day_of_week === todayDow));
 
         setLoading(false);
       })
@@ -609,18 +615,56 @@ export default function DashboardPage() {
             boxShadow: "0 6px 20px -10px oklch(.35 .1 260 / .4)",
           }}
         >
-          <p className="m-0 text-[10px] font-bold tracking-[.12em] uppercase text-white/80 mb-2">
-            Metas da semana
-          </p>
-          <p className="m-0 text-[13px] text-white/90 py-1">
-            Suas metas semanais aparecerão aqui em breve.
-          </p>
+          <div className="flex items-baseline justify-between mb-2">
+            <p className="m-0 text-[10px] font-bold tracking-[.12em] uppercase text-white/80">
+              Hoje no plano
+            </p>
+            {todayTasks.length > 0 && (
+              <span className="text-[10px] text-white/60">
+                {todayTasks.filter(t => t.status === "concluida").length}/{todayTasks.length} feitos
+              </span>
+            )}
+          </div>
+
+          {todayTasks.length > 0 ? (
+            <div className="flex flex-col gap-1.5">
+              {todayTasks.slice(0, 4).map((task) => {
+                const done = task.status === "concluida";
+                return (
+                  <div key={task.id} className="flex items-center gap-2.5">
+                    <span style={{
+                      width: 14, height: 14, borderRadius: task.task_type === "manutencao" ? 9999 : 4,
+                      border: done ? "none" : "1.5px solid oklch(1 0 0 / .5)",
+                      background: done ? "oklch(1 0 0 / .7)" : "transparent",
+                      flexShrink: 0, display: "inline-block",
+                    }} />
+                    <span className="text-[13px] text-white/90 leading-tight" style={{
+                      textDecoration: done ? "line-through" : "none",
+                      opacity: done ? 0.55 : 1,
+                    }}>
+                      {task.title}
+                    </span>
+                  </div>
+                );
+              })}
+              {todayTasks.length > 4 && (
+                <p className="m-0 text-[11px] text-white/55 mt-0.5">
+                  +{todayTasks.length - 4} {todayTasks.length - 4 === 1 ? "item" : "itens"}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="m-0 text-[13px] text-white/75 py-0.5">
+              Nenhuma tarefa planejada para hoje.
+            </p>
+          )}
+
           <button
             type="button"
             onClick={() => router.push("/planejamento")}
-            className="mt-2 bg-transparent border-0 p-0 cursor-pointer text-[12px] font-semibold text-white/85 underline underline-offset-2"
+            className="mt-3 bg-transparent border-0 p-0 cursor-pointer text-[12px] font-semibold text-white/80 underline underline-offset-2"
           >
-            + Adicionar primeira meta
+            {todayTasks.length > 0 ? "Ver planejamento completo →" : "+ Planejar a semana"}
           </button>
         </div>
       </div>
