@@ -38,14 +38,14 @@ function getDateLabel(dateStr: string): string {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function DateSeparator({ dateStr }: { dateStr: string }) {
+function DateSeparator({ label }: { label: string }) {
   return (
     <div className="flex items-center justify-center my-4">
       <span
         className="px-3 py-1 rounded-full text-[12px] font-medium select-none"
         style={{ background: "#d1e7dd", color: "#3d6b55", boxShadow: "0 1px 2px rgba(0,0,0,.12)" }}
       >
-        {getDateLabel(dateStr)}
+        {label}
       </span>
     </div>
   );
@@ -319,12 +319,21 @@ export default function MayaChatPage() {
         {messages.map((msg, i) => {
           const isAssistant = msg.role === "assistant";
           const status: "sent" | "delivered" | "read" = msg.seen ? "read" : "delivered";
-          const prevDate = i > 0 ? (messages[i - 1].date ?? null) : null;
-          const showSeparator = msg.date != null && msg.date !== prevDate;
+          const prevMsg = i > 0 ? messages[i - 1] : null;
+
+          let separatorLabel: string | null = null;
+          if (!msg.date) {
+            // undated message (old cache): show "Mensagens anteriores" before first undated cluster
+            if (!prevMsg || prevMsg.date != null) separatorLabel = "Mensagens anteriores";
+          } else {
+            // dated message: show label on date change
+            const prevDate = prevMsg?.date ?? null;
+            if (msg.date !== prevDate) separatorLabel = getDateLabel(msg.date);
+          }
 
           return (
             <div key={i}>
-              {showSeparator && <DateSeparator dateStr={msg.date} />}
+              {separatorLabel && <DateSeparator label={separatorLabel} />}
             <div
               className={`flex ${isAssistant ? "justify-start" : "justify-end"} mb-1.5`}
             >
