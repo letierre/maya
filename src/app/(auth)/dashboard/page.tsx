@@ -164,7 +164,7 @@ export default function DashboardPage() {
   const [todayDisplay, setTodayDisplay] = useState("");
 
   // New state
-  const [mayaNudgeText, setMayaNudgeText] = useState("");
+  const [mayaNudgeText, setMayaNudgeText] = useState<string | null>(null); // null = loading
   const [porques, setPorques] = useState<Porque[]>([]);
   const [porqueIndex, setPorqueIndex] = useState(0);
   const [porquePhoto, setPorquePhoto] = useState<string | null>(null);
@@ -190,15 +190,15 @@ export default function DashboardPage() {
   useEffect(() => {
     const today = getLocalDate();
 
+    // Main data — loads immediately, no AI dependency
     Promise.all([
       cachedFetch<CheckIn[]>("/api/check-ins"),
       cachedFetch<{ onboarding_completed?: boolean; enabled_questions?: string[]; context?: Record<string, unknown> }>("/api/preferences"),
-      fetch("/api/maya/nudge").then((r) => r.json()).catch(() => ({ nudges: [] })),
       fetch("/api/profile").then((r) => r.json()).catch(() => ({})),
       cachedFetch<Meal[]>(`/api/meals?date=${today}`),
       cachedFetch<Meal[]>("/api/meals"),
     ])
-      .then(([checkInsData, prefsData, nudgeData, profileData, todayMealsData, allMealsData]) => {
+      .then(([checkInsData, prefsData, profileData, todayMealsData, allMealsData]) => {
         if (!prefsData.onboarding_completed) {
           router.push("/onboarding");
           return;
@@ -210,10 +210,6 @@ export default function DashboardPage() {
         if (Array.isArray(checkInsData)) {
           setCheckIns(checkInsData);
           setTodayCheckIn(checkInsData.find((c: CheckIn) => c.date === today) || null);
-        }
-
-        if (nudgeData.nudges?.length > 0) {
-          setMayaNudgeText(nudgeData.nudges[0].message);
         }
 
         if (profileData.name) setUserName(profileData.name);
@@ -231,6 +227,14 @@ export default function DashboardPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    // Maya nudge — independent fetch, doesn't block the dashboard
+    fetch("/api/maya/nudge")
+      .then((r) => r.json())
+      .then((nudgeData) => {
+        setMayaNudgeText(nudgeData.nudges?.[0]?.message ?? "");
+      })
+      .catch(() => setMayaNudgeText(""));
   }, [router]);
 
   // Portrait — fetch monthly
@@ -492,55 +496,53 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* ── MAYA PRESENCE BLOCK — só aparece quando há nudge contextual ── */}
-      {mayaNudgeText && (
-        <div className="mx-4 mt-3.5">
-          <div
-            className="relative rounded-[22px] overflow-hidden border p-5"
-            style={{
-              background:
-                "linear-gradient(135deg, oklch(.5 .12 160 / .08) 0%, oklch(.5 .12 160 / .02) 100%)",
-              borderColor: "oklch(.5 .12 160 / .15)",
-            }}
-          >
-            {/* Decorative rings — clipadas pelo overflow-hidden do pai */}
-            <div
-              className="absolute -right-10 -top-10 w-40 h-40 rounded-full border pointer-events-none"
-              style={{ borderColor: "oklch(.5 .12 160 / .12)" }}
-            />
-            <div
-              className="absolute -right-5 -top-5 w-[120px] h-[120px] rounded-full border pointer-events-none"
-              style={{ borderColor: "oklch(.5 .12 160 / .08)" }}
-            />
+      {/* ── MAYA PRESENCE BLOCK ─────────────────────────────────── */}
+      <div className="mx-4 mt-3.5">
+        <div
+          className="relative rounded-[22px] overflow-hidden border p-5"
+          style={{
+            background: "linear-gradient(135deg, oklch(.5 .12 160 / .08) 0%, oklch(.5 .12 160 / .02) 100%)",
+            borderColor: "oklch(.5 .12 160 / .15)",
+          }}
+        >
+          {/* Decorative rings */}
+          <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full border pointer-events-none"
+            style={{ borderColor: "oklch(.5 .12 160 / .12)" }} />
+          <div className="absolute -right-5 -top-5 w-[120px] h-[120px] rounded-full border pointer-events-none"
+            style={{ borderColor: "oklch(.5 .12 160 / .08)" }} />
 
-            <div className="relative flex gap-3.5 items-start">
-              <span className="w-14 h-14 rounded-full overflow-hidden flex-none border-2 border-white shadow-lg">
-                <img
-                  src="/Maya.png"
-                  alt="Maya"
-                  className="w-full h-full object-cover"
-                />
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10.5px] font-bold tracking-wider uppercase text-primary m-0">
-                  {t("maya_agora")}
-                </p>
+          <div className="relative flex gap-3.5 items-start">
+            <span className="w-14 h-14 rounded-full overflow-hidden flex-none border-2 border-white shadow-lg">
+              <img src="/Maya.png" alt="Maya" className="w-full h-full object-cover" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10.5px] font-bold tracking-wider uppercase text-primary m-0">
+                {t("maya_agora")}
+              </p>
+              {mayaNudgeText === null ? (
+                /* Skeleton while nudge loads */
+                <div className="mt-2 space-y-2">
+                  <div className="h-3.5 rounded-full bg-current opacity-[0.08] animate-pulse w-[90%]" />
+                  <div className="h-3.5 rounded-full bg-current opacity-[0.08] animate-pulse w-[75%]" />
+                  <div className="h-3.5 rounded-full bg-current opacity-[0.08] animate-pulse w-[55%]" />
+                </div>
+              ) : (
                 <p className="mt-1.5 text-base leading-[1.4] font-medium tracking-tight whitespace-pre-wrap">
-                  {mayaNudgeText}
+                  {mayaNudgeText || t("nudge_boas_vindas")}
                 </p>
-              </div>
+              )}
             </div>
-
-            <Button
-              className="mt-3.5 w-full h-[38px] rounded-xl text-[13px] font-semibold gap-1.5"
-              onClick={() => router.push("/insights")}
-            >
-              {t("conversar_com_maya")}
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Button>
           </div>
+
+          <Button
+            className="mt-3.5 w-full h-[38px] rounded-xl text-[13px] font-semibold gap-1.5"
+            onClick={() => router.push("/insights")}
+          >
+            {t("conversar_com_maya")}
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Button>
         </div>
-      )}
+      </div>
 
       {/* ── MEU PORQUÊ ────────────────────────────────────────── */}
       {porques.length > 0 && (
