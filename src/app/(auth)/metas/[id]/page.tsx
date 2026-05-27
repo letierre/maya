@@ -3,32 +3,29 @@
 import { useEffect, useState, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ChevronLeft, Plus, Check, ChevronDown, ChevronUp, Trophy, Shield,
-  AlertOctagon, Sparkles, Target, Compass, Share2, MoreHorizontal,
-  Pencil, Archive, CheckCircle2, Circle, Trash2
+  Plus, Check, Shield, Trophy, AlertOctagon, Sparkles,
+  Target, Compass, Share2, CheckCircle2, Circle, Trash2, Pencil, Archive
 } from "lucide-react";
 import type { Goal, GoalStage, GoalAction } from "@/types";
 
 // ── Area config ───────────────────────────────────────────────────────────────
 
 const AREA_CONFIG: Record<string, { label: string; emoji: string; hue: number }> = {
-  saude:          { label: "Saúde",            emoji: "💚", hue: 160 },
-  carreira:       { label: "Carreira",         emoji: "💼", hue: 220 },
-  financas:       { label: "Finanças",         emoji: "💰", hue: 85  },
-  relacionamentos:{ label: "Relacionamentos",  emoji: "❤️", hue: 15  },
-  desenvolvimento:{ label: "Desenvolvimento",  emoji: "🧠", hue: 270 },
-  familia:        { label: "Família",          emoji: "🏡", hue: 40  },
-  lazer:          { label: "Lazer",            emoji: "🌊", hue: 185 },
-  espiritualidade:{ label: "Espiritualidade",  emoji: "✨", hue: 300 },
+  saude:           { label: "Saúde",           emoji: "💚", hue: 160 },
+  carreira:        { label: "Carreira",        emoji: "💼", hue: 220 },
+  financas:        { label: "Finanças",        emoji: "💰", hue: 85  },
+  relacionamentos: { label: "Relacionamentos", emoji: "❤️", hue: 15  },
+  desenvolvimento: { label: "Desenvolvimento", emoji: "🧠", hue: 270 },
+  familia:         { label: "Família",         emoji: "🏡", hue: 40  },
+  lazer:           { label: "Lazer",           emoji: "🌊", hue: 185 },
+  espiritualidade: { label: "Espiritualidade", emoji: "✨", hue: 300 },
 };
 
-function hue(area: string) { return AREA_CONFIG[area]?.hue ?? 160; }
-function ac(area: string, l = .5, c = .12, a = 1) { return `oklch(${l} ${c} ${hue(area)} / ${a})`; }
-function al(area: string, a = 1) { return `oklch(.95 .05 ${hue(area)} / ${a})`; }
+function hueOf(area: string) { return AREA_CONFIG[area]?.hue ?? 160; }
+function ac(area: string, l = .5, c = .12) { return `oklch(${l} ${c} ${hueOf(area)})`; }
+function al(area: string) { return `oklch(.95 .05 ${hueOf(area)})`; }
 
 type GoalFull = Goal & { goal_stages: (GoalStage & { goal_actions: GoalAction[] })[] };
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function goalProgress(goal: GoalFull) {
   const s = goal.goal_stages ?? [];
@@ -58,85 +55,71 @@ function Confetti({ active }: { active: boolean }) {
           animation: `confettiFall 1.5s ${p.delay} ease-in forwards`,
         }} />
       ))}
-      <style>{`
-        @keyframes confettiFall {
-          0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
-        }
-      `}</style>
+      <style>{`@keyframes confettiFall { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(105vh) rotate(720deg);opacity:0} }`}</style>
     </div>
   );
 }
 
-// ── Action item ───────────────────────────────────────────────────────────────
+// ── CommitChip ────────────────────────────────────────────────────────────────
 
-function ActionItem({
-  action, area, onToggle, onDelete,
-}: {
-  action: GoalAction; area: string;
-  onToggle: () => void; onDelete: () => void;
+function CommitChip({ type, label, sub, onClick }: {
+  type: "guardian" | "reward" | "punishment";
+  label: string; sub: string;
+  onClick?: () => void;
 }) {
-  const done = action.status === "concluida";
+  const COLORS = {
+    guardian:   { bg: "oklch(.93 .05 160)", fg: "oklch(.35 .12 160)", icon: "🛡️" },
+    reward:     { bg: "oklch(.94 .08 85)",  fg: "oklch(.42 .14 85)",  icon: "🏆" },
+    punishment: { bg: "oklch(.94 .06 15)",  fg: "oklch(.42 .14 15)",  icon: "⚠️" },
+  }[type];
   return (
-    <div style={{
-      display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 0",
-      borderBottom: "1px solid oklch(.92 .02 160)",
-    }}>
-      <button type="button" onClick={onToggle} style={{
-        border: 0, background: "none", padding: 0, cursor: "pointer", flexShrink: 0, marginTop: 1,
-      }}>
-        {done
-          ? <CheckCircle2 size={20} style={{ color: ac(area) }} />
-          : <Circle size={20} style={{ color: "oklch(.75 .03 160)" }} />
-        }
-      </button>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{
-          margin: 0, fontSize: 13, fontWeight: 500,
-          color: done ? "oklch(.65 .03 160)" : "oklch(.25 .02 160)",
-          textDecoration: done ? "line-through" : "none",
-          lineHeight: 1.4,
-        }}>
-          {action.title}
+    <div
+      onClick={onClick}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 8,
+        padding: "7px 12px 7px 10px", borderRadius: 12,
+        background: COLORS.bg,
+        border: `1px solid ${COLORS.fg}33`,
+        cursor: onClick ? "pointer" : "default",
+      }}
+    >
+      <span style={{ fontSize: 13 }}>{COLORS.icon}</span>
+      <div style={{ minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: COLORS.fg, opacity: .7 }}>
+          {sub}
         </p>
-        {action.if_then && !done && (
-          <p style={{ margin: "3px 0 0", fontSize: 11, color: "oklch(.55 .06 220)", fontStyle: "italic" }}>
-            SE {action.if_then}
-          </p>
-        )}
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: COLORS.fg }}>
+          {label}
+        </p>
       </div>
-      <button type="button" onClick={onDelete} style={{
-        border: 0, background: "none", padding: 4, cursor: "pointer", flexShrink: 0,
-        color: "oklch(.75 .03 160)",
-      }}>
-        <Trash2 size={14} />
-      </button>
     </div>
   );
 }
 
-// ── Stage card ────────────────────────────────────────────────────────────────
+// ── Stage row (vertical roadmap) ──────────────────────────────────────────────
 
-function StageCard({
-  stage, area, index, onToggleStage, onToggleAction, onAddAction, onDeleteAction,
+function StageRow({
+  stage, area, index, isLast,
+  onToggleStage, onToggleAction, onAddAction, onDeleteAction,
 }: {
   stage: GoalStage & { goal_actions: GoalAction[] };
-  area: string; index: number;
+  area: string; index: number; isLast: boolean;
   onToggleStage: () => void;
   onToggleAction: (actionId: string) => void;
   onAddAction: (title: string, ifThen?: string) => void;
   onDeleteAction: (actionId: string) => void;
 }) {
-  const [open, setOpen] = useState(stage.status !== "concluida");
+  const hue = hueOf(area);
+  const isDone = stage.status === "concluida";
+  const isCurrent = !isDone && index === 0;
   const [adding, setAdding] = useState(false);
   const [newAction, setNewAction] = useState("");
+  const [showIfThen, setShowIfThen] = useState(false);
   const [ifThenCond, setIfThenCond] = useState("");
   const [ifThenAct, setIfThenAct]   = useState("");
-  const [showIfThen, setShowIfThen] = useState(false);
 
   const actions = stage.goal_actions ?? [];
   const doneCount = actions.filter((a) => a.status === "concluida").length;
-  const isDone = stage.status === "concluida";
 
   const handleAddAction = () => {
     if (!newAction.trim()) return;
@@ -148,159 +131,178 @@ function StageCard({
   };
 
   return (
-    <div style={{
-      borderRadius: 16, border: isDone
-        ? `1.5px solid ${ac(area, .6, .08, .4)}`
-        : "1.5px solid oklch(.88 .02 160)",
-      background: isDone ? al(area, .5) : "#fff",
-      overflow: "hidden",
-      transition: "all .2s ease",
-    }}>
-      {/* Stage header */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 12, padding: "14px 16px",
-        cursor: "pointer",
-      }} onClick={() => setOpen((o) => !o)}>
-        {/* Number / check */}
-        <button type="button" onClick={(e) => { e.stopPropagation(); onToggleStage(); }} style={{
-          width: 32, height: 32, borderRadius: "50%", border: 0, cursor: "pointer", flexShrink: 0,
-          background: isDone ? ac(area) : "oklch(.93 .04 160)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          transition: "background .2s ease",
-        }}>
-          {isDone
-            ? <Check size={16} color="#fff" />
-            : <span style={{ fontSize: 13, fontWeight: 800, color: "oklch(.45 .12 160)" }}>{index + 1}</span>
-          }
+    <div style={{ display: "grid", gridTemplateColumns: "30px 1fr", gap: 12, position: "relative", minHeight: 50 }}>
+      {/* Connector */}
+      <div style={{ position: "relative", display: "flex", justifyContent: "center" }}>
+        {!isLast && (
+          <span style={{
+            position: "absolute", top: 30, bottom: -16, left: "50%", width: 2,
+            transform: "translateX(-50%)",
+            background: isDone ? `oklch(.5 .14 ${hue})` : `oklch(.5 .12 ${hue} / .2)`,
+          }} />
+        )}
+        <button
+          type="button"
+          onClick={onToggleStage}
+          style={{
+            width: 30, height: 30, borderRadius: 9999, flex: "none", zIndex: 1, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 12, fontWeight: 800, fontFamily: "var(--font-mono, ui-monospace)",
+            background: isDone ? `oklch(.5 .14 ${hue})` : isCurrent ? "#fff" : `oklch(.5 .12 ${hue} / .1)`,
+            border: isCurrent ? `2.5px solid oklch(.5 .14 ${hue})` : "none",
+            color: isDone ? "#fff" : isCurrent ? `oklch(.4 .14 ${hue})` : `oklch(.5 .1 ${hue} / .6)`,
+            boxShadow: isCurrent ? `0 0 0 5px oklch(.5 .14 ${hue} / .15)` : "none",
+          }}
+        >
+          {isDone ? (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m5 12 5 5 9-10"/>
+            </svg>
+          ) : index + 1}
         </button>
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{
-            margin: 0, fontSize: 14, fontWeight: 700,
-            color: isDone ? ac(area, .4, .1) : "oklch(.2 .02 160)",
-            textDecoration: isDone ? "line-through" : "none",
-          }}>
-            {stage.title}
-          </p>
-          {actions.length > 0 && (
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: "oklch(.6 .04 160)" }}>
-              {doneCount}/{actions.length} ações
-            </p>
-          )}
-        </div>
-
-        {open ? <ChevronUp size={16} style={{ color: "oklch(.65 .04 160)", flexShrink: 0 }} />
-               : <ChevronDown size={16} style={{ color: "oklch(.65 .04 160)", flexShrink: 0 }} />}
       </div>
 
-      {/* Stage body */}
-      {open && (
-        <div style={{ padding: "0 16px 14px", borderTop: "1px solid oklch(.92 .02 160)" }}>
-          {actions.length > 0 && (
-            <div style={{ marginTop: 8 }}>
-              {actions.map((action) => (
-                <ActionItem
-                  key={action.id}
-                  action={action}
-                  area={area}
-                  onToggle={() => onToggleAction(action.id)}
-                  onDelete={() => onDeleteAction(action.id)}
-                />
-              ))}
-            </div>
-          )}
+      {/* Content */}
+      <div style={{ paddingBottom: isLast ? 0 : 22, minWidth: 0 }}>
+        <p style={{
+          margin: "4px 0 0", fontSize: isCurrent ? 15 : 13.5,
+          fontWeight: isCurrent ? 700 : 500, letterSpacing: "-0.005em",
+          color: isDone ? "oklch(.65 .03 160)" : isCurrent ? `oklch(.2 .04 ${hue})` : "oklch(.35 .02 160)",
+          textDecoration: isDone ? "line-through" : "none", lineHeight: 1.3,
+        }}>
+          {stage.title}
+        </p>
 
-          {/* Add action */}
-          {!adding ? (
-            <button type="button" onClick={() => setAdding(true)} style={{
-              marginTop: 10, display: "flex", alignItems: "center", gap: 6,
-              padding: "8px 12px", borderRadius: 10, border: `1.5px dashed oklch(.8 .04 160)`,
-              background: "transparent", fontFamily: "inherit", fontSize: 12, fontWeight: 600,
-              color: "oklch(.5 .08 160)", cursor: "pointer",
-            }}>
-              <Plus size={14} /> Adicionar ação
-            </button>
-          ) : (
-            <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-              <input
-                autoFocus
-                type="text"
-                value={newAction}
-                onChange={(e) => setNewAction(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleAddAction(); if (e.key === "Escape") setAdding(false); }}
-                placeholder="Descreva a ação..."
-                style={{
-                  padding: "10px 12px", borderRadius: 10, border: "1.5px solid oklch(.7 .06 160)",
-                  background: "oklch(.98 .005 160)", fontFamily: "inherit", fontSize: 13,
-                  color: "oklch(.2 .02 160)", outline: "none",
-                }}
-              />
-              {showIfThen ? (
-                <div style={{
-                  borderRadius: 10, border: "1.5px solid oklch(.75 .06 220)",
-                  background: "oklch(.97 .02 220)", padding: "10px 12px",
-                  display: "flex", flexDirection: "column", gap: 6,
+        {isDone && actions.length > 0 && (
+          <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "oklch(.6 .03 160)" }}>
+            {doneCount}/{actions.length} ações ✓
+          </p>
+        )}
+
+        {/* Current stage actions panel */}
+        {isCurrent && (
+          <div style={{
+            marginTop: 12, padding: 14, borderRadius: 14,
+            background: "#fff", border: `1px solid oklch(.5 .12 ${hue} / .15)`,
+            boxShadow: `0 4px 14px -6px oklch(.5 .12 ${hue} / .2)`,
+          }}>
+            {actions.map((a, i) => {
+              const done = a.status === "concluida";
+              return (
+                <div key={a.id} style={{
+                  display: "flex", alignItems: "flex-start", gap: 9,
+                  padding: "6px 0",
+                  borderTop: i > 0 ? "1px solid oklch(.5 .12 160 / .08)" : "none",
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".06em", color: "oklch(.45 .1 220)", flexShrink: 0 }}>SE</span>
-                    <input
-                      autoFocus
-                      type="text"
-                      value={ifThenCond}
-                      onChange={(e) => setIfThenCond(e.target.value)}
-                      placeholder="[situação ou gatilho]"
-                      style={{
-                        flex: 1, border: "none", background: "transparent",
-                        fontFamily: "inherit", fontSize: 12, color: "oklch(.3 .06 220)",
-                        outline: "none",
-                      }}
-                    />
+                  <button type="button" onClick={() => onToggleAction(a.id)} style={{
+                    width: 18, height: 18, borderRadius: 6, flex: "none", marginTop: 1,
+                    background: done ? `oklch(.5 .14 ${hue})` : "transparent",
+                    border: done ? "none" : `1.5px solid oklch(.5 .14 ${hue} / .4)`,
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {done && (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m5 12 5 5 9-10"/>
+                      </svg>
+                    )}
+                  </button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{
+                      margin: 0, fontSize: 13, lineHeight: 1.3,
+                      color: done ? "oklch(.6 .03 160)" : "oklch(.2 .02 160)",
+                      textDecoration: done ? "line-through" : "none", fontWeight: 500,
+                    }}>{a.title}</p>
+                    {a.if_then && !done && (
+                      <div style={{
+                        marginTop: 5, padding: "4px 8px", borderRadius: 6,
+                        background: "oklch(.95 .04 270)", border: "1px solid oklch(.6 .12 270 / .2)",
+                        display: "inline-flex", flexWrap: "wrap", gap: 4, alignItems: "center",
+                      }}>
+                        <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: ".08em", color: "oklch(.4 .14 270)" }}>SE</span>
+                        <span style={{ fontSize: 11, color: "oklch(.3 .08 270)", lineHeight: 1.3 }}>{a.if_then}</span>
+                      </div>
+                    )}
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".06em", color: "oklch(.45 .1 220)", flexShrink: 0 }}>ENTÃO</span>
-                    <input
-                      type="text"
-                      value={ifThenAct}
-                      onChange={(e) => setIfThenAct(e.target.value)}
-                      placeholder="[farei isso]"
-                      style={{
-                        flex: 1, border: "none", background: "transparent",
-                        fontFamily: "inherit", fontSize: 12, color: "oklch(.3 .06 220)",
-                        outline: "none",
-                      }}
-                    />
-                  </div>
+                  <button type="button" onClick={() => onDeleteAction(a.id)} style={{
+                    border: 0, background: "none", padding: 4, cursor: "pointer",
+                    color: "oklch(.75 .03 160)", flexShrink: 0,
+                  }}>
+                    <Trash2 size={13} />
+                  </button>
                 </div>
-              ) : (
-                <button type="button" onClick={() => setShowIfThen(true)} style={{
-                  textAlign: "left", padding: 0, border: 0, background: "none",
-                  fontSize: 11, color: "oklch(.55 .06 220)", cursor: "pointer", fontFamily: "inherit",
-                  textDecoration: "underline",
-                }}>
-                  + Adicionar plano SE-ENTÃO (aumenta 2-3× as chances de executar)
-                </button>
-              )}
-              <div style={{ display: "flex", gap: 8 }}>
-                <button type="button" onClick={() => { setAdding(false); setNewAction(""); setIfThenCond(""); setIfThenAct(""); setShowIfThen(false); }} style={{
-                  flex: 1, padding: "9px 12px", borderRadius: 10, border: "1.5px solid oklch(.85 .02 160)",
-                  background: "#fff", fontFamily: "inherit", fontSize: 13, cursor: "pointer",
-                  color: "oklch(.5 .04 160)",
-                }}>
-                  Cancelar
-                </button>
-                <button type="button" onClick={handleAddAction} disabled={!newAction.trim()} style={{
-                  flex: 1, padding: "9px 12px", borderRadius: 10, border: 0,
-                  background: newAction.trim() ? ac(area) : "oklch(.88 .02 160)",
-                  fontFamily: "inherit", fontSize: 13, fontWeight: 700,
-                  color: newAction.trim() ? "#fff" : "oklch(.6 .02 160)", cursor: "pointer",
-                }}>
-                  Salvar
-                </button>
+              );
+            })}
+
+            {!adding ? (
+              <button type="button" onClick={() => setAdding(true)} style={{
+                marginTop: 10, padding: "7px 10px", borderRadius: 8,
+                background: "transparent", border: `1.5px dashed oklch(.5 .14 ${hue} / .35)`,
+                cursor: "pointer", fontFamily: "inherit", fontSize: 11.5, fontWeight: 600,
+                color: `oklch(.4 .14 ${hue})`,
+                display: "inline-flex", alignItems: "center", gap: 5,
+              }}>
+                <Plus size={11} /> Adicionar ação
+              </button>
+            ) : (
+              <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                <input
+                  autoFocus
+                  type="text"
+                  value={newAction}
+                  onChange={(e) => setNewAction(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddAction(); if (e.key === "Escape") setAdding(false); }}
+                  placeholder="Descreva a ação..."
+                  style={{
+                    padding: "9px 12px", borderRadius: 10, border: `1.5px solid oklch(.7 .06 ${hue})`,
+                    background: "oklch(.98 .005 160)", fontFamily: "inherit", fontSize: 13,
+                    color: "oklch(.2 .02 160)", outline: "none",
+                  }}
+                />
+                {!showIfThen ? (
+                  <button type="button" onClick={() => setShowIfThen(true)} style={{
+                    textAlign: "left", padding: 0, border: 0, background: "none",
+                    fontSize: 11, color: "oklch(.55 .06 220)", cursor: "pointer", fontFamily: "inherit",
+                    textDecoration: "underline",
+                  }}>
+                    + Plano SE-ENTÃO (aumenta 2-3× as chances)
+                  </button>
+                ) : (
+                  <div style={{
+                    borderRadius: 10, border: "1.5px solid oklch(.75 .06 220)",
+                    background: "oklch(.97 .02 220)", padding: "10px 12px",
+                    display: "flex", flexDirection: "column", gap: 6,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".06em", color: "oklch(.45 .1 220)", flexShrink: 0 }}>SE</span>
+                      <input autoFocus type="text" value={ifThenCond} onChange={(e) => setIfThenCond(e.target.value)}
+                        placeholder="[situação ou gatilho]"
+                        style={{ flex: 1, border: "none", background: "transparent", fontFamily: "inherit", fontSize: 12, color: "oklch(.3 .06 220)", outline: "none" }} />
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".06em", color: "oklch(.45 .1 220)", flexShrink: 0 }}>ENTÃO</span>
+                      <input type="text" value={ifThenAct} onChange={(e) => setIfThenAct(e.target.value)}
+                        placeholder="[farei isso]"
+                        style={{ flex: 1, border: "none", background: "transparent", fontFamily: "inherit", fontSize: 12, color: "oklch(.3 .06 220)", outline: "none" }} />
+                    </div>
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button type="button" onClick={() => { setAdding(false); setNewAction(""); setIfThenCond(""); setIfThenAct(""); setShowIfThen(false); }} style={{
+                    flex: 1, padding: "8px 12px", borderRadius: 10, border: "1.5px solid oklch(.85 .02 160)",
+                    background: "#fff", fontFamily: "inherit", fontSize: 13, cursor: "pointer", color: "oklch(.5 .04 160)",
+                  }}>Cancelar</button>
+                  <button type="button" onClick={handleAddAction} disabled={!newAction.trim()} style={{
+                    flex: 1, padding: "8px 12px", borderRadius: 10, border: 0,
+                    background: newAction.trim() ? ac(area) : "oklch(.88 .02 160)",
+                    fontFamily: "inherit", fontSize: 13, fontWeight: 700,
+                    color: newAction.trim() ? "#fff" : "oklch(.6 .02 160)", cursor: "pointer",
+                  }}>Salvar</button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -403,7 +405,7 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100dvh", background: "oklch(.98 .004 160)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "100dvh", background: "oklch(.97 .005 160)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid oklch(.5 .12 160)", borderTopColor: "transparent", animation: "spin .8s linear infinite" }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
@@ -412,7 +414,7 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
 
   if (!goal) {
     return (
-      <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+      <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, background: "oklch(.97 .005 160)" }}>
         <p style={{ fontSize: 16, color: "oklch(.5 .04 160)" }}>Meta não encontrada</p>
         <button type="button" onClick={() => router.push("/metas")} style={{
           padding: "12px 24px", borderRadius: 12, border: 0, cursor: "pointer",
@@ -424,48 +426,57 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
 
   const area = goal.area;
   const areaConf = AREA_CONFIG[area] ?? AREA_CONFIG.saude;
+  const hue = hueOf(area);
   const pct = goalProgress(goal);
   const stages = goal.goal_stages ?? [];
   const daysLeft = goal.target_date ? daysUntil(goal.target_date) : null;
+  const hasCommit = goal.guardian_name || goal.reward || goal.punishment;
 
   return (
-    <div style={{ minHeight: "100dvh", background: "oklch(.98 .004 160)", paddingBottom: 100 }}>
+    <div style={{
+      minHeight: "100dvh", paddingBottom: 110,
+      background: `
+        radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.95 .04 80 / .35) 0%, transparent 50%),
+        linear-gradient(180deg, oklch(.97 .005 160) 0%, oklch(.94 .02 160) 100%)
+      `,
+    }}>
       <Confetti active={confetti} />
 
-      {/* Header */}
-      <div style={{
-        background: `linear-gradient(160deg, ${ac(area)}, ${ac(area, .38, .16, 1)})`,
-        padding: "52px 20px 28px", position: "relative", overflow: "hidden",
+      {/* Floating nav buttons */}
+      <button type="button" onClick={() => router.push("/metas")} style={{
+        position: "fixed", top: 14, left: 16, zIndex: 50,
+        width: 36, height: 36, borderRadius: 9999, border: 0, cursor: "pointer",
+        background: "oklch(1 0 0 / .65)", backdropFilter: "blur(12px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: "0 1px 3px oklch(.25 .02 160 / .08)",
       }}>
-        <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: "oklch(1 0 0 / .06)" }} />
-        <div style={{ position: "absolute", bottom: -30, left: -30, width: 120, height: 120, borderRadius: "50%", background: "oklch(1 0 0 / .04)" }} />
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m15 18-6-6 6-6"/>
+        </svg>
+      </button>
 
-        {/* Top row */}
-        <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-          <button type="button" onClick={() => router.push("/metas")} style={{
-            display: "inline-flex", alignItems: "center", gap: 4,
-            background: "oklch(1 0 0 / .15)", border: 0, borderRadius: 10,
-            padding: "8px 12px", color: "#fff", fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer",
-          }}>
-            <ChevronLeft size={16} /> Metas
-          </button>
-          <button type="button" onClick={() => setShowMenu((v) => !v)} style={{
-            width: 36, height: 36, borderRadius: "50%", border: 0, cursor: "pointer",
-            background: "oklch(1 0 0 / .15)", display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <MoreHorizontal size={18} color="#fff" />
-          </button>
-        </div>
+      <button type="button" onClick={() => setShowMenu((v) => !v)} style={{
+        position: "fixed", top: 14, right: 16, zIndex: 50,
+        width: 36, height: 36, borderRadius: 9999, border: 0, cursor: "pointer",
+        background: "oklch(1 0 0 / .65)", backdropFilter: "blur(12px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+          <circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" />
+        </svg>
+      </button>
 
-        {/* Context menu */}
-        {showMenu && (
+      {/* Context menu */}
+      {showMenu && (
+        <>
+          <div onClick={() => setShowMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 48 }} />
           <div style={{
-            position: "absolute", top: 60, right: 20, zIndex: 100,
+            position: "fixed", top: 56, right: 16, zIndex: 49,
             background: "#fff", borderRadius: 16, padding: "8px 0",
             boxShadow: "0 8px 32px oklch(.2 .04 160 / .2)", minWidth: 200,
           }}>
             {[
-              { icon: Pencil, label: "Editar meta", action: () => { setShowMenu(false); } },
+              { icon: Pencil, label: "Editar meta", action: () => setShowMenu(false) },
               goal.status === "ativa"
                 ? { icon: Archive, label: "Pausar meta", action: () => updateStatus("pausada") }
                 : { icon: Target, label: "Reativar meta", action: () => updateStatus("ativa") },
@@ -475,242 +486,235 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
               <button key={label} type="button" onClick={action} style={{
                 display: "flex", alignItems: "center", gap: 10, width: "100%",
                 padding: "12px 16px", border: 0, background: "none", cursor: "pointer",
-                fontFamily: "inherit", fontSize: 13, fontWeight: 500, color: "oklch(.25 .04 160)",
-                textAlign: "left",
+                fontFamily: "inherit", fontSize: 13, fontWeight: 500, color: "oklch(.25 .04 160)", textAlign: "left",
               }}>
                 <Icon size={16} style={{ color: "oklch(.55 .08 160)", flexShrink: 0 }} />
                 {label}
               </button>
             ))}
           </div>
-        )}
+        </>
+      )}
 
-        {/* Goal info */}
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            <span style={{
-              display: "inline-flex", alignItems: "center", gap: 4,
-              padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontWeight: 700,
-              background: "oklch(1 0 0 / .2)", color: "#fff",
-            }}>
-              {goal.type === "destino" ? <Target size={10} /> : <Compass size={10} />}
-              {goal.type === "destino" ? "Destino" : "Direção"}
-            </span>
-            <span style={{
-              padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontWeight: 600,
-              background: "oklch(1 0 0 / .15)", color: "oklch(1 0 0 / .9)",
-            }}>
-              {areaConf.emoji} {areaConf.label}
-            </span>
-            {goal.status === "pausada" && (
+      {/* HERO card */}
+      <div style={{ padding: "64px 14px 0" }}>
+        <div style={{
+          borderRadius: 22, padding: "20px 22px",
+          background: `linear-gradient(135deg, oklch(.95 .04 ${hue}) 0%, oklch(.88 .08 ${hue}) 100%)`,
+          border: `1px solid oklch(.5 .12 ${hue} / .2)`,
+          position: "relative", overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute", right: -40, top: -40, width: 180, height: 180, borderRadius: 9999,
+            background: `radial-gradient(circle, oklch(.5 .12 ${hue} / .15), transparent 70%)`,
+            pointerEvents: "none",
+          }} />
+
+          <div style={{ position: "relative" }}>
+            {/* Tags */}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
               <span style={{
-                padding: "3px 10px", borderRadius: 9999, fontSize: 11, fontWeight: 700,
-                background: "oklch(.97 .04 50)", color: "oklch(.45 .14 50)",
+                padding: "3px 9px", borderRadius: 9999, fontSize: 10, fontWeight: 700,
+                letterSpacing: ".08em", textTransform: "uppercase",
+                background: `oklch(.5 .12 ${hue} / .15)`, color: `oklch(.32 .12 ${hue})`,
               }}>
-                Pausada
+                {areaConf.emoji} {areaConf.label}
               </span>
+              <span style={{
+                padding: "3px 9px", borderRadius: 9999, fontSize: 10, fontWeight: 700,
+                letterSpacing: ".08em", textTransform: "uppercase",
+                background: `oklch(.5 .12 ${hue} / .1)`, color: `oklch(.32 .1 ${hue})`,
+                display: "inline-flex", alignItems: "center", gap: 4,
+              }}>
+                {goal.type === "destino" ? <Target size={10} /> : <Compass size={10} />}
+                {goal.type === "destino" ? "Destino" : "Direção"}
+              </span>
+              {goal.status === "pausada" && (
+                <span style={{
+                  padding: "3px 9px", borderRadius: 9999, fontSize: 10, fontWeight: 700,
+                  background: "oklch(.97 .04 50)", color: "oklch(.45 .14 50)",
+                }}>Pausada</span>
+              )}
+            </div>
+
+            <h1 style={{
+              margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-0.025em",
+              lineHeight: 1.2, color: `oklch(.18 .04 ${hue})`,
+            }}>
+              {goal.title}
+            </h1>
+
+            {goal.why_it_matters && (
+              <p style={{
+                margin: "8px 0 0", fontSize: 13.5, lineHeight: 1.45,
+                color: `oklch(.35 .06 ${hue})`, fontStyle: "italic",
+              }}>
+                "{goal.why_it_matters}"
+              </p>
+            )}
+
+            {/* Progress */}
+            {stages.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                  <span style={{
+                    fontSize: 36, fontWeight: 800, letterSpacing: "-0.03em",
+                    color: `oklch(.32 .14 ${hue})`, lineHeight: 1,
+                  }}>
+                    {pct}
+                  </span>
+                  <span style={{ fontSize: 18, color: `oklch(.45 .1 ${hue})`, fontWeight: 500 }}>%</span>
+                  <span style={{ marginLeft: "auto", fontSize: 11, color: `oklch(.4 .08 ${hue})` }}>
+                    {stages.filter((s) => s.status === "concluida").length}/{stages.length} etapas
+                    {daysLeft !== null && ` · ${daysLeft}d`}
+                  </span>
+                </div>
+                <div style={{
+                  marginTop: 6, height: 6, borderRadius: 9999,
+                  background: `oklch(.5 .12 ${hue} / .2)`, overflow: "hidden",
+                }}>
+                  <div style={{
+                    height: "100%", width: `${pct}%`, borderRadius: 9999,
+                    background: `linear-gradient(90deg, oklch(.4 .14 ${hue}), oklch(.5 .16 ${hue}))`,
+                    transition: "width .6s ease",
+                  }} />
+                </div>
+              </div>
             )}
           </div>
-
-          <h1 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 800, color: "#fff", lineHeight: 1.3 }}>
-            {goal.title}
-          </h1>
-
-          {goal.why_it_matters && (
-            <p style={{ margin: "0 0 16px", fontSize: 13, color: "oklch(1 0 0 / .8)", fontStyle: "italic", lineHeight: 1.5 }}>
-              "{goal.why_it_matters}"
-            </p>
-          )}
-
-          {/* Progress + deadline */}
-          {goal.type === "destino" && stages.length > 0 && (
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: "oklch(1 0 0 / .8)" }}>
-                  {stages.filter((s) => s.status === "concluida").length} de {stages.length} etapas
-                </span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: "#fff" }}>{pct}%</span>
-              </div>
-              <div style={{ height: 7, borderRadius: 9999, background: "oklch(1 0 0 / .2)", overflow: "hidden" }}>
-                <div style={{
-                  height: "100%", borderRadius: 9999, width: `${pct}%`,
-                  background: pct >= 100 ? "oklch(.8 .15 120)" : "#fff",
-                  transition: "width .6s ease",
-                }} />
-              </div>
-              {daysLeft !== null && (
-                <p style={{ margin: "8px 0 0", fontSize: 12, color: "oklch(1 0 0 / .75)" }}>
-                  {daysLeft < 0 ? `⚠️ Prazo vencido há ${Math.abs(daysLeft)} dias`
-                    : daysLeft === 0 ? "🎯 Prazo: hoje!"
-                    : `📅 ${daysLeft} dias para o prazo`}
-                </p>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
-      <div style={{ padding: "20px 16px 0", display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* CommitChips row */}
+      {hasCommit && (
+        <div style={{ padding: "14px 20px 0", display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {goal.guardian_name && (
+            <CommitChip type="guardian" label={goal.guardian_name} sub="Guardião" onClick={shareGuardian} />
+          )}
+          {goal.reward && (
+            <CommitChip type="reward" label={goal.reward} sub="Recompensa" />
+          )}
+          {goal.punishment && (
+            <CommitChip type="punishment" label={goal.punishment} sub="Punição" />
+          )}
+        </div>
+      )}
 
-        {/* Commitment block */}
-        {(goal.guardian_name || goal.reward || goal.punishment) && (
+      {/* Dashed CTA if no commit */}
+      {!hasCommit && (
+        <div style={{ padding: "14px 20px 0" }}>
           <div style={{
-            background: "#fff", borderRadius: 18,
-            boxShadow: "0 2px 12px oklch(.2 .04 160 / .07)",
-            overflow: "hidden",
+            padding: "12px 16px", borderRadius: 14,
+            border: "1.5px dashed oklch(.8 .04 160)",
+            background: "transparent",
+            display: "flex", alignItems: "center", gap: 10,
           }}>
-            <div style={{ height: 3, background: `linear-gradient(90deg, ${ac(area)}, oklch(.6 .12 85))` }} />
-            <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
-                Comprometimento
-              </p>
+            <Shield size={16} style={{ color: "oklch(.65 .06 160)", flexShrink: 0 }} />
+            <p style={{ margin: 0, fontSize: 12, color: "oklch(.55 .04 160)" }}>
+              Sem guardião ou apostas ainda — edite a meta para adicionar.
+            </p>
+          </div>
+        </div>
+      )}
 
-              {goal.guardian_name && (
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{
-                    width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                    background: "oklch(.93 .04 160)", display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <Shield size={18} style={{ color: ac(area) }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 11, color: "oklch(.6 .04 160)", fontWeight: 600 }}>Guardião</p>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "oklch(.22 .02 160)" }}>{goal.guardian_name}</p>
-                    {goal.guardian_contact && (
-                      <p style={{ margin: 0, fontSize: 11, color: "oklch(.55 .04 160)" }}>{goal.guardian_contact}</p>
-                    )}
-                  </div>
-                  <button type="button" onClick={shareGuardian} style={{
-                    border: 0, borderRadius: 10, padding: "8px 12px", cursor: "pointer",
-                    background: al(area), display: "flex", alignItems: "center", gap: 5,
-                    fontFamily: "inherit", fontSize: 11, fontWeight: 700, color: ac(area),
-                  }}>
-                    <Share2 size={12} /> Compartilhar
-                  </button>
-                </div>
-              )}
+      {/* ROADMAP */}
+      <div style={{ padding: "28px 24px 0" }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
+          <p style={{ margin: 0, fontSize: 10.5, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: `oklch(.45 .12 ${hue})` }}>
+            Mapa da meta
+          </p>
+          <button type="button" onClick={() => setAddingStage(true)} style={{
+            background: "transparent", border: 0, padding: 0, cursor: "pointer", fontFamily: "inherit",
+            fontSize: 11, fontWeight: 600, color: `oklch(.45 .12 ${hue})`,
+            display: "inline-flex", alignItems: "center", gap: 4,
+          }}>
+            <Plus size={12} /> Adicionar etapa
+          </button>
+        </div>
 
-              {goal.reward && (
-                <div style={{ display: "flex", gap: 10, padding: "10px 12px", borderRadius: 12, background: "oklch(.97 .04 85)" }}>
-                  <Trophy size={18} style={{ color: "oklch(.5 .14 85)", flexShrink: 0 }} />
-                  <div>
-                    <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 700, color: "oklch(.5 .1 85)", textTransform: "uppercase", letterSpacing: ".06em" }}>
-                      Recompensa
-                    </p>
-                    <p style={{ margin: 0, fontSize: 13, color: "oklch(.35 .06 85)", lineHeight: 1.4 }}>{goal.reward}</p>
-                  </div>
-                </div>
-              )}
-
-              {goal.punishment && (
-                <div style={{ display: "flex", gap: 10, padding: "10px 12px", borderRadius: 12, background: "oklch(.97 .04 15)" }}>
-                  <AlertOctagon size={18} style={{ color: "oklch(.5 .18 15)", flexShrink: 0 }} />
-                  <div>
-                    <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 700, color: "oklch(.5 .14 15)", textTransform: "uppercase", letterSpacing: ".06em" }}>
-                      Punição
-                    </p>
-                    <p style={{ margin: 0, fontSize: 13, color: "oklch(.38 .08 15)", lineHeight: 1.4 }}>{goal.punishment}</p>
-                  </div>
-                </div>
-              )}
-            </div>
+        {stages.length === 0 && !addingStage && (
+          <div style={{
+            textAlign: "center", padding: "28px 20px", borderRadius: 16,
+            border: "2px dashed oklch(.85 .03 160)", background: "oklch(1 0 0 / .4)",
+          }}>
+            <p style={{ margin: "0 0 12px", fontSize: 14, color: "oklch(.5 .04 160)" }}>
+              Adicione etapas para quebrar sua meta em marcos concretos
+            </p>
+            <button type="button" onClick={() => setAddingStage(true)} style={{
+              padding: "10px 20px", borderRadius: 12, border: 0, cursor: "pointer",
+              background: al(area), color: ac(area), fontFamily: "inherit", fontSize: 13, fontWeight: 700,
+            }}>
+              <Plus size={14} style={{ display: "inline", marginRight: 4 }} /> Primeira etapa
+            </button>
           </div>
         )}
 
-        {/* Stages */}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
-              Etapas & Ações
-            </p>
-            <button type="button" onClick={() => setAddingStage(true)} style={{
-              display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 10,
-              border: "1.5px solid oklch(.8 .04 160)", background: "#fff", cursor: "pointer",
-              fontFamily: "inherit", fontSize: 12, fontWeight: 700, color: "oklch(.45 .1 160)",
-            }}>
-              <Plus size={14} /> Etapa
-            </button>
+        {/* Stage list — current (first non-done) gets full panel; rest get compact rows */}
+        {(() => {
+          const firstNonDone = stages.findIndex((s) => s.status !== "concluida");
+          return stages.map((stage, i) => (
+            <StageRow
+              key={stage.id}
+              stage={stage}
+              area={area}
+              index={i === firstNonDone ? 0 : stage.status === "concluida" ? -1 : 1}
+              isLast={i === stages.length - 1 && !addingStage}
+              onToggleStage={() => toggleStage(stage.id, stage.status)}
+              onToggleAction={(actionId) => {
+                const act = (stage.goal_actions ?? []).find((a) => a.id === actionId);
+                toggleAction(stage.id, actionId, act?.status ?? "pendente");
+              }}
+              onAddAction={(title, ifThen) => addAction(stage.id, title, ifThen)}
+              onDeleteAction={deleteAction}
+            />
+          ));
+        })()}
+
+        {/* Add stage inline */}
+        {addingStage && (
+          <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+            <input
+              autoFocus
+              type="text"
+              value={newStage}
+              onChange={(e) => setNewStage(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addStage(); if (e.key === "Escape") setAddingStage(false); }}
+              placeholder="Nome da nova etapa..."
+              style={{
+                flex: 1, padding: "12px 14px", borderRadius: 12,
+                border: `1.5px solid oklch(.7 .06 ${hue})`, background: "#fff",
+                fontFamily: "inherit", fontSize: 14, color: "oklch(.2 .02 160)", outline: "none",
+              }}
+            />
+            <button type="button" onClick={addStage} style={{
+              padding: "12px 16px", borderRadius: 12, border: 0, cursor: "pointer",
+              background: ac(area), color: "#fff", fontFamily: "inherit", fontSize: 13, fontWeight: 700,
+            }}>Salvar</button>
           </div>
-
-          {stages.length === 0 && !addingStage && (
-            <div style={{
-              textAlign: "center", padding: "28px 20px",
-              borderRadius: 16, border: "2px dashed oklch(.85 .03 160)",
-              background: "#fff",
-            }}>
-              <p style={{ margin: "0 0 12px", fontSize: 14, color: "oklch(.5 .04 160)" }}>
-                Adicione etapas para quebrar sua meta em marcos concretos
-              </p>
-              <button type="button" onClick={() => setAddingStage(true)} style={{
-                padding: "10px 20px", borderRadius: 12, border: 0, cursor: "pointer",
-                background: al(area), color: ac(area), fontFamily: "inherit", fontSize: 13, fontWeight: 700,
-              }}>
-                <Plus size={14} style={{ display: "inline", marginRight: 4 }} /> Primeira etapa
-              </button>
-            </div>
-          )}
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {stages.map((stage, i) => (
-              <StageCard
-                key={stage.id}
-                stage={stage}
-                area={area}
-                index={i}
-                onToggleStage={() => toggleStage(stage.id, stage.status)}
-                onToggleAction={(actionId) => toggleAction(stage.id, actionId, (stage.goal_actions ?? []).find((a) => a.id === actionId)?.status ?? "pendente")}
-                onAddAction={(title, ifThen) => addAction(stage.id, title, ifThen)}
-                onDeleteAction={deleteAction}
-              />
-            ))}
-          </div>
-
-          {/* Add stage inline */}
-          {addingStage && (
-            <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-              <input
-                autoFocus
-                type="text"
-                value={newStage}
-                onChange={(e) => setNewStage(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") addStage(); if (e.key === "Escape") setAddingStage(false); }}
-                placeholder="Nome da nova etapa..."
-                style={{
-                  flex: 1, padding: "12px 14px", borderRadius: 12,
-                  border: "1.5px solid oklch(.7 .06 160)", background: "#fff",
-                  fontFamily: "inherit", fontSize: 14, color: "oklch(.2 .02 160)", outline: "none",
-                }}
-              />
-              <button type="button" onClick={addStage} style={{
-                padding: "12px 16px", borderRadius: 12, border: 0, cursor: "pointer",
-                background: ac(area), color: "#fff", fontFamily: "inherit", fontSize: 13, fontWeight: 700,
-              }}>
-                Salvar
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Coach CTA */}
-        <button type="button" onClick={() => router.push("/insights")} style={{
-          display: "flex", alignItems: "center", gap: 12, padding: "16px 18px",
-          borderRadius: 18, border: 0, cursor: "pointer", textAlign: "left",
-          background: "linear-gradient(135deg, oklch(.42 .14 200), oklch(.5 .12 160))",
-          boxShadow: "0 4px 16px oklch(.42 .14 200 / .3)",
-        }}>
-          <Sparkles size={22} color="#fff" />
-          <div>
-            <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#fff" }}>Falar com Maya</p>
-            <p style={{ margin: 0, fontSize: 12, color: "oklch(1 0 0 / .75)" }}>
-              Maya tem acesso a todas suas metas e ao seu diário
-            </p>
-          </div>
-        </button>
+        )}
       </div>
 
-      {showMenu && (
-        <div onClick={() => setShowMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 90 }} />
-      )}
+      {/* Maya pill */}
+      <div style={{ padding: "24px 24px 0" }}>
+        <button type="button" onClick={() => router.push(`/metas/coach`)} style={{
+          display: "inline-flex", alignItems: "center", gap: 8,
+          background: "oklch(1 0 0 / .6)", backdropFilter: "blur(8px)",
+          border: `1px solid oklch(.5 .12 ${hue} / .2)`, borderRadius: 9999,
+          padding: "8px 14px 8px 8px", cursor: "pointer", fontFamily: "inherit",
+          fontSize: 12.5, fontWeight: 500, color: "oklch(.2 .02 160)",
+        }}>
+          <span style={{
+            width: 22, height: 22, borderRadius: 9999, overflow: "hidden", flex: "none",
+            border: "1px solid #fff", display: "block",
+          }}>
+            <img src="/maya.png" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          </span>
+          Conversar sobre essa meta com Maya
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "oklch(.6 .03 160)" }}>
+            <path d="M5 12h14M13 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

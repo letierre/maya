@@ -1,54 +1,35 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Target, Compass, ChevronRight, Trophy, AlertTriangle, Calendar, Shield, Sparkles } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { Goal, GoalStage, GoalAction } from "@/types";
-import { useTranslation } from "@/lib/useTranslation";
-import { t as tFn, type Lang } from "@/lib/i18n";
 
 // ── Area config ───────────────────────────────────────────────────────────────
 
-const AREA_CONFIG: Record<string, { labelKey: string; emoji: string; hue: number }> = {
-  saude:          { labelKey: "area_saude",           emoji: "💚", hue: 160 },
-  carreira:       { labelKey: "area_carreira",        emoji: "💼", hue: 220 },
-  financas:       { labelKey: "area_financas",        emoji: "💰", hue: 85  },
-  relacionamentos:{ labelKey: "area_relacionamentos", emoji: "❤️", hue: 15  },
-  desenvolvimento:{ labelKey: "area_desenvolvimento", emoji: "🧠", hue: 270 },
-  familia:        { labelKey: "area_familia",         emoji: "🏡", hue: 40  },
-  lazer:          { labelKey: "area_lazer",           emoji: "🌊", hue: 185 },
-  espiritualidade:{ labelKey: "area_espiritualidade", emoji: "✨", hue: 300 },
+const AREA_CONFIG: Record<string, { label: string; emoji: string; hue: number }> = {
+  saude:           { label: "Saúde",           emoji: "💚", hue: 160 },
+  carreira:        { label: "Carreira",        emoji: "💼", hue: 220 },
+  financas:        { label: "Finanças",        emoji: "💰", hue: 85  },
+  relacionamentos: { label: "Relacionamentos", emoji: "❤️", hue: 15  },
+  desenvolvimento: { label: "Desenvolvimento", emoji: "🧠", hue: 270 },
+  familia:         { label: "Família",         emoji: "🏡", hue: 40  },
+  lazer:           { label: "Lazer",           emoji: "🌊", hue: 185 },
+  espiritualidade: { label: "Espiritualidade", emoji: "✨", hue: 300 },
 };
 
-function areaColor(area: string, alpha = 1) {
-  const hue = AREA_CONFIG[area]?.hue ?? 160;
-  return `oklch(.5 .12 ${hue} / ${alpha})`;
-}
-function areaLight(area: string, alpha = 1) {
-  const hue = AREA_CONFIG[area]?.hue ?? 160;
-  return `oklch(.96 .04 ${hue} / ${alpha})`;
-}
-function areaMid(area: string, alpha = 1) {
-  const hue = AREA_CONFIG[area]?.hue ?? 160;
-  return `oklch(.75 .08 ${hue} / ${alpha})`;
-}
+const ROMANS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
 type GoalFull = Goal & { goal_stages: (GoalStage & { goal_actions: GoalAction[] })[] };
 
-// ── Progress calc ─────────────────────────────────────────────────────────────
-
 function goalProgress(goal: GoalFull): number {
-  const stages = goal.goal_stages ?? [];
-  if (!stages.length) return 0;
-  return Math.round((stages.filter((s) => s.status === "concluida").length / stages.length) * 100);
+  const s = goal.goal_stages ?? [];
+  if (!s.length) return 0;
+  return Math.round((s.filter((x) => x.status === "concluida").length / s.length) * 100);
 }
 
-function daysUntil(dateStr: string): number {
-  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000);
-}
-
-function daysSince(dateStr: string): number {
-  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000);
+function daysUntil(d: string): number {
+  return Math.ceil((new Date(d).getTime() - Date.now()) / 86_400_000);
 }
 
 function nextAction(goal: GoalFull): string | null {
@@ -56,189 +37,127 @@ function nextAction(goal: GoalFull): string | null {
     if (stage.status === "concluida") continue;
     const pending = (stage.goal_actions ?? []).find((a) => a.status === "pendente");
     if (pending) return pending.title;
+    return null;
   }
   return null;
 }
 
-// ── Goal card ─────────────────────────────────────────────────────────────────
+function currentStageTitle(goal: GoalFull): string {
+  const stage = (goal.goal_stages ?? []).find((s) => s.status !== "concluida");
+  return stage?.title ?? "";
+}
 
-function GoalCard({ goal, onClick, lang }: { goal: GoalFull; onClick: () => void; lang: Lang }) {
-  const area = AREA_CONFIG[goal.area] ?? AREA_CONFIG.saude;
+function romanYear(): string {
+  const y = new Date().getFullYear();
+  const thousands = ["", "M", "MM", "MMM"];
+  const hundreds =  ["", "C", "CC", "CCC", "CD", "D", "DC", "DCC", "DCCC", "CM"];
+  const tens =      ["", "X", "XX", "XXX", "XL", "L", "LX", "LXX", "LXXX", "XC"];
+  const ones =      ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
+  return (
+    thousands[Math.floor(y / 1000)] +
+    hundreds[Math.floor((y % 1000) / 100)] +
+    tens[Math.floor((y % 100) / 10)] +
+    ones[y % 10]
+  );
+}
+
+// ── Meta spread ───────────────────────────────────────────────────────────────
+
+function MetaSpread({ goal, order, primary, onClick }: {
+  goal: GoalFull; order: string; primary: boolean; onClick: () => void;
+}) {
+  const conf = AREA_CONFIG[goal.area] ?? AREA_CONFIG.saude;
+  const hue = conf.hue;
   const pct = goalProgress(goal);
-  const inactive = daysSince(goal.updated_at);
-  const isInactive = inactive >= 14;
+  const stage = currentStageTitle(goal);
   const next = nextAction(goal);
   const daysLeft = goal.target_date ? daysUntil(goal.target_date) : null;
-  const isUrgent = daysLeft !== null && daysLeft <= 30 && daysLeft >= 0;
-  const isOverdue = daysLeft !== null && daysLeft < 0;
+  const isPaused = goal.status === "pausada";
 
   return (
     <button
       type="button"
       onClick={onClick}
       style={{
-        width: "100%", textAlign: "left", background: "none", border: "none",
-        padding: 0, cursor: "pointer",
+        display: "block", width: "100%", textAlign: "left", background: "transparent",
+        border: "none", padding: "24px 24px 22px", cursor: "pointer",
+        borderTop: "1px solid oklch(.55 .08 80 / .25)",
+        opacity: isPaused ? 0.55 : 1,
       }}
     >
-      <div style={{
-        borderRadius: 20,
-        background: "#fff",
-        boxShadow: "0 2px 16px oklch(.2 .04 160 / .08), 0 1px 4px oklch(.2 .04 160 / .06)",
-        overflow: "hidden",
-        transition: "transform .15s ease, box-shadow .15s ease",
-      }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
-          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 32px oklch(.2 .04 160 / .12), 0 2px 8px oklch(.2 .04 160 / .08)";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 16px oklch(.2 .04 160 / .08), 0 1px 4px oklch(.2 .04 160 / .06)";
-        }}
-      >
-        {/* Color accent bar */}
-        <div style={{ height: 5, background: areaColor(goal.area) }} />
+      {/* Header: order numeral + area chip */}
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 }}>
+        <span style={{
+          fontFamily: "var(--font-mono, ui-monospace)", fontSize: 32, fontWeight: 800,
+          letterSpacing: "-0.04em", lineHeight: 0.85, color: `oklch(.5 .14 ${hue})`,
+          opacity: primary ? 1 : 0.55,
+        }}>{order}</span>
+        <span style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase",
+          color: `oklch(.4 .12 ${hue})`,
+        }}>
+          {conf.emoji} {conf.label}
+        </span>
+      </div>
 
-        <div style={{ padding: "16px 18px 18px" }}>
-          {/* Header row */}
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
-            {/* Area emoji badge */}
+      {/* Title */}
+      <h2 style={{
+        margin: "8px 0 0", fontSize: primary ? 22 : 18,
+        fontWeight: primary ? 700 : 600, letterSpacing: "-0.02em",
+        lineHeight: 1.2, color: "oklch(.18 .02 160)",
+      }}>
+        {goal.title}
+      </h2>
+
+      {/* Why */}
+      {goal.why_it_matters && (
+        <p style={{
+          margin: "8px 0 0", fontSize: primary ? 14 : 13, lineHeight: 1.45,
+          color: "oklch(.55 .03 160)", fontStyle: "italic",
+        }}>
+          "{goal.why_it_matters}"
+        </p>
+      )}
+
+      {/* Progress: big number + bar */}
+      <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "60px 1fr", gap: 14, alignItems: "center" }}>
+        <span style={{
+          fontSize: 26, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1,
+          color: `oklch(.4 .14 ${hue})`,
+        }}>
+          {pct}<span style={{ fontSize: 14, opacity: 0.6 }}>%</span>
+        </span>
+        <div>
+          <div style={{ height: 3, borderRadius: 9999, background: `oklch(.5 .12 ${hue} / .15)`, overflow: "hidden" }}>
             <div style={{
-              width: 42, height: 42, borderRadius: 14, flexShrink: 0,
-              background: areaLight(goal.area),
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 22,
-            }}>
-              {area.emoji}
-            </div>
-
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {/* Type + area tags */}
-              <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
-                <span style={{
-                  display: "inline-flex", alignItems: "center", gap: 3,
-                  padding: "2px 8px", borderRadius: 9999, fontSize: 10, fontWeight: 700,
-                  background: areaLight(goal.area), color: areaColor(goal.area),
-                }}>
-                  {goal.type === "destino" ? <Target size={9} /> : <Compass size={9} />}
-                  {goal.type === "destino" ? tFn(lang, "meta_tipo_destino") : tFn(lang, "meta_tipo_direcao")}
-                </span>
-                <span style={{
-                  padding: "2px 8px", borderRadius: 9999, fontSize: 10, fontWeight: 600,
-                  background: "oklch(.95 .01 160)", color: "oklch(.45 .06 160)",
-                }}>
-                  {tFn(lang, area.labelKey)}
-                </span>
-                {isInactive && (
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", gap: 3,
-                    padding: "2px 8px", borderRadius: 9999, fontSize: 10, fontWeight: 700,
-                    background: "oklch(.97 .06 60)", color: "oklch(.5 .14 60)",
-                  }}>
-                    <AlertTriangle size={9} /> {tFn(lang, "meta_inativo", { n: String(inactive) })}
-                  </span>
-                )}
-                {isOverdue && (
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", gap: 3,
-                    padding: "2px 8px", borderRadius: 9999, fontSize: 10, fontWeight: 700,
-                    background: "oklch(.97 .06 15)", color: "oklch(.5 .18 15)",
-                  }}>
-                    <AlertTriangle size={9} /> {tFn(lang, "meta_prazo_vencido")}
-                  </span>
-                )}
-                {isUrgent && !isOverdue && (
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", gap: 3,
-                    padding: "2px 8px", borderRadius: 9999, fontSize: 10, fontWeight: 700,
-                    background: "oklch(.97 .05 50)", color: "oklch(.45 .16 50)",
-                  }}>
-                    <Calendar size={9} /> {tFn(lang, "metas_dias_rest", { n: String(daysLeft) })}
-                  </span>
-                )}
-              </div>
-
-              {/* Title */}
-              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "oklch(.18 .02 160)", lineHeight: 1.3 }}>
-                {goal.title}
-              </h3>
-            </div>
-
-            <ChevronRight size={18} style={{ color: "oklch(.7 .04 160)", flexShrink: 0, marginTop: 2 }} />
+              height: "100%", width: `${pct}%`, borderRadius: 9999,
+              background: `linear-gradient(90deg, oklch(.45 .14 ${hue}), oklch(.55 .14 ${hue}))`,
+            }} />
           </div>
-
-          {/* Why it matters */}
-          {goal.why_it_matters && (
-            <p style={{
-              margin: "0 0 12px", fontSize: 12, color: "oklch(.5 .04 160)",
-              fontStyle: "italic", lineHeight: 1.5,
-              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-            }}>
-              "{goal.why_it_matters}"
-            </p>
-          )}
-
-          {/* Progress bar (destination goals only) */}
-          {goal.type === "destino" && (goal.goal_stages?.length ?? 0) > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: "oklch(.5 .04 160)" }}>
-                  {(goal.goal_stages ?? []).filter((s) => s.status === "concluida").length} de {goal.goal_stages?.length} etapas
-                </span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: areaColor(goal.area) }}>{pct}%</span>
-              </div>
-              <div style={{ height: 6, borderRadius: 9999, background: areaLight(goal.area), overflow: "hidden" }}>
-                <div style={{
-                  height: "100%", borderRadius: 9999,
-                  background: pct >= 100
-                    ? "linear-gradient(90deg, oklch(.5 .15 160), oklch(.55 .18 120))"
-                    : `linear-gradient(90deg, ${areaColor(goal.area)}, ${areaMid(goal.area)})`,
-                  width: `${pct}%`,
-                  transition: "width .6s ease",
-                }} />
-              </div>
-            </div>
-          )}
-
-          {/* Next action + footer */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {next ? (
-                <p style={{
-                  margin: 0, fontSize: 11, color: "oklch(.45 .06 160)", fontWeight: 500,
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>
-                  → {next}
-                </p>
-              ) : (
-                <p style={{ margin: 0, fontSize: 11, color: "oklch(.65 .03 160)" }}>
-                  Adicione ações às etapas
-                </p>
-              )}
-            </div>
-
-            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-              {goal.guardian_name && (
-                <span title={`Guardião: ${goal.guardian_name}`} style={{
-                  width: 24, height: 24, borderRadius: "50%",
-                  background: "oklch(.92 .04 160)", display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  <Shield size={12} style={{ color: "oklch(.45 .1 160)" }} />
-                </span>
-              )}
-              {goal.reward && (
-                <span title={`Recompensa: ${goal.reward}`} style={{
-                  width: 24, height: 24, borderRadius: "50%",
-                  background: "oklch(.95 .04 85)", display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  <Trophy size={12} style={{ color: "oklch(.5 .14 85)" }} />
-                </span>
-              )}
-            </div>
+          <div style={{ marginTop: 6, fontSize: 11, color: "oklch(.55 .03 160)", display: "flex", justifyContent: "space-between" }}>
+            <span style={{ fontStyle: "italic" }}>{isPaused ? "Pausada" : stage}</span>
+            {daysLeft !== null && daysLeft >= 0 && !isPaused && (
+              <span style={{ color: "oklch(.42 .14 50)", fontWeight: 600 }}>{daysLeft}d restantes</span>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Next action */}
+      {next && !isPaused && (
+        <p style={{
+          margin: "14px 0 0", fontSize: 12, color: "oklch(.22 .02 160)",
+          paddingLeft: 12, borderLeft: `2px solid oklch(.5 .14 ${hue} / .5)`,
+        }}>
+          <span style={{
+            fontSize: 9.5, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase",
+            color: `oklch(.5 .12 ${hue})`, display: "block", marginBottom: 2,
+          }}>
+            Próximo passo
+          </span>
+          {next}
+        </p>
+      )}
     </button>
   );
 }
@@ -247,7 +166,6 @@ function GoalCard({ goal, onClick, lang }: { goal: GoalFull; onClick: () => void
 
 export default function MetasPage() {
   const router = useRouter();
-  const { lang } = useTranslation();
   const [goals, setGoals] = useState<GoalFull[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -265,197 +183,123 @@ export default function MetasPage() {
 
   useEffect(() => { loadGoals(); }, [loadGoals]);
 
-  const activeGoals = goals.filter((g) => g.status === "ativa");
-  const pausedGoals = goals.filter((g) => g.status === "pausada");
+  const orderedGoals = useMemo(() => {
+    const active = goals.filter((g) => g.status === "ativa");
+    const paused = goals.filter((g) => g.status === "pausada");
+    active.sort((a, b) => {
+      const aDays = a.target_date ? daysUntil(a.target_date) : 999;
+      const bDays = b.target_date ? daysUntil(b.target_date) : 999;
+      return aDays - bDays;
+    });
+    return [...active, ...paused];
+  }, [goals]);
 
-  const limitPct = Math.min((activeGoals.length / 5) * 100, 100);
-  const limitColor = activeGoals.length >= 5
-    ? "oklch(.5 .18 15)"
-    : activeGoals.length >= 4
-    ? "oklch(.5 .16 50)"
-    : "oklch(.45 .15 160)";
+  const activeCount = goals.filter((g) => g.status === "ativa").length;
+  const pausedCount = goals.filter((g) => g.status === "pausada").length;
+  const canAddMore = activeCount < 5;
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100dvh", background: "oklch(.98 .004 160)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid oklch(.5 .12 160)", borderTopColor: "transparent", animation: "spin .8s linear infinite" }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ minHeight: "100dvh", background: "oklch(.98 .004 160)", paddingBottom: 100 }}>
-      {/* Header */}
-      <div style={{
-        background: "linear-gradient(160deg, oklch(.5 .12 160), oklch(.42 .14 200))",
-        padding: "52px 20px 32px",
-        position: "relative", overflow: "hidden",
-      }}>
-        {/* Decorative circles */}
-        <div style={{
-          position: "absolute", top: -40, right: -40, width: 160, height: 160,
-          borderRadius: "50%", background: "oklch(1 0 0 / .06)",
-        }} />
-        <div style={{
-          position: "absolute", bottom: -20, left: -20, width: 100, height: 100,
-          borderRadius: "50%", background: "oklch(1 0 0 / .04)",
-        }} />
+    <div style={{
+      minHeight: "100dvh", paddingBottom: 110,
+      background: `
+        radial-gradient(ellipse 70% 40% at 50% 0%, oklch(.96 .03 70 / .45) 0%, transparent 60%),
+        linear-gradient(180deg, oklch(.99 .005 80) 0%, oklch(.96 .015 80) 100%)
+      `,
+    }}>
 
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <p style={{ margin: "0 0 4px", fontSize: 13, color: "oklch(1 0 0 / .7)", fontWeight: 500 }}>
-            {tFn(lang, "metas_subtitle")}
-          </p>
-          <h1 style={{ margin: "0 0 20px", fontSize: 28, fontWeight: 800, color: "#fff", letterSpacing: "-.5px" }}>
-            {tFn(lang, "metas_title")}
-          </h1>
-
-          {/* Limit indicator */}
-          <div style={{
-            background: "oklch(1 0 0 / .15)", borderRadius: 14, padding: "12px 16px",
-            backdropFilter: "blur(8px)",
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ fontSize: 12, color: "oklch(1 0 0 / .85)", fontWeight: 600 }}>
-                {tFn(lang, "metas_ativas_label")}
-              </span>
-              <span style={{ fontSize: 12, fontWeight: 800, color: "#fff" }}>
-                {activeGoals.length} / 5
-              </span>
-            </div>
-            <div style={{ height: 5, borderRadius: 9999, background: "oklch(1 0 0 / .2)", overflow: "hidden" }}>
-              <div style={{
-                height: "100%", borderRadius: 9999, width: `${limitPct}%`,
-                background: activeGoals.length >= 5
-                  ? "oklch(.7 .18 15)"
-                  : "oklch(1 0 0 / .8)",
-                transition: "width .5s ease",
-              }} />
-            </div>
-            {activeGoals.length >= 5 && (
-              <p style={{ margin: "8px 0 0", fontSize: 11, color: "oklch(.9 .06 15)", fontWeight: 600 }}>
-                ⚠️ {tFn(lang, "metas_limite")}
-              </p>
-            )}
-            {activeGoals.length === 0 && (
-              <p style={{ margin: "8px 0 0", fontSize: 11, color: "oklch(1 0 0 / .65)" }}>
-                {tFn(lang, "metas_dica")}
-              </p>
-            )}
-          </div>
+      {/* Editorial header */}
+      <div style={{ padding: "24px 24px 8px", textAlign: "center", position: "relative" }}>
+        <p style={{
+          margin: 0, fontFamily: "var(--font-mono, ui-monospace)", fontSize: 10,
+          color: "oklch(.55 .03 160)", letterSpacing: ".16em", textTransform: "uppercase",
+        }}>
+          Volume I · {romanYear()}
+        </p>
+        <h1 style={{
+          margin: "6px 0 0", fontSize: 30, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.05,
+          fontStyle: "italic", color: "oklch(.18 .02 160)",
+        }}>
+          O livro das metas
+        </h1>
+        <p style={{ margin: "6px 0 0", fontSize: 12, color: "oklch(.55 .03 160)" }}>
+          {activeCount} {activeCount === 1 ? "ativa" : "ativas"}
+          {pausedCount > 0 && ` · ${pausedCount} pausada${pausedCount > 1 ? "s" : ""}`}
+          {canAddMore && (
+            <span style={{ color: "oklch(.55 .03 160)" }}> · {5 - activeCount} slot{5 - activeCount !== 1 ? "s" : ""} livre{5 - activeCount !== 1 ? "s" : ""}</span>
+          )}
+          {!canAddMore && <span style={{ color: "oklch(.5 .14 15)", fontWeight: 600 }}> · limite atingido</span>}
+        </p>
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 14 }}>
+          <span style={{ width: 44, height: 1, background: "oklch(.55 .08 80 / .35)", display: "block" }} />
         </div>
-      </div>
 
-      <div style={{ padding: "20px 16px 0" }}>
-        {loading ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {[1, 2].map((i) => (
-              <div key={i} style={{
-                height: 160, borderRadius: 20, background: "oklch(.93 .01 160)",
-                animation: "pulse 1.5s ease infinite",
-              }} />
-            ))}
-          </div>
-        ) : goals.length === 0 ? (
-          /* Empty state */
-          <div style={{ textAlign: "center", padding: "40px 20px" }}>
-            <div style={{
-              width: 80, height: 80, borderRadius: "50%", margin: "0 auto 20px",
-              background: "oklch(.93 .04 160)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <Target size={36} style={{ color: "oklch(.5 .12 160)" }} />
-            </div>
-            <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "oklch(.25 .04 160)" }}>
-              {tFn(lang, "metas_empty_title")}
-            </h2>
-            <p style={{ margin: "0 0 28px", fontSize: 14, color: "oklch(.5 .04 160)", lineHeight: 1.6 }}>
-              {tFn(lang, "metas_empty_desc")}
-            </p>
-            <button
-              type="button"
-              onClick={() => router.push("/metas/nova")}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "14px 28px", borderRadius: 14, border: 0, cursor: "pointer",
-                background: "oklch(.5 .12 160)", color: "#fff",
-                fontFamily: "inherit", fontSize: 15, fontWeight: 700,
-                boxShadow: "0 4px 16px oklch(.5 .12 160 / .35)",
-              }}
-            >
-              <Plus size={20} /> {tFn(lang, "metas_criar_primeira")}
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {/* Active goals */}
-            {activeGoals.length > 0 && (
-              <div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {activeGoals.map((goal) => (
-                    <GoalCard
-                      key={goal.id}
-                      goal={goal}
-                      onClick={() => router.push(`/metas/${goal.id}`)}
-                      lang={lang}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Paused goals */}
-            {pausedGoals.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.6 .04 160)" }}>
-                  {tFn(lang, "metas_pausadas")}
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {pausedGoals.map((goal) => (
-                    <div key={goal.id} style={{ opacity: 0.6 }}>
-                      <GoalCard goal={goal} onClick={() => router.push(`/metas/${goal.id}`)} lang={lang} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+        {/* Nova meta link */}
+        {canAddMore && (
+          <button type="button" onClick={() => router.push("/metas/nova")} style={{
+            position: "absolute", top: 28, right: 24,
+            background: "transparent", border: 0, padding: 0, cursor: "pointer",
+            fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "oklch(.45 .12 160)",
+            display: "inline-flex", alignItems: "center", gap: 4,
+          }}>
+            <Plus size={13} /> Nova meta
+          </button>
         )}
       </div>
 
-      {/* FAB — Nova meta */}
-      {!loading && activeGoals.length < 5 && (
-        <button
-          type="button"
-          onClick={() => router.push("/metas/nova")}
-          style={{
-            position: "fixed", bottom: 88, right: 20, zIndex: 40,
-            width: 56, height: 56, borderRadius: "50%", border: 0, cursor: "pointer",
-            background: "oklch(.5 .12 160)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 4px 20px oklch(.5 .12 160 / .45)",
-            transition: "transform .15s ease",
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.08)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"; }}
-        >
-          <Plus size={26} color="#fff" />
-        </button>
+      {/* Goals list */}
+      {orderedGoals.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 24px" }}>
+          <p style={{
+            margin: "0 0 4px", fontFamily: "var(--font-mono, ui-monospace)", fontSize: 10,
+            color: "oklch(.55 .03 160)", letterSpacing: ".16em", textTransform: "uppercase",
+          }}>
+            Capítulo I
+          </p>
+          <h2 style={{ margin: "8px 0 6px", fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", fontStyle: "italic", color: "oklch(.2 .02 160)" }}>
+            Sua história começa aqui
+          </h2>
+          <p style={{ margin: "0 0 28px", fontSize: 13, color: "oklch(.55 .03 160)", lineHeight: 1.6 }}>
+            Nenhuma meta ainda. Crie a primeira e dê o primeiro passo.
+          </p>
+          <button type="button" onClick={() => router.push("/metas/nova")} style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            padding: "13px 24px", borderRadius: 14, border: 0, cursor: "pointer",
+            background: "oklch(.45 .14 160)", color: "#fff",
+            fontFamily: "inherit", fontSize: 14, fontWeight: 700,
+          }}>
+            <Plus size={18} /> Criar primeira meta
+          </button>
+        </div>
+      ) : (
+        <>
+          {orderedGoals.map((goal, i) => (
+            <MetaSpread
+              key={goal.id}
+              goal={goal}
+              order={ROMANS[i] ?? String(i + 1)}
+              primary={i === 0}
+              onClick={() => router.push(`/metas/${goal.id}`)}
+            />
+          ))}
+
+          {/* Footer */}
+          <div style={{ display: "flex", justifyContent: "center", margin: "32px 0 0" }}>
+            <span style={{ width: 44, height: 1, background: "oklch(.55 .08 80 / .35)", display: "block" }} />
+          </div>
+          <p style={{ margin: "14px 24px", fontSize: 11, fontStyle: "italic", color: "oklch(.6 .03 160)", textAlign: "center" }}>
+            Toque numa meta para abrir o capítulo completo.
+          </p>
+        </>
       )}
-
-      {/* Coach button */}
-      <button
-        type="button"
-        onClick={() => router.push("/insights")}
-        style={{
-          position: "fixed", bottom: 88, left: 20, zIndex: 40,
-          display: "flex", alignItems: "center", gap: 8,
-          padding: "12px 18px", borderRadius: 28, border: 0, cursor: "pointer",
-          background: "linear-gradient(135deg, oklch(.42 .14 200), oklch(.5 .12 160))",
-          color: "#fff", fontFamily: "inherit", fontSize: 13, fontWeight: 700,
-          boxShadow: "0 4px 20px oklch(.4 .12 200 / .4)",
-        }}
-      >
-        <Sparkles size={16} /> Maya
-      </button>
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1 }
-          50% { opacity: .5 }
-        }
-      `}</style>
     </div>
   );
 }

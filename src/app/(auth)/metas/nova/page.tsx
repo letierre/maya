@@ -2,44 +2,31 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Check, Shield, Trophy, AlertOctagon } from "lucide-react";
+import { Shield, Trophy, AlertOctagon } from "lucide-react";
 import type { GoalArea } from "@/types";
 
 // ── Area config ───────────────────────────────────────────────────────────────
 
 const AREAS: { value: GoalArea; label: string; emoji: string; hue: number; desc: string }[] = [
-  { value: "saude",          label: "Saúde",              emoji: "💚", hue: 160, desc: "Corpo, mente, sono, energia" },
-  { value: "carreira",       label: "Carreira",           emoji: "💼", hue: 220, desc: "Trabalho, negócio, propósito" },
-  { value: "financas",       label: "Finanças",           emoji: "💰", hue: 85,  desc: "Dinheiro, investimentos, abundância" },
-  { value: "relacionamentos",label: "Relacionamentos",    emoji: "❤️", hue: 15,  desc: "Amor, amizades, conexões" },
-  { value: "desenvolvimento", label: "Desenvolvimento",   emoji: "🧠", hue: 270, desc: "Aprendizado, habilidades, crescimento" },
-  { value: "familia",        label: "Família",            emoji: "🏡", hue: 40,  desc: "Presença, vínculos, legado" },
-  { value: "lazer",          label: "Lazer",              emoji: "🌊", hue: 185, desc: "Diversão, hobbies, aventura" },
-  { value: "espiritualidade",label: "Espiritualidade",    emoji: "✨", hue: 300, desc: "Fé, propósito, transcendência" },
+  { value: "saude",           label: "Saúde",           emoji: "💚", hue: 160, desc: "Corpo, mente, sono" },
+  { value: "carreira",        label: "Carreira",        emoji: "💼", hue: 220, desc: "Trabalho, propósito" },
+  { value: "financas",        label: "Finanças",        emoji: "💰", hue: 85,  desc: "Dinheiro, abundância" },
+  { value: "relacionamentos", label: "Relacionamentos", emoji: "❤️", hue: 15,  desc: "Amor, amizades" },
+  { value: "desenvolvimento", label: "Desenvolvimento", emoji: "🧠", hue: 270, desc: "Aprendizado" },
+  { value: "familia",         label: "Família",         emoji: "🏡", hue: 40,  desc: "Vínculos, legado" },
+  { value: "lazer",           label: "Lazer",           emoji: "🌊", hue: 185, desc: "Hobbies, aventura" },
+  { value: "espiritualidade", label: "Espiritualidade", emoji: "✨", hue: 300, desc: "Fé, transcendência" },
 ];
 
-function areaColor(hue: number) { return `oklch(.5 .12 ${hue})`; }
-function areaLight(hue: number) { return `oklch(.95 .05 ${hue})`; }
-
-// ── Step indicator ────────────────────────────────────────────────────────────
-
-function StepDots({ total, current }: { total: number; current: number }) {
-  return (
-    <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 28 }}>
-      {Array.from({ length: total }).map((_, i) => (
-        <div key={i} style={{
-          height: 6,
-          width: i === current ? 22 : 6,
-          borderRadius: 9999,
-          background: i <= current ? "oklch(.5 .12 160)" : "oklch(.85 .02 160)",
-          transition: "all .3s ease",
-        }} />
-      ))}
-    </div>
-  );
-}
-
-// ── Field components ──────────────────────────────────────────────────────────
+const STEP_LABELS = ["Área", "Definir", "Etapa", "Guardião", "Pacto"];
+const STEP_TITLES = [
+  "Que área da sua vida?",
+  "Defina sua meta",
+  "Primeira etapa",
+  "Quem vai te cobrar?",
+  "Suas apostas",
+];
+const TOTAL_STEPS = 5;
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
@@ -62,9 +49,8 @@ function Input({ value, onChange, placeholder, maxLength }: {
       style={{
         width: "100%", boxSizing: "border-box", padding: "13px 14px",
         borderRadius: 12, border: "1.5px solid oklch(.82 .03 160)",
-        background: "oklch(.98 .005 160)", fontFamily: "inherit",
+        background: "oklch(1 0 0 / .7)", fontFamily: "inherit",
         fontSize: 15, color: "oklch(.2 .02 160)", outline: "none",
-        transition: "border-color .15s ease",
       }}
       onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(.5 .12 160)"; }}
       onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(.82 .03 160)"; }}
@@ -84,9 +70,9 @@ function Textarea({ value, onChange, placeholder, rows = 3 }: {
       style={{
         width: "100%", boxSizing: "border-box", padding: "13px 14px",
         borderRadius: 12, border: "1.5px solid oklch(.82 .03 160)",
-        background: "oklch(.98 .005 160)", fontFamily: "inherit",
+        background: "oklch(1 0 0 / .7)", fontFamily: "inherit",
         fontSize: 14, color: "oklch(.2 .02 160)", outline: "none", resize: "none",
-        lineHeight: 1.6, transition: "border-color .15s ease",
+        lineHeight: 1.6,
       }}
       onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "oklch(.5 .12 160)"; }}
       onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "oklch(.82 .03 160)"; }}
@@ -94,42 +80,29 @@ function Textarea({ value, onChange, placeholder, rows = 3 }: {
   );
 }
 
-// ── Main wizard ───────────────────────────────────────────────────────────────
-
-const TOTAL_STEPS = 5;
-
-const STEP_TITLES = [
-  "Qual área da sua vida?",
-  "Defina sua meta",
-  "Primeira etapa",
-  "Quem vai te cobrar?",
-  "Suas apostas",
-];
+// ── Wizard ────────────────────────────────────────────────────────────────────
 
 export default function NovaMetaPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  // Form state — type is always "destino" for annual goals
-  const [area, setArea]               = useState<GoalArea | "">("");
-  const [title, setTitle]             = useState("");
-  const [description, setDescription] = useState("");
-  const [whyItMatters, setWhyItMatters] = useState("");
-  const [targetDate, setTargetDate]   = useState("");
-  const [firstStage, setFirstStage]   = useState("");
+  const [area, setArea]                       = useState<GoalArea | "">("");
+  const [title, setTitle]                     = useState("");
+  const [description, setDescription]         = useState("");
+  const [whyItMatters, setWhyItMatters]       = useState("");
+  const [targetDate, setTargetDate]           = useState("");
+  const [firstStage, setFirstStage]           = useState("");
   const [guardianName, setGuardianName]       = useState("");
   const [guardianContact, setGuardianContact] = useState("");
-  const [reward, setReward]           = useState("");
-  const [punishment, setPunishment]   = useState("");
+  const [reward, setReward]                   = useState("");
+  const [punishment, setPunishment]           = useState("");
 
   const canNext = () => {
     if (step === 0) return area !== "";
     if (step === 1) return title.trim().length >= 3 && whyItMatters.trim().length >= 10;
     if (step === 2) return firstStage.trim().length >= 3;
-    if (step === 3) return true; // guardian optional
-    if (step === 4) return true; // stakes optional
-    return false;
+    return true;
   };
 
   const next = () => { if (step < TOTAL_STEPS - 1 && canNext()) setStep((s) => s + 1); };
@@ -162,67 +135,105 @@ export default function NovaMetaPage() {
   };
 
   const selectedArea = AREAS.find((a) => a.value === area);
+  const HUE = selectedArea?.hue ?? 160;
 
   return (
-    <div style={{ minHeight: "100dvh", background: "oklch(.98 .004 160)", paddingBottom: 40 }}>
-      {/* Header */}
-      <div style={{
-        background: "linear-gradient(160deg, oklch(.5 .12 160), oklch(.42 .14 200))",
-        padding: "52px 20px 24px", position: "relative", overflow: "hidden",
+    <div style={{
+      width: "100%", minHeight: "100dvh", overflowY: "auto",
+      fontFamily: "var(--font-sans)", color: "oklch(.18 .02 160)",
+      background: `
+        radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.96 .03 ${HUE} / .45) 0%, transparent 60%),
+        linear-gradient(180deg, oklch(.97 .005 160) 0%, oklch(.94 .02 160) 100%)
+      `,
+      position: "relative", paddingBottom: 120,
+      transition: "background .5s ease",
+    }}>
+      {/* Close */}
+      <button type="button" onClick={() => router.back()} style={{
+        position: "absolute", top: 14, left: 16, zIndex: 10,
+        width: 36, height: 36, borderRadius: 9999, border: 0, cursor: "pointer",
+        background: "oklch(1 0 0 / .65)", backdropFilter: "blur(12px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: "0 1px 3px oklch(.25 .02 160 / .08)",
       }}>
-        <div style={{ position: "absolute", top: -40, right: -40, width: 140, height: 140, borderRadius: "50%", background: "oklch(1 0 0 / .06)" }} />
-        <button
-          type="button"
-          onClick={() => router.back()}
-          style={{
-            position: "relative", zIndex: 1,
-            display: "inline-flex", alignItems: "center", gap: 4,
-            background: "oklch(1 0 0 / .15)", border: 0, borderRadius: 10,
-            padding: "8px 12px", color: "#fff", fontFamily: "inherit", fontSize: 13, fontWeight: 600,
-            cursor: "pointer", marginBottom: 16,
-          }}
-        >
-          <ChevronLeft size={16} /> Voltar
-        </button>
-        <p style={{ margin: "0 0 2px", fontSize: 13, color: "oklch(1 0 0 / .7)", fontWeight: 500, position: "relative", zIndex: 1 }}>
-          Nova meta
-        </p>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#fff", position: "relative", zIndex: 1 }}>
-          {STEP_TITLES[step]}
-        </h1>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+
+      {/* Progress bars */}
+      <div style={{
+        position: "absolute", top: 22, left: 64, right: 64, zIndex: 9,
+        display: "flex", gap: 4, alignItems: "center",
+      }}>
+        {STEP_LABELS.map((_, i) => (
+          <div key={i} style={{
+            flex: 1, height: 3, borderRadius: 9999,
+            background: i <= step ? `oklch(.45 .14 ${HUE})` : `oklch(.5 .12 ${HUE} / .15)`,
+            transition: "background .3s ease",
+          }} />
+        ))}
       </div>
 
-      <div style={{ padding: "24px 16px" }}>
-        <StepDots total={TOTAL_STEPS} current={step} />
+      {/* Mono step counter */}
+      <p style={{
+        position: "absolute", top: 56, left: 0, right: 0, textAlign: "center", zIndex: 9,
+        margin: 0, fontFamily: "var(--font-mono, ui-monospace)", fontSize: 10,
+        color: "oklch(.55 .03 160)", letterSpacing: ".16em", textTransform: "uppercase",
+      }}>
+        Nova meta · passo {String(step + 1).padStart(2, "0")} de 05
+      </p>
 
-        {/* Step 0 — Area */}
+      {/* Step content */}
+      <div style={{ padding: "100px 20px 0" }}>
+        <h1 style={{ margin: "0 0 8px", fontSize: 28, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.1 }}>
+          {STEP_TITLES[step]}
+        </h1>
+
+        {/* Step 0 — Area grid */}
         {step === 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-            {AREAS.map((a) => (
-              <button
-                key={a.value}
-                type="button"
-                onClick={() => setArea(a.value)}
-                style={{
-                  textAlign: "left", border: area === a.value
-                    ? `2px solid ${areaColor(a.hue)}`
-                    : "2px solid oklch(.88 .02 160)",
-                  borderRadius: 16, padding: "14px 12px", cursor: "pointer",
-                  background: area === a.value ? areaLight(a.hue) : "#fff",
-                  transition: "all .15s ease",
-                }}
-              >
-                <span style={{ fontSize: 24, display: "block", marginBottom: 6 }}>{a.emoji}</span>
-                <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "oklch(.2 .02 160)" }}>{a.label}</p>
-                <p style={{ margin: 0, fontSize: 10, color: "oklch(.55 .04 160)", lineHeight: 1.4 }}>{a.desc}</p>
-                {area === a.value && (
-                  <div style={{ marginTop: 6, display: "flex", justifyContent: "flex-end" }}>
-                    <Check size={14} style={{ color: areaColor(a.hue) }} />
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
+          <>
+            <p style={{ margin: "0 0 24px", fontSize: 13, color: "oklch(.55 .03 160)", lineHeight: 1.5 }}>
+              Toda meta vive em uma área. Escolha a principal.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>
+              {AREAS.map((a) => {
+                const sel = area === a.value;
+                return (
+                  <button key={a.value} type="button" onClick={() => setArea(a.value)} style={{
+                    textAlign: "left", cursor: "pointer", fontFamily: "inherit",
+                    padding: "14px 12px 12px", borderRadius: 16, position: "relative",
+                    background: sel
+                      ? `linear-gradient(135deg, oklch(.96 .04 ${a.hue}) 0%, oklch(.92 .07 ${a.hue}) 100%)`
+                      : "oklch(1 0 0 / .55)",
+                    border: sel
+                      ? `2px solid oklch(.45 .14 ${a.hue})`
+                      : "2px solid oklch(.5 .12 160 / .1)",
+                    transition: "all .2s ease",
+                  }}>
+                    <span style={{ fontSize: 22, display: "block", marginBottom: 6 }}>{a.emoji}</span>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, letterSpacing: "-0.005em", color: sel ? `oklch(.2 .04 ${a.hue})` : "oklch(.2 .02 160)" }}>
+                      {a.label}
+                    </p>
+                    <p style={{ margin: "2px 0 0", fontSize: 10.5, color: sel ? `oklch(.4 .08 ${a.hue})` : "oklch(.55 .03 160)" }}>
+                      {a.desc}
+                    </p>
+                    {sel && (
+                      <span style={{
+                        position: "absolute", top: 10, right: 10,
+                        width: 18, height: 18, borderRadius: 9999, background: `oklch(.45 .14 ${a.hue})`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="m5 12 5 5 9-10"/>
+                        </svg>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* Step 1 — Title + Why + Date */}
@@ -230,20 +241,19 @@ export default function NovaMetaPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {selectedArea && (
               <div style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
-                borderRadius: 12, background: areaLight(selectedArea.hue), marginBottom: 4,
+                display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 12px",
+                borderRadius: 9999, background: `oklch(.5 .12 ${HUE} / .15)`,
+                alignSelf: "flex-start",
               }}>
-                <span style={{ fontSize: 20 }}>{selectedArea.emoji}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: areaColor(selectedArea.hue) }}>{selectedArea.label}</span>
+                <span style={{ fontSize: 16 }}>{selectedArea.emoji}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: `oklch(.35 .12 ${HUE})` }}>{selectedArea.label}</span>
               </div>
             )}
-
             <div>
               <Label>Título da meta</Label>
               <Input value={title} onChange={setTitle} placeholder="Ex: Publicar meu livro até dezembro" maxLength={80} />
               <p style={{ margin: "4px 0 0", fontSize: 11, color: "oklch(.6 .04 160)" }}>{title.length}/80</p>
             </div>
-
             <div>
               <Label>Por que isso importa para você? *</Label>
               <Textarea
@@ -256,18 +266,16 @@ export default function NovaMetaPage() {
                 Este texto vai aparecer quando sua motivação cair.
               </p>
             </div>
-
             <div>
               <Label>Descrição (opcional)</Label>
               <Textarea value={description} onChange={setDescription} placeholder="Mais detalhes sobre essa meta..." rows={2} />
             </div>
-
             <div>
               <Label>Data alvo (opcional)</Label>
               <div style={{
                 overflow: "hidden", borderRadius: 12,
                 border: "1.5px solid oklch(.82 .03 160)",
-                background: "oklch(.98 .005 160)", height: 48,
+                background: "oklch(1 0 0 / .7)", height: 48,
                 display: "flex", alignItems: "center",
               }}>
                 <input
@@ -289,28 +297,24 @@ export default function NovaMetaPage() {
         {step === 2 && (
           <div>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "oklch(.45 .04 160)", lineHeight: 1.6 }}>
-              Toda meta grande precisa ser quebrada em etapas. Qual é o <strong>primeiro marco</strong> que você precisa atingir?
+              Qual é o <strong>primeiro marco</strong> que você precisa atingir?
             </p>
-
             <div style={{
-              background: "#fff", borderRadius: 16, padding: 16, marginBottom: 16,
+              background: "oklch(1 0 0 / .6)", borderRadius: 16, padding: 16, marginBottom: 16,
               border: "1px solid oklch(.88 .02 160)",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                 <div style={{
                   width: 28, height: 28, borderRadius: "50%",
-                  background: "oklch(.93 .04 160)", display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 12, fontWeight: 800, color: "oklch(.45 .12 160)",
+                  background: `oklch(.5 .12 ${HUE} / .15)`, display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 12, fontWeight: 800, fontFamily: "var(--font-mono, ui-monospace)",
+                  color: `oklch(.4 .12 ${HUE})`,
                 }}>1</div>
                 <span style={{ fontSize: 13, fontWeight: 600, color: "oklch(.4 .06 160)" }}>Primeira etapa</span>
               </div>
               <Input value={firstStage} onChange={setFirstStage} placeholder="Ex: Escrever os primeiros 3 capítulos" maxLength={100} />
             </div>
-
-            <div style={{
-              background: "oklch(.95 .03 160)", borderRadius: 12, padding: 14,
-              display: "flex", gap: 10,
-            }}>
+            <div style={{ background: `oklch(.5 .12 ${HUE} / .08)`, borderRadius: 12, padding: 14, display: "flex", gap: 10 }}>
               <span style={{ fontSize: 18 }}>💡</span>
               <p style={{ margin: 0, fontSize: 12, color: "oklch(.4 .06 160)", lineHeight: 1.5 }}>
                 Você vai poder adicionar mais etapas e ações dentro de cada etapa na tela de detalhe da meta.
@@ -325,19 +329,15 @@ export default function NovaMetaPage() {
             <div style={{ textAlign: "center", marginBottom: 24 }}>
               <div style={{
                 width: 64, height: 64, borderRadius: "50%", margin: "0 auto 14px",
-                background: "oklch(.93 .04 160)",
+                background: `oklch(.5 .12 ${HUE} / .12)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                <Shield size={28} style={{ color: "oklch(.5 .12 160)" }} />
+                <Shield size={28} style={{ color: `oklch(.45 .12 ${HUE})` }} />
               </div>
-              <p style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "oklch(.2 .02 160)" }}>
-                Quem vai ser seu guardião?
-              </p>
-              <p style={{ margin: 0, fontSize: 13, color: "oklch(.5 .04 160)", lineHeight: 1.6 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 13, color: "oklch(.5 .04 160)", lineHeight: 1.6 }}>
                 Um amigo, familiar ou colega que vai te cobrar. Pesquisas mostram que ter um guardião aumenta as chances de sucesso em até 65%.
               </p>
             </div>
-
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
                 <Label>Nome do guardião</Label>
@@ -348,16 +348,11 @@ export default function NovaMetaPage() {
                 <Input value={guardianContact} onChange={setGuardianContact} placeholder="WhatsApp ou e-mail" />
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => { setGuardianName(""); setGuardianContact(""); next(); }}
-              style={{
-                marginTop: 24, width: "100%", padding: 14, borderRadius: 12, border: 0, cursor: "pointer",
-                background: "transparent", fontFamily: "inherit", fontSize: 13,
-                color: "oklch(.55 .04 160)", textDecoration: "underline",
-              }}
-            >
+            <button type="button" onClick={() => { setGuardianName(""); setGuardianContact(""); next(); }} style={{
+              marginTop: 24, width: "100%", padding: 14, borderRadius: 12, border: 0, cursor: "pointer",
+              background: "transparent", fontFamily: "inherit", fontSize: 13,
+              color: "oklch(.55 .04 160)", textDecoration: "underline",
+            }}>
               Pular — definirei depois
             </button>
           </div>
@@ -368,133 +363,104 @@ export default function NovaMetaPage() {
           <div>
             <div style={{ textAlign: "center", marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 14 }}>
-                <div style={{
-                  width: 48, height: 48, borderRadius: "50%",
-                  background: "oklch(.95 .04 85)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "oklch(.95 .04 85)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Trophy size={22} style={{ color: "oklch(.5 .14 85)" }} />
                 </div>
-                <div style={{
-                  width: 48, height: 48, borderRadius: "50%",
-                  background: "oklch(.95 .04 15)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "oklch(.95 .04 15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <AlertOctagon size={22} style={{ color: "oklch(.5 .18 15)" }} />
                 </div>
               </div>
-              <p style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "oklch(.2 .02 160)" }}>
-                Coloque algo em jogo
-              </p>
               <p style={{ margin: 0, fontSize: 13, color: "oklch(.5 .04 160)", lineHeight: 1.6 }}>
-                Metas com recompensa e punição definidas têm 3× mais chance de serem cumpridas. A aversão à perda é seu aliado.
+                Metas com recompensa e punição definidas têm 3× mais chance de serem cumpridas.
               </p>
             </div>
-
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{
-                background: "oklch(.97 .04 85)", borderRadius: 16, padding: 16,
-                border: "1.5px solid oklch(.88 .06 85)",
-              }}>
+              <div style={{ background: "oklch(.97 .04 85)", borderRadius: 16, padding: 16, border: "1.5px solid oklch(.88 .06 85)" }}>
                 <Label>🏆 Recompensa se cumprir</Label>
-                <Input
-                  value={reward}
-                  onChange={setReward}
-                  placeholder="Ex: Jantar no restaurante favorito, viagem dos sonhos..."
-                />
+                <Input value={reward} onChange={setReward} placeholder="Ex: Jantar no restaurante favorito..." />
               </div>
-
-              <div style={{
-                background: "oklch(.97 .04 15)", borderRadius: 16, padding: 16,
-                border: "1.5px solid oklch(.88 .06 15)",
-              }}>
+              <div style={{ background: "oklch(.97 .04 15)", borderRadius: 16, padding: 16, border: "1.5px solid oklch(.88 .06 15)" }}>
                 <Label>⚠️ Punição se abandonar</Label>
-                <Input
-                  value={punishment}
-                  onChange={setPunishment}
-                  placeholder="Ex: Dar R$ 100 para fulano, lavar os pratos por 1 mês..."
-                />
+                <Input value={punishment} onChange={setPunishment} placeholder="Ex: Dar R$ 100 para fulano..." />
               </div>
-
               {guardianName && (reward || punishment) && (
-                <div style={{
-                  background: "oklch(.95 .03 160)", borderRadius: 12, padding: 14,
-                  display: "flex", gap: 10,
-                }}>
-                  <Shield size={18} style={{ color: "oklch(.5 .12 160)", flexShrink: 0 }} />
+                <div style={{ background: `oklch(.5 .12 ${HUE} / .08)`, borderRadius: 12, padding: 14, display: "flex", gap: 10 }}>
+                  <Shield size={18} style={{ color: `oklch(.45 .12 ${HUE})`, flexShrink: 0 }} />
                   <p style={{ margin: 0, fontSize: 12, color: "oklch(.4 .06 160)", lineHeight: 1.5 }}>
                     <strong>{guardianName}</strong> vai saber da recompensa e da punição quando você compartilhar a meta.
                   </p>
                 </div>
               )}
             </div>
-
-            <button
-              type="button"
-              onClick={() => { setReward(""); setPunishment(""); }}
-              style={{
-                marginTop: 16, width: "100%", padding: 14, borderRadius: 12, border: 0, cursor: "pointer",
-                background: "transparent", fontFamily: "inherit", fontSize: 13,
-                color: "oklch(.55 .04 160)", textDecoration: "underline",
-              }}
-            >
+            <button type="button" onClick={() => { setReward(""); setPunishment(""); }} style={{
+              marginTop: 16, width: "100%", padding: 14, borderRadius: 12, border: 0, cursor: "pointer",
+              background: "transparent", fontFamily: "inherit", fontSize: 13,
+              color: "oklch(.55 .04 160)", textDecoration: "underline",
+            }}>
               Pular — prefiro sem apostas
             </button>
           </div>
         )}
+      </div>
 
-        {/* Navigation */}
-        <div style={{ marginTop: 28, display: "flex", gap: 12 }}>
+      {/* Bottom nav */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0,
+        padding: "12px 20px calc(env(safe-area-inset-bottom) + 16px)",
+        background: "oklch(.97 .005 160 / .85)", backdropFilter: "blur(12px)",
+        borderTop: "1px solid oklch(.55 .08 80 / .15)",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+      }}>
+        <button type="button" onClick={back} style={{
+          background: "transparent", border: 0, cursor: step > 0 ? "pointer" : "default",
+          fontFamily: "inherit", fontSize: 13, color: step > 0 ? "oklch(.45 .04 160)" : "transparent",
+          display: "flex", alignItems: "center", gap: 4, padding: "8px 0",
+        }}>
           {step > 0 && (
-            <button
-              type="button"
-              onClick={back}
-              style={{
-                flex: step === TOTAL_STEPS - 1 ? "0 0 auto" : 1,
-                padding: "15px 20px", borderRadius: 14, border: "2px solid oklch(.85 .03 160)",
-                background: "#fff", fontFamily: "inherit", fontSize: 15, fontWeight: 600,
-                color: "oklch(.4 .06 160)", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              }}
-            >
-              <ChevronLeft size={18} /> Voltar
-            </button>
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="m15 18-6-6 6-6"/>
+              </svg>
+              Voltar
+            </>
           )}
+        </button>
 
-          {step < TOTAL_STEPS - 1 ? (
-            <button
-              type="button"
-              onClick={next}
-              disabled={!canNext()}
-              style={{
-                flex: 1, padding: "15px 20px", borderRadius: 14, border: 0, cursor: canNext() ? "pointer" : "not-allowed",
-                background: canNext() ? "oklch(.5 .12 160)" : "oklch(.85 .02 160)",
-                fontFamily: "inherit", fontSize: 15, fontWeight: 700,
-                color: canNext() ? "#fff" : "oklch(.6 .02 160)",
-                transition: "all .15s ease",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              }}
-            >
-              Próximo <ChevronRight size={18} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              style={{
-                flex: 1, padding: "15px 20px", borderRadius: 14, border: 0, cursor: saving ? "not-allowed" : "pointer",
-                background: saving ? "oklch(.85 .02 160)" : "linear-gradient(135deg, oklch(.5 .12 160), oklch(.42 .14 200))",
-                fontFamily: "inherit", fontSize: 15, fontWeight: 700, color: "#fff",
-                boxShadow: saving ? "none" : "0 4px 16px oklch(.5 .12 160 / .35)",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                transition: "all .15s ease",
-              }}
-            >
-              {saving ? "Criando..." : <><Check size={18} /> Criar meta</>}
-            </button>
-          )}
-        </div>
+        {step < TOTAL_STEPS - 1 ? (
+          <button type="button" onClick={next} disabled={!canNext()} style={{
+            height: 48, padding: "0 22px", borderRadius: 14,
+            background: canNext() ? `oklch(.45 .14 ${HUE})` : `oklch(.5 .12 ${HUE} / .2)`,
+            color: canNext() ? "#fff" : `oklch(.45 .1 ${HUE} / .6)`,
+            border: 0, cursor: canNext() ? "pointer" : "not-allowed",
+            fontFamily: "inherit", fontSize: 14, fontWeight: 600,
+            display: "inline-flex", alignItems: "center", gap: 6,
+            boxShadow: canNext() ? `0 4px 14px -4px oklch(.45 .14 ${HUE} / .5)` : "none",
+            transition: "all .2s ease",
+          }}>
+            Continuar
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M5 12h14M13 5l7 7-7 7"/>
+            </svg>
+          </button>
+        ) : (
+          <button type="button" onClick={handleSave} disabled={saving} style={{
+            height: 48, padding: "0 22px", borderRadius: 14,
+            background: saving ? "oklch(.85 .02 160)" : `linear-gradient(135deg, oklch(.42 .16 ${HUE}), oklch(.52 .14 ${HUE}))`,
+            color: "#fff", border: 0, cursor: saving ? "not-allowed" : "pointer",
+            fontFamily: "inherit", fontSize: 14, fontWeight: 700,
+            display: "inline-flex", alignItems: "center", gap: 6,
+            boxShadow: saving ? "none" : `0 4px 14px -4px oklch(.45 .14 ${HUE} / .5)`,
+          }}>
+            {saving ? "Criando..." : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m5 12 5 5 9-10"/>
+                </svg>
+                Criar meta
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

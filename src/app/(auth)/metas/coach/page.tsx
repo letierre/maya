@@ -2,14 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Send, Sparkles } from "lucide-react";
 
 interface Msg { role: "user" | "assistant"; content: string; id: string }
 
 const STARTER_PROMPTS = [
   "Como estão minhas metas?",
   "O que devo priorizar esta semana?",
-  "Estou travado em uma meta, me ajuda?",
+  "Estou travada em uma meta",
   "Faz um resumo do meu progresso",
 ];
 
@@ -97,120 +96,154 @@ export default function GoalsCoachPage() {
   return (
     <div style={{
       height: "100dvh", display: "flex", flexDirection: "column",
-      background: "oklch(.97 .006 160)",
+      fontFamily: "var(--font-sans)",
+      background: `
+        radial-gradient(ellipse 70% 40% at 50% 0%, oklch(.96 .03 70 / .45) 0%, transparent 60%),
+        linear-gradient(180deg, oklch(.99 .005 80) 0%, oklch(.96 .015 80) 100%)
+      `,
     }}>
-      {/* Header */}
+      {/* Header — cream with Maya avatar */}
       <div style={{
-        background: "linear-gradient(135deg, oklch(.42 .14 200), oklch(.5 .12 160))",
-        padding: "48px 16px 16px",
+        padding: "52px 20px 14px",
         display: "flex", alignItems: "center", gap: 12, flexShrink: 0,
+        borderBottom: "1px solid oklch(.55 .08 80 / .15)",
+        background: "oklch(.99 .005 80 / .7)", backdropFilter: "blur(8px)",
       }}>
         <button type="button" onClick={() => router.back()} style={{
-          border: 0, background: "oklch(1 0 0 / .15)", borderRadius: 10,
-          padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center",
+          width: 34, height: 34, borderRadius: 9999, border: 0, cursor: "pointer",
+          background: "oklch(1 0 0 / .7)",
+          display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          <ChevronLeft size={20} color="#fff" />
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
         </button>
-        <div style={{
-          width: 42, height: 42, borderRadius: "50%",
-          background: "oklch(1 0 0 / .2)", display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <Sparkles size={22} color="#fff" />
+
+        {/* Maya avatar with glow ring */}
+        <div style={{ position: "relative", flex: "none" }}>
+          <span style={{ position: "absolute", inset: -3, borderRadius: 9999, background: "oklch(.78 .14 160 / .12)", display: "block" }} />
+          <span style={{
+            width: 38, height: 38, borderRadius: 9999, overflow: "hidden",
+            border: "2px solid #fff", position: "relative", display: "block",
+          }}>
+            <img src="/maya.png" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          </span>
+          <span style={{
+            position: "absolute", bottom: 0, right: 0,
+            width: 10, height: 10, borderRadius: 9999, background: "#22c55e",
+            border: "2px solid #fff",
+          }} />
         </div>
-        <div>
-          <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#fff" }}>Maya Coach</p>
-          <p style={{ margin: 0, fontSize: 11, color: "oklch(1 0 0 / .75)" }}>
-            {loading ? "Digitando…" : "Sua coach de metas IA"}
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "oklch(.18 .02 160)", letterSpacing: "-0.005em" }}>
+            Maya
+          </p>
+          <p style={{ margin: 0, fontSize: 11, color: "oklch(.55 .03 160)", fontStyle: "italic" }}>
+            {loading ? "digitando…" : "sua coach de metas · presente"}
           </p>
         </div>
       </div>
 
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px" }}>
-        {/* Empty state */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "24px 22px 12px" }}>
+
+        {/* Empty state — editorial */}
         {messages.length === 0 && (
-          <div style={{ textAlign: "center", padding: "32px 0 24px" }}>
-            <div style={{
-              width: 72, height: 72, borderRadius: "50%", margin: "0 auto 16px",
-              background: "linear-gradient(135deg, oklch(.42 .14 200), oklch(.5 .12 160))",
-              display: "flex", alignItems: "center", justifyContent: "center",
+          <div style={{ textAlign: "center", padding: "20px 0 28px" }}>
+            <p style={{
+              margin: "0 0 4px", fontFamily: "var(--font-mono, ui-monospace)", fontSize: 10,
+              color: "oklch(.55 .03 160)", letterSpacing: ".16em", textTransform: "uppercase",
             }}>
-              <Sparkles size={30} color="#fff" />
+              Uma conversa
+            </p>
+            <h2 style={{
+              margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-0.025em",
+              fontStyle: "italic", color: "oklch(.18 .02 160)",
+            }}>
+              Como posso ajudar?
+            </h2>
+            <p style={{ margin: "8px 32px 0", fontSize: 12.5, color: "oklch(.55 .03 160)", lineHeight: 1.5 }}>
+              Eu vejo suas metas, seu diário e seus check-ins. Pode me perguntar qualquer coisa.
+            </p>
+
+            <div style={{ display: "flex", justifyContent: "center", margin: "22px 0" }}>
+              <span style={{ width: 44, height: 1, background: "oklch(.55 .08 80 / .35)", display: "block" }} />
             </div>
-            <p style={{ margin: "0 0 6px", fontSize: 17, fontWeight: 700, color: "oklch(.25 .04 160)" }}>
-              Olá! Sou sua Maya Coach
-            </p>
-            <p style={{ margin: "0 0 24px", fontSize: 13, color: "oklch(.5 .04 160)", lineHeight: 1.6 }}>
-              Tenho acesso completo às suas metas e planejamento. O que quer trabalhar hoje?
-            </p>
-            {/* Starter prompts */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {STARTER_PROMPTS.map((p) => (
-                <button key={p} type="button" onClick={() => send(p)} style={{
-                  padding: "12px 16px", borderRadius: 14, border: "1.5px solid oklch(.85 .04 160)",
-                  background: "#fff", cursor: "pointer", fontFamily: "inherit",
-                  fontSize: 13, fontWeight: 500, color: "oklch(.35 .06 160)",
-                  textAlign: "left", transition: "all .15s ease",
+
+            {/* Starters as editorial menu */}
+            <div style={{ textAlign: "left" }}>
+              <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "oklch(.55 .03 160)", textAlign: "center" }}>
+                Talvez você queira começar com
+              </p>
+              {STARTER_PROMPTS.map((p, i) => (
+                <button key={i} type="button" onClick={() => send(p)} style={{
+                  width: "100%", padding: "14px 4px", cursor: "pointer", fontFamily: "inherit",
+                  background: "transparent", textAlign: "left",
+                  borderTop: "1px solid oklch(.55 .08 80 / .2)",
+                  borderLeft: 0, borderRight: 0,
+                  borderBottom: i === STARTER_PROMPTS.length - 1 ? "1px solid oklch(.55 .08 80 / .2)" : 0,
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  color: "oklch(.2 .02 160)", fontSize: 14, fontWeight: 500, fontStyle: "italic",
                 }}>
-                  {p}
+                  "{p}"
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" style={{ color: "oklch(.6 .03 160)", flexShrink: 0 }}>
+                    <path d="m9 18 6-6-6-6"/>
+                  </svg>
                 </button>
               ))}
             </div>
           </div>
         )}
 
+        {/* Messages */}
         {messages.map((msg) => {
           const isUser = msg.role === "user";
           return (
             <div key={msg.id} style={{
-              display: "flex", justifyContent: isUser ? "flex-end" : "flex-start",
-              marginBottom: 10,
+              display: isUser ? "flex" : "grid",
+              gridTemplateColumns: isUser ? undefined : "32px 1fr",
+              justifyContent: isUser ? "flex-end" : undefined,
+              gap: isUser ? undefined : 10,
+              marginBottom: 14,
+              alignItems: "flex-start",
             }}>
               {!isUser && (
-                <div style={{
-                  width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
-                  background: "linear-gradient(135deg, oklch(.42 .14 200), oklch(.5 .12 160))",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  marginRight: 8, alignSelf: "flex-end",
+                <span style={{
+                  width: 26, height: 26, borderRadius: 9999, overflow: "hidden",
+                  border: "1px solid #fff", display: "block", flexShrink: 0, marginTop: 2,
                 }}>
-                  <Sparkles size={14} color="#fff" />
-                </div>
+                  <img src="/maya.png" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                </span>
               )}
-              <div style={{
-                maxWidth: "78%", padding: "11px 14px", borderRadius: isUser
-                  ? "18px 18px 4px 18px"
-                  : "18px 18px 18px 4px",
-                background: isUser
-                  ? "oklch(.5 .12 160)"
-                  : "#fff",
-                boxShadow: isUser
-                  ? "0 2px 8px oklch(.5 .12 160 / .25)"
-                  : "0 2px 8px oklch(.2 .04 160 / .08)",
-                fontSize: 14, lineHeight: 1.55,
-                color: isUser ? "#fff" : "oklch(.2 .02 160)",
-                whiteSpace: "pre-wrap",
-              }}>
-                {msg.content}
-              </div>
+              {isUser ? (
+                <div style={{
+                  maxWidth: "80%", padding: "10px 14px",
+                  background: "oklch(.45 .14 160)", color: "#fff",
+                  borderRadius: "16px 16px 4px 16px",
+                  fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap",
+                }}>
+                  {msg.content}
+                </div>
+              ) : (
+                <p style={{
+                  margin: 0, fontSize: 14, lineHeight: 1.55, color: "oklch(.18 .02 160)",
+                  whiteSpace: "pre-wrap",
+                }}>
+                  {msg.content}
+                </p>
+              )}
             </div>
           );
         })}
 
-        {/* Typing indicator */}
+        {/* Typing */}
         {loading && (
-          <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 10 }}>
-            <div style={{
-              width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
-              background: "linear-gradient(135deg, oklch(.42 .14 200), oklch(.5 .12 160))",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              marginRight: 8, alignSelf: "flex-end",
-            }}>
-              <Sparkles size={14} color="#fff" />
-            </div>
-            <div style={{
-              padding: "11px 16px", borderRadius: "18px 18px 18px 4px",
-              background: "#fff", boxShadow: "0 2px 8px oklch(.2 .04 160 / .08)",
-            }}>
+          <div style={{ display: "grid", gridTemplateColumns: "32px 1fr", gap: 10, marginBottom: 14 }}>
+            <span style={{ width: 26, height: 26, borderRadius: 9999, overflow: "hidden", border: "1px solid #fff", display: "block" }}>
+              <img src="/maya.png" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            </span>
+            <div style={{ paddingTop: 4 }}>
               <TypingDots />
             </div>
           </div>
@@ -220,37 +253,41 @@ export default function GoalsCoachPage() {
 
       {/* Input */}
       <div style={{
-        padding: "10px 16px calc(env(safe-area-inset-bottom) + 12px)",
-        background: "#fff", borderTop: "1px solid oklch(.9 .02 160 / .6)",
+        padding: "12px 16px calc(env(safe-area-inset-bottom) + 12px)",
+        background: "oklch(.99 .005 80 / .85)", backdropFilter: "blur(8px)",
+        borderTop: "1px solid oklch(.55 .08 80 / .2)",
         display: "flex", gap: 10, alignItems: "flex-end", flexShrink: 0,
       }}>
-        <div style={{ flex: 1, borderRadius: 22, border: "1.5px solid oklch(.85 .03 160)", background: "oklch(.97 .005 160)", overflow: "hidden" }}>
+        <div style={{
+          flex: 1, borderRadius: 22, border: "1px solid oklch(.55 .08 80 / .25)",
+          background: "#fff", overflow: "hidden",
+        }}>
           <textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => { setInput(e.target.value); adjustHeight(); }}
             onKeyDown={handleKey}
-            placeholder="Mensagem para Maya Coach..."
+            placeholder="Escreva para Maya…"
             rows={1}
             style={{
               display: "block", width: "100%", boxSizing: "border-box",
-              padding: "12px 16px", border: "none", background: "transparent",
+              padding: "10px 16px", border: "none", background: "transparent",
               fontFamily: "inherit", fontSize: 14, color: "oklch(.2 .02 160)",
               outline: "none", resize: "none", lineHeight: 1.5, maxHeight: 100,
             }}
           />
         </div>
         <button type="button" onClick={() => send(input)} disabled={!input.trim() || loading} style={{
-          width: 44, height: 44, borderRadius: "50%", border: 0, flexShrink: 0,
-          cursor: (!input.trim() || loading) ? "not-allowed" : "pointer",
-          background: (!input.trim() || loading)
-            ? "oklch(.88 .02 160)"
-            : "linear-gradient(135deg, oklch(.42 .14 200), oklch(.5 .12 160))",
+          width: 44, height: 44, borderRadius: 9999, border: 0, flexShrink: 0,
+          background: "oklch(.45 .14 160)", cursor: (!input.trim() || loading) ? "not-allowed" : "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: (!input.trim() || loading) ? "none" : "0 4px 12px oklch(.42 .14 200 / .35)",
-          transition: "all .15s ease",
+          boxShadow: "0 4px 12px -4px oklch(.45 .14 160 / .45)",
+          opacity: (!input.trim() || loading) ? 0.45 : 1,
+          transition: "opacity .15s ease",
         }}>
-          <Send size={18} color={(!input.trim() || loading) ? "oklch(.65 .02 160)" : "#fff"} />
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/>
+          </svg>
         </button>
       </div>
     </div>
