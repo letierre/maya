@@ -165,9 +165,9 @@ export default function DashboardPage() {
     return () => clearInterval(id);
   }, [porques]);
 
-  // Carousel auto-advance every 5s
+  // Carousel auto-advance every 8s
   useEffect(() => {
-    const id = setInterval(() => setCarouselIdx((i) => (i + 1) % CAROUSEL_SLIDES.length), 5000);
+    const id = setInterval(() => setCarouselIdx((i) => (i + 1) % CAROUSEL_SLIDES.length), 8000);
     return () => clearInterval(id);
   }, []);
 
@@ -573,10 +573,10 @@ export default function DashboardPage() {
           className="relative rounded-[18px] overflow-hidden text-white px-[18px] py-4"
           style={{
             background: `
-              radial-gradient(circle at 100% 0, oklch(.45 .18 260 / .35), transparent 50%),
-              linear-gradient(160deg, oklch(.28 .14 260) 0%, oklch(.2 .1 260) 100%)
+              radial-gradient(circle at 100% 0, oklch(.62 .12 260 / .22), transparent 50%),
+              linear-gradient(160deg, oklch(.48 .09 260) 0%, oklch(.38 .07 260) 100%)
             `,
-            boxShadow: "0 8px 24px -12px oklch(.22 .12 260 / .55)",
+            boxShadow: "0 6px 20px -10px oklch(.35 .1 260 / .4)",
           }}
         >
           <p className="m-0 text-[10px] font-bold tracking-[.12em] uppercase text-white/60 mb-2">
@@ -703,10 +703,12 @@ export default function DashboardPage() {
                 background: s.bg,
                 opacity: i === carouselIdx ? 1 : 0,
                 transition: "opacity .5s ease",
+                pointerEvents: i === carouselIdx ? "auto" : "none",
               }}
             >
               <CarouselArtwork accent={s.accent} />
-              <div className="relative max-w-[78%]">
+              {/* Content at z-20 so it's above the tap zones at z-10 */}
+              <div className="relative max-w-[78%]" style={{ zIndex: 20 }}>
                 <p className="m-0 text-[10px] font-bold tracking-[.14em] uppercase text-white/65">
                   {s.eyebrow}
                 </p>
@@ -716,23 +718,54 @@ export default function DashboardPage() {
                 <p className="m-0 mb-3 text-[12px] leading-snug text-white/75">
                   {s.body}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => s.ctaHref && router.push(s.ctaHref)}
-                  className="px-3.5 py-1.5 rounded-full text-[11.5px] font-semibold inline-flex items-center gap-1.5"
-                  style={{
-                    background: "rgba(255,255,255,.18)",
-                    backdropFilter: "blur(8px)",
-                    border: "1px solid rgba(255,255,255,.3)",
-                    color: "#fff",
-                  }}
-                >
-                  {s.cta}
-                  <ArrowRight className="w-3 h-3" />
-                </button>
+                {s.ctaHref ? (
+                  <button
+                    type="button"
+                    onClick={() => router.push(s.ctaHref!)}
+                    className="px-3.5 py-1.5 rounded-full text-[11.5px] font-semibold inline-flex items-center gap-1.5"
+                    style={{
+                      background: "rgba(255,255,255,.18)",
+                      backdropFilter: "blur(8px)",
+                      border: "1px solid rgba(255,255,255,.3)",
+                      color: "#fff",
+                    }}
+                  >
+                    {s.cta}
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                ) : (
+                  <span
+                    className="px-3.5 py-1.5 rounded-full text-[11.5px] font-semibold inline-flex items-center gap-1.5"
+                    style={{
+                      background: "rgba(255,255,255,.12)",
+                      border: "1px solid rgba(255,255,255,.2)",
+                      color: "rgba(255,255,255,.65)",
+                    }}
+                  >
+                    {s.cta}
+                  </span>
+                )}
               </div>
             </div>
           ))}
+
+          {/* Edge tap zones — left = previous, right = next */}
+          <button
+            type="button"
+            className="absolute left-0 top-0 bottom-0 w-[30%] z-10 cursor-pointer"
+            style={{ background: "transparent" }}
+            aria-label="Slide anterior"
+            onClick={() =>
+              setCarouselIdx((i) => (i - 1 + CAROUSEL_SLIDES.length) % CAROUSEL_SLIDES.length)
+            }
+          />
+          <button
+            type="button"
+            className="absolute right-0 top-0 bottom-0 w-[30%] z-10 cursor-pointer"
+            style={{ background: "transparent" }}
+            aria-label="Próximo slide"
+            onClick={() => setCarouselIdx((i) => (i + 1) % CAROUSEL_SLIDES.length)}
+          />
         </div>
         <div className="flex justify-center gap-1.5 mt-2">
           {CAROUSEL_SLIDES.map((_, i) => (
