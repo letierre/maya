@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { buildMayaSystemPrompt, GoalSummary, WeekPlanSummary } from "@/lib/maya";
+import { buildMayaSystemPrompt, GoalSummary, WeekPlanSummary, SpecialistSummaries } from "@/lib/maya";
+import { getLatestInsights } from "@/lib/specialists";
 import { calculateStreak, getWeekMondayDate } from "@/lib/utils";
 import { NextResponse } from "next/server";
 
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
 
     const weekStart = getWeekMondayDate();
 
-    const [prefsRes, checkInsRes, diaryRes, memoriesRes, goalsRes, weekPlanRes] = await Promise.all([
+    const [prefsRes, checkInsRes, diaryRes, memoriesRes, goalsRes, weekPlanRes, specialistRes] = await Promise.all([
       admin.from("user_preferences").select("context").eq("user_id", user.id).single(),
       admin.from("check_ins").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(7),
       admin.from("diary_entries").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(10),
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
         .order("position", { foreignTable: "goal_stages", ascending: true }),
       admin.from("weekly_plans").select(`*, weekly_reviews(*), weekly_focus_goals(goal_id)`)
         .eq("user_id", user.id).eq("week_start", weekStart).maybeSingle(),
+      getLatestInsights(user.id).catch(() => null),
     ]);
 
     const context = (prefsRes.data?.context || {}) as Record<string, unknown>;
@@ -74,6 +76,7 @@ export async function POST(request: Request) {
     const memories = (memoriesRes.data || []).map((m: { fact: string }) => m.fact);
     const rawGoals = goalsRes.data || [];
     const weekPlanRaw = weekPlanRes.data;
+    const latestInsights = specialistRes ?? null;
 
     // Build GoalSummary[]
     const today = new Date();
@@ -186,6 +189,11 @@ export async function POST(request: Request) {
       streak,
       activeGoals,
       weekPlan,
+      specialistSummaries: latestInsights
+        ? Object.fromEntries(
+            Object.entries(latestInsights).map(([k, v]) => [k, v?.summary || ""])
+          ) as SpecialistSummaries
+        : undefined,
     });
 
     const reply = await callAnthropicChat(systemPrompt, messages, 400);

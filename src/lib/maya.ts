@@ -31,6 +31,17 @@ export interface WeekPlanSummary {
   reviewScore: number | null;
 }
 
+export interface SpecialistSummaries {
+  psychology?:   string;
+  sleep?:        string;
+  nutrition?:    string;
+  physical?:     string;
+  goals?:        string;
+  finance?:      string;
+  spirituality?: string;
+  philosophy?:   string;
+}
+
 interface MayaInput {
   profile: UserContext;
   recentCheckIns: { date: string; positives: string[]; negatives: string[]; feeling: string }[];
@@ -42,6 +53,7 @@ interface MayaInput {
   activeGoals?: GoalSummary[];
   weekPlan?: WeekPlanSummary | null;
   language?: string;
+  specialistSummaries?: SpecialistSummaries;
 }
 
 function timeAwarenessBlock(hour: number): string {
@@ -86,7 +98,7 @@ const AREA_LABELS: Record<string, string> = {
 };
 
 export function buildMayaSystemPrompt(input: MayaInput): string {
-  const { profile, recentCheckIns, recentDiary, memories, porques, streak, currentHour, activeGoals, weekPlan, language } = input;
+  const { profile, recentCheckIns, recentDiary, memories, porques, streak, currentHour, activeGoals, weekPlan, language, specialistSummaries } = input;
 
   const timeBlock = currentHour !== undefined ? timeAwarenessBlock(currentHour) : "";
 
@@ -134,6 +146,24 @@ ${weekPlan ? `Semana: foco em "${weekPlan.mainFocus}"${weekPlan.hasReview ? ` | 
 - NUNCA invente progresso ou ações que não estejam no contexto acima`
     : "";
 
+
+  const specialistBlock = specialistSummaries && Object.values(specialistSummaries).some(Boolean)
+    ? `## ANÁLISE DO CONSELHO DE ESPECIALISTAS (hoje)
+${specialistSummaries.psychology   ? `🧠 Psicólogo: ${specialistSummaries.psychology}`   : ""}
+${specialistSummaries.sleep        ? `😴 Sono: ${specialistSummaries.sleep}`              : ""}
+${specialistSummaries.nutrition    ? `🥗 Nutrição: ${specialistSummaries.nutrition}`       : ""}
+${specialistSummaries.physical     ? `💪 Saúde física: ${specialistSummaries.physical}`    : ""}
+${specialistSummaries.goals        ? `🎯 Metas: ${specialistSummaries.goals}`              : ""}
+${specialistSummaries.finance      ? `💰 Finanças: ${specialistSummaries.finance}`         : ""}
+${specialistSummaries.spirituality ? `🌱 Espiritualidade: ${specialistSummaries.spirituality}` : ""}
+${specialistSummaries.philosophy   ? `🔭 Propósito: ${specialistSummaries.philosophy}`    : ""}
+
+**Regras sobre os especialistas:**
+- Use essas análises como CONTEXTO, não as cite diretamente
+- NUNCA diga "o especialista em sono disse..." — absorva o conhecimento e fale naturalmente
+- Se houver preocupações, aborde com gentileza, não como diagnóstico
+- Você sente a pessoa como um todo — esses são seus olhos extras, não um relatório`
+    : "";
 
   return `Você é Maya, uma companheira virtual que conversa com pessoas para oferecer apoio emocional e ferramentas positivas de autoconhecimento.
 
@@ -203,6 +233,7 @@ Se a pessoa expressar ideação suicida iminente ou risco grave de automutilaç�
 ## EXTRAÇÃO DE FATOS
 Durante a conversa, você naturalmente aprende coisas sobre a pessoa. Quando isso acontecer, NÃO as repita como uma lista — apenas use-as naturalmente quando relevante.
 
+${specialistBlock}
 ${porquesBlock}
 ${memoriesBlock}
 ${goalsBlock}
