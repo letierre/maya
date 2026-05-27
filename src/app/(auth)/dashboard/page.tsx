@@ -8,141 +8,65 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/useTranslation";
 import { photoUrl } from "@/lib/photo-storage";
 import { sumMacros, nutritionScore, getDailyKcalGoal, DEFAULT_DAILY_KCAL } from "@/lib/meal-utils";
-import { ArrowRight, ChevronRight, Pencil } from "lucide-react";
+import { ArrowRight, Pencil } from "lucide-react";
 import type { CheckIn, Meal } from "@/types";
-import { getMoodById, getMoodLabel } from "@/lib/checkin-moods";
 
-const HABIT_DISPLAY: Record<string, [string, string]> = {
-  took_medication: ["💊", "Remédios"],
-  talked_to_someone: ["🗣️", "Conversou"],
-  meditation_prayer_breathing: ["🧘", "Meditou/Orou"],
-  creative_activity: ["🎨", "Criatividade"],
-  ate_well: ["🍽️", "Comeu bem"],
-  bowel_movement: ["🚽", "Intestino OK"],
-  exercise_walk: ["🏃", "Exercício"],
-  // drank_water shown as ml chip separately
-  slept_well: ["😴", "Sono"],
-  did_something_enjoyable: ["😊", "Algo que gostou"],
-  worked_on_goals: ["🎯", "Metas"],
+// ── Constants ───────────────────────────────────────────────────
+
+const HABIT_CHIP: Record<string, [string, (ci: CheckIn) => string]> = {
+  took_medication:             ["💊", () => "Remédios"],
+  talked_to_someone:           ["🗣️", () => "Conversa"],
+  meditation_prayer_breathing: ["🧘", () => "Pausa"],
+  creative_activity:           ["🎨", () => "Criatividade"],
+  ate_well:                    ["🍽️", () => "Comeu bem"],
+  bowel_movement:              ["🚽", () => "Banheiro"],
+  exercise_walk:               ["🏃", () => "Caminhou"],
+  slept_well:                  ["😴", () => "Sono"],
+  did_something_enjoyable:     ["😊", () => "Gostou"],
+  worked_on_goals:             ["🎯", () => "Metas"],
 };
 
+const CAROUSEL_SLIDES = [
+  {
+    eyebrow: "NOVO",
+    title: "Fio da Semana com sentimentos",
+    body: "Veja como você se sentiu cada dia.",
+    cta: "Ver",
+    ctaHref: "/historico" as string | null,
+    bg: "linear-gradient(135deg,#312e81 0%,#1e1b4b 100%)",
+    accent: "oklch(.55 .2 280)",
+  },
+  {
+    eyebrow: "LEMBRETE",
+    title: "Conversar com Maya é gratuito sempre",
+    body: "Ela está acordada quando você precisar.",
+    cta: "Conversar",
+    ctaHref: "/insights" as string | null,
+    bg: "linear-gradient(135deg,#065f46 0%,#022c22 100%)",
+    accent: "oklch(.55 .15 160)",
+  },
+  {
+    eyebrow: "EM BREVE",
+    title: "Meditações guiadas pela Maya",
+    body: "Sessões curtas, dia ou noite.",
+    cta: "Avise-me",
+    ctaHref: null as string | null,
+    bg: "linear-gradient(135deg,#7c2d12 0%,#431407 100%)",
+    accent: "oklch(.55 .2 40)",
+  },
+];
+
+const NEGATIVE_MOODS = new Set([
+  "ansiosa", "triste", "cansada", "sobrecarregada", "irritada", "frustrada",
+]);
+
+// ── Helpers ─────────────────────────────────────────────────────
 
 function greetingTimeOfDay(t: (k: string) => string) {
   const h = new Date().getHours();
   if (h < 12) return t("bom_dia");
   if (h < 18) return t("boa_tarde");
   return t("boa_noite");
-}
-
-function formatDayNum(dateStr: string) {
-  return new Date(dateStr + "T12:00:00").getDate().toString();
-}
-
-function formatWeekdayShort(dateStr: string) {
-  return new Date(dateStr + "T12:00:00")
-    .toLocaleDateString("pt-BR", { weekday: "short" })
-    .toUpperCase()
-    .replace(".", "");
-}
-
-// ── Helpers ────────────────────────────────────────────────────
-
-function Section({
-  label,
-  extra,
-  children,
-}: {
-  label: string;
-  extra?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="px-6 pt-7 relative">
-      <div className="flex items-baseline justify-between mb-3">
-        <span className="text-[11px] font-bold tracking-[.12em] uppercase text-muted-foreground">
-          {label}
-        </span>
-        {extra && <span className="text-[11px] text-muted-foreground">{extra}</span>}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function SoftRow({
-  accent,
-  accentText,
-  tag,
-  body,
-  onClick,
-}: {
-  accent: string;
-  accentText: string;
-  tag: string;
-  body: React.ReactNode;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full flex items-start gap-3 py-3.5 border-b text-left hover:bg-white/30 transition-colors"
-      style={{ borderColor: "oklch(.5 .12 160 / .12)" }}
-    >
-      <span
-        className="w-1 h-8 rounded-full flex-none mt-0.5"
-        style={{ background: accent }}
-      />
-      <div className="flex-1 min-w-0">
-        <p
-          className="text-[10.5px] font-bold tracking-[.08em] uppercase m-0"
-          style={{ color: accentText }}
-        >
-          {tag}
-        </p>
-        <p className="mt-1 text-sm leading-[1.5]">{body}</p>
-      </div>
-      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-none mt-1" />
-    </button>
-  );
-}
-
-function NutritionRing({ score }: { score: number }) {
-  const ringLen = 94.2;
-  const dashLen = (score / 100) * ringLen;
-  const color = score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#ef4444";
-  const textColor = score >= 80 ? "#047857" : score >= 60 ? "#b45309" : "#be123c";
-
-  return (
-    <div className="w-[42px] h-[42px] relative flex-none">
-      <svg
-        viewBox="0 0 36 36"
-        className="w-full h-full"
-        style={{ transform: "rotate(-90deg)" }}
-      >
-        <circle
-          cx="18" cy="18" r="15"
-          fill="none"
-          stroke="oklch(.25 .02 160 / .12)"
-          strokeWidth="2.5"
-        />
-        <circle
-          cx="18" cy="18" r="15"
-          fill="none"
-          stroke={color}
-          strokeWidth="2.5"
-          strokeDasharray={`${dashLen} ${ringLen}`}
-          strokeLinecap="round"
-        />
-      </svg>
-      <div
-        className="absolute inset-0 flex items-center justify-center text-[11px] font-bold"
-        style={{ color: textColor }}
-      >
-        {score}
-      </div>
-    </div>
-  );
 }
 
 // ── Page ────────────────────────────────────────────────────────
@@ -159,41 +83,35 @@ export default function DashboardPage() {
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [todayCheckIn, setTodayCheckIn] = useState<CheckIn | null>(null);
   const [enabledKeys, setEnabledKeys] = useState<string[]>([]);
-  const [gender, setGender] = useState<string>("nao_dizer");
   const [loading, setLoading] = useState(true);
   const [todayDisplay, setTodayDisplay] = useState("");
-
-  // New state
-  const [mayaNudgeText, setMayaNudgeText] = useState<string | null>(null); // null = loading
+  const [mayaNudgeText, setMayaNudgeText] = useState<string | null>(null);
   const [porques, setPorques] = useState<Porque[]>([]);
   const [porqueIndex, setPorqueIndex] = useState(0);
   const [porquePhoto, setPorquePhoto] = useState<string | null>(null);
   const [todayMeals, setTodayMeals] = useState<Meal[]>([]);
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [kcalGoal, setKcalGoal] = useState(DEFAULT_DAILY_KCAL);
-  const [portraitNarrative, setPortraitNarrative] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
+  const [carouselIdx, setCarouselIdx] = useState(0);
 
   useEffect(() => {
     const d = new Date();
-    const wk = d
-      .toLocaleDateString("pt-BR", { weekday: "short" })
-      .toUpperCase()
-      .replace(".", "");
-    const dn = d
-      .toLocaleDateString("pt-BR", { day: "numeric", month: "short" })
-      .toUpperCase()
-      .replace(".", "");
+    const wk = d.toLocaleDateString("pt-BR", { weekday: "short" }).toUpperCase().replace(".", "");
+    const dn = d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }).toUpperCase().replace(".", "");
     setTodayDisplay(`${wk} · ${dn}`);
   }, []);
 
   useEffect(() => {
     const today = getLocalDate();
 
-    // Main data — loads immediately, no AI dependency
     Promise.all([
       cachedFetch<CheckIn[]>("/api/check-ins"),
-      cachedFetch<{ onboarding_completed?: boolean; enabled_questions?: string[]; context?: Record<string, unknown> }>("/api/preferences"),
+      cachedFetch<{
+        onboarding_completed?: boolean;
+        enabled_questions?: string[];
+        context?: Record<string, unknown>;
+      }>("/api/preferences"),
       fetch("/api/profile").then((r) => r.json()).catch(() => ({})),
       cachedFetch<Meal[]>(`/api/meals?date=${today}`),
       cachedFetch<Meal[]>("/api/meals"),
@@ -204,7 +122,6 @@ export default function DashboardPage() {
           return;
         }
         setEnabledKeys(prefsData.enabled_questions || []);
-        setGender((prefsData.context as Record<string, unknown>)?.gender as string || "nao_dizer");
         setKcalGoal(getDailyKcalGoal((prefsData.context || {}) as Record<string, unknown>));
 
         if (Array.isArray(checkInsData)) {
@@ -215,9 +132,8 @@ export default function DashboardPage() {
         if (profileData.name) setUserName(profileData.name);
         if (profileData.porques?.length > 0) {
           setPorques(profileData.porques);
-          const idx = Math.floor(Math.random() * profileData.porques.length);
-          setPorqueIndex(idx);
-          const pq = profileData.porques[idx];
+          setPorqueIndex(0);
+          const pq = profileData.porques[0];
           if (pq.photoPath) setPorquePhoto(photoUrl(pq.photoPath));
         }
 
@@ -228,55 +144,32 @@ export default function DashboardPage() {
       })
       .catch(() => setLoading(false));
 
-    // Maya nudge — independent fetch, doesn't block the dashboard
+    // Maya nudge loads independently — doesn't block the dashboard
     fetch("/api/maya/nudge")
       .then((r) => r.json())
-      .then((nudgeData) => {
-        setMayaNudgeText(nudgeData.nudges?.[0]?.message ?? "");
-      })
+      .then((data) => setMayaNudgeText(data.nudges?.[0]?.message ?? ""))
       .catch(() => setMayaNudgeText(""));
   }, [router]);
 
-  // Portrait — fetch monthly
-  useEffect(() => {
-    const monthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
-    const cacheKey = `monthly_portrait_${monthKey}_pt`;
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      setPortraitNarrative(cached);
-      return;
-    }
-    fetch("/api/reflect/monthly", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lang: "pt" }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.narrative) {
-          setPortraitNarrative(data.narrative);
-          localStorage.setItem(cacheKey, data.narrative);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  // Auto-rotate porquê
+  // Auto-rotate porquê every 8s (sequential)
   useEffect(() => {
     if (porques.length <= 1) return;
-    const t = setInterval(() => {
-      setPorqueIndex((prev) => {
-        let next;
-        do {
-          next = Math.floor(Math.random() * porques.length);
-        } while (next === prev && porques.length > 1);
+    const id = setInterval(() => {
+      setPorqueIndex((i) => {
+        const next = (i + 1) % porques.length;
         const pq = porques[next];
         setPorquePhoto(pq.photoPath ? photoUrl(pq.photoPath) : null);
         return next;
       });
-    }, 30 * 60 * 1000);
-    return () => clearInterval(t);
+    }, 8000);
+    return () => clearInterval(id);
   }, [porques]);
+
+  // Carousel auto-advance every 5s
+  useEffect(() => {
+    const id = setInterval(() => setCarouselIdx((i) => (i + 1) % CAROUSEL_SLIDES.length), 5000);
+    return () => clearInterval(id);
+  }, []);
 
   // ── Compute ──────────────────────────────────────────────────
 
@@ -288,33 +181,34 @@ export default function DashboardPage() {
   const totalHabits = enabledNonSuicidal.length;
 
   const positiveCount = todayCheckIn
-    ? enabledNonSuicidal.filter(
-        (k) => (todayCheckIn as Record<string, unknown>)[k] === true,
-      ).length
+    ? enabledNonSuicidal.filter((k) => (todayCheckIn as unknown as Record<string, unknown>)[k] === true).length
     : 0;
 
   const positivePct = totalHabits > 0 ? Math.round((positiveCount / totalHabits) * 100) : 0;
 
-  const completedHabits = todayCheckIn
+  // Chips with value labels (excludes water — shown separately)
+  const completedHabitsChips = todayCheckIn
     ? enabledNonSuicidal
-        .filter((k) => (todayCheckIn as Record<string, unknown>)[k] === true)
-        .map((k) => HABIT_DISPLAY[k] || ["•", k])
+        .filter((k) => k !== "drank_water" && (todayCheckIn as unknown as Record<string, unknown>)[k] === true)
+        .map((k) => ({
+          emoji: HABIT_CHIP[k]?.[0] ?? "•",
+          value: HABIT_CHIP[k]?.[1]?.(todayCheckIn) ?? k,
+        }))
     : [];
 
-  // ── Fio da Semana ────────────────────────────────────────────
+  // Water label: ml below 1L, then L
+  const waterLabel = (() => {
+    const ml = (todayCheckIn?.water_cups ?? 0) * 250;
+    if (ml === 0) return "0ml";
+    if (ml < 1000) return `${ml}ml`;
+    return `${(ml / 1000).toFixed(1).replace(".0", "")}L`;
+  })();
+
+  // ── Fio da Semana ─────────────────────────────────────────────
 
   const weekDays = useMemo(() => {
     const ciByDay = new Map<string, CheckIn>();
     for (const ci of checkIns) ciByDay.set(ci.date, ci);
-
-    const mealsByDay = new Map<string, Meal[]>();
-    for (const m of allMeals) {
-      const d = new Date(m.data_hora);
-      const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      const arr = mealsByDay.get(ds) || [];
-      arr.push(m);
-      mealsByDay.set(ds, arr);
-    }
 
     const today = getLocalDate();
     const habitKeys = enabledKeys.filter(
@@ -322,12 +216,12 @@ export default function DashboardPage() {
     );
 
     const days: {
+      date: string;
       label: string;
-      energy: number | null;
       sleep: boolean | null;
-      meals: number;
-      kcal: number;
       cuidados: number | null;
+      mood_tags: string[];
+      feeling: string;
       today: boolean;
     }[] = [];
 
@@ -336,28 +230,29 @@ export default function DashboardPage() {
       d.setDate(d.getDate() - i);
       const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const ci = ciByDay.get(ds);
-      const dayMeals = mealsByDay.get(ds) || [];
-      const analyzed = dayMeals.filter((m) => m.macros && m.status_analise === "analisado");
-      const total = sumMacros(analyzed);
 
       days.push({
-        label: d
-          .toLocaleDateString("pt-BR", { weekday: "short" })
-          .replace(".", ""),
-        energy: (ci as any)?.energy_level ?? null,
+        date: ds,
+        label: d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", ""),
         sleep: ci?.slept_well ?? null,
-        meals: analyzed.length,
-        kcal: Math.round(total.calorias_kcal),
         cuidados: ci
-          ? habitKeys.filter((k) => (ci as Record<string, unknown>)[k] === true).length
+          ? habitKeys.filter((k) => (ci as unknown as Record<string, unknown>)[k] === true).length
           : null,
+        mood_tags: ci?.mood_tags ?? [],
+        feeling: ci?.feeling ?? "",
         today: ds === today,
       });
     }
     return days;
-  }, [checkIns, allMeals, enabledKeys]);
+  }, [checkIns, enabledKeys]);
 
-  // ── Evolução ─────────────────────────────────────────────────
+  const avgEnergy = useMemo(() => {
+    const withData = weekDays.filter((d) => d.cuidados !== null);
+    if (withData.length === 0) return 0;
+    return withData.reduce((sum, d) => sum + (d.cuidados! / Math.max(totalHabits, 1)) * 10, 0) / withData.length;
+  }, [weekDays, totalHabits]);
+
+  // ── Evolução 14d ─────────────────────────────────────────────
 
   const scoreKeys = enabledKeys.filter((k) => k !== "suicidal_thoughts");
 
@@ -365,90 +260,32 @@ export default function DashboardPage() {
     const ciByDay = new Map<string, CheckIn>();
     for (const ci of checkIns) ciByDay.set(ci.date, ci);
 
-    const points: { date: string; score: number }[] = [];
+    const points: number[] = [];
     for (let i = 13; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const ci = ciByDay.get(ds);
-      const score = ci
-        ? scoreKeys.filter((k) => (ci as Record<string, unknown>)[k] === true).length
-        : 0;
-      points.push({
-        date: d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }).replace(".", ""),
-        score,
-      });
+      points.push(
+        ci ? scoreKeys.filter((k) => (ci as unknown as Record<string, unknown>)[k] === true).length : 0,
+      );
     }
     return points;
   }, [checkIns, scoreKeys]);
 
-  const sparkScores = sparkData.map((p) => p.score);
-  const sparkHasData = sparkData.some((p) => p.score > 0);
   const sparkAvg =
-    sparkData.filter((p) => p.score > 0).length > 0
-      ? sparkScores.reduce((a, b) => a + b, 0) / sparkData.length
+    sparkData.filter((v) => v > 0).length > 0
+      ? sparkData.reduce((a, b) => a + b, 0) / sparkData.length
       : 0;
 
-  const sparkTrend =
-    sparkData.filter((p) => p.score > 0).length >= 2
-      ? (() => {
-          const firstHalf = sparkData.slice(0, 7);
-          const secondHalf = sparkData.slice(7);
-          const avg1 = firstHalf.reduce((a, b) => a + b.score, 0) / firstHalf.length;
-          const avg2 = secondHalf.reduce((a, b) => a + b.score, 0) / secondHalf.length;
-          if (avg2 - avg1 > 0.5) return t("subindo");
-          if (avg1 - avg2 > 0.5) return t("caindo");
-          return t("estavel");
-        })()
-      : "";
-
-  const sparkDateLabels = useMemo(() => {
-    if (sparkData.length === 0) return ["", "", ""];
-    const first = sparkData[0].date;
-    const mid = sparkData[Math.floor(sparkData.length / 2)].date;
-    const last = sparkData[sparkData.length - 1].date;
-    return [first, mid, last];
-  }, [sparkData]);
-
-  // ── Testemunha ───────────────────────────────────────────────
-
-  const testemunhaMsg = useMemo(() => {
-    if (checkIns.length < 2) return null;
-    const recent = checkIns.slice(0, 7);
-    const NEGATIVE_TAGS = new Set(["cansada", "ansiosa", "triste", "irritada", "sobrecarregada"]);
-    const hardDays = recent.filter((ci) => {
-      const energy = (ci as any).energy_level;
-      const feeling = (ci.feeling || "").toLowerCase();
-      const tags: string[] = ci.mood_tags ?? [];
-      return (
-        (energy !== null && energy !== undefined && energy <= 4) ||
-        tags.some((t) => NEGATIVE_TAGS.has(t)) ||
-        feeling.includes("triste") ||
-        feeling.includes("ansios") ||
-        feeling.includes("cansad") ||
-        feeling.includes("mal") ||
-        feeling.includes("ruim")
-      );
-    });
-
-    if (hardDays.length >= 2) {
-      return (
-        <>
-          {t("testemunha_hard_days_plural", { n: String(hardDays.length) })}{" "}
-          <span className="text-muted-foreground">{t("testemunha_presence", { n: String(recent.length) })}</span>
-        </>
-      );
-    }
-    if (hardDays.length === 1) {
-      return (
-        <>
-          {t("testemunha_hard_days_single")}{" "}
-          <span className="text-muted-foreground">{t("testemunha_presence", { n: String(recent.length) })}</span>
-        </>
-      );
-    }
-    return null;
-  }, [checkIns, t]);
+  const sparkTrend = (() => {
+    if (sparkData.filter((v) => v > 0).length < 2) return "";
+    const avg1 = sparkData.slice(0, 7).reduce((a, b) => a + b, 0) / 7;
+    const avg2 = sparkData.slice(7).reduce((a, b) => a + b, 0) / 7;
+    if (avg2 - avg1 > 0.5) return t("subindo");
+    if (avg1 - avg2 > 0.5) return t("caindo");
+    return t("estavel");
+  })();
 
   // ── Nutrição ─────────────────────────────────────────────────
 
@@ -459,9 +296,7 @@ export default function DashboardPage() {
     return { analyzed, total, score };
   }, [todayMeals]);
 
-  // ── Últimos check-ins ────────────────────────────────────────
-
-  const recentCheckins = checkIns.slice(0, 5);
+  // ─────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -473,61 +308,84 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="relative min-h-screen overflow-x-hidden"
+      className="relative min-h-screen pb-28"
       style={{
         background: `
-          radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.95 .04 80 / .55) 0%, transparent 50%),
-          radial-gradient(ellipse 100% 60% at 100% 100%, oklch(.85 .07 160 / .35) 0%, transparent 60%),
-          linear-gradient(180deg, oklch(.98 .005 160) 0%, oklch(.94 .025 160) 100%)
+          radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.95 .04 80 / .35) 0%, transparent 50%),
+          linear-gradient(180deg, oklch(.97 .005 160) 0%, oklch(.94 .02 160) 100%)
         `,
       }}
     >
 
-      {/* ── GREETING ──────────────────────────────────────────── */}
-      <div className="px-6 pt-6 pb-2">
-        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+      {/* ═ GREETING ═ */}
+      <div className="px-5 pt-[22px] pb-1">
+        <p className="m-0 text-xs uppercase tracking-wider font-semibold text-muted-foreground">
           {greetingTimeOfDay(t)}
         </p>
-        <h1 className="mt-1 text-[36px] font-bold tracking-tight leading-[1.05]">
+        <h1 className="mt-1 text-[34px] font-bold tracking-tight leading-[1.05]">
           {firstName || "—"}
         </h1>
-        <p className="mt-1 font-mono text-[11px] text-muted-foreground uppercase">
+        <p className="mt-1 font-mono text-[11px] uppercase text-muted-foreground">
           {todayDisplay}
         </p>
       </div>
 
-      {/* ── MAYA PRESENCE BLOCK ─────────────────────────────────── */}
-      <div className="mx-4 mt-3.5">
+      {/* ═ MAYA CARD ═ */}
+      <div className="px-3.5 pt-4">
         <div
-          className="relative rounded-[22px] overflow-hidden border p-5"
+          className="relative rounded-[22px] border overflow-hidden p-[18px]"
           style={{
-            background: "linear-gradient(135deg, oklch(.5 .12 160 / .08) 0%, oklch(.5 .12 160 / .02) 100%)",
+            background: `
+              radial-gradient(circle at 100% 100%, oklch(.88 .12 160 / .35), transparent 60%),
+              linear-gradient(135deg, oklch(.95 .02 160) 0%, oklch(.92 .04 160) 100%)
+            `,
             borderColor: "oklch(.5 .12 160 / .15)",
           }}
         >
-          {/* Decorative rings */}
-          <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full border pointer-events-none"
-            style={{ borderColor: "oklch(.5 .12 160 / .12)" }} />
-          <div className="absolute -right-5 -top-5 w-[120px] h-[120px] rounded-full border pointer-events-none"
-            style={{ borderColor: "oklch(.5 .12 160 / .08)" }} />
+          {/* Rings at bottom-right */}
+          <div
+            className="absolute -right-12 -bottom-12 w-44 h-44 rounded-full border pointer-events-none"
+            style={{ borderColor: "oklch(.5 .12 160 / .15)" }}
+          />
+          <div
+            className="absolute -right-6 -bottom-6 w-32 h-32 rounded-full border pointer-events-none"
+            style={{ borderColor: "oklch(.5 .12 160 / .1)" }}
+          />
 
-          <div className="relative flex gap-3.5 items-start">
-            <span className="w-14 h-14 rounded-full overflow-hidden flex-none border-2 border-white shadow-lg">
-              <img src="/Maya.png" alt="Maya" className="w-full h-full object-cover" />
-            </span>
+          <div className="relative flex gap-3 items-start">
+            <div className="relative flex-none">
+              {/* Breathing aura */}
+              <span
+                className="absolute -inset-1.5 rounded-full pointer-events-none"
+                style={{
+                  background: "oklch(.78 .14 160 / .12)",
+                  animation: "mayaBreathe 3s ease-in-out infinite",
+                }}
+              />
+              <span className="block w-[60px] h-[60px] rounded-full overflow-hidden border-[2.5px] border-white relative shadow-lg">
+                <img src="/Maya.png" alt="Maya" className="w-full h-full object-cover" />
+              </span>
+              {/* Online dot */}
+              <span
+                className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-[2.5px] border-white"
+                style={{ background: "#22c55e" }}
+              />
+            </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10.5px] font-bold tracking-wider uppercase text-primary m-0">
-                {t("maya_agora")}
+              <p
+                className="m-0 text-[10px] font-bold tracking-wider uppercase"
+                style={{ color: "oklch(.4 .12 160)" }}
+              >
+                Maya · agora
               </p>
               {mayaNudgeText === null ? (
-                /* Skeleton while nudge loads */
                 <div className="mt-2 space-y-2">
                   <div className="h-3.5 rounded-full bg-current opacity-[0.08] animate-pulse w-[90%]" />
                   <div className="h-3.5 rounded-full bg-current opacity-[0.08] animate-pulse w-[75%]" />
                   <div className="h-3.5 rounded-full bg-current opacity-[0.08] animate-pulse w-[55%]" />
                 </div>
               ) : (
-                <p className="mt-1.5 text-base leading-[1.4] font-medium tracking-tight whitespace-pre-wrap">
+                <p className="mt-1 text-[14.5px] leading-[1.4] font-medium tracking-tight whitespace-pre-wrap">
                   {mayaNudgeText || t("nudge_boas_vindas")}
                 </p>
               )}
@@ -535,80 +393,84 @@ export default function DashboardPage() {
           </div>
 
           <Button
-            className="mt-3.5 w-full h-[38px] rounded-xl text-[13px] font-semibold gap-1.5"
+            className="mt-3 w-full h-[38px] rounded-xl text-[13px] font-semibold gap-1.5"
+            style={{
+              background: "oklch(.4 .12 160)",
+              boxShadow: "0 4px 12px -4px oklch(.4 .12 160 / .45)",
+            }}
             onClick={() => router.push("/insights")}
           >
             {t("conversar_com_maya")}
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-3 h-3" />
           </Button>
         </div>
       </div>
 
-      {/* ── MEU PORQUÊ ────────────────────────────────────────── */}
+      {/* ═ MEU PORQUÊ ═ */}
       {porques.length > 0 && (
-        <Section label={t("meu_porque_label")}>
-          <div className="grid grid-cols-[92px_1fr] gap-3.5 items-center py-1">
+        <div className="px-6 pt-[22px]">
+          <div className="flex items-baseline justify-between mb-3">
+            <p
+              className="m-0 text-[10.5px] font-bold tracking-[.14em] uppercase"
+              style={{ color: "oklch(.55 .12 20)" }}
+            >
+              Meu Porquê
+            </p>
+            {porques.length > 1 && (
+              <div className="flex gap-1">
+                {porques.map((_, i) => (
+                  <span
+                    key={i}
+                    className="h-[5px] rounded-full"
+                    style={{
+                      width: i === porqueIndex ? 14 : 5,
+                      transition: "width .3s ease",
+                      background:
+                        i === porqueIndex ? "oklch(.55 .12 20)" : "oklch(.5 .1 20 / .25)",
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-[74px_1fr] gap-3.5 items-center">
             <div
-              className="w-[92px] h-[92px] rounded-2xl overflow-hidden shadow-md bg-gradient-to-br from-pink-200 to-pink-50 flex items-center justify-center"
+              className="w-[74px] h-[74px] rounded-2xl overflow-hidden flex-none flex items-center justify-center border-2 border-white"
+              style={{
+                background: "linear-gradient(135deg, oklch(.9 .06 30) 0%, oklch(.82 .12 30) 100%)",
+                boxShadow: "0 4px 14px -6px oklch(.4 .12 30 / .35)",
+              }}
             >
               {porquePhoto ? (
-                <img
-                  src={porquePhoto}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
+                <img src={porquePhoto} alt="" className="w-full h-full object-cover" />
               ) : (
-                <svg
-                  width="44"
-                  height="44"
-                  viewBox="0 0 24 24"
-                  fill="#fb7185"
-                  opacity=".6"
-                >
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="oklch(.45 .12 30 / .5)">
                   <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
                   <path d="M3 21a9 9 0 0 1 18 0Z" />
                 </svg>
               )}
             </div>
-            <div>
-              <p className="text-base italic font-medium leading-[1.4] tracking-tight m-0">
-                &ldquo;{porques[porqueIndex]?.text || "—"}&rdquo;
-              </p>
-              <div className="flex gap-1.5 mt-2.5">
-                {porques.map((_, i) => (
-                  <span
-                    key={i}
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{
-                      background:
-                        i === porqueIndex
-                          ? "var(--primary)"
-                          : "oklch(.5 .12 160 / .25)",
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
+            <p className="m-0 text-[16.5px] leading-[1.4] tracking-tight italic font-medium">
+              &ldquo;{porques[porqueIndex]?.text || "—"}&rdquo;
+            </p>
           </div>
-        </Section>
+        </div>
       )}
 
-      {/* ── CUIDADOS DE HOJE ──────────────────────────────────── */}
-      <Section
-        label={t("cuidados_de_hoje")}
-        extra={
-          <button
-            type="button"
-            onClick={() => router.push("/check-in")}
-            className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            aria-label="Editar check-in"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-          </button>
-        }
-      >
+      {/* ═ CUIDADOS DE HOJE ═ */}
+      <div className="px-6 pt-8">
+        <div className="flex items-baseline justify-between mb-3.5">
+          <p className="m-0 text-[10.5px] font-bold tracking-[.14em] uppercase text-amber-700">
+            Cuidados de hoje
+          </p>
+          {todayCheckIn && (
+            <span className="text-[11.5px] font-semibold text-amber-700 tabular-nums">
+              {positivePct}%
+            </span>
+          )}
+        </div>
+
         {!todayCheckIn ? (
-          /* ── SEM CHECK-IN HOJE: CTA proeminente ─── */
           <button
             type="button"
             onClick={() => router.push("/check-in")}
@@ -632,325 +494,423 @@ export default function DashboardPage() {
             </span>
           </button>
         ) : (
-          /* ── COM CHECK-IN: mostrar dados + editar ─ */
           <>
-            <div className="flex items-baseline gap-1.5 mb-3.5">
-              <span className="text-[36px] font-bold tracking-tight leading-none tabular-nums">
-                {positiveCount}
-              </span>
-              <span className="text-[22px] text-muted-foreground font-normal">
-                / {totalHabits}
-              </span>
-              <span className="ml-auto text-xs font-medium text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
-                {totalHabits > 0 ? positivePct : 0}%
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {completedHabits.map(([emoji, label]) => (
-                <span
-                  key={label}
-                  className="px-2.5 py-[5px] rounded-full text-[11.5px] font-medium border bg-white/70 inline-flex items-center gap-1"
-                >
-                  {emoji} {label}
+            {/* Hero row: big number + progress bar */}
+            <div className="grid grid-cols-[auto_1fr] gap-[18px] items-center mb-4">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[56px] font-bold tracking-[-0.035em] leading-[0.85] tabular-nums text-stone-900">
+                  {positiveCount}
                 </span>
-              ))}
-              {/* Water chip — always shows actual ml consumed */}
-              {todayCheckIn && (
+                <span className="text-[22px] text-muted-foreground font-normal leading-none">
+                  / {totalHabits}
+                </span>
+              </div>
+              <div>
+                <div
+                  className="h-1.5 rounded-full overflow-hidden"
+                  style={{ background: "oklch(.85 .05 80 / .35)" }}
+                >
+                  <div
+                    className="h-full rounded-full transition-[width] duration-700"
+                    style={{
+                      width: `${positivePct}%`,
+                      background: "linear-gradient(90deg,#d97706,#f59e0b)",
+                    }}
+                  />
+                </div>
+                <p className="m-0 mt-1.5 text-[10.5px] text-muted-foreground">
+                  {positiveCount} cuidados feitos · {totalHabits - positiveCount} pendentes
+                </p>
+              </div>
+            </div>
+
+            {/* Chips with value labels */}
+            <div className="flex flex-wrap gap-1.5">
+              <span
+                className="px-3 py-1.5 rounded-full text-[12px] font-medium border inline-flex items-center gap-1"
+                style={{
+                  background: "oklch(1 0 0 / .85)",
+                  backdropFilter: "blur(4px)",
+                  borderColor: "oklch(.85 .05 80 / .5)",
+                  boxShadow: "0 1px 0 oklch(.25 .02 160 / .04)",
+                  color: "#1c1917",
+                }}
+              >
+                💧 {waterLabel}
+              </span>
+              {completedHabitsChips.map(({ emoji, value }) => (
                 <span
-                  className="px-2.5 py-[5px] rounded-full text-[11.5px] font-medium border inline-flex items-center gap-1"
+                  key={value}
+                  className="px-3 py-1.5 rounded-full text-[12px] font-medium border inline-flex items-center gap-1"
                   style={{
-                    background: (todayCheckIn.water_cups ?? 0) >= 4
-                      ? "oklch(.5 .12 160 / .12)"
-                      : "oklch(1 0 0 / .7)",
-                    borderColor: (todayCheckIn.water_cups ?? 0) >= 4
-                      ? "oklch(.5 .12 160 / .3)"
-                      : undefined,
-                    color: (todayCheckIn.water_cups ?? 0) >= 4
-                      ? "oklch(.35 .1 160)"
-                      : undefined,
+                    background: "oklch(1 0 0 / .85)",
+                    backdropFilter: "blur(4px)",
+                    borderColor: "oklch(.85 .05 80 / .5)",
+                    boxShadow: "0 1px 0 oklch(.25 .02 160 / .04)",
+                    color: "#1c1917",
                   }}
                 >
-                  💧 {(todayCheckIn.water_cups ?? 0) * 250}ml
+                  {emoji} {value}
                 </span>
-              )}
+              ))}
             </div>
+
             <button
               type="button"
               onClick={() => router.push("/check-in")}
-              className="mt-3 flex items-center gap-1.5 text-[11.5px] text-primary hover:opacity-70 transition-opacity"
+              className="mt-3.5 inline-flex items-center gap-1.5 bg-transparent border-0 p-0 cursor-pointer text-[12px] font-semibold text-amber-700"
             >
               <Pencil className="w-3 h-3" />
               Editar check-in
             </button>
           </>
         )}
-      </Section>
-
-      {/* ── O FIO DA SEMANA ───────────────────────────────────── */}
-      <Section label={t("fio_titulo")}>
-        <div className="relative">
-          <div
-            className="absolute left-[22px] top-3.5 bottom-3.5 w-[1.5px]"
-            style={{ background: "oklch(.5 .12 160 / .15)" }}
-          />
-          {weekDays.map((day) => {
-            const energyColor =
-              day.energy !== null
-                ? day.energy >= 7
-                  ? "#059669"
-                  : day.energy >= 5
-                    ? "#b45309"
-                    : "#dc2626"
-                : "var(--muted-foreground)";
-            return (
-              <div
-                key={day.label}
-                className="flex items-center gap-3.5 py-2 relative"
-                style={{ opacity: day.today ? 1 : 0.85 }}
-              >
-                <div
-                  className="w-3 h-3 rounded-full flex-none z-10 relative"
-                  style={{
-                    marginLeft: 16,
-                    background: day.today ? "var(--primary)" : "#fff",
-                    border: `2px solid ${
-                      day.today ? "var(--primary)" : "oklch(.5 .12 160 / .35)"
-                    }`,
-                    boxShadow: day.today
-                      ? "0 0 0 4px oklch(.5 .12 160 / .12)"
-                      : "none",
-                  }}
-                />
-                <span
-                  className="text-[11.5px] uppercase tracking-[.05em] w-[30px]"
-                  style={{
-                    fontWeight: day.today ? 700 : 500,
-                    color: day.today
-                      ? "var(--foreground)"
-                      : "var(--muted-foreground)",
-                  }}
-                >
-                  {day.label}
-                </span>
-                <span className="text-sm leading-none" style={{ visibility: day.sleep === true ? "visible" : "hidden" }}>🌙</span>
-                {day.energy !== null && (
-                  <span
-                    className="text-[13px] font-bold tabular-nums w-[32px]"
-                    style={{ color: energyColor }}
-                  >
-                    {day.energy}/10
-                  </span>
-                )}
-                {day.cuidados !== null && (
-                  <span
-                    className="text-[13px] font-bold tabular-nums"
-                    style={{
-                      color:
-                        day.cuidados >= 7
-                          ? "#059669"
-                          : day.cuidados >= 5
-                            ? "#b45309"
-                            : "#dc2626",
-                    }}
-                  >
-                    {day.cuidados}/{totalHabits}
-                  </span>
-                )}
-                <span className="ml-auto text-[11px] text-muted-foreground tabular-nums text-right" style={{ minWidth: 80 }}>
-                  {day.meals > 0
-                    ? `${day.meals} ${t("ref_abrev")} · ${day.kcal} kcal`
-                    : ""}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </Section>
-
-      {/* ── EVOLUÇÃO ──────────────────────────────────────────── */}
-      {checkIns.length >= 2 && sparkHasData && (
-        <Section
-          label={t("evolucao")}
-          extra={
-            `${t("media_energia", { n: sparkAvg.toFixed(1) })} · ${sparkTrend}`
-          }
-        >
-          <Sparkline data={sparkScores} maxVal={scoreKeys.length || 1} />
-          <div className="flex justify-between mt-1 text-[10px] text-muted-foreground font-mono">
-            {sparkDateLabels.map((l, i) => (
-              <span key={i}>{l}</span>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* ── REFLEXIVAS ────────────────────────────────────────── */}
-      <div className="px-6 pt-8">
-        {nutritionData.score !== null && (
-          <button
-            type="button"
-            className="w-full flex items-center gap-3.5 py-4 text-left hover:bg-white/30 transition-colors"
-            onClick={() => router.push("/nutricao")}
-          >
-            <NutritionRing score={nutritionData.score} />
-            <div className="flex-1 min-w-0">
-              <p className="text-[10.5px] font-bold tracking-[.08em] uppercase text-muted-foreground m-0">
-                {t("nutricao")}
-              </p>
-              <div className="flex items-baseline gap-1.5 mt-1">
-                <span className="text-xl font-bold tracking-tight leading-none tabular-nums">
-                  {nutritionData.total.calorias_kcal}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  kcal · {nutritionData.analyzed.length}{" "}
-                  {nutritionData.analyzed.length === 1 ? "refeição" : "refeições"}
-                </span>
-              </div>
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
-        )}
       </div>
 
-      {/* ── ÚLTIMOS CHECK-INS ─────────────────────────────────── */}
-      <Section
-        label={t("ultimos_checkins")}
-        extra={
+      {/* ═ METAS DA SEMANA ═ */}
+      <div className="px-3.5 pt-8">
+        <div
+          className="relative rounded-[18px] overflow-hidden text-white px-[18px] py-4"
+          style={{
+            background: `
+              radial-gradient(circle at 100% 0, oklch(.45 .18 260 / .35), transparent 50%),
+              linear-gradient(160deg, oklch(.28 .14 260) 0%, oklch(.2 .1 260) 100%)
+            `,
+            boxShadow: "0 8px 24px -12px oklch(.22 .12 260 / .55)",
+          }}
+        >
+          <p className="m-0 text-[10px] font-bold tracking-[.12em] uppercase text-white/60 mb-2">
+            Metas da semana
+          </p>
+          <p className="m-0 text-[13px] text-white/70 py-1">
+            Suas metas semanais aparecerão aqui em breve.
+          </p>
           <button
             type="button"
-            className="text-primary text-[11px] hover:underline"
-            onClick={() => router.push("/historico")}
+            className="mt-2 bg-transparent border-0 p-0 cursor-pointer text-[12px] font-medium text-white/70 underline underline-offset-2"
           >
-            {t("ver_todos")} →
+            + Adicionar primeira meta
           </button>
-        }
-      >
-        <div>
-          {recentCheckins.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              {t("nenhum_checkin")}
+        </div>
+      </div>
+
+      {/* ═ O FIO DA SEMANA ═ */}
+      <div className="px-3.5 pt-2.5">
+        <div
+          className="rounded-[18px] px-4 pt-4 pb-[18px] border shadow-sm"
+          style={{
+            background: "linear-gradient(180deg, #fff, oklch(.96 .02 180))",
+            borderColor: "oklch(.5 .12 180 / .12)",
+          }}
+        >
+          <div className="flex items-baseline justify-between mb-3">
+            <p className="m-0 text-[10px] font-bold tracking-[.12em] uppercase text-cyan-700">
+              O Fio · 7 dias
             </p>
-          )}
-          {recentCheckins.map((ci, i) => (
+            {avgEnergy > 0 && (
+              <span className="text-[10.5px] text-muted-foreground">
+                Energia média {avgEnergy.toFixed(1)}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {weekDays.map((day) => {
+              const isToday = day.today;
+              const moodTag = day.mood_tags?.[0];
+              const moodNeg = moodTag ? NEGATIVE_MOODS.has(moodTag) : false;
+              const extraMoods = (day.mood_tags?.length ?? 0) - 1;
+              const dayScore =
+                day.cuidados !== null
+                  ? Math.round((day.cuidados / Math.max(totalHabits, 1)) * 10)
+                  : null;
+
+              return (
+                <div
+                  key={day.date}
+                  className="items-center px-2 py-1 rounded-lg"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "32px 14px 38px 1fr",
+                    gap: 8,
+                    background: isToday ? "oklch(.5 .12 180 / .08)" : "transparent",
+                  }}
+                >
+                  <span
+                    className="text-[10.5px] tracking-wider uppercase"
+                    style={{
+                      fontWeight: isToday ? 700 : 600,
+                      color: isToday ? "oklch(.35 .12 180)" : "var(--muted-foreground)",
+                    }}
+                  >
+                    {day.label}
+                  </span>
+                  <span
+                    className="text-[13px] leading-none"
+                    style={{ opacity: day.sleep === true ? 1 : 0.4 }}
+                  >
+                    {day.sleep === true ? "🌙" : "😵"}
+                  </span>
+                  <span
+                    className="text-[12px] font-bold tabular-nums"
+                    style={{
+                      color:
+                        dayScore === null
+                          ? "var(--muted-foreground)"
+                          : dayScore >= 7
+                            ? "#059669"
+                            : dayScore >= 5
+                              ? "#b45309"
+                              : "#dc2626",
+                    }}
+                  >
+                    {dayScore !== null ? `${dayScore}/10` : "—"}
+                  </span>
+                  <div className="min-w-0 flex items-center gap-1.5 overflow-hidden">
+                    {moodTag && (
+                      <span
+                        className="px-1.5 py-px rounded-full text-[9.5px] font-semibold flex-none"
+                        style={{
+                          background: moodNeg
+                            ? "oklch(.92 .05 30 / .6)"
+                            : "oklch(.88 .08 160 / .5)",
+                          color: moodNeg ? "oklch(.4 .1 30)" : "oklch(.32 .1 160)",
+                        }}
+                      >
+                        {moodTag}{extraMoods > 0 ? ` +${extraMoods}` : ""}
+                      </span>
+                    )}
+                    <span className="text-[11px] text-muted-foreground truncate">
+                      {day.feeling || "—"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ═ CARROSSEL DE DESCOBERTA ═ */}
+      <div className="px-3.5 pt-2.5">
+        <div className="rounded-[18px] overflow-hidden min-h-[144px] relative">
+          {CAROUSEL_SLIDES.map((s, i) => (
             <div
-              key={ci.id}
-              className="grid grid-cols-[52px_1fr] py-3 items-baseline"
+              key={i}
+              className="px-[22px] py-5 text-white min-h-[144px] overflow-hidden"
               style={{
-                borderTop:
-                  i === 0
-                    ? "none"
-                    : "1px solid oklch(.5 .12 160 / .1)",
+                position: i === carouselIdx ? "relative" : "absolute",
+                inset: 0,
+                background: s.bg,
+                opacity: i === carouselIdx ? 1 : 0,
+                transition: "opacity .5s ease",
               }}
             >
-              <div>
-                <div className="text-[13px] font-semibold leading-none tabular-nums">
-                  {formatDayNum(ci.date)}
-                </div>
-                <div className="text-[9.5px] font-semibold tracking-wider uppercase text-muted-foreground mt-0.5">
-                  {formatWeekdayShort(ci.date)}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1 items-center min-h-[20px]">
-                {(ci.mood_tags ?? []).length > 0
-                  ? (ci.mood_tags ?? []).map((tagId) => {
-                      const chip = getMoodById(tagId);
-                      if (!chip) return null;
-                      return (
-                        <span key={tagId} style={{
-                          display: "inline-flex", alignItems: "center", gap: 3,
-                          padding: "2px 8px", borderRadius: 9999,
-                          fontSize: 11.5, fontWeight: 600,
-                          background: chip.valence === "positive"
-                            ? "oklch(.5 .12 160 / .12)"
-                            : "oklch(.72 .1 30 / .14)",
-                          color: chip.valence === "positive"
-                            ? "oklch(.35 .1 160)"
-                            : "oklch(.38 .09 30)",
-                        }}>
-                          <span style={{ fontSize: 13 }}>{chip.emoji}</span>
-                          {getMoodLabel(chip, gender)}
-                        </span>
-                      );
-                    })
-                  : ci.feeling
-                    ? <span className="text-[13px] leading-[1.45]" style={{ color: "var(--foreground)" }}>
-                        {ci.feeling.length > 60 ? ci.feeling.slice(0, 60) + "…" : ci.feeling}
-                      </span>
-                    : <span className="text-[13px] italic" style={{ color: "var(--muted-foreground)" }}>—</span>
-                }
+              <CarouselArtwork accent={s.accent} />
+              <div className="relative max-w-[78%]">
+                <p className="m-0 text-[10px] font-bold tracking-[.14em] uppercase text-white/65">
+                  {s.eyebrow}
+                </p>
+                <h3 className="mt-1.5 mb-1.5 text-[18px] font-bold leading-tight tracking-tight">
+                  {s.title}
+                </h3>
+                <p className="m-0 mb-3 text-[12px] leading-snug text-white/75">
+                  {s.body}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => s.ctaHref && router.push(s.ctaHref)}
+                  className="px-3.5 py-1.5 rounded-full text-[11.5px] font-semibold inline-flex items-center gap-1.5"
+                  style={{
+                    background: "rgba(255,255,255,.18)",
+                    backdropFilter: "blur(8px)",
+                    border: "1px solid rgba(255,255,255,.3)",
+                    color: "#fff",
+                  }}
+                >
+                  {s.cta}
+                  <ArrowRight className="w-3 h-3" />
+                </button>
               </div>
             </div>
           ))}
         </div>
-      </Section>
+        <div className="flex justify-center gap-1.5 mt-2">
+          {CAROUSEL_SLIDES.map((_, i) => (
+            <span
+              key={i}
+              className="h-[5px] rounded-full transition-[width] duration-300"
+              style={{
+                width: i === carouselIdx ? 16 : 5,
+                background:
+                  i === carouselIdx
+                    ? "var(--foreground)"
+                    : "oklch(.5 .12 160 / .2)",
+              }}
+            />
+          ))}
+        </div>
+      </div>
 
-      <div style={{ height: 120 }} />
+      {/* ═ NUTRIÇÃO + EVOLUÇÃO ═ */}
+      <div className="px-3.5 pt-2.5 grid grid-cols-2 gap-2.5">
+        {/* Nutrição */}
+        <button
+          type="button"
+          className="text-left rounded-[18px] px-3.5 pt-3.5 pb-4 border shadow-sm"
+          style={{
+            background: "linear-gradient(180deg, #fff, oklch(.96 .03 30))",
+            borderColor: "oklch(.5 .12 30 / .12)",
+          }}
+          onClick={() => router.push("/nutricao")}
+        >
+          <p className="m-0 text-[9.5px] font-bold tracking-[.12em] uppercase text-rose-700">
+            Nutrição
+          </p>
+          {nutritionData.score !== null ? (
+            <>
+              <div className="flex items-center gap-2.5 mt-2">
+                <NutritionRing score={nutritionData.score} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[20px] font-bold tracking-tight leading-none tabular-nums">
+                    {Math.round(nutritionData.total.calorias_kcal)}
+                  </div>
+                  <div className="text-[10.5px] text-muted-foreground mt-0.5">
+                    kcal · {nutritionData.analyzed.length} ref
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="m-0 text-[11px] text-muted-foreground mt-2">
+              Sem refeições hoje
+            </p>
+          )}
+        </button>
+
+        {/* Evolução */}
+        <div
+          className="rounded-[18px] bg-white px-3.5 pt-3.5 pb-4 border shadow-sm flex flex-col"
+          style={{ borderColor: "oklch(.5 .12 160 / .12)" }}
+        >
+          <p
+            className="m-0 text-[9.5px] font-bold tracking-[.12em] uppercase"
+            style={{ color: "oklch(.4 .12 160)" }}
+          >
+            Evolução · 14d
+          </p>
+          {sparkData.some((v) => v > 0) ? (
+            <>
+              <div className="flex items-baseline gap-1.5 mt-2">
+                <span className="text-[20px] font-bold tracking-tight leading-none tabular-nums">
+                  {sparkAvg.toFixed(1)}
+                </span>
+                <span className="text-[10.5px] text-muted-foreground">
+                  média{sparkTrend ? ` · ${sparkTrend}` : ""}
+                </span>
+              </div>
+              <div className="mt-auto pt-2">
+                <SparkSmall data={sparkData} />
+              </div>
+            </>
+          ) : (
+            <p className="m-0 text-[11px] text-muted-foreground mt-2">
+              Faça mais check-ins
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-// ── Sparkline SVG ──────────────────────────────────────────────
+// ── NutritionRing ──────────────────────────────────────────────
 
-function Sparkline({ data, maxVal }: { data: number[]; maxVal: number }) {
-  const W = 320;
-  const H = 100;
-  const P = 4;
-  const max = maxVal || 1;
-  const min = 0;
+function NutritionRing({ score }: { score: number }) {
+  const ringLen = 94.2;
+  const dashLen = (score / 100) * ringLen;
+  const color = score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#ef4444";
+  const textColor = score >= 80 ? "#047857" : score >= 60 ? "#b45309" : "#be123c";
 
-  if (data.length === 0) return null;
+  return (
+    <div className="w-12 h-12 relative flex-none">
+      <svg
+        viewBox="0 0 36 36"
+        className="w-full h-full"
+        style={{ transform: "rotate(-90deg)" }}
+      >
+        <circle cx="18" cy="18" r="15" fill="none" stroke="oklch(.25 .02 160 / .12)" strokeWidth="2.5" />
+        <circle
+          cx="18" cy="18" r="15" fill="none"
+          stroke={color} strokeWidth="2.5"
+          strokeDasharray={`${dashLen} ${ringLen}`}
+          strokeLinecap="round"
+        />
+      </svg>
+      <div
+        className="absolute inset-0 flex items-center justify-center text-[11px] font-bold"
+        style={{ color: textColor }}
+      >
+        {score}
+      </div>
+    </div>
+  );
+}
 
-  const xStep = (W - P * 2) / (data.length - 1);
+// ── CarouselArtwork ─────────────────────────────────────────────
+
+function CarouselArtwork({ accent }: { accent: string }) {
+  return (
+    <>
+      <div
+        className="absolute -right-12 -top-12 w-44 h-44 rounded-full pointer-events-none opacity-[.35]"
+        style={{ background: `radial-gradient(circle, ${accent} 0%, transparent 70%)` }}
+      />
+      <div className="absolute -right-7 top-4 w-32 h-32 rounded-full border border-white/[.18] pointer-events-none" />
+      <div className="absolute -right-3 top-9 w-20 h-20 rounded-full border border-white/[.12] pointer-events-none" />
+      <div className="absolute right-5 top-5 w-14 h-14 rounded-full bg-white/[.08] backdrop-blur-md border border-white/20 pointer-events-none" />
+    </>
+  );
+}
+
+// ── SparkSmall ──────────────────────────────────────────────────
+
+function SparkSmall({ data }: { data: number[] }) {
+  const W = 140;
+  const H = 38;
+  const P = 2;
+  const max = Math.max(...data, 1);
+  const xStep = (W - P * 2) / Math.max(data.length - 1, 1);
   const points = data.map((v, i) => {
     const x = P + i * xStep;
-    const y = P + (H - P * 2) * (1 - (v - min) / (max - min));
+    const y = P + (H - P * 2) * (1 - v / max);
     return [x, y] as const;
   });
   const line = points
     .map((p, i) => (i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`))
     .join(" ");
   const fill = `${line} L ${points[points.length - 1][0]} ${H} L ${points[0][0]} ${H} Z`;
-  const last = points[points.length - 1];
 
   return (
-    <div className="relative">
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full h-auto block"
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <linearGradient id="msFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="oklch(.5 .12 160)" stopOpacity=".22" />
-            <stop offset="100%" stopColor="oklch(.5 .12 160)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <line
-          x1={P}
-          x2={W - P}
-          y1={H / 2}
-          y2={H / 2}
-          stroke="oklch(.5 .12 160 / .35)"
-          strokeDasharray="2 4"
-        />
-        <path d={fill} fill="url(#msFill)" />
-        <path
-          d={line}
-          fill="none"
-          stroke="oklch(.5 .12 160)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <circle
-          cx={last[0]}
-          cy={last[1]}
-          r="4"
-          fill="#fff"
-          stroke="oklch(.5 .12 160)"
-          strokeWidth="2"
-        />
-      </svg>
-    </div>
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      style={{ width: "100%", height: 38, display: "block" }}
+      preserveAspectRatio="none"
+    >
+      <defs>
+        <linearGradient id="ssFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="oklch(.5 .12 160)" stopOpacity=".25" />
+          <stop offset="100%" stopColor="oklch(.5 .12 160)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={fill} fill="url(#ssFill)" />
+      <path
+        d={line}
+        fill="none"
+        stroke="oklch(.5 .12 160)"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
