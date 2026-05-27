@@ -24,12 +24,13 @@ export async function GET() {
       .eq("user_id", user.id)
       .single();
 
-    const lang: Lang = (prefs?.context?.language as Lang) || "pt";
+    const context = (prefs?.context ?? {}) as Record<string, unknown>;
+    const lang: Lang = (context.language as Lang) || "pt";
     const userName =
       (user.user_metadata?.name as string) ||
-      (prefs?.context?.name as string) ||
+      (context.name as string) ||
       "";
-    const gender = (prefs?.context?.gender as string) || "nao_dizer";
+    const gender = (context.gender as string) || "nao_dizer";
 
     // Check if user has any check-ins (new user detection)
     const { data: checkIns } = await admin
@@ -39,26 +40,34 @@ export async function GET() {
       .order("date", { ascending: false })
       .limit(1);
 
-    // New user — no check-ins at all → welcome message (no AI)
+    // New user — no check-ins → welcome message, no AI cost
     if (!checkIns || checkIns.length === 0) {
       return NextResponse.json({
         nudges: [{ id: "boas_vindas", message: t(lang, "nudge_boas_vindas") }],
       });
     }
 
-    // Check if user did check-in today (to inform Maya's tone)
+    // ── Nudge cache ──────────────────────────────────────────────────────────
+    // Regenerate only when: (1) new day, or (2) no cache exists yet today
+    const cachedNudge = context.maya_nudge as { message: string; date: string } | undefined;
+
+    if (cachedNudge?.date === today && cachedNudge.message) {
+      return NextResponse.json({
+        nudges: [{ id: "maya_personal", message: cachedNudge.message }],
+      });
+    }
+
+    // ── Need a new nudge ─────────────────────────────────────────────────────
+
     const hasTodayCheckIn = checkIns[0]?.date === today;
 
-    // Try to get cached insights from today (or yesterday)
+    // Get or generate specialist insights
     let insights = await getLatestInsights(user.id);
-
-    // If no recent insights, run full analysis now
     if (!insights) {
       try {
         insights = await analyzeAllSpecialists(user.id);
       } catch (err) {
         console.error("Specialist analysis failed:", err);
-        // Fall back to a simple non-AI nudge if analysis fails
         const message = hasTodayCheckIn
           ? t(lang, "nudge_streak")
           : t(lang, "nudge_checkin_miss_nofeel");
@@ -66,8 +75,25 @@ export async function GET() {
       }
     }
 
-    // Generate personalized Maya nudge from insights
-    const message = await generateMayaNudge(insights, userName, gender);
+    // Generate personalized nudge
+    let message: string;
+    try {
+      message = await generateMayaNudge(insights, userName, gender);
+    } catch (err) {
+      console.error("Maya nudge generation failed:", err);
+      const fallback = hasTodayCheckIn
+        ? t(lang, "nudge_streak")
+        : t(lang, "nudge_checkin_miss_nofeel");
+      return NextResponse.json({ nudges: [{ id: "fallback", message: fallback }] });
+    }
+
+    // Persist nudge to cache (fire and forget — don't block the response)
+    admin
+      .from("user_preferences")
+      .update({ context: { ...context, maya_nudge: { message, date: today } } })
+      .eq("user_id", user.id)
+      .then(() => {})
+      .catch(() => {});
 
     return NextResponse.json({
       nudges: [{ id: "maya_personal", message }],
