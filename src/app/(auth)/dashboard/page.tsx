@@ -464,56 +464,85 @@ export default function DashboardPage() {
       className="relative min-h-screen pb-28"
       style={{ background: "oklch(0.12 0.012 270)" }}
     >
-      {/* ═══════════════ MAYA — PROACTIVE MESSAGE ═══════════════ */}
-      <div className="px-3.5 pt-[22px]">
+      {/* ═══════════════ MAYA — HERO ═══════════════ */}
+      <div
+        className="relative flex flex-col items-center"
+        style={{ paddingTop: 8, paddingBottom: 24 }}
+      >
+        {/* Background aura */}
         <div
-          className="relative rounded-[22px] overflow-hidden p-[18px]"
+          className="absolute pointer-events-none"
           style={{
-            background: "linear-gradient(135deg, oklch(0.18 0.02 270) 0%, oklch(0.14 0.015 270) 100%)",
-            border: "1px solid oklch(0.58 0.18 270 / 0.2)",
+            top: -60,
+            width: 320,
+            height: 320,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(124,92,255,0.12) 0%, rgba(94,234,212,0.04) 40%, transparent 70%)",
+          }}
+        />
+
+        {/* Maya avatar — large, 30% of screen (~120px on mobile) */}
+        <div style={{ marginBottom: 20, position: "relative" }}>
+          <MayaAvatar state="idle" size={130} />
+        </div>
+
+        {/* Message */}
+        <div
+          style={{
+            maxWidth: 340,
+            textAlign: "center",
+            paddingInline: 24,
+            marginBottom: 20,
           }}
         >
-          {/* Subtle glow behind avatar */}
-          <div
-            className="absolute -top-8 -right-8 w-28 h-28 rounded-full pointer-events-none"
-            style={{ background: "radial-gradient(circle, oklch(.55 .2 270 / .15), transparent 70%)" }}
-          />
-
-          <div className="relative flex gap-3 items-start">
-            <MayaAvatar state="idle" size={52} />
-            <div className="flex-1 min-w-0">
-              <p
-                className="m-0 text-[10px] font-bold tracking-[.12em] uppercase"
-                style={{ color: "#A78BFA" }}
-              >
-                Maya · agora
-              </p>
-              {mayaMessage === null ? (
-                <div className="mt-2 space-y-2">
-                  <div className="h-3.5 rounded-full bg-current opacity-[0.08] animate-pulse w-[90%]" />
-                  <div className="h-3.5 rounded-full bg-current opacity-[0.08] animate-pulse w-[75%]" />
-                  <div className="h-3.5 rounded-full bg-current opacity-[0.08] animate-pulse w-[55%]" />
-                </div>
-              ) : (
-                <p className="mt-1 text-[14.5px] leading-[1.4] font-medium tracking-tight whitespace-pre-wrap" style={{ color: "#e0d6ff" }}>
-                  {mayaMessage}
-                </p>
-              )}
+          {mayaMessage === null ? (
+            <div className="space-y-2 flex flex-col items-center">
+              <div className="h-4 rounded-full animate-pulse w-[260px]" style={{ background: "oklch(0.22 0.02 270)" }} />
+              <div className="h-4 rounded-full animate-pulse w-[200px]" style={{ background: "oklch(0.22 0.02 270)" }} />
+              <div className="h-4 rounded-full animate-pulse w-[160px]" style={{ background: "oklch(0.22 0.02 270)" }} />
             </div>
-          </div>
-
-          <Button
-            className="mt-3 w-full h-[38px] rounded-xl text-[13px] font-semibold gap-1.5"
-            style={{
-              background: "#7C5CFF",
-              boxShadow: "0 4px 12px -4px oklch(.55 .2 270 / .45)",
-            }}
-            onClick={() => router.push("/insights")}
-          >
-            {t("conversar_com_maya")}
-            <ArrowRight className="w-3 h-3" />
-          </Button>
+          ) : (
+            <p
+              className="text-[16px] leading-[1.5] font-medium tracking-tight whitespace-pre-wrap"
+              style={{ color: "#e0d6ff" }}
+            >
+              {mayaMessage}
+            </p>
+          )}
         </div>
+
+        {/* CTA Button */}
+        <button
+          type="button"
+          onClick={() => router.push("/insights")}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: 48,
+            paddingInline: 32,
+            borderRadius: 14,
+            border: 0,
+            cursor: "pointer",
+            fontFamily: "inherit",
+            fontSize: 15,
+            fontWeight: 700,
+            color: "#fff",
+            background: "linear-gradient(135deg, #7C5CFF, #A78BFA)",
+            boxShadow: "0 4px 20px rgba(124,92,255,0.4)",
+            transition: "transform 0.15s ease, box-shadow 0.15s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.03)";
+            e.currentTarget.style.boxShadow = "0 6px 28px rgba(124,92,255,0.55)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.boxShadow = "0 4px 20px rgba(124,92,255,0.4)";
+          }}
+        >
+          {t("conversar_com_maya")}
+        </button>
       </div>
 
       {/* ═══════════════ SUA VIDA HOJE ═══════════════ */}

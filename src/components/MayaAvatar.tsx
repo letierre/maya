@@ -61,9 +61,7 @@ export function MayaAvatar({ state = "idle", size = 60, className = "" }: MayaAv
           ? "0 0 24px rgba(124,92,255,0.6), 0 0 48px rgba(124,92,255,0.3)"
           : "0 0 16px rgba(124,92,255,0.4), 0 0 32px rgba(124,92,255,0.2)",
         animation:
-          state === "idle"
-            ? "mayaBreathe 3s ease-in-out infinite"
-            : isSpeaking
+          isSpeaking
             ? "mayaBreathe 1.5s ease-in-out infinite"
             : "none",
       }}
