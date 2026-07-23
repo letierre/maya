@@ -1,6 +1,6 @@
 "use client";
 
-export type AvatarState = "idle" | "processing" | "speaking" | "mini";
+export type AvatarState = "idle" | "processing" | "speaking" | "mini" | "hero";
 
 interface MayaAvatarProps {
   state?: AvatarState;
@@ -11,6 +11,47 @@ interface MayaAvatarProps {
 const MAYA_IMAGE = "/maya-avatar.png";
 
 export function MayaAvatar({ state = "idle", size = 60, className = "" }: MayaAvatarProps) {
+  if (state === "hero") {
+    // Full image, no circle, bottom fade to connect with content below
+    return (
+      <div
+        className={className}
+        style={{
+          width: size,
+          height: size,
+          flexShrink: 0,
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <img
+          src={MAYA_IMAGE}
+          alt="Maya"
+          style={{
+            maxWidth: "100%",
+            maxHeight: "100%",
+            objectFit: "contain",
+            display: "block",
+          }}
+        />
+        {/* Bottom fade gradient — connects image to the message below */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "40%",
+            background: "linear-gradient(to bottom, transparent 0%, oklch(0.12 0.012 270) 100%)",
+            pointerEvents: "none",
+          }}
+        />
+      </div>
+    );
+  }
+
   if (state === "mini") {
     return (
       <div

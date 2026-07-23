@@ -467,23 +467,23 @@ export default function DashboardPage() {
       {/* ═══════════════ MAYA — HERO ═══════════════ */}
       <div
         className="relative flex flex-col items-center"
-        style={{ paddingTop: 8, paddingBottom: 24 }}
+        style={{ paddingTop: 0, paddingBottom: 24 }}
       >
         {/* Background aura */}
         <div
           className="absolute pointer-events-none"
           style={{
-            top: -60,
-            width: 320,
-            height: 320,
+            top: -40,
+            width: 340,
+            height: 340,
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(124,92,255,0.12) 0%, rgba(94,234,212,0.04) 40%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(124,92,255,0.15) 0%, rgba(94,234,212,0.05) 35%, transparent 65%)",
           }}
         />
 
-        {/* Maya avatar — large, 30% of screen (~120px on mobile) */}
-        <div style={{ marginBottom: 20, position: "relative" }}>
-          <MayaAvatar state="idle" size={130} />
+        {/* Maya — full image, no circle, ~35% of screen */}
+        <div style={{ marginBottom: 8, position: "relative" }}>
+          <MayaAvatar state="hero" size={280} />
         </div>
 
         {/* Message */}
@@ -543,6 +543,106 @@ export default function DashboardPage() {
         >
           {t("conversar_com_maya")}
         </button>
+      </div>
+
+      {/* ═══════════════ O FIO DA SEMANA — peek visível ═══════════════ */}
+      <div className="px-3.5 pt-2">
+        <div
+          className="rounded-[18px] px-4 pt-4 pb-[18px] border"
+          style={{
+            background: "oklch(0.16 0.012 270)",
+            borderColor: "oklch(0.28 0.02 270 / 0.5)",
+          }}
+        >
+          <div className="flex items-baseline justify-between mb-3">
+            <p className="m-0 text-[10px] font-bold tracking-[.12em] uppercase" style={{ color: "#5EEAD4" }}>
+              O Fio · 7 dias
+            </p>
+            {avgEnergy > 0 && (
+              <span className="text-[10.5px]" style={{ color: "oklch(0.55 0.03 270)" }}>
+                Energia média {avgEnergy.toFixed(1)}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {weekDays.slice(0, 3).map((day) => {
+              const isToday = day.today;
+              const moodTag = day.mood_tags?.[0];
+              const moodNeg = moodTag ? NEGATIVE_MOODS.has(moodTag) : false;
+              const extraMoods = (day.mood_tags?.length ?? 0) - 1;
+              const dayScore =
+                day.cuidados !== null
+                  ? Math.round((day.cuidados / Math.max(totalHabits, 1)) * 10)
+                  : null;
+
+              return (
+                <div
+                  key={day.date}
+                  className="items-center px-2 py-1 rounded-lg"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "32px 14px 38px 1fr",
+                    gap: 8,
+                    background: isToday ? "oklch(0.58 0.18 270 / .08)" : "transparent",
+                  }}
+                >
+                  <span
+                    className="text-[10.5px] tracking-wider uppercase"
+                    style={{
+                      fontWeight: isToday ? 700 : 600,
+                      color: isToday ? "#A78BFA" : "oklch(0.55 0.03 270)",
+                    }}
+                  >
+                    {day.label}
+                  </span>
+                  <span
+                    className="text-[13px] leading-none"
+                    style={{ opacity: day.sleep === true ? 1 : 0.35 }}
+                  >
+                    {day.sleep === true ? "🌙" : "😵"}
+                  </span>
+                  <span
+                    className="text-[12px] font-bold tabular-nums"
+                    style={{
+                      color:
+                        dayScore === null
+                          ? "oklch(0.55 0.03 270)"
+                          : dayScore >= 7
+                            ? "#22D18B"
+                            : dayScore >= 5
+                              ? "#f59e0b"
+                              : "#FF5C5C",
+                    }}
+                  >
+                    {dayScore !== null ? `${dayScore}/10` : "—"}
+                  </span>
+                  <div className="min-w-0 flex items-center gap-1.5 overflow-hidden">
+                    {moodTag && (
+                      <span
+                        className="px-1.5 py-px rounded-full text-[9.5px] font-semibold flex-none"
+                        style={{
+                          background: moodNeg
+                            ? "oklch(.92 .05 30 / .25)"
+                            : "oklch(.55 .18 270 / .2)",
+                          color: moodNeg ? "#FF5C5C" : "#A78BFA",
+                        }}
+                      >
+                        {moodTag}{extraMoods > 0 ? ` +${extraMoods}` : ""}
+                      </span>
+                    )}
+                    <span className="text-[11px] truncate" style={{ color: "oklch(0.55 0.03 270)" }}>
+                      {day.feeling || "—"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Subtle scroll hint */}
+          <p className="m-0 mt-3 text-center text-[10px]" style={{ color: "oklch(0.4 0.03 270)" }}>
+            Deslize para ver mais ↓
+          </p>
+        </div>
       </div>
 
       {/* ═══════════════ SUA VIDA HOJE ═══════════════ */}
@@ -684,102 +784,6 @@ export default function DashboardPage() {
           </button>
         </div>
       )}
-
-      {/* ═══════════════ O FIO DA SEMANA ═══════════════ */}
-      <div className="px-3.5 pt-5">
-        <div
-          className="rounded-[18px] px-4 pt-4 pb-[18px] border"
-          style={{
-            background: "oklch(0.16 0.012 270)",
-            borderColor: "oklch(0.28 0.02 270 / 0.5)",
-          }}
-        >
-          <div className="flex items-baseline justify-between mb-3">
-            <p className="m-0 text-[10px] font-bold tracking-[.12em] uppercase" style={{ color: "#5EEAD4" }}>
-              O Fio · 7 dias
-            </p>
-            {avgEnergy > 0 && (
-              <span className="text-[10.5px]" style={{ color: "oklch(0.55 0.03 270)" }}>
-                Energia média {avgEnergy.toFixed(1)}
-              </span>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            {weekDays.map((day) => {
-              const isToday = day.today;
-              const moodTag = day.mood_tags?.[0];
-              const moodNeg = moodTag ? NEGATIVE_MOODS.has(moodTag) : false;
-              const extraMoods = (day.mood_tags?.length ?? 0) - 1;
-              const dayScore =
-                day.cuidados !== null
-                  ? Math.round((day.cuidados / Math.max(totalHabits, 1)) * 10)
-                  : null;
-
-              return (
-                <div
-                  key={day.date}
-                  className="items-center px-2 py-1 rounded-lg"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "32px 14px 38px 1fr",
-                    gap: 8,
-                    background: isToday ? "oklch(0.58 0.18 270 / .08)" : "transparent",
-                  }}
-                >
-                  <span
-                    className="text-[10.5px] tracking-wider uppercase"
-                    style={{
-                      fontWeight: isToday ? 700 : 600,
-                      color: isToday ? "#A78BFA" : "oklch(0.55 0.03 270)",
-                    }}
-                  >
-                    {day.label}
-                  </span>
-                  <span
-                    className="text-[13px] leading-none"
-                    style={{ opacity: day.sleep === true ? 1 : 0.35 }}
-                  >
-                    {day.sleep === true ? "🌙" : "😵"}
-                  </span>
-                  <span
-                    className="text-[12px] font-bold tabular-nums"
-                    style={{
-                      color:
-                        dayScore === null
-                          ? "oklch(0.55 0.03 270)"
-                          : dayScore >= 7
-                            ? "#22D18B"
-                            : dayScore >= 5
-                              ? "#f59e0b"
-                              : "#FF5C5C",
-                    }}
-                  >
-                    {dayScore !== null ? `${dayScore}/10` : "—"}
-                  </span>
-                  <div className="min-w-0 flex items-center gap-1.5 overflow-hidden">
-                    {moodTag && (
-                      <span
-                        className="px-1.5 py-px rounded-full text-[9.5px] font-semibold flex-none"
-                        style={{
-                          background: moodNeg
-                            ? "oklch(.92 .05 30 / .25)"
-                            : "oklch(.55 .18 270 / .2)",
-                          color: moodNeg ? "#FF5C5C" : "#A78BFA",
-                        }}
-                      >
-                        {moodTag}{extraMoods > 0 ? ` +${extraMoods}` : ""}
-                      </span>
-                    )}
-                    <span className="text-[11px] truncate" style={{ color: "oklch(0.55 0.03 270)" }}>
-                      {day.feeling || "—"}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
 
       {/* ═══════════════ CARROSSEL ═══════════════ */}
       <div className="px-3.5 pt-2.5">
