@@ -22,8 +22,8 @@ const CONTEXT_QUESTIONS = [
 ];
 
 const P  = "#7C5CFF";
-const PL = "oklch(.5 .12 270 / .12)";
-const PB = "1px solid oklch(.5 .12 270 / .15)";
+const PL = "oklch(0.22 0.03 270)";
+const PB = "1px solid oklch(0.30 0.04 270 / 0.6)";
 
 export default function ConfiguracoesPage() {
   const router = useRouter();
@@ -87,7 +87,7 @@ export default function ConfiguracoesPage() {
         minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center",
         background: "oklch(0.12 0.012 270)",
       }}>
-        <p style={{ color: "var(--muted-foreground)", fontSize: 13 }}>Carregando…</p>
+        <p style={{ color: "oklch(0.55 0.03 270)", fontSize: 13 }}>Carregando…</p>
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function ConfiguracoesPage() {
       background: `radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.47 .18 270 / .15) 0%, transparent 60%),
                    linear-gradient(180deg, oklch(0.12 0.012 270) 0%, oklch(0.10 0.012 270) 100%)`,
       fontFamily: "var(--font-sans)",
-      color: "var(--foreground)",
+      color: "#e0d6ff",
       paddingBottom: 100,
     }}>
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 20px" }}>
@@ -113,7 +113,7 @@ export default function ConfiguracoesPage() {
             onClick={() => router.back()}
             style={{
               width: 36, height: 36, borderRadius: "50%",
-              border: PB, background: "oklch(0.16 0.012 270 / .85)",
+              border: PB, background: "oklch(0.17 0.025 270 / 0.9)",
               backdropFilter: "blur(8px)", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 16, flexShrink: 0,
@@ -125,7 +125,7 @@ export default function ConfiguracoesPage() {
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em" }}>
               {t("config_title")}
             </h1>
-            <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted-foreground)" }}>
+            <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "oklch(0.55 0.03 270)" }}>
               {t("config_subtitle")}
             </p>
           </div>
@@ -140,7 +140,7 @@ export default function ConfiguracoesPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {CONTEXT_QUESTIONS.map((q) => (
             <div key={q.id} style={{
-              background: "oklch(0.16 0.012 270 / .85)",
+              background: "oklch(0.17 0.025 270 / 0.9)",
               backdropFilter: "blur(12px)",
               borderRadius: 20,
               border: PB,
@@ -149,7 +149,7 @@ export default function ConfiguracoesPage() {
               <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700 }}>
                 {t(q.qKey)}
               </p>
-              <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+              <p style={{ margin: "0 0 14px", fontSize: 13, color: "oklch(0.55 0.03 270)", lineHeight: 1.5 }}>
                 {t(q.dKey)}
               </p>
               <div style={{ display: "flex", gap: 8 }}>
@@ -162,7 +162,7 @@ export default function ConfiguracoesPage() {
                     fontSize: 13, fontWeight: 700,
                     transition: "all .15s ease",
                     background: answers[q.id] ? P : PL,
-                    color: answers[q.id] ? "#fff" : "var(--foreground)",
+                    color: answers[q.id] ? "#fff" : "#e0d6ff",
                   }}
                 >
                   {t("sim")}
@@ -176,7 +176,7 @@ export default function ConfiguracoesPage() {
                     fontSize: 13, fontWeight: 700,
                     transition: "all .15s ease",
                     background: !answers[q.id] ? "oklch(.55 .1 15 / .15)" : PL,
-                    color: !answers[q.id] ? "oklch(.4 .1 15)" : "var(--foreground)",
+                    color: !answers[q.id] ? "oklch(.4 .1 15)" : "#e0d6ff",
                   }}
                 >
                   {t("nao")}
@@ -189,7 +189,7 @@ export default function ConfiguracoesPage() {
         {/* ── Moeda ──────────────────────────────────────────────── */}
         <div style={{ marginTop: 10 }}>
           <div style={{
-            background: "oklch(0.16 0.012 270 / .85)",
+            background: "oklch(0.17 0.025 270 / 0.9)",
             backdropFilter: "blur(12px)",
             borderRadius: 20,
             border: PB,
@@ -198,7 +198,7 @@ export default function ConfiguracoesPage() {
             <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700 }}>
               {t("fin_moeda")}
             </p>
-            <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
+            <p style={{ margin: "0 0 14px", fontSize: 13, color: "oklch(0.55 0.03 270)", lineHeight: 1.5 }}>
               {t("fin_moeda_desc")}
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
