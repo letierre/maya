@@ -1,7 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
-
 export type AvatarState = "idle" | "processing" | "speaking" | "mini";
 
 interface MayaAvatarProps {
@@ -10,135 +8,120 @@ interface MayaAvatarProps {
   className?: string;
 }
 
+const MAYA_IMAGE = "/maya-avatar.png";
+
 export function MayaAvatar({ state = "idle", size = 60, className = "" }: MayaAvatarProps) {
-  const purple = "#7C5CFF";
-  const purpleLight = "#A78BFA";
-  const teal = "#5EEAD4";
-
-  const style = useMemo((): React.CSSProperties => {
-    const base: React.CSSProperties = {
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-      position: "relative",
-    };
-
-    if (state === "mini") {
-      return {
-        ...base,
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: `radial-gradient(circle at 30% 30%, ${purpleLight} 0%, ${purple} 100%)`,
-        boxShadow: `0 0 10px ${purple}66, 0 0 20px ${purple}33`,
-      };
-    }
-
-    if (state === "processing") {
-      return {
-        ...base,
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: `radial-gradient(circle at 40% 35%, ${purpleLight} 0%, ${purple} 60%, transparent 100%)`,
-        boxShadow: `0 0 24px ${purple}88, 0 0 48px ${purple}44`,
-      };
-    }
-
-    return {
-      ...base,
-      width: size,
-      height: size,
-      borderRadius: "50%",
-      background: `radial-gradient(circle at 40% 35%, ${purpleLight}22 0%, ${purple}66 50%, transparent 80%)`,
-      boxShadow: `0 0 16px ${purple}55, 0 0 32px ${purple}22`,
-    };
-  }, [state, size, purple, purpleLight]);
-
-  const innerCircle = useMemo((): React.CSSProperties => ({
-    width: state === "mini" ? size * 0.56 : size * 0.52,
-    height: state === "mini" ? size * 0.56 : size * 0.52,
-    borderRadius: "50%",
-    background: `radial-gradient(circle at 35% 30%, ${purpleLight} 0%, ${purple} 100%)`,
-    position: "absolute",
-  }), [state, size, purple, purpleLight]);
-
-  return (
-    <div
-      className={className}
-      style={{
-        ...style,
-        ...(state === "idle" ? { animation: "mayaBreathe 3s ease-in-out infinite" } : {}),
-        ...(state === "speaking" ? { animation: "mayaBreathe 1.5s ease-in-out infinite" } : {}),
-      }}
-    >
-      {/* Glow ring */}
-      {state !== "mini" && (
-        <div
-          style={{
-            position: "absolute",
-            inset: -6,
-            borderRadius: "50%",
-            border: `1.5px solid ${purple}44`,
-            ...(state === "processing" ? { animation: "mayaBreathe 1s ease-in-out infinite" } : {}),
-            ...(state === "speaking" ? { animation: "mayaBreathe 0.8s ease-in-out infinite" } : {}),
-          }}
+  if (state === "mini") {
+    return (
+      <div
+        className={className}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          overflow: "hidden",
+          flexShrink: 0,
+          position: "relative",
+          boxShadow: "0 0 10px rgba(124,92,255,0.4), 0 0 20px rgba(124,92,255,0.2)",
+        }}
+      >
+        <img
+          src={MAYA_IMAGE}
+          alt="Maya"
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
-      )}
-
-      {/* Inner circle */}
-      <div style={innerCircle} />
-
-      {/* Processing particles */}
-      {state === "processing" && (
-        <ProcessingParticles size={size} purple={purple} teal={teal} />
-      )}
-
-      {/* Speaking waveform */}
-      {state === "speaking" && (
-        <WaveformOverlay size={size} purple={purple} teal={teal} />
-      )}
-
-      {/* Mini: subtle glow ring */}
-      {state === "mini" && (
+        {/* Glow ring */}
         <div
           style={{
             position: "absolute",
             inset: -3,
             borderRadius: "50%",
-            border: `1.5px solid ${purple}55`,
-            animation: "mayaBreathe 3s ease-in-out infinite",
+            border: "1.5px solid rgba(167,139,250,0.35)",
+            pointerEvents: "none",
           }}
         />
-      )}
+      </div>
+    );
+  }
+
+  const isProcessing = state === "processing";
+  const isSpeaking = state === "speaking";
+
+  return (
+    <div
+      className={className}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        overflow: "hidden",
+        flexShrink: 0,
+        position: "relative",
+        boxShadow: isProcessing
+          ? "0 0 24px rgba(124,92,255,0.6), 0 0 48px rgba(124,92,255,0.3)"
+          : "0 0 16px rgba(124,92,255,0.4), 0 0 32px rgba(124,92,255,0.2)",
+        animation:
+          state === "idle"
+            ? "mayaBreathe 3s ease-in-out infinite"
+            : isSpeaking
+            ? "mayaBreathe 1.5s ease-in-out infinite"
+            : "none",
+      }}
+    >
+      <img
+        src={MAYA_IMAGE}
+        alt="Maya"
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+      />
+
+      {/* Outer glow ring */}
+      <div
+        style={{
+          position: "absolute",
+          inset: -6,
+          borderRadius: "50%",
+          border: `1.5px solid rgba(167,139,250,0.3)`,
+          pointerEvents: "none",
+          animation:
+            isProcessing
+              ? "mayaBreathe 1s ease-in-out infinite"
+              : isSpeaking
+              ? "mayaBreathe 0.8s ease-in-out infinite"
+              : "mayaBreathe 3s ease-in-out infinite",
+        }}
+      />
+
+      {/* Processing particles */}
+      {isProcessing && <ProcessingParticles size={size} />}
+
+      {/* Speaking waveform */}
+      {isSpeaking && <WaveformOverlay size={size} />}
     </div>
   );
 }
 
 // ── Processing particles ─────────────────────────────────────────────
 
-function ProcessingParticles({ size, purple, teal }: { size: number; purple: string; teal: string }) {
-  const particles = Array.from({ length: 8 }, (_, i) => {
-    const angle = (i / 8) * 360;
-    const delay = i * 0.12;
-    const colors = [purple, teal, purple, teal, purple, teal, purple, teal];
-    return { angle, delay, color: colors[i] };
-  });
+function ProcessingParticles({ size }: { size: number }) {
+  const particles = Array.from({ length: 8 }, (_, i) => ({
+    angle: (i / 8) * 360,
+    delay: i * 0.12,
+    color: i % 2 === 0 ? "#A78BFA" : "#5EEAD4",
+  }));
 
   return (
     <div
       style={{
         position: "absolute",
-        inset: -(size * 0.2),
+        inset: -(size * 0.18),
         animation: "spin 3s linear infinite",
+        pointerEvents: "none",
       }}
     >
       {particles.map((p, i) => {
         const rad = (p.angle * Math.PI) / 180;
-        const r = size * 0.58;
-        const x = 50 + Math.cos(rad) * 50;
-        const y = 50 + Math.sin(rad) * 50;
+        const x = 50 + Math.cos(rad) * 48;
+        const y = 50 + Math.sin(rad) * 48;
         return (
           <div
             key={i}
@@ -146,8 +129,8 @@ function ProcessingParticles({ size, purple, teal }: { size: number; purple: str
               position: "absolute",
               left: `${x}%`,
               top: `${y}%`,
-              width: 4,
-              height: 4,
+              width: 5,
+              height: 5,
               borderRadius: "50%",
               background: p.color,
               opacity: 0.7,
@@ -170,18 +153,19 @@ function ProcessingParticles({ size, purple, teal }: { size: number; purple: str
 
 // ── Waveform overlay ──────────────────────────────────────────────────
 
-function WaveformOverlay({ size, purple, teal }: { size: number; purple: string; teal: string }) {
+function WaveformOverlay({ size }: { size: number }) {
   return (
     <div
       style={{
         position: "absolute",
-        bottom: -(size * 0.15),
+        bottom: -(size * 0.12),
         left: "50%",
         transform: "translateX(-50%)",
         display: "flex",
         alignItems: "flex-end",
         gap: 3,
-        height: size * 0.3,
+        height: size * 0.25,
+        pointerEvents: "none",
       }}
     >
       {[1, 0.7, 1.4, 0.5, 1.2, 0.8, 1, 0.6].map((scale, i) => (
@@ -191,10 +175,9 @@ function WaveformOverlay({ size, purple, teal }: { size: number; purple: string;
             width: 3,
             height: 12,
             borderRadius: 9999,
-            background: i % 2 === 0 ? purple : teal,
+            background: i % 2 === 0 ? "#A78BFA" : "#5EEAD4",
             opacity: 0.6,
             animation: `waveBar 0.6s ease-in-out ${i * 0.08}s infinite alternate`,
-            transform: `scaleY(${scale})`,
           }}
         />
       ))}
