@@ -565,7 +565,7 @@ export default function DashboardPage() {
             )}
           </div>
           <div className="flex flex-col gap-1.5">
-            {weekDays.slice(0, 3).map((day) => {
+            {weekDays.slice(-3).reverse().map((day) => {
               const isToday = day.today;
               const moodTag = day.mood_tags?.[0];
               const moodNeg = moodTag ? NEGATIVE_MOODS.has(moodTag) : false;
