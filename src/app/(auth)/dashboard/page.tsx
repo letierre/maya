@@ -545,7 +545,11 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* ═══════════════ O FIO DA SEMANA — peek visível ═══════════════ */}
+      {/* ═══════════════ O FIO — peek dos últimos 3 dias ═══════════════ */}
+      {(() => {
+        const last3 = weekDays.slice(-3).reverse(); // [today, yesterday, 2d ago]
+        const labels = ["Hoje", "Ontem", "Anteontem"];
+        return (
       <div className="px-3.5 pt-2">
         <div
           className="rounded-[18px] px-4 pt-4 pb-[18px] border"
@@ -556,17 +560,12 @@ export default function DashboardPage() {
         >
           <div className="flex items-baseline justify-between mb-3">
             <p className="m-0 text-[10px] font-bold tracking-[.12em] uppercase" style={{ color: "#5EEAD4" }}>
-              O Fio · 7 dias
+              O Fio · últimos dias
             </p>
-            {avgEnergy > 0 && (
-              <span className="text-[10.5px]" style={{ color: "oklch(0.55 0.03 270)" }}>
-                Energia média {avgEnergy.toFixed(1)}
-              </span>
-            )}
           </div>
           <div className="flex flex-col gap-1.5">
-            {weekDays.slice(-3).reverse().map((day) => {
-              const isToday = day.today;
+            {last3.map((day, i) => {
+              const isToday = i === 0;
               const moodTag = day.mood_tags?.[0];
               const moodNeg = moodTag ? NEGATIVE_MOODS.has(moodTag) : false;
               const extraMoods = (day.mood_tags?.length ?? 0) - 1;
@@ -581,19 +580,18 @@ export default function DashboardPage() {
                   className="items-center px-2 py-1 rounded-lg"
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "32px 14px 38px 1fr",
+                    gridTemplateColumns: "60px 14px 38px 1fr",
                     gap: 8,
-                    background: isToday ? "oklch(0.58 0.18 270 / .08)" : "transparent",
+                    background: isToday ? "oklch(0.58 0.18 270 / .10)" : "transparent",
                   }}
                 >
                   <span
-                    className="text-[10.5px] tracking-wider uppercase"
+                    className="text-[11px] font-semibold tracking-tight"
                     style={{
-                      fontWeight: isToday ? 700 : 600,
                       color: isToday ? "#A78BFA" : "oklch(0.55 0.03 270)",
                     }}
                   >
-                    {day.label}
+                    {labels[i]}
                   </span>
                   <span
                     className="text-[13px] leading-none"
@@ -638,12 +636,13 @@ export default function DashboardPage() {
               );
             })}
           </div>
-          {/* Subtle scroll hint */}
           <p className="m-0 mt-3 text-center text-[10px]" style={{ color: "oklch(0.4 0.03 270)" }}>
             Deslize para ver mais ↓
           </p>
         </div>
       </div>
+        );
+      })()}
 
       {/* ═══════════════ SUA VIDA HOJE ═══════════════ */}
       <div className="px-3.5 pt-4">
