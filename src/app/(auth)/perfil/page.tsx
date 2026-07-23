@@ -292,16 +292,17 @@ export default function PerfilPage() {
           <button
             type="button"
             onClick={() => router.push("/configurações")}
+            aria-label="Configurações"
             style={{
-              height: 36, padding: "0 14px", borderRadius: 10,
-              border: "1px solid rgba(167,139,250,0.25)",
-              background: "#1a1530",
+              width: 40, height: 40, borderRadius: 12,
+              border: "1px solid rgba(167,139,250,0.2)",
+              background: "rgba(124,92,255,0.08)",
               cursor: "pointer",
-              fontFamily: "inherit", fontSize: 13, fontWeight: 600,
-              color: "#e0d6ff", display: "flex", alignItems: "center", gap: 6,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 18,
             }}
           >
-            ⚙️ {t("config_title")}
+            ⚙️
           </button>
         </div>
 
@@ -313,18 +314,30 @@ export default function PerfilPage() {
                 onClick={() => !uploading && fileInputRef.current?.click()}
                 style={{
                   width: 88, height: 88, borderRadius: "50%",
-                  background: avatarUrl ? "transparent" : "rgba(124,92,255,0.15)",
+                  background: "rgba(124,92,255,0.15)",
                   overflow: "hidden", cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   border: "3px solid #7C5CFF",
                   boxShadow: "0 0 0 4px rgba(124,92,255,0.12)",
+                  position: "relative",
                 }}
               >
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <span style={{ fontSize: 28, fontWeight: 700, color: "#A78BFA" }}>{initials}</span>
-                )}
+                  <img
+                    src={avatarUrl}
+                    alt=""
+                    style={{
+                      position: "absolute", inset: 0,
+                      width: "100%", height: "100%",
+                      objectFit: "cover",
+                    }}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                ) : null}
+                <span style={{
+                  fontSize: 28, fontWeight: 700, color: "#A78BFA",
+                  zIndex: 1,
+                }}>{initials}</span>
               </div>
               <input
                 ref={fileInputRef}

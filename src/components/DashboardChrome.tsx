@@ -87,7 +87,7 @@ export function HeaderWrapper() {
         </span>
       </div>
 
-      {!isDashboard && <MayaAvatar state="mini" size={32} />}
+      {!isDashboard && !isSecondary && <MayaAvatar state="mini" size={32} />}
     </header>
   );
 }
