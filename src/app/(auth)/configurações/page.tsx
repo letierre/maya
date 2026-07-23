@@ -22,8 +22,10 @@ const CONTEXT_QUESTIONS = [
 ];
 
 const P  = "#7C5CFF";
-const PL = "oklch(0.22 0.03 270)";
-const PB = "1px solid oklch(0.30 0.04 270 / 0.6)";
+const PL = "oklch(0.24 0.05 272)";
+const PB = "1px solid oklch(0.32 0.06 272 / 0.6)";
+
+const cardBg = "oklch(0.18 0.035 272 / 0.95)";
 
 export default function ConfiguracoesPage() {
   const router = useRouter();
@@ -113,7 +115,7 @@ export default function ConfiguracoesPage() {
             onClick={() => router.back()}
             style={{
               width: 36, height: 36, borderRadius: "50%",
-              border: PB, background: "oklch(0.17 0.025 270 / 0.9)",
+              border: PB, background: cardBg,
               backdropFilter: "blur(8px)", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 16, flexShrink: 0,
@@ -140,7 +142,7 @@ export default function ConfiguracoesPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {CONTEXT_QUESTIONS.map((q) => (
             <div key={q.id} style={{
-              background: "oklch(0.17 0.025 270 / 0.9)",
+              background: cardBg,
               backdropFilter: "blur(12px)",
               borderRadius: 20,
               border: PB,
@@ -189,7 +191,7 @@ export default function ConfiguracoesPage() {
         {/* ── Moeda ──────────────────────────────────────────────── */}
         <div style={{ marginTop: 10 }}>
           <div style={{
-            background: "oklch(0.17 0.025 270 / 0.9)",
+            background: cardBg,
             backdropFilter: "blur(12px)",
             borderRadius: 20,
             border: PB,
@@ -212,7 +214,7 @@ export default function ConfiguracoesPage() {
                     fontFamily: "inherit", fontSize: 13, fontWeight: 700,
                     transition: "all .15s ease",
                     background: currency === c.code ? P : PL,
-                    color: currency === c.code ? "#fff" : "var(--foreground)",
+                    color: currency === c.code ? "#fff" : "#e0d6ff",
                   }}
                 >
                   {c.label}
