@@ -21,12 +21,6 @@ const CONTEXT_QUESTIONS = [
   { id: "track_suicidal_thoughts", qKey: "q_suicida",     dKey: "q_suicida_desc"     },
 ];
 
-const P  = "#7C5CFF";
-const PL = "oklch(0.24 0.05 272)";
-const PB = "1px solid oklch(0.32 0.06 272 / 0.6)";
-
-const cardBg = "oklch(0.18 0.035 272 / 0.95)";
-
 export default function ConfiguracoesPage() {
   const router = useRouter();
   const { t }  = useTranslation();
@@ -87,9 +81,9 @@ export default function ConfiguracoesPage() {
     return (
       <div style={{
         minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "oklch(0.12 0.012 270)",
+        background: "#0F0F14",
       }}>
-        <p style={{ color: "oklch(0.55 0.03 270)", fontSize: 13 }}>Carregando…</p>
+        <p style={{ color: "#A78BFA", fontSize: 13 }}>Carregando…</p>
       </div>
     );
   }
@@ -97,15 +91,14 @@ export default function ConfiguracoesPage() {
   return (
     <div style={{
       minHeight: "100dvh",
-      background: `radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.47 .18 270 / .15) 0%, transparent 60%),
-                   linear-gradient(180deg, oklch(0.12 0.012 270) 0%, oklch(0.10 0.012 270) 100%)`,
-      fontFamily: "var(--font-sans)",
+      background: "#0F0F14",
+      fontFamily: "Inter, system-ui, sans-serif",
       color: "#e0d6ff",
       paddingBottom: 100,
     }}>
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 20px" }}>
 
-        {/* ── Header ──────────────────────────────────────────────── */}
+        {/* Header */}
         <div style={{
           display: "flex", alignItems: "center", gap: 12,
           padding: "56px 0 28px",
@@ -115,43 +108,43 @@ export default function ConfiguracoesPage() {
             onClick={() => router.back()}
             style={{
               width: 36, height: 36, borderRadius: "50%",
-              border: PB, background: cardBg,
-              backdropFilter: "blur(8px)", cursor: "pointer",
+              border: "1px solid rgba(167,139,250,0.3)",
+              background: "rgba(124,92,255,0.12)",
+              cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 16, flexShrink: 0,
+              fontSize: 16, flexShrink: 0, color: "#A78BFA",
             }}
           >
             ←
           </button>
           <div style={{ flex: 1 }}>
-            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em" }}>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em", color: "#e0d6ff" }}>
               {t("config_title")}
             </h1>
-            <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "oklch(0.55 0.03 270)" }}>
+            <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "#9e96b5" }}>
               {t("config_subtitle")}
             </p>
           </div>
           {saved && (
-            <span style={{ fontSize: 11.5, color: P, fontWeight: 600, flexShrink: 0 }}>
+            <span style={{ fontSize: 11.5, color: "#7C5CFF", fontWeight: 600, flexShrink: 0 }}>
               Salvo ✓
             </span>
           )}
         </div>
 
-        {/* ── Perguntas de contexto ────────────────────────────────── */}
+        {/* Context questions */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {CONTEXT_QUESTIONS.map((q) => (
             <div key={q.id} style={{
-              background: cardBg,
-              backdropFilter: "blur(12px)",
+              background: "#1a1530",
               borderRadius: 20,
-              border: PB,
+              border: "1px solid rgba(167,139,250,0.25)",
               padding: "18px 18px 16px",
             }}>
-              <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700 }}>
+              <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>
                 {t(q.qKey)}
               </p>
-              <p style={{ margin: "0 0 14px", fontSize: 13, color: "oklch(0.55 0.03 270)", lineHeight: 1.5 }}>
+              <p style={{ margin: "0 0 14px", fontSize: 13, color: "#9e96b5", lineHeight: 1.5 }}>
                 {t(q.dKey)}
               </p>
               <div style={{ display: "flex", gap: 8 }}>
@@ -163,8 +156,8 @@ export default function ConfiguracoesPage() {
                     cursor: "pointer", fontFamily: "inherit",
                     fontSize: 13, fontWeight: 700,
                     transition: "all .15s ease",
-                    background: answers[q.id] ? P : PL,
-                    color: answers[q.id] ? "#fff" : "#e0d6ff",
+                    background: answers[q.id] ? "#7C5CFF" : "#1e1840",
+                    color: answers[q.id] ? "#fff" : "#7C5CFF",
                   }}
                 >
                   {t("sim")}
@@ -177,8 +170,8 @@ export default function ConfiguracoesPage() {
                     cursor: "pointer", fontFamily: "inherit",
                     fontSize: 13, fontWeight: 700,
                     transition: "all .15s ease",
-                    background: !answers[q.id] ? "oklch(.55 .1 15 / .15)" : PL,
-                    color: !answers[q.id] ? "oklch(.4 .1 15)" : "#e0d6ff",
+                    background: !answers[q.id] ? "rgba(255,92,92,0.15)" : "#1e1840",
+                    color: !answers[q.id] ? "#FF5C5C" : "#7C5CFF",
                   }}
                 >
                   {t("nao")}
@@ -188,19 +181,18 @@ export default function ConfiguracoesPage() {
           ))}
         </div>
 
-        {/* ── Moeda ──────────────────────────────────────────────── */}
+        {/* Currency */}
         <div style={{ marginTop: 10 }}>
           <div style={{
-            background: cardBg,
-            backdropFilter: "blur(12px)",
+            background: "#1a1530",
             borderRadius: 20,
-            border: PB,
+            border: "1px solid rgba(167,139,250,0.25)",
             padding: "18px 18px 16px",
           }}>
-            <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700 }}>
+            <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>
               {t("fin_moeda")}
             </p>
-            <p style={{ margin: "0 0 14px", fontSize: 13, color: "oklch(0.55 0.03 270)", lineHeight: 1.5 }}>
+            <p style={{ margin: "0 0 14px", fontSize: 13, color: "#9e96b5", lineHeight: 1.5 }}>
               {t("fin_moeda_desc")}
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -213,8 +205,8 @@ export default function ConfiguracoesPage() {
                     padding: "8px 14px", borderRadius: 10, border: 0, cursor: "pointer",
                     fontFamily: "inherit", fontSize: 13, fontWeight: 700,
                     transition: "all .15s ease",
-                    background: currency === c.code ? P : PL,
-                    color: currency === c.code ? "#fff" : "#e0d6ff",
+                    background: currency === c.code ? "#7C5CFF" : "#1e1840",
+                    color: currency === c.code ? "#fff" : "#7C5CFF",
                   }}
                 >
                   {c.label}
