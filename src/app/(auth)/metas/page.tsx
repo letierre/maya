@@ -81,7 +81,7 @@ function MetaSpread({ goal, order, primary, onClick }: {
       style={{
         display: "block", width: "100%", textAlign: "left", background: "transparent",
         border: "none", padding: "24px 24px 22px", cursor: "pointer",
-        borderTop: "1px solid oklch(.55 .08 80 / .25)",
+        borderTop: "1px solid oklch(.28 .02 270 / .5)",
         opacity: isPaused ? 0.55 : 1,
       }}
     >
@@ -104,7 +104,7 @@ function MetaSpread({ goal, order, primary, onClick }: {
       <h2 style={{
         margin: "8px 0 0", fontSize: primary ? 22 : 18,
         fontWeight: primary ? 700 : 600, letterSpacing: "-0.02em",
-        lineHeight: 1.2, color: "oklch(.18 .02 160)",
+        lineHeight: 1.2, color: "#e0d6ff",
       }}>
         {goal.title}
       </h2>
@@ -113,7 +113,7 @@ function MetaSpread({ goal, order, primary, onClick }: {
       {goal.why_it_matters && (
         <p style={{
           margin: "8px 0 0", fontSize: primary ? 14 : 13, lineHeight: 1.45,
-          color: "oklch(.55 .03 160)", fontStyle: "italic",
+          color: "oklch(.55 .03 270)", fontStyle: "italic",
         }}>
           "{goal.why_it_matters}"
         </p>
@@ -134,7 +134,7 @@ function MetaSpread({ goal, order, primary, onClick }: {
               background: `linear-gradient(90deg, oklch(.45 .14 ${hue}), oklch(.55 .14 ${hue}))`,
             }} />
           </div>
-          <div style={{ marginTop: 6, fontSize: 11, color: "oklch(.55 .03 160)", display: "flex", justifyContent: "space-between" }}>
+          <div style={{ marginTop: 6, fontSize: 11, color: "oklch(.55 .03 270)", display: "flex", justifyContent: "space-between" }}>
             <span style={{ fontStyle: "italic" }}>{isPaused ? "Pausada" : stage}</span>
             {daysLeft !== null && daysLeft >= 0 && !isPaused && (
               <span style={{ color: "oklch(.42 .14 50)", fontWeight: 600 }}>{daysLeft}d restantes</span>
@@ -146,7 +146,7 @@ function MetaSpread({ goal, order, primary, onClick }: {
       {/* Next action */}
       {next && !isPaused && (
         <p style={{
-          margin: "14px 0 0", fontSize: 12, color: "oklch(.22 .02 160)",
+          margin: "14px 0 0", fontSize: 12, color: "#e0d6ff",
           paddingLeft: 12, borderLeft: `2px solid oklch(.5 .14 ${hue} / .5)`,
         }}>
           <span style={{
@@ -200,8 +200,8 @@ export default function MetasPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100dvh", background: "oklch(.98 .004 160)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid oklch(.5 .12 160)", borderTopColor: "transparent", animation: "spin .8s linear infinite" }} />
+      <div style={{ minHeight: "100dvh", background: "oklch(.12 .012 270)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid #7C5CFF", borderTopColor: "transparent", animation: "spin .8s linear infinite" }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
     );
@@ -211,8 +211,8 @@ export default function MetasPage() {
     <div style={{
       minHeight: "100dvh", paddingBottom: 110,
       background: `
-        radial-gradient(ellipse 70% 40% at 50% 0%, oklch(.96 .03 70 / .45) 0%, transparent 60%),
-        linear-gradient(180deg, oklch(.99 .005 80) 0%, oklch(.96 .015 80) 100%)
+        radial-gradient(ellipse 70% 40% at 50% 0%, oklch(.58 .18 270 / .15) 0%, transparent 60%),
+        linear-gradient(180deg, oklch(.12 .012 270) 0%, oklch(.15 .015 270) 100%)
       `,
     }}>
 
@@ -220,26 +220,26 @@ export default function MetasPage() {
       <div style={{ padding: "24px 24px 8px", textAlign: "center", position: "relative" }}>
         <p style={{
           margin: 0, fontFamily: "var(--font-mono, ui-monospace)", fontSize: 10,
-          color: "oklch(.55 .03 160)", letterSpacing: ".16em", textTransform: "uppercase",
+          color: "oklch(.55 .03 270)", letterSpacing: ".16em", textTransform: "uppercase",
         }}>
           Volume I · {romanYear()}
         </p>
         <h1 style={{
           margin: "6px 0 0", fontSize: 30, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.05,
-          fontStyle: "italic", color: "oklch(.18 .02 160)",
+          fontStyle: "italic", color: "#e0d6ff",
         }}>
           O livro das metas
         </h1>
-        <p style={{ margin: "6px 0 0", fontSize: 12, color: "oklch(.55 .03 160)" }}>
+        <p style={{ margin: "6px 0 0", fontSize: 12, color: "oklch(.55 .03 270)" }}>
           {activeCount} {activeCount === 1 ? "ativa" : "ativas"}
           {pausedCount > 0 && ` · ${pausedCount} pausada${pausedCount > 1 ? "s" : ""}`}
           {canAddMore && (
-            <span style={{ color: "oklch(.55 .03 160)" }}> · {5 - activeCount} slot{5 - activeCount !== 1 ? "s" : ""} livre{5 - activeCount !== 1 ? "s" : ""}</span>
+            <span style={{ color: "oklch(.55 .03 270)" }}> · {5 - activeCount} slot{5 - activeCount !== 1 ? "s" : ""} livre{5 - activeCount !== 1 ? "s" : ""}</span>
           )}
           {!canAddMore && <span style={{ color: "oklch(.5 .14 15)", fontWeight: 600 }}> · limite atingido</span>}
         </p>
         <div style={{ display: "flex", justifyContent: "center", marginTop: 14 }}>
-          <span style={{ width: 44, height: 1, background: "oklch(.55 .08 80 / .35)", display: "block" }} />
+          <span style={{ width: 44, height: 1, background: "oklch(.28 .02 270 / .5)", display: "block" }} />
         </div>
 
         {/* Nova meta link */}
@@ -247,7 +247,7 @@ export default function MetasPage() {
           <button type="button" onClick={() => router.push("/metas/nova")} style={{
             position: "absolute", top: 28, right: 24,
             background: "transparent", border: 0, padding: 0, cursor: "pointer",
-            fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "oklch(.45 .12 160)",
+            fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "#7C5CFF",
             display: "inline-flex", alignItems: "center", gap: 4,
           }}>
             <Plus size={13} /> Nova meta
@@ -260,20 +260,20 @@ export default function MetasPage() {
         <div style={{ textAlign: "center", padding: "60px 24px" }}>
           <p style={{
             margin: "0 0 4px", fontFamily: "var(--font-mono, ui-monospace)", fontSize: 10,
-            color: "oklch(.55 .03 160)", letterSpacing: ".16em", textTransform: "uppercase",
+            color: "oklch(.55 .03 270)", letterSpacing: ".16em", textTransform: "uppercase",
           }}>
             Capítulo I
           </p>
-          <h2 style={{ margin: "8px 0 6px", fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", fontStyle: "italic", color: "oklch(.2 .02 160)" }}>
+          <h2 style={{ margin: "8px 0 6px", fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", fontStyle: "italic", color: "#e0d6ff" }}>
             Sua história começa aqui
           </h2>
-          <p style={{ margin: "0 0 28px", fontSize: 13, color: "oklch(.55 .03 160)", lineHeight: 1.6 }}>
+          <p style={{ margin: "0 0 28px", fontSize: 13, color: "oklch(.55 .03 270)", lineHeight: 1.6 }}>
             Nenhuma meta ainda. Crie a primeira e dê o primeiro passo.
           </p>
           <button type="button" onClick={() => router.push("/metas/nova")} style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             padding: "13px 24px", borderRadius: 14, border: 0, cursor: "pointer",
-            background: "oklch(.45 .14 160)", color: "#fff",
+            background: "#7C5CFF", color: "#fff",
             fontFamily: "inherit", fontSize: 14, fontWeight: 700,
           }}>
             <Plus size={18} /> Criar primeira meta
@@ -293,9 +293,9 @@ export default function MetasPage() {
 
           {/* Footer */}
           <div style={{ display: "flex", justifyContent: "center", margin: "32px 0 0" }}>
-            <span style={{ width: 44, height: 1, background: "oklch(.55 .08 80 / .35)", display: "block" }} />
+            <span style={{ width: 44, height: 1, background: "oklch(.28 .02 270 / .5)", display: "block" }} />
           </div>
-          <p style={{ margin: "14px 24px", fontSize: 11, fontStyle: "italic", color: "oklch(.6 .03 160)", textAlign: "center" }}>
+          <p style={{ margin: "14px 24px", fontSize: 11, fontStyle: "italic", color: "oklch(.55 .03 270)", textAlign: "center" }}>
             Toque numa meta para abrir o capítulo completo.
           </p>
         </>

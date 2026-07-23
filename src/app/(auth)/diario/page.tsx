@@ -77,9 +77,9 @@ export default function DiarioPage() {
       className="relative min-h-screen overflow-x-hidden pb-32"
       style={{
         background: `
-          radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.95 .04 80 / .55) 0%, transparent 50%),
-          radial-gradient(ellipse 100% 60% at 100% 100%, oklch(.85 .07 160 / .35) 0%, transparent 60%),
-          linear-gradient(180deg, oklch(.98 .005 160) 0%, oklch(.94 .025 160) 100%)
+          radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.47 .18 270 / .20) 0%, transparent 50%),
+          radial-gradient(ellipse 100% 60% at 100% 100%, oklch(.5 .14 270 / .15) 0%, transparent 60%),
+          linear-gradient(180deg, oklch(0.12 0.012 270) 0%, oklch(0.10 0.012 270) 100%)
         `,
       }}
     >
@@ -175,8 +175,8 @@ export default function DiarioPage() {
                     display: "grid",
                     gridTemplateColumns: "52px 1fr",
                     padding: "14px 24px",
-                    borderTop: "1px solid oklch(.5 .12 160 / .1)",
-                    background: isToday ? "oklch(.5 .12 160 / .04)" : "transparent",
+                    borderTop: "1px solid oklch(.5 .12 270 / .1)",
+                    background: isToday ? "oklch(.5 .12 270 / .04)" : "transparent",
                   }}
                 >
                   {/* Date col */}
@@ -238,8 +238,8 @@ export default function DiarioPage() {
                         <div
                           className="w-14 h-14 flex-none rounded-[10px] overflow-hidden border-[1.5px] border-white flex items-center justify-center flex-shrink-0"
                           style={{
-                            background: "linear-gradient(135deg, oklch(.85 .07 160 / .35) 0%, oklch(.95 .04 80 / .35) 100%)",
-                            boxShadow: "0 2px 6px -2px oklch(.25 .02 160 / .15)",
+                            background: "linear-gradient(135deg, oklch(.5 .14 270 / .2) 0%, oklch(.47 .18 270 / .2) 100%)",
+                            boxShadow: "0 2px 6px -2px oklch(.25 .02 270 / .15)",
                           }}
                         >
                           {entry.photos?.[0] ? (
@@ -249,7 +249,7 @@ export default function DiarioPage() {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <ImageIcon className="w-5 h-5" style={{ color: "oklch(.5 .12 160 / .4)" }} />
+                            <ImageIcon className="w-5 h-5" style={{ color: "oklch(.5 .12 270 / .4)" }} />
                           )}
                         </div>
                       )}
@@ -273,7 +273,7 @@ export default function DiarioPage() {
               style={{
                 background: "oklch(1 0 0 / .85)",
                 backdropFilter: "blur(12px)",
-                borderColor: "oklch(.5 .12 160 / .15)",
+                borderColor: "oklch(.5 .12 270 / .15)",
               }}
             >
               <span className="text-sm font-medium whitespace-nowrap">Diário de Evolução</span>
@@ -288,7 +288,7 @@ export default function DiarioPage() {
               style={{
                 background: "oklch(1 0 0 / .85)",
                 backdropFilter: "blur(12px)",
-                borderColor: "oklch(.5 .12 160 / .15)",
+                borderColor: "oklch(.5 .12 270 / .15)",
               }}
             >
               <span className="text-sm font-medium whitespace-nowrap">Diário Livre</span>

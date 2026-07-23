@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { MayaAvatar } from "@/components/MayaAvatar";
 import { Suspense } from "react";
 
 const P  = "#7C5CFF";
@@ -170,7 +171,9 @@ function CadastroInner() {
     <div style={pageWrap}>
       <div style={cardStyle}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontSize: 44, marginBottom: 10 }}>🌱</div>
+          <div style={{ marginBottom: 10, display: "flex", justifyContent: "center" }}>
+            <MayaAvatar state="idle" size={56} />
+          </div>
           <h1 style={{ margin: "0 0 4px", fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em" }}>
             Criar conta
           </h1>

@@ -31,11 +31,11 @@ function fmt(amount: number, currency = "BRL"): string {
 
 // ── Colors ────────────────────────────────────────────────────────────────────
 
-const H = 160;
-function fc(l = 0.5, c = 0.14) { return `oklch(${l} ${c} ${H})`; }
-function fl(alpha = 1) { return `oklch(.96 .04 ${H} / ${alpha})`; }
-const GREEN = "oklch(.45 .14 160)";
-const GREEN_L = "oklch(.95 .05 160)";
+const H = 270;
+function fc(l = 0.47, c = 0.18) { return `oklch(${l} ${c} ${H})`; }
+function fl(alpha = 1) { return `oklch(.22 .02 ${H} / ${alpha})`; }
+const GREEN = "#7C5CFF";
+const GREEN_L = "oklch(.22 .02 270)";
 const RED = "oklch(.48 .18 15)";
 
 // ── Month helpers ─────────────────────────────────────────────────────────────
@@ -108,7 +108,7 @@ function CategoryPicker({
 
   return (
     <div>
-      <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
+      <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
         {tFn(lang, "fin_categoria")}
       </p>
 
@@ -125,7 +125,7 @@ function CategoryPicker({
                 onClick={() => onSelect(c.id, "")}
                 style={{
                   width: "100%", padding: "10px 4px", borderRadius: 12,
-                  border: sel ? `2px solid oklch(.5 .14 ${c.hue})` : "2px solid oklch(.88 .02 160)",
+                  border: sel ? `2px solid oklch(.5 .14 ${c.hue})` : "2px solid oklch(0.28 0.02 270 / 0.5)",
                   background: sel ? `oklch(.95 .05 ${c.hue})` : "#fff",
                   cursor: "pointer", display: "flex", flexDirection: "column",
                   alignItems: "center", gap: 3, transition: "all .12s ease",
@@ -134,7 +134,7 @@ function CategoryPicker({
                 <span style={{ fontSize: 18 }}>{emoji}</span>
                 <span style={{
                   fontSize: 8, fontWeight: 700, textAlign: "center", lineHeight: 1.2,
-                  color: sel ? `oklch(.45 .12 ${c.hue})` : "oklch(.55 .03 160)",
+                  color: sel ? `#e0d6ff` : "oklch(0.55 0.03 270)",
                 }}>
                   {label}
                 </span>
@@ -146,11 +146,11 @@ function CategoryPicker({
                   style={{
                     position: "absolute", top: 3, right: 3,
                     width: 18, height: 18, borderRadius: "50%",
-                    background: "oklch(.88 .02 160)", border: 0, cursor: "pointer",
+                    background: "oklch(0.28 0.02 270 / 0.5)", border: 0, cursor: "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}
                 >
-                  <Settings size={10} style={{ color: "oklch(.5 .04 160)" }} />
+                  <Settings size={10} style={{ color: "oklch(0.55 0.03 270)" }} />
                 </button>
               )}
             </div>
@@ -161,7 +161,7 @@ function CategoryPicker({
       {/* Subcategory chips */}
       {subcats.length > 0 && (
         <div style={{ marginTop: 10 }}>
-          <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "oklch(.65 .03 160)" }}>
+          <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
             {tFn(lang, "fin_subcategoria")}
           </p>
           <div style={{ overflowX: "auto", display: "flex", gap: 6, paddingBottom: 4 }}>
@@ -175,12 +175,12 @@ function CategoryPicker({
                   style={{
                     flexShrink: 0, padding: "6px 13px", borderRadius: 20,
                     border: selSub
-                      ? `1.5px solid oklch(.5 .14 ${selectedCat?.hue ?? 160})`
-                      : "1.5px solid oklch(.88 .02 160)",
-                    background: selSub ? `oklch(.95 .05 ${selectedCat?.hue ?? 160})` : "#fff",
+                      ? `1.5px solid oklch(.5 .14 ${selectedCat?.hue ?? 270})`
+                      : "1.5px solid oklch(0.28 0.02 270 / 0.5)",
+                    background: selSub ? `oklch(.95 .05 ${selectedCat?.hue ?? 270})` : "#fff",
                     cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
                     fontSize: 12, fontWeight: 600,
-                    color: selSub ? `oklch(.45 .12 ${selectedCat?.hue ?? 160})` : "oklch(.5 .04 160)",
+                    color: selSub ? `oklch(.45 .12 ${selectedCat?.hue ?? 270})` : "oklch(0.55 0.03 270)",
                     transition: "all .12s ease",
                   }}
                 >
@@ -234,30 +234,30 @@ function CustomCatModal({
 
   const inputStyle: React.CSSProperties = {
     width: "100%", boxSizing: "border-box", padding: "10px 12px",
-    borderRadius: 10, border: "1.5px solid oklch(.82 .03 160)",
-    background: "oklch(.98 .005 160)", fontFamily: "inherit",
-    fontSize: 14, color: "oklch(.2 .02 160)", outline: "none",
+    borderRadius: 10, border: "1.5px solid oklch(0.28 0.02 270 / 0.5)",
+    background: "oklch(0.22 0.02 270)", fontFamily: "inherit",
+    fontSize: 14, color: "#e0d6ff", outline: "none",
   };
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 60, background: "oklch(.1 .02 160 / .4)", backdropFilter: "blur(4px)" }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 60, background: "oklch(.1 .02 270 / .4)", backdropFilter: "blur(4px)" }} />
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 70,
         borderRadius: "24px 24px 0 0", background: "#fff",
         padding: "20px 20px calc(env(safe-area-inset-bottom) + 28px)",
-        boxShadow: "0 -8px 40px oklch(.2 .04 160 / .15)",
+        boxShadow: "0 -8px 40px oklch(.2 .04 270 / .15)",
         maxHeight: "90dvh", overflowY: "auto",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <div style={{ width: 36, height: 4, borderRadius: 9999, background: "oklch(.85 .02 160)", marginBottom: 14 }} />
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "oklch(.2 .02 160)" }}>
+            <div style={{ width: 36, height: 4, borderRadius: 9999, background: "oklch(0.22 0.02 270)", marginBottom: 14 }} />
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>
               {tFn(lang, "fin_personalizada_editar")}
             </h2>
           </div>
-          <button type="button" onClick={onClose} style={{ border: 0, background: "oklch(.93 .02 160)", borderRadius: 10, padding: 8, cursor: "pointer" }}>
-            <X size={18} style={{ color: "oklch(.45 .06 160)" }} />
+          <button type="button" onClick={onClose} style={{ border: 0, background: "oklch(0.22 0.02 270)", borderRadius: 10, padding: 8, cursor: "pointer" }}>
+            <X size={18} style={{ color: "oklch(0.55 0.03 270)" }} />
           </button>
         </div>
 
@@ -265,7 +265,7 @@ function CustomCatModal({
           {/* Emoji + Name */}
           <div style={{ display: "flex", gap: 10 }}>
             <div>
-              <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "oklch(.55 .04 160)" }}>
+              <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "oklch(0.55 0.03 270)" }}>
                 Emoji
               </p>
               <input
@@ -276,7 +276,7 @@ function CustomCatModal({
               />
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "oklch(.55 .04 160)" }}>
+              <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "oklch(0.55 0.03 270)" }}>
                 {tFn(lang, "fin_personalizada_nome")}
               </p>
               <input
@@ -284,20 +284,20 @@ function CustomCatModal({
                 onChange={(e) => setName(e.target.value)}
                 style={inputStyle}
                 onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = fc(); }}
-                onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(.82 .03 160)"; }}
+                onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(0.28 0.02 270 / 0.5)"; }}
               />
             </div>
           </div>
 
           {/* Subcats list */}
           <div>
-            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "oklch(.55 .04 160)" }}>
+            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "oklch(0.55 0.03 270)" }}>
               {tFn(lang, "fin_personalizada_subcats")}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {subcats.map((sc, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ flex: 1, fontSize: 13, color: "oklch(.3 .03 160)", padding: "8px 12px", borderRadius: 10, background: "oklch(.96 .02 160)" }}>
+                  <span style={{ flex: 1, fontSize: 13, color: "oklch(0.7 0.03 270)", padding: "8px 12px", borderRadius: 10, background: "oklch(0.22 0.02 270)" }}>
                     {sc}
                   </span>
                   <button
@@ -320,7 +320,7 @@ function CustomCatModal({
                 placeholder={tFn(lang, "fin_personalizada_adicionar")}
                 style={{ ...inputStyle, flex: 1 }}
                 onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = fc(); }}
-                onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(.82 .03 160)"; }}
+                onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(0.28 0.02 270 / 0.5)"; }}
               />
               <button type="button" onClick={addSubcat} style={{
                 border: 0, background: fl(), borderRadius: 10, padding: "0 14px",
@@ -335,9 +335,9 @@ function CustomCatModal({
         <button type="button" onClick={save} disabled={saving} style={{
           marginTop: 20, width: "100%", padding: "14px 20px", borderRadius: 14, border: 0,
           cursor: saving ? "not-allowed" : "pointer",
-          background: saving ? "oklch(.88 .02 160)" : fc(),
+          background: saving ? "oklch(0.28 0.02 270 / 0.5)" : fc(),
           fontFamily: "inherit", fontSize: 15, fontWeight: 700,
-          color: saving ? "oklch(.6 .02 160)" : "#fff",
+          color: saving ? "oklch(0.4 0.02 270)" : "#fff",
         }}>
           {saving ? tFn(lang, "salvando") : tFn(lang, "fin_personalizada_salvar")}
         </button>
@@ -375,15 +375,15 @@ function AddTypeSheet({
     <>
       <div
         onClick={onClose}
-        style={{ position: "fixed", inset: 0, zIndex: 60, background: "oklch(.1 .02 160 / .35)", backdropFilter: "blur(4px)" }}
+        style={{ position: "fixed", inset: 0, zIndex: 60, background: "oklch(.1 .02 270 / .35)", backdropFilter: "blur(4px)" }}
       />
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 70,
         borderRadius: "24px 24px 0 0", background: "#fff",
         padding: "20px 20px calc(env(safe-area-inset-bottom) + 28px)",
-        boxShadow: "0 -8px 40px oklch(.2 .04 160 / .15)",
+        boxShadow: "0 -8px 40px oklch(.2 .04 270 / .15)",
       }}>
-        <div style={{ width: 36, height: 4, borderRadius: 9999, background: "oklch(.85 .02 160)", margin: "0 auto 22px" }} />
+        <div style={{ width: 36, height: 4, borderRadius: 9999, background: "oklch(0.22 0.02 270)", margin: "0 auto 22px" }} />
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {opts.map((o) => (
             <button
@@ -393,7 +393,7 @@ function AddTypeSheet({
               style={{
                 display: "flex", alignItems: "center", gap: 16,
                 padding: "18px 18px", borderRadius: 18,
-                border: "1.5px solid oklch(.88 .02 160)",
+                border: "1.5px solid oklch(0.28 0.02 270 / 0.5)",
                 background: "#fff", cursor: "pointer", textAlign: "left",
                 transition: "background .12s ease",
               }}
@@ -405,8 +405,8 @@ function AddTypeSheet({
                 {o.icon}
               </div>
               <div>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "oklch(.2 .02 160)" }}>{o.title}</p>
-                <p style={{ margin: "3px 0 0", fontSize: 12, color: "oklch(.6 .03 160)", lineHeight: 1.4 }}>{o.desc}</p>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#e0d6ff" }}>{o.title}</p>
+                <p style={{ margin: "3px 0 0", fontSize: 12, color: "oklch(0.55 0.03 270)", lineHeight: 1.4 }}>{o.desc}</p>
               </div>
             </button>
           ))}
@@ -468,30 +468,30 @@ function TransactionModal({
 
   const inputStyle: React.CSSProperties = {
     width: "100%", boxSizing: "border-box", padding: "12px 14px",
-    borderRadius: 12, border: "1.5px solid oklch(.82 .03 160)",
-    background: "oklch(.98 .005 160)", fontFamily: "inherit",
-    fontSize: 14, color: "oklch(.2 .02 160)", outline: "none",
+    borderRadius: 12, border: "1.5px solid oklch(0.28 0.02 270 / 0.5)",
+    background: "oklch(0.22 0.02 270)", fontFamily: "inherit",
+    fontSize: 14, color: "#e0d6ff", outline: "none",
   };
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 60, background: "oklch(.1 .02 160 / .4)", backdropFilter: "blur(4px)" }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 60, background: "oklch(.1 .02 270 / .4)", backdropFilter: "blur(4px)" }} />
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 70,
         borderRadius: "24px 24px 0 0", background: "#fff",
         padding: "20px 20px calc(env(safe-area-inset-bottom) + 28px)",
-        boxShadow: "0 -8px 40px oklch(.2 .04 160 / .15)",
+        boxShadow: "0 -8px 40px oklch(.2 .04 270 / .15)",
         maxHeight: "92dvh", overflowY: "auto", overflowX: "hidden",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <div style={{ width: 36, height: 4, borderRadius: 9999, background: "oklch(.85 .02 160)", marginBottom: 14 }} />
-            <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "oklch(.2 .02 160)" }}>
+            <div style={{ width: 36, height: 4, borderRadius: 9999, background: "oklch(0.22 0.02 270)", marginBottom: 14 }} />
+            <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "#e0d6ff" }}>
               {tFn(lang, initial ? "fin_editar_tx" : "fin_nova_tx")}
             </h2>
           </div>
-          <button type="button" onClick={onClose} style={{ border: 0, background: "oklch(.93 .02 160)", borderRadius: 10, padding: 8, cursor: "pointer" }}>
-            <X size={18} style={{ color: "oklch(.45 .06 160)" }} />
+          <button type="button" onClick={onClose} style={{ border: 0, background: "oklch(0.22 0.02 270)", borderRadius: 10, padding: 8, cursor: "pointer" }}>
+            <X size={18} style={{ color: "oklch(0.55 0.03 270)" }} />
           </button>
         </div>
 
@@ -503,8 +503,8 @@ function TransactionModal({
               <button key={t} type="button" onClick={() => { setType(t); setCat(""); setSubcat(""); }} style={{
                 flex: 1, padding: "13px 10px", borderRadius: 14, border: 0, cursor: "pointer",
                 fontFamily: "inherit", fontSize: 14, fontWeight: 700,
-                background: type === t ? (t === "despesa" ? RED : GREEN) : "oklch(.93 .02 160)",
-                color: type === t ? "#fff" : "oklch(.45 .06 160)",
+                background: type === t ? (t === "despesa" ? RED : GREEN) : "oklch(0.22 0.02 270)",
+                color: type === t ? "#fff" : "oklch(0.55 0.03 270)",
                 transition: "all .15s ease",
               }}>
                 {t === "despesa" ? `↓ ${tFn(lang, "fin_despesa_label")}` : `↑ ${tFn(lang, "fin_receita_label")}`}
@@ -514,7 +514,7 @@ function TransactionModal({
 
           {/* Amount */}
           <div>
-            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
+            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
               {tFn(lang, "fin_valor")}
             </p>
             <input
@@ -528,7 +528,7 @@ function TransactionModal({
               placeholder="0,00"
               style={{ ...inputStyle, fontSize: 22, fontWeight: 700 }}
               onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = fc(); }}
-              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(.82 .03 160)"; }}
+              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(0.28 0.02 270 / 0.5)"; }}
             />
           </div>
 
@@ -545,7 +545,7 @@ function TransactionModal({
 
           {/* Description */}
           <div>
-            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
+            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
               {tFn(lang, "fin_descricao")}
             </p>
             <input
@@ -554,13 +554,13 @@ function TransactionModal({
               placeholder={tFn(lang, "fin_descricao_ph")}
               style={inputStyle}
               onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = fc(); }}
-              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(.82 .03 160)"; }}
+              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(0.28 0.02 270 / 0.5)"; }}
             />
           </div>
 
           {/* Date */}
           <div>
-            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
+            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
               {tFn(lang, "fin_data")}
             </p>
             <input
@@ -569,7 +569,7 @@ function TransactionModal({
               onChange={(e) => setDate(e.target.value)}
               style={inputStyle}
               onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = fc(); }}
-              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(.82 .03 160)"; }}
+              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(0.28 0.02 270 / 0.5)"; }}
             />
           </div>
         </div>
@@ -577,9 +577,9 @@ function TransactionModal({
         <button type="button" onClick={save} disabled={!canSave || saving} style={{
           marginTop: 24, width: "100%", padding: "15px 20px", borderRadius: 14, border: 0,
           cursor: (!canSave || saving) ? "not-allowed" : "pointer",
-          background: (!canSave || saving) ? "oklch(.88 .02 160)" : fc(),
+          background: (!canSave || saving) ? "oklch(0.28 0.02 270 / 0.5)" : fc(),
           fontFamily: "inherit", fontSize: 15, fontWeight: 700,
-          color: (!canSave || saving) ? "oklch(.6 .02 160)" : "#fff",
+          color: (!canSave || saving) ? "oklch(0.4 0.02 270)" : "#fff",
           transition: "all .15s ease",
         }}>
           {saving ? tFn(lang, "salvando") : tFn(lang, "salvar")}
@@ -637,19 +637,19 @@ function BudgetModal({
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 60, background: "oklch(.1 .02 160 / .4)", backdropFilter: "blur(4px)" }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 60, background: "oklch(.1 .02 270 / .4)", backdropFilter: "blur(4px)" }} />
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 70,
         borderRadius: "24px 24px 0 0", background: "#fff",
         padding: "20px 20px calc(env(safe-area-inset-bottom) + 28px)",
-        boxShadow: "0 -8px 40px oklch(.2 .04 160 / .15)",
+        boxShadow: "0 -8px 40px oklch(.2 .04 270 / .15)",
         maxHeight: "90dvh", overflowY: "auto",
       }}>
-        <div style={{ width: 36, height: 4, borderRadius: 9999, background: "oklch(.85 .02 160)", margin: "0 auto 20px" }} />
-        <h2 style={{ margin: "0 0 4px", fontSize: 19, fontWeight: 800, color: "oklch(.2 .02 160)" }}>
+        <div style={{ width: 36, height: 4, borderRadius: 9999, background: "oklch(0.22 0.02 270)", margin: "0 auto 20px" }} />
+        <h2 style={{ margin: "0 0 4px", fontSize: 19, fontWeight: 800, color: "#e0d6ff" }}>
           {tFn(lang, "fin_orcamento_mensal")}
         </h2>
-        <p style={{ margin: "0 0 20px", fontSize: 12, color: "oklch(.55 .04 160)" }}>
+        <p style={{ margin: "0 0 20px", fontSize: 12, color: "oklch(0.55 0.03 270)" }}>
           {tFn(lang, "fin_definir_limite")}
         </p>
 
@@ -666,7 +666,7 @@ function BudgetModal({
                 }}>
                   {emoji}
                 </div>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "oklch(.3 .03 160)" }}>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "oklch(0.7 0.03 270)" }}>
                   {label}
                 </span>
                 <input
@@ -679,13 +679,13 @@ function BudgetModal({
                   placeholder="—"
                   style={{
                     width: 110, padding: "8px 10px", borderRadius: 10,
-                    border: "1.5px solid oklch(.82 .03 160)",
-                    background: "oklch(.98 .005 160)", fontFamily: "inherit",
-                    fontSize: 13, fontWeight: 700, color: "oklch(.2 .02 160)", outline: "none",
+                    border: "1.5px solid oklch(0.28 0.02 270 / 0.5)",
+                    background: "oklch(0.22 0.02 270)", fontFamily: "inherit",
+                    fontSize: 13, fontWeight: 700, color: "#e0d6ff", outline: "none",
                     textAlign: "right",
                   }}
                   onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = fc(); }}
-                  onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(.82 .03 160)"; }}
+                  onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(0.28 0.02 270 / 0.5)"; }}
                 />
               </div>
             );
@@ -695,9 +695,9 @@ function BudgetModal({
         <button type="button" onClick={save} disabled={saving} style={{
           marginTop: 24, width: "100%", padding: "15px 20px", borderRadius: 14, border: 0,
           cursor: saving ? "not-allowed" : "pointer",
-          background: saving ? "oklch(.88 .02 160)" : fc(),
+          background: saving ? "oklch(0.28 0.02 270 / 0.5)" : fc(),
           fontFamily: "inherit", fontSize: 15, fontWeight: 700,
-          color: saving ? "oklch(.6 .02 160)" : "#fff",
+          color: saving ? "oklch(0.4 0.02 270)" : "#fff",
         }}>
           {saving ? tFn(lang, "salvando") : tFn(lang, "salvar")}
         </button>
@@ -762,7 +762,7 @@ export default function FinancasPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100dvh", background: "oklch(.98 .004 160)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "100dvh", background: "oklch(0.12 0.012 270)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ width: 36, height: 36, borderRadius: "50%", border: `3px solid ${fc()}`, borderTopColor: "transparent", animation: "spin .8s linear infinite" }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
@@ -770,7 +770,7 @@ export default function FinancasPage() {
   }
 
   return (
-    <div style={{ minHeight: "100dvh", background: "oklch(.98 .004 160)", paddingBottom: 110 }}>
+    <div style={{ minHeight: "100dvh", background: "oklch(0.12 0.012 270)", paddingBottom: 110 }}>
 
       {/* ── Header ── */}
       <div style={{
@@ -809,7 +809,7 @@ export default function FinancasPage() {
             </p>
             <p style={{
               margin: 0, fontSize: 36, fontWeight: 800, color: "#fff", letterSpacing: "-1px",
-              textShadow: "0 2px 8px oklch(.3 .14 160 / .3)",
+              textShadow: "0 2px 8px oklch(.3 .14 270 / .3)",
             }}>
               {fmt(saldo, currency)}
             </p>
@@ -819,7 +819,7 @@ export default function FinancasPage() {
           <div style={{ display: "flex", gap: 10 }}>
             <div style={{ flex: 1, background: "oklch(1 0 0 / .15)", borderRadius: 14, padding: "12px 14px", backdropFilter: "blur(8px)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                <TrendingUp size={14} color="oklch(.85 .1 160)" />
+                <TrendingUp size={14} color="#b39dff" />
                 <span style={{ fontSize: 11, color: "oklch(1 0 0 / .75)", fontWeight: 600 }}>{tFn(lang, "fin_receitas")}</span>
               </div>
               <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#fff" }}>{fmt(totalReceitas, currency)}</p>
@@ -839,8 +839,8 @@ export default function FinancasPage() {
 
         {/* ── Spending by category ── */}
         {spendByCategory.length > 0 && (
-          <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 160 / .08)", padding: "16px 18px" }}>
-            <p style={{ margin: "0 0 14px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
+          <div style={{ background: "oklch(0.16 0.012 270)", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 270 / .08)", padding: "16px 18px" }}>
+            <p style={{ margin: "0 0 14px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
               {tFn(lang, "fin_categorias_despesas")}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -852,10 +852,10 @@ export default function FinancasPage() {
                   <div key={c.id}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                       <span style={{ fontSize: 16 }}>{emoji}</span>
-                      <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "oklch(.35 .03 160)" }}>{label}</span>
+                      <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "oklch(0.7 0.03 270)" }}>{label}</span>
                       <span style={{ fontSize: 12, fontWeight: 700, color: RED }}>{fmt(c.total, currency)}</span>
                     </div>
-                    <div style={{ height: 5, borderRadius: 9999, background: "oklch(.93 .01 160)", overflow: "hidden" }}>
+                    <div style={{ height: 5, borderRadius: 9999, background: "oklch(0.22 0.02 270)", overflow: "hidden" }}>
                       <div style={{
                         height: "100%", borderRadius: 9999,
                         background: `oklch(.5 .14 ${c.hue})`,
@@ -871,11 +871,11 @@ export default function FinancasPage() {
 
         {/* ── Budget status ── */}
         {budgets.length > 0 && (
-          <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 160 / .08)", overflow: "hidden" }}>
+          <div style={{ background: "oklch(0.16 0.012 270)", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 270 / .08)", overflow: "hidden" }}>
             <div style={{ height: 4, background: `linear-gradient(90deg, ${fc(.5, .14)}, ${fc(.45, .12)})` }} />
             <div style={{ padding: "14px 18px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
                   {tFn(lang, "fin_orcamento")}
                 </p>
                 <button type="button" onClick={() => setShowBudget(true)} style={{
@@ -898,12 +898,12 @@ export default function FinancasPage() {
                     <div key={b.id}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                         <span style={{ fontSize: 15 }}>{emoji}</span>
-                        <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "oklch(.35 .03 160)" }}>{label}</span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: over ? RED : "oklch(.5 .04 160)" }}>
+                        <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "oklch(0.7 0.03 270)" }}>{label}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: over ? RED : "oklch(0.55 0.03 270)" }}>
                           {fmt(spent, currency)} / {fmt(b.monthly_limit, currency)}
                         </span>
                       </div>
-                      <div style={{ height: 6, borderRadius: 9999, background: "oklch(.93 .01 160)", overflow: "hidden" }}>
+                      <div style={{ height: 6, borderRadius: 9999, background: "oklch(0.22 0.02 270)", overflow: "hidden" }}>
                         <div style={{
                           height: "100%", borderRadius: 9999,
                           background: over ? RED : pct > 80 ? "oklch(.5 .16 50)" : GREEN,
@@ -919,11 +919,11 @@ export default function FinancasPage() {
         )}
 
         {/* ── Transactions ── */}
-        <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 160 / .08)", overflow: "hidden" }}>
+        <div style={{ background: "oklch(0.16 0.012 270)", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 270 / .08)", overflow: "hidden" }}>
           <div style={{ height: 4, background: `linear-gradient(90deg, ${fc(.5, .14)}, ${fc(.42, .10)})` }} />
           <div style={{ padding: "14px 18px 6px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
                 {tFn(lang, "fin_transacoes")}
               </p>
               {budgets.length === 0 && (
@@ -938,15 +938,15 @@ export default function FinancasPage() {
 
             {grouped.length === 0 ? (
               <div style={{ textAlign: "center", padding: "28px 0 24px" }}>
-                <Wallet size={36} style={{ color: "oklch(.82 .04 160)", marginBottom: 10 }} />
-                <p style={{ margin: 0, fontSize: 13, color: "oklch(.55 .04 160)", fontStyle: "italic" }}>
+                <Wallet size={36} style={{ color: "oklch(0.45 0.03 270)", marginBottom: 10 }} />
+                <p style={{ margin: 0, fontSize: 13, color: "oklch(0.55 0.03 270)", fontStyle: "italic" }}>
                   {tFn(lang, "fin_sem_transacoes")}
                 </p>
               </div>
             ) : (
               grouped.map(({ date, txs }) => (
                 <div key={date} style={{ marginBottom: 12 }}>
-                  <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.65 .03 160)" }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
                     {fmtDateShort(date, lang)}
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
@@ -958,8 +958,8 @@ export default function FinancasPage() {
                       return (
                         <div key={tx.id} style={{
                           display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
-                          borderRadius: 13, background: "oklch(.985 .003 160)",
-                          border: "1.5px solid oklch(.92 .01 160)",
+                          borderRadius: 13, background: "oklch(0.18 0.012 270)",
+                          border: "1.5px solid oklch(0.28 0.02 270 / 0.3)",
                         }}>
                           <div style={{
                             width: 36, height: 36, borderRadius: 12, flexShrink: 0,
@@ -969,10 +969,10 @@ export default function FinancasPage() {
                             {emoji}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "oklch(.25 .02 160)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e0d6ff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {tx.description || tx.subcategory || catName}
                             </p>
-                            <p style={{ margin: 0, fontSize: 11, color: "oklch(.6 .03 160)" }}>
+                            <p style={{ margin: 0, fontSize: 11, color: "oklch(0.55 0.03 270)" }}>
                               {catName}{tx.subcategory ? ` › ${tx.subcategory}` : ""}
                             </p>
                           </div>
@@ -980,7 +980,7 @@ export default function FinancasPage() {
                             {isIncome ? "+" : "-"}{fmt(tx.amount, currency)}
                           </span>
                           <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                            <button type="button" onClick={() => setEditTx(tx)} style={{ border: 0, background: "none", cursor: "pointer", padding: 4, color: "oklch(.7 .03 160)" }}>
+                            <button type="button" onClick={() => setEditTx(tx)} style={{ border: 0, background: "none", cursor: "pointer", padding: 4, color: "oklch(0.45 0.02 270)" }}>
                               <Pencil size={13} />
                             </button>
                             <button type="button" onClick={() => deleteTx(tx.id)} style={{ border: 0, background: "none", cursor: "pointer", padding: 4, color: "oklch(.65 .08 15)" }}>
@@ -991,7 +991,7 @@ export default function FinancasPage() {
                       );
                     })}
                   </div>
-                  <div style={{ height: 1, background: "oklch(.92 .01 160)", marginTop: 10 }} />
+                  <div style={{ height: 1, background: "oklch(0.28 0.02 270 / 0.3)", marginTop: 10 }} />
                 </div>
               ))
             )}
@@ -999,9 +999,9 @@ export default function FinancasPage() {
         </div>
 
         {/* ── Financial goals ── */}
-        <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 160 / .08)", padding: "16px 18px" }}>
+        <div style={{ background: "oklch(0.16 0.012 270)", borderRadius: 20, boxShadow: "0 2px 16px oklch(.2 .04 270 / .08)", padding: "16px 18px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.55 .04 160)" }}>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
               {tFn(lang, "fin_metas_fin")}
             </p>
             <button type="button" onClick={() => router.push("/metas/nova?area=financas")} style={{
@@ -1015,8 +1015,8 @@ export default function FinancasPage() {
 
           {goals.length === 0 ? (
             <div style={{ textAlign: "center", padding: "16px 0 8px" }}>
-              <Target size={30} style={{ color: "oklch(.82 .04 160)", marginBottom: 8 }} />
-              <p style={{ margin: 0, fontSize: 13, color: "oklch(.6 .03 160)", fontStyle: "italic" }}>
+              <Target size={30} style={{ color: "oklch(0.45 0.03 270)", marginBottom: 8 }} />
+              <p style={{ margin: 0, fontSize: 13, color: "oklch(0.55 0.03 270)", fontStyle: "italic" }}>
                 {tFn(lang, "fin_sem_metas_fin")}
               </p>
             </div>
@@ -1029,8 +1029,8 @@ export default function FinancasPage() {
                 return (
                   <button key={g.id} type="button" onClick={() => router.push(`/metas/${g.id}`)} style={{
                     display: "flex", alignItems: "center", gap: 10, padding: "11px 12px",
-                    borderRadius: 13, border: "1.5px solid oklch(.88 .02 160)",
-                    background: "#fff", cursor: "pointer", textAlign: "left",
+                    borderRadius: 13, border: "1.5px solid oklch(0.28 0.02 270 / 0.5)",
+                    background: "oklch(0.18 0.012 270)", cursor: "pointer", textAlign: "left",
                     width: "100%",
                   }}>
                     <div style={{
@@ -1040,10 +1040,10 @@ export default function FinancasPage() {
                       <Target size={16} style={{ color: fc() }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "oklch(.25 .02 160)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "#e0d6ff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {g.title}
                       </p>
-                      <div style={{ height: 4, borderRadius: 9999, background: "oklch(.92 .02 160)", overflow: "hidden" }}>
+                      <div style={{ height: 4, borderRadius: 9999, background: "oklch(0.22 0.02 270)", overflow: "hidden" }}>
                         <div style={{ height: "100%", borderRadius: 9999, background: fc(), width: `${pct}%`, transition: "width .5s ease" }} />
                       </div>
                     </div>
@@ -1066,7 +1066,7 @@ export default function FinancasPage() {
           width: 56, height: 56, borderRadius: "50%", border: 0, cursor: "pointer",
           background: fc(),
           display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 4px 20px oklch(.5 .14 160 / .45)",
+          boxShadow: "0 4px 20px oklch(0.47 0.18 270 / .45)",
           transition: "transform .15s ease",
         }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.08)"; }}

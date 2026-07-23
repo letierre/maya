@@ -31,9 +31,9 @@ const DEFAULT_CONFIG: SleepConfig = {
 
 // ── Color helpers (app identity: hue 160 = verde primário) ────────────────────
 
-const P = "oklch(.5 .12 160)";   // primary green
-const PL = "oklch(.5 .12 160 / .15)";
-const PB = "1px solid oklch(.6 .08 160 / .25)";
+const P = "oklch(.58 .18 270)";   // primary purple
+const PL = "oklch(.58 .18 270 / .15)";
+const PB = "1px solid oklch(.58 .18 270 / .25)";
 
 const QUALITY_EMOJI = ["", "😩", "😕", "😐", "🙂", "😊"];
 
@@ -417,7 +417,7 @@ function SleepHistoryRow({ log, onEdit, lang }: { log: SleepLog; onEdit: (log: S
       onClick={() => onEdit(log)}
       style={{
         display: "flex", alignItems: "center", gap: 12,
-        padding: "11px 0", borderBottom: "1px solid oklch(.88 .02 160 / .5)",
+        padding: "11px 0", borderBottom: "1px solid oklch(.28 .02 270 / .5)",
         cursor: "pointer",
       }}
     >
@@ -435,7 +435,7 @@ function SleepHistoryRow({ log, onEdit, lang }: { log: SleepLog; onEdit: (log: S
         <div style={{ minWidth: 38, textAlign: "right", fontSize: 15, fontWeight: 700, color: scoreColor(score) }}>
           {score}
         </div>
-        <span style={{ fontSize: 11, color: "oklch(.65 .04 160)" }}>✏️</span>
+        <span style={{ fontSize: 11, color: "oklch(.55 .03 270)" }}>✏️</span>
       </div>
     </div>
   );
@@ -496,10 +496,10 @@ function SleepConfigCard({ config, onChange, onSave, saving, lang }: {
             {TARGET_OPTIONS.map((h) => (
               <button key={h} type="button" onClick={() => onChange({ ...config, target_hours: h })} style={{
                 padding: "7px 13px", borderRadius: 9999, cursor: "pointer",
-                border: config.target_hours === h ? "none" : "1px solid oklch(.7 .04 160 / .35)",
-                background: config.target_hours === h ? P : "oklch(.96 .005 160)",
+                border: config.target_hours === h ? "none" : "1px solid oklch(.28 .02 270 / .5)",
+                background: config.target_hours === h ? P : "oklch(.16 .012 270)",
                 fontFamily: "inherit", fontSize: 12, fontWeight: 600,
-                color: config.target_hours === h ? "#fff" : "oklch(.4 .06 160)",
+                color: config.target_hours === h ? "#fff" : "#e0d6ff",
                 transition: "all .15s ease",
               }}>
                 {h % 1 === 0 ? `${h}h` : `${h}h`}
@@ -587,10 +587,10 @@ function CycleCalculator({ defaultBedtime = "23:00", lang = "pt" }: { defaultBed
             {idealWakes.map((w, i) => (
               <div key={i} style={{
                 flex: 1, padding: "12px", borderRadius: 14, textAlign: "center",
-                background: i === 1 ? PL : "oklch(.96 .005 160)",
-                border: i === 1 ? PB : "1px solid oklch(.87 .02 160)",
+                background: i === 1 ? PL : "oklch(.16 .012 270)",
+                border: i === 1 ? PB : "1px solid oklch(.28 .02 270 / .5)",
               }}>
-                <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: i === 1 ? "oklch(.35 .1 160)" : "var(--foreground)" }}>
+                <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: i === 1 ? "#e0d6ff" : "var(--foreground)" }}>
                   {w.toLocaleTimeString(dateLocale(lang), { hour: "2-digit", minute: "2-digit" })}
                 </p>
                 <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--muted-foreground)" }}>
@@ -689,8 +689,8 @@ export default function SonoPage() {
     return (
       <div style={{
         minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: `radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.95 .04 80 / .4) 0%, transparent 60%),
-                     linear-gradient(180deg, oklch(.98 .005 160) 0%, oklch(.93 .03 160) 100%)`,
+        background: `radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.58 .18 270 / .15) 0%, transparent 60%),
+                     linear-gradient(180deg, oklch(.12 .012 270) 0%, oklch(.15 .015 270) 100%)`,
       }}>
         <p style={{ color: "var(--muted-foreground)", fontSize: 13 }}>{tFn(lang, "carregando")}</p>
       </div>
@@ -700,8 +700,8 @@ export default function SonoPage() {
   return (
     <div style={{
       minHeight: "100dvh", paddingBottom: 100,
-      background: `radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.95 .04 80 / .4) 0%, transparent 60%),
-                   linear-gradient(180deg, oklch(.98 .005 160) 0%, oklch(.93 .03 160) 100%)`,
+      background: `radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.58 .18 270 / .15) 0%, transparent 60%),
+                   linear-gradient(180deg, oklch(.12 .012 270) 0%, oklch(.15 .015 270) 100%)`,
       fontFamily: "var(--font-sans)",
     }}>
       {/* Header */}
@@ -716,7 +716,7 @@ export default function SonoPage() {
             background: P, color: "#fff",
             border: 0, cursor: "pointer", fontFamily: "inherit",
             fontSize: 13, fontWeight: 600,
-            boxShadow: "0 2px 10px -2px oklch(.5 .12 160 / .35)",
+            boxShadow: "0 2px 10px -2px oklch(.58 .18 270 / .35)",
           }}>
             + {tFn(lang, "sono_registrar_btn")}
           </button>
@@ -730,7 +730,7 @@ export default function SonoPage() {
 
         {/* ── Weekly overview ── */}
         {weeklyLogs.length === 0 ? (
-          <Card className="rounded-2xl" style={{ border: "1px dashed oklch(.7 .06 160 / .4)" }}>
+          <Card className="rounded-2xl" style={{ border: "1px dashed oklch(.28 .02 270 / .5)" }}>
             <CardContent className="p-6 text-center space-y-3">
               <div style={{ fontSize: 52 }}>🌙</div>
               <p className="text-sm font-semibold">{tFn(lang, "sono_nenhum_reg")}</p>
@@ -796,13 +796,13 @@ export default function SonoPage() {
             {/* Best / Worst */}
             {stats!.bestNight && stats!.worstNight && stats!.bestNight.date !== stats!.worstNight.date && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Card className="rounded-2xl" style={{ background: "oklch(.95 .03 160 / .45)", border: "1px solid oklch(.7 .08 160 / .3)" }}>
+                <Card className="rounded-2xl" style={{ background: "oklch(.16 .012 270)", border: "1px solid oklch(.28 .02 270 / .5)" }}>
                   <CardContent className="p-3 text-center">
                     <p className="text-xs text-muted-foreground mb-1">🌟 {tFn(lang, "sono_melhor_noite")}</p>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>
                       {new Date(stats!.bestNight.date + "T12:00:00").toLocaleDateString(dateLocale(lang), { weekday: "short", day: "numeric" })}
                     </p>
-                    <p style={{ margin: "2px 0 0", fontSize: 18, fontWeight: 700, color: "oklch(.4 .15 160)" }}>
+                    <p style={{ margin: "2px 0 0", fontSize: 18, fontWeight: 700, color: "oklch(.58 .18 270)" }}>
                       {stats!.bestNight.quality ? QUALITY_EMOJI[stats!.bestNight.quality] : sleepScore(stats!.bestNight)}
                     </p>
                   </CardContent>
@@ -829,8 +829,8 @@ export default function SonoPage() {
         {/* ── Push notification ── */}
         {pushState === "unknown" && (
           <Card className="rounded-2xl" style={{
-            background: "linear-gradient(135deg, oklch(.95 .04 160 / .25) 0%, oklch(.97 .02 80 / .2) 100%)",
-            border: "1px solid oklch(.6 .08 160 / .2)",
+            background: "linear-gradient(135deg, oklch(.58 .18 270 / .15) 0%, oklch(.58 .18 270 / .1) 100%)",
+            border: "1px solid oklch(.58 .18 270 / .25)",
           }}>
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center gap-2">
@@ -876,7 +876,7 @@ export default function SonoPage() {
         {pushState === "granted" && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 12, background: PL, border: PB }}>
             <BellRing className="size-4 shrink-0" style={{ color: P }} />
-            <p style={{ margin: 0, flex: 1, fontSize: 13, color: "oklch(.35 .1 160)", fontWeight: 500 }}>
+            <p style={{ margin: 0, flex: 1, fontSize: 13, color: "#e0d6ff", fontWeight: 500 }}>
               {tFn(lang, "sono_ativos")}
             </p>
             <button

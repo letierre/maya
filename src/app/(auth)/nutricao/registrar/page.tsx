@@ -32,7 +32,7 @@ function MacroTile({ label, value, hue }: { label: string; value: string | numbe
         padding: "11px 8px",
         background: `linear-gradient(180deg, #fff, oklch(.97 .025 ${hue}))`,
         borderColor: `oklch(.5 .12 ${hue} / .15)`,
-        boxShadow: "0 1px 2px oklch(.25 .02 160 / .04)",
+        boxShadow: "0 1px 2px oklch(.25 .02 270 / .04)",
       }}
     >
       <p
@@ -235,8 +235,8 @@ export default function RegistrarRefeicaoPage() {
       className="relative min-h-screen pb-28"
       style={{
         background: `
-          radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.96 .03 ${HUE} / .45) 0%, transparent 60%),
-          linear-gradient(180deg, oklch(.98 .005 ${HUE}) 0%, oklch(.95 .015 ${HUE}) 100%)
+          radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.58 .18 270 / .15) 0%, transparent 60%),
+          linear-gradient(180deg, oklch(.12 .012 270) 0%, oklch(.15 .015 270) 100%)
         `,
       }}
     >
@@ -250,7 +250,7 @@ export default function RegistrarRefeicaoPage() {
       <button
         onClick={() => router.back()}
         className="absolute top-3.5 left-4 z-10 w-9 h-9 rounded-full flex items-center justify-center border-0"
-        style={{ background: "oklch(1 0 0 / .65)", backdropFilter: "blur(12px)" }}
+        style={{ background: "oklch(.16 .012 270 / .65)", backdropFilter: "blur(12px)" }}
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
@@ -389,9 +389,9 @@ export default function RegistrarRefeicaoPage() {
 
           {/* OR divider */}
           <div className="px-6 pt-5 flex items-center gap-2.5">
-            <span className="flex-1 h-px" style={{ background: "oklch(.5 .12 160 / .15)" }} />
+            <span className="flex-1 h-px" style={{ background: "oklch(.58 .18 270 / .15)" }} />
             <span className="text-[10px] font-bold tracking-[.16em] text-muted-foreground">OU DESCREVA</span>
-            <span className="flex-1 h-px" style={{ background: "oklch(.5 .12 160 / .15)" }} />
+            <span className="flex-1 h-px" style={{ background: "oklch(.58 .18 270 / .15)" }} />
           </div>
 
           {/* Description contenteditable */}
@@ -413,7 +413,7 @@ export default function RegistrarRefeicaoPage() {
           <div
             className="absolute bottom-0 inset-x-0 px-4 py-3 flex items-center gap-2.5"
             style={{
-              background: `linear-gradient(180deg, transparent, oklch(.95 .015 ${HUE} / .85) 25%, oklch(.95 .015 ${HUE}))`,
+              background: `linear-gradient(180deg, transparent, oklch(.12 .012 270 / .85) 25%, oklch(.12 .012 270))`,
             }}
           >
             <span className="flex-1 text-[11px] text-muted-foreground font-mono">
@@ -476,7 +476,7 @@ export default function RegistrarRefeicaoPage() {
               </div>
               <p
                 className="m-0 text-sm font-semibold tracking-tight text-white"
-                style={{ textShadow: "0 1px 4px oklch(.25 .02 160 / .35)" }}
+                style={{ textShadow: "0 1px 4px oklch(.25 .02 270 / .35)" }}
               >
                 Maya está olhando…
               </p>
@@ -493,7 +493,7 @@ export default function RegistrarRefeicaoPage() {
                 key={i}
                 className="aspect-square rounded-2xl"
                 style={{
-                  background: "linear-gradient(120deg, oklch(.93 .02 160), oklch(.96 .015 160), oklch(.93 .02 160))",
+                  background: "linear-gradient(120deg, oklch(.16 .012 270), oklch(.19 .015 270), oklch(.16 .012 270))",
                   backgroundSize: "200% 100%",
                   animation: "shimmerBg 1.6s linear infinite",
                 }}
@@ -514,7 +514,7 @@ export default function RegistrarRefeicaoPage() {
                 <span
                   className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold
                              tracking-[.08em] uppercase text-white inline-flex items-center gap-1"
-                  style={{ background: "oklch(.45 .14 160)" }}
+                  style={{ background: "oklch(.58 .18 270)" }}
                 >
                   <Check className="w-2.5 h-2.5 stroke-[3]" /> Analisado
                 </span>
@@ -564,7 +564,7 @@ export default function RegistrarRefeicaoPage() {
                   <button
                     onClick={() => removeItem(idx)}
                     className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: "oklch(.5 .12 160 / .1)" }}
+                    style={{ background: "oklch(.58 .18 270 / .1)" }}
                   >
                     <X className="w-[9px] h-[9px] text-muted-foreground" />
                   </button>
@@ -628,13 +628,13 @@ export default function RegistrarRefeicaoPage() {
           <div
             className="absolute bottom-0 inset-x-0 px-4 py-3 flex items-center gap-2"
             style={{
-              background: `linear-gradient(180deg, transparent, oklch(.95 .015 ${HUE} / .85) 25%, oklch(.95 .015 ${HUE}))`,
+              background: `linear-gradient(180deg, transparent, oklch(.12 .012 270 / .85) 25%, oklch(.12 .012 270))`,
             }}
           >
             <button
               onClick={skipAnalysis}
               className="h-11 px-3.5 rounded-xl bg-transparent border text-xs font-semibold text-muted-foreground flex-shrink-0"
-              style={{ borderColor: "oklch(.5 .12 160 / .2)" }}
+              style={{ borderColor: "oklch(.28 .02 270 / .5)" }}
             >
               Salvar sem análise
             </button>

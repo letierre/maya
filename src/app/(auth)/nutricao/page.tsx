@@ -166,8 +166,8 @@ export default function NutricaoPage() {
       <div
         style={{
           minHeight: "100dvh",
-          background: `radial-gradient(ellipse 80% 50% at 80% 0%, oklch(.88 .07 160 / .45) 0%, transparent 55%),
-                       linear-gradient(180deg, oklch(.98 .005 160) 0%, oklch(.94 .025 160) 100%)`,
+          background: `radial-gradient(ellipse 80% 50% at 80% 0%, oklch(.58 .18 270 / .15) 0%, transparent 55%),
+                       linear-gradient(180deg, oklch(.12 .012 270) 0%, oklch(.15 .015 270) 100%)`,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
@@ -181,9 +181,9 @@ export default function NutricaoPage() {
       className="relative min-h-screen overflow-x-hidden pb-32"
       style={{
         background: `
-          radial-gradient(ellipse 100% 55% at 80% 0%, oklch(.88 .07 160 / .4) 0%, transparent 55%),
-          radial-gradient(ellipse 70% 40% at 0% 100%, oklch(.95 .04 80 / .45) 0%, transparent 50%),
-          linear-gradient(180deg, oklch(.98 .005 160) 0%, oklch(.94 .025 160) 100%)
+          radial-gradient(ellipse 100% 55% at 80% 0%, oklch(.58 .18 270 / .15) 0%, transparent 55%),
+          radial-gradient(ellipse 70% 40% at 0% 100%, oklch(.58 .18 270 / .1) 0%, transparent 50%),
+          linear-gradient(180deg, oklch(.12 .012 270) 0%, oklch(.15 .015 270) 100%)
         `,
         fontFamily: "var(--font-sans)",
         color: "var(--foreground)",
@@ -215,9 +215,9 @@ export default function NutricaoPage() {
         <div
           className="inline-flex w-full p-1 rounded-2xl"
           style={{
-            background: "oklch(1 0 0 / .55)",
+            background: "oklch(.16 .012 270 / .55)",
             backdropFilter: "blur(8px)",
-            border: "1px solid oklch(.5 .12 160 / .12)",
+            border: "1px solid oklch(.28 .02 270 / .5)",
           }}
         >
           {(["dia", "semana", "mes"] as TabView[]).map((tview) => (
@@ -229,7 +229,7 @@ export default function NutricaoPage() {
               style={{
                 background: tab === tview ? "var(--primary)" : "transparent",
                 color: tab === tview ? "#fff" : "var(--muted-foreground)",
-                boxShadow: tab === tview ? "0 2px 8px -2px oklch(.5 .12 160 / .35)" : "none",
+                boxShadow: tab === tview ? "0 2px 8px -2px oklch(.58 .18 270 / .35)" : "none",
                 border: 0, cursor: "pointer", fontFamily: "inherit",
               }}
             >

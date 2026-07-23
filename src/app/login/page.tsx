@@ -6,6 +6,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { MayaAvatar } from "@/components/MayaAvatar";
 
 const P  = "#7C5CFF";
 const PB = "1px solid oklch(0.5 0.12 270 / .15)";
@@ -61,28 +62,38 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const supabase = createClient();
 
-    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const supabase = createClient();
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (loginError) {
-      setError(
-        loginError.message === "Invalid login credentials"
-          ? "Email ou senha incorretos. Verifique se confirmou seu email."
-          : loginError.message
-      );
+      console.log("[LOGIN] Resultado:", { hasData: !!data, hasError: !!loginError, errorMsg: loginError?.message });
+
+      if (loginError) {
+        setError(
+          loginError.message === "Invalid login credentials"
+            ? "Email ou senha incorretos. Verifique se confirmou seu email."
+            : loginError.message
+        );
+        setLoading(false);
+        return;
+      }
+
+      console.log("[LOGIN] Sucesso, redirecionando...");
+      window.location.href = "/dashboard";
+    } catch (err: any) {
+      console.error("[LOGIN] Erro capturado:", err);
+      setError(err?.message || "Erro inesperado ao fazer login. Tente novamente.");
       setLoading(false);
-      return;
     }
-
-    router.push("/dashboard");
-    router.refresh();
   };
 
   return (
     <div style={cardStyle}>
       <div style={{ textAlign: "center", marginBottom: 28 }}>
-        <div style={{ fontSize: 44, marginBottom: 10 }}>🌱</div>
+        <div style={{ marginBottom: 10, display: "flex", justifyContent: "center" }}>
+          <MayaAvatar state="idle" size={56} />
+        </div>
         <h1 style={{ margin: "0 0 4px", fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em" }}>
           Bem-vindo de volta
         </h1>

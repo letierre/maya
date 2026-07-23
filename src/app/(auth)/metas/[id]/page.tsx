@@ -167,14 +167,14 @@ function StageRow({
         <p style={{
           margin: "4px 0 0", fontSize: isCurrent ? 15 : 13.5,
           fontWeight: isCurrent ? 700 : 500, letterSpacing: "-0.005em",
-          color: isDone ? "oklch(.65 .03 160)" : isCurrent ? `oklch(.2 .04 ${hue})` : "oklch(.35 .02 160)",
+          color: isDone ? "oklch(.55 .03 270)" : isCurrent ? `oklch(.2 .04 ${hue})` : "oklch(.55 .03 270)",
           textDecoration: isDone ? "line-through" : "none", lineHeight: 1.3,
         }}>
           {stage.title}
         </p>
 
         {isDone && actions.length > 0 && (
-          <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "oklch(.6 .03 160)" }}>
+          <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "oklch(.55 .03 270)" }}>
             {doneCount}/{actions.length} ações ✓
           </p>
         )}
@@ -183,7 +183,7 @@ function StageRow({
         {isCurrent && (
           <div style={{
             marginTop: 12, padding: 14, borderRadius: 14,
-            background: "#fff", border: `1px solid oklch(.5 .12 ${hue} / .15)`,
+            background: "oklch(.16 .012 270)", border: `1px solid oklch(.5 .12 ${hue} / .15)`,
             boxShadow: `0 4px 14px -6px oklch(.5 .12 ${hue} / .2)`,
           }}>
             {actions.map((a, i) => {
@@ -192,7 +192,7 @@ function StageRow({
                 <div key={a.id} style={{
                   display: "flex", alignItems: "flex-start", gap: 9,
                   padding: "6px 0",
-                  borderTop: i > 0 ? "1px solid oklch(.5 .12 160 / .08)" : "none",
+                  borderTop: i > 0 ? "1px solid oklch(.28 .02 270 / .08)" : "none",
                 }}>
                   <button type="button" onClick={() => onToggleAction(a.id)} style={{
                     width: 18, height: 18, borderRadius: 6, flex: "none", marginTop: 1,
@@ -209,7 +209,7 @@ function StageRow({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{
                       margin: 0, fontSize: 13, lineHeight: 1.3,
-                      color: done ? "oklch(.6 .03 160)" : "oklch(.2 .02 160)",
+                      color: done ? "oklch(.55 .03 270)" : "#e0d6ff",
                       textDecoration: done ? "line-through" : "none", fontWeight: 500,
                     }}>{a.title}</p>
                     {a.if_then && !done && (
@@ -225,7 +225,7 @@ function StageRow({
                   </div>
                   <button type="button" onClick={() => onDeleteAction(a.id)} style={{
                     border: 0, background: "none", padding: 4, cursor: "pointer",
-                    color: "oklch(.75 .03 160)", flexShrink: 0,
+                    color: "oklch(.5 .03 270)", flexShrink: 0,
                   }}>
                     <Trash2 size={13} />
                   </button>
@@ -254,8 +254,8 @@ function StageRow({
                   placeholder="Descreva a ação..."
                   style={{
                     padding: "9px 12px", borderRadius: 10, border: `1.5px solid oklch(.7 .06 ${hue})`,
-                    background: "oklch(.98 .005 160)", fontFamily: "inherit", fontSize: 13,
-                    color: "oklch(.2 .02 160)", outline: "none",
+                    background: "oklch(.16 .012 270)", fontFamily: "inherit", fontSize: 13,
+                    color: "#e0d6ff", outline: "none",
                   }}
                 />
                 {!showIfThen ? (
@@ -288,14 +288,14 @@ function StageRow({
                 )}
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="button" onClick={() => { setAdding(false); setNewAction(""); setIfThenCond(""); setIfThenAct(""); setShowIfThen(false); }} style={{
-                    flex: 1, padding: "8px 12px", borderRadius: 10, border: "1.5px solid oklch(.85 .02 160)",
-                    background: "#fff", fontFamily: "inherit", fontSize: 13, cursor: "pointer", color: "oklch(.5 .04 160)",
+                    flex: 1, padding: "8px 12px", borderRadius: 10, border: "1.5px solid oklch(.28 .02 270 / .5)",
+                    background: "oklch(.16 .012 270)", fontFamily: "inherit", fontSize: 13, cursor: "pointer", color: "oklch(.55 .03 270)",
                   }}>Cancelar</button>
                   <button type="button" onClick={handleAddAction} disabled={!newAction.trim()} style={{
                     flex: 1, padding: "8px 12px", borderRadius: 10, border: 0,
-                    background: newAction.trim() ? ac(area) : "oklch(.88 .02 160)",
+                    background: newAction.trim() ? ac(area) : "oklch(.28 .02 270 / .3)",
                     fontFamily: "inherit", fontSize: 13, fontWeight: 700,
-                    color: newAction.trim() ? "#fff" : "oklch(.6 .02 160)", cursor: "pointer",
+                    color: newAction.trim() ? "#fff" : "oklch(.55 .03 270)", cursor: "pointer",
                   }}>Salvar</button>
                 </div>
               </div>
@@ -405,8 +405,8 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100dvh", background: "oklch(.97 .005 160)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid oklch(.5 .12 160)", borderTopColor: "transparent", animation: "spin .8s linear infinite" }} />
+      <div style={{ minHeight: "100dvh", background: "oklch(.12 .012 270)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid #7C5CFF", borderTopColor: "transparent", animation: "spin .8s linear infinite" }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
     );
@@ -414,11 +414,11 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
 
   if (!goal) {
     return (
-      <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, background: "oklch(.97 .005 160)" }}>
-        <p style={{ fontSize: 16, color: "oklch(.5 .04 160)" }}>Meta não encontrada</p>
+      <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, background: "oklch(.12 .012 270)" }}>
+        <p style={{ fontSize: 16, color: "oklch(.55 .03 270)" }}>Meta não encontrada</p>
         <button type="button" onClick={() => router.push("/metas")} style={{
           padding: "12px 24px", borderRadius: 12, border: 0, cursor: "pointer",
-          background: "oklch(.5 .12 160)", color: "#fff", fontFamily: "inherit", fontSize: 14,
+          background: "#7C5CFF", color: "#fff", fontFamily: "inherit", fontSize: 14,
         }}>Voltar</button>
       </div>
     );
@@ -436,8 +436,8 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
     <div style={{
       minHeight: "100dvh", paddingBottom: 110,
       background: `
-        radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.95 .04 80 / .35) 0%, transparent 50%),
-        linear-gradient(180deg, oklch(.97 .005 160) 0%, oklch(.94 .02 160) 100%)
+        radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.58 .18 270 / .15) 0%, transparent 50%),
+        linear-gradient(180deg, oklch(.12 .012 270) 0%, oklch(.15 .015 270) 100%)
       `,
     }}>
       <Confetti active={confetti} />
@@ -446,9 +446,9 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
       <button type="button" onClick={() => router.push("/metas")} style={{
         position: "fixed", top: 14, left: 16, zIndex: 50,
         width: 36, height: 36, borderRadius: 9999, border: 0, cursor: "pointer",
-        background: "oklch(1 0 0 / .65)", backdropFilter: "blur(12px)",
+        background: "oklch(.16 .012 270 / .65)", backdropFilter: "blur(12px)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: "0 1px 3px oklch(.25 .02 160 / .08)",
+        boxShadow: "0 1px 3px oklch(.25 .02 270 / .08)",
       }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="m15 18-6-6 6-6"/>
@@ -458,7 +458,7 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
       <button type="button" onClick={() => setShowMenu((v) => !v)} style={{
         position: "fixed", top: 14, right: 16, zIndex: 50,
         width: 36, height: 36, borderRadius: 9999, border: 0, cursor: "pointer",
-        background: "oklch(1 0 0 / .65)", backdropFilter: "blur(12px)",
+        background: "oklch(.16 .012 270 / .65)", backdropFilter: "blur(12px)",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
@@ -473,7 +473,7 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
           <div style={{
             position: "fixed", top: 56, right: 16, zIndex: 49,
             background: "#fff", borderRadius: 16, padding: "8px 0",
-            boxShadow: "0 8px 32px oklch(.2 .04 160 / .2)", minWidth: 200,
+            boxShadow: "0 8px 32px oklch(.2 .04 270 / .3)", minWidth: 200,
           }}>
             {[
               { icon: Pencil, label: "Editar meta", action: () => setShowMenu(false) },
@@ -486,9 +486,9 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
               <button key={label} type="button" onClick={action} style={{
                 display: "flex", alignItems: "center", gap: 10, width: "100%",
                 padding: "12px 16px", border: 0, background: "none", cursor: "pointer",
-                fontFamily: "inherit", fontSize: 13, fontWeight: 500, color: "oklch(.25 .04 160)", textAlign: "left",
+                fontFamily: "inherit", fontSize: 13, fontWeight: 500, color: "oklch(.25 .04 270)", textAlign: "left",
               }}>
-                <Icon size={16} style={{ color: "oklch(.55 .08 160)", flexShrink: 0 }} />
+                <Icon size={16} style={{ color: "oklch(.55 .08 270)", flexShrink: 0 }} />
                 {label}
               </button>
             ))}
@@ -605,12 +605,12 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
         <div style={{ padding: "14px 20px 0" }}>
           <div style={{
             padding: "12px 16px", borderRadius: 14,
-            border: "1.5px dashed oklch(.8 .04 160)",
+            border: "1.5px dashed oklch(.28 .02 270 / .5)",
             background: "transparent",
             display: "flex", alignItems: "center", gap: 10,
           }}>
-            <Shield size={16} style={{ color: "oklch(.65 .06 160)", flexShrink: 0 }} />
-            <p style={{ margin: 0, fontSize: 12, color: "oklch(.55 .04 160)" }}>
+            <Shield size={16} style={{ color: "oklch(.55 .08 270)", flexShrink: 0 }} />
+            <p style={{ margin: 0, fontSize: 12, color: "oklch(.55 .03 270)" }}>
               Sem guardião ou apostas ainda — edite a meta para adicionar.
             </p>
           </div>
@@ -635,9 +635,9 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
         {stages.length === 0 && !addingStage && (
           <div style={{
             textAlign: "center", padding: "28px 20px", borderRadius: 16,
-            border: "2px dashed oklch(.85 .03 160)", background: "oklch(1 0 0 / .4)",
+            border: "2px dashed oklch(.28 .02 270 / .5)", background: "oklch(.16 .012 270 / .4)",
           }}>
-            <p style={{ margin: "0 0 12px", fontSize: 14, color: "oklch(.5 .04 160)" }}>
+            <p style={{ margin: "0 0 12px", fontSize: 14, color: "oklch(.55 .03 270)" }}>
               Adicione etapas para quebrar sua meta em marcos concretos
             </p>
             <button type="button" onClick={() => setAddingStage(true)} style={{
@@ -682,8 +682,8 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
               placeholder="Nome da nova etapa..."
               style={{
                 flex: 1, padding: "12px 14px", borderRadius: 12,
-                border: `1.5px solid oklch(.7 .06 ${hue})`, background: "#fff",
-                fontFamily: "inherit", fontSize: 14, color: "oklch(.2 .02 160)", outline: "none",
+                border: `1.5px solid oklch(.7 .06 ${hue})`, background: "oklch(.16 .012 270)",
+                fontFamily: "inherit", fontSize: 14, color: "#e0d6ff", outline: "none",
               }}
             />
             <button type="button" onClick={addStage} style={{
@@ -698,10 +698,10 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
       <div style={{ padding: "24px 24px 0" }}>
         <button type="button" onClick={() => router.push(`/insights?draft=${encodeURIComponent(`Quero falar sobre a minha meta: "${goal.title}"`)}`)} style={{
           display: "inline-flex", alignItems: "center", gap: 8,
-          background: "oklch(1 0 0 / .6)", backdropFilter: "blur(8px)",
+          background: "oklch(.16 .012 270 / .6)", backdropFilter: "blur(8px)",
           border: `1px solid oklch(.5 .12 ${hue} / .2)`, borderRadius: 9999,
           padding: "8px 14px 8px 8px", cursor: "pointer", fontFamily: "inherit",
-          fontSize: 12.5, fontWeight: 500, color: "oklch(.2 .02 160)",
+          fontSize: 12.5, fontWeight: 500, color: "#e0d6ff",
         }}>
           <span style={{
             width: 22, height: 22, borderRadius: 9999, overflow: "hidden", flex: "none",
@@ -710,7 +710,7 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
             <img src="/maya.png" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           </span>
           Conversar sobre essa meta com Maya
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "oklch(.6 .03 160)" }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "oklch(.55 .03 270)" }}>
             <path d="M5 12h14M13 5l7 7-7 7"/>
           </svg>
         </button>

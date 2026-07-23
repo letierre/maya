@@ -30,7 +30,7 @@ const TOTAL_STEPS = 5;
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.5 .04 160)" }}>
+    <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "oklch(.55 .03 270)" }}>
       {children}
     </p>
   );
@@ -48,12 +48,12 @@ function Input({ value, onChange, placeholder, maxLength }: {
       maxLength={maxLength}
       style={{
         width: "100%", boxSizing: "border-box", padding: "13px 14px",
-        borderRadius: 12, border: "1.5px solid oklch(.82 .03 160)",
-        background: "oklch(1 0 0 / .7)", fontFamily: "inherit",
-        fontSize: 15, color: "oklch(.2 .02 160)", outline: "none",
+        borderRadius: 12, border: "1.5px solid oklch(.28 .02 270 / .5)",
+        background: "oklch(.16 .012 270 / .7)", fontFamily: "inherit",
+        fontSize: 15, color: "#e0d6ff", outline: "none",
       }}
-      onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(.5 .12 160)"; }}
-      onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(.82 .03 160)"; }}
+      onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "#7C5CFF"; }}
+      onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "oklch(.28 .02 270 / .5)"; }}
     />
   );
 }
@@ -69,13 +69,13 @@ function Textarea({ value, onChange, placeholder, rows = 3 }: {
       rows={rows}
       style={{
         width: "100%", boxSizing: "border-box", padding: "13px 14px",
-        borderRadius: 12, border: "1.5px solid oklch(.82 .03 160)",
-        background: "oklch(1 0 0 / .7)", fontFamily: "inherit",
-        fontSize: 14, color: "oklch(.2 .02 160)", outline: "none", resize: "none",
+        borderRadius: 12, border: "1.5px solid oklch(.28 .02 270 / .5)",
+        background: "oklch(.16 .012 270 / .7)", fontFamily: "inherit",
+        fontSize: 14, color: "#e0d6ff", outline: "none", resize: "none",
         lineHeight: 1.6,
       }}
-      onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "oklch(.5 .12 160)"; }}
-      onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "oklch(.82 .03 160)"; }}
+      onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "#7C5CFF"; }}
+      onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "oklch(.28 .02 270 / .5)"; }}
     />
   );
 }
@@ -140,10 +140,10 @@ export default function NovaMetaPage() {
   return (
     <div style={{
       width: "100%", minHeight: "100dvh", overflowY: "auto",
-      fontFamily: "var(--font-sans)", color: "oklch(.18 .02 160)",
+      fontFamily: "var(--font-sans)", color: "#e0d6ff",
       background: `
         radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.96 .03 ${HUE} / .45) 0%, transparent 60%),
-        linear-gradient(180deg, oklch(.97 .005 160) 0%, oklch(.94 .02 160) 100%)
+        linear-gradient(180deg, oklch(.12 .012 270) 0%, oklch(.15 .015 270) 100%)
       `,
       position: "relative", paddingBottom: 120,
       transition: "background .5s ease",
@@ -152,9 +152,9 @@ export default function NovaMetaPage() {
       <button type="button" onClick={() => router.back()} style={{
         position: "absolute", top: 14, left: 16, zIndex: 10,
         width: 36, height: 36, borderRadius: 9999, border: 0, cursor: "pointer",
-        background: "oklch(1 0 0 / .65)", backdropFilter: "blur(12px)",
+        background: "oklch(.16 .012 270 / .65)", backdropFilter: "blur(12px)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: "0 1px 3px oklch(.25 .02 160 / .08)",
+        boxShadow: "0 1px 3px oklch(.25 .02 270 / .08)",
       }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 6 6 18M6 6l12 12"/>
@@ -179,7 +179,7 @@ export default function NovaMetaPage() {
       <p style={{
         position: "absolute", top: 56, left: 0, right: 0, textAlign: "center", zIndex: 9,
         margin: 0, fontFamily: "var(--font-mono, ui-monospace)", fontSize: 10,
-        color: "oklch(.55 .03 160)", letterSpacing: ".16em", textTransform: "uppercase",
+        color: "oklch(.55 .03 270)", letterSpacing: ".16em", textTransform: "uppercase",
       }}>
         Nova meta · passo {String(step + 1).padStart(2, "0")} de 05
       </p>
@@ -193,7 +193,7 @@ export default function NovaMetaPage() {
         {/* Step 0 — Area grid */}
         {step === 0 && (
           <>
-            <p style={{ margin: "0 0 24px", fontSize: 13, color: "oklch(.55 .03 160)", lineHeight: 1.5 }}>
+            <p style={{ margin: "0 0 24px", fontSize: 13, color: "oklch(.55 .03 270)", lineHeight: 1.5 }}>
               Toda meta vive em uma área. Escolha a principal.
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>
@@ -205,17 +205,17 @@ export default function NovaMetaPage() {
                     padding: "14px 12px 12px", borderRadius: 16, position: "relative",
                     background: sel
                       ? `linear-gradient(135deg, oklch(.96 .04 ${a.hue}) 0%, oklch(.92 .07 ${a.hue}) 100%)`
-                      : "oklch(1 0 0 / .55)",
+                      : "oklch(.16 .012 270 / .55)",
                     border: sel
                       ? `2px solid oklch(.45 .14 ${a.hue})`
-                      : "2px solid oklch(.5 .12 160 / .1)",
+                      : "2px solid oklch(.28 .02 270 / .3)",
                     transition: "all .2s ease",
                   }}>
                     <span style={{ fontSize: 22, display: "block", marginBottom: 6 }}>{a.emoji}</span>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, letterSpacing: "-0.005em", color: sel ? `oklch(.2 .04 ${a.hue})` : "oklch(.2 .02 160)" }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, letterSpacing: "-0.005em", color: sel ? `oklch(.2 .04 ${a.hue})` : "#e0d6ff" }}>
                       {a.label}
                     </p>
-                    <p style={{ margin: "2px 0 0", fontSize: 10.5, color: sel ? `oklch(.4 .08 ${a.hue})` : "oklch(.55 .03 160)" }}>
+                    <p style={{ margin: "2px 0 0", fontSize: 10.5, color: sel ? `oklch(.4 .08 ${a.hue})` : "oklch(.55 .03 270)" }}>
                       {a.desc}
                     </p>
                     {sel && (
@@ -252,7 +252,7 @@ export default function NovaMetaPage() {
             <div>
               <Label>Título da meta</Label>
               <Input value={title} onChange={setTitle} placeholder="Ex: Publicar meu livro até dezembro" maxLength={80} />
-              <p style={{ margin: "4px 0 0", fontSize: 11, color: "oklch(.6 .04 160)" }}>{title.length}/80</p>
+              <p style={{ margin: "4px 0 0", fontSize: 11, color: "oklch(.55 .03 270)" }}>{title.length}/80</p>
             </div>
             <div>
               <Label>Por que isso importa para você? *</Label>
@@ -262,7 +262,7 @@ export default function NovaMetaPage() {
                 placeholder="Escreva o seu motivo real, não o esperado. Quanto mais honesto, mais força essa meta vai ter..."
                 rows={3}
               />
-              <p style={{ margin: "4px 0 0", fontSize: 11, color: "oklch(.6 .04 160)", fontStyle: "italic" }}>
+              <p style={{ margin: "4px 0 0", fontSize: 11, color: "oklch(.55 .03 270)", fontStyle: "italic" }}>
                 Este texto vai aparecer quando sua motivação cair.
               </p>
             </div>
@@ -274,8 +274,8 @@ export default function NovaMetaPage() {
               <Label>Data alvo (opcional)</Label>
               <div style={{
                 overflow: "hidden", borderRadius: 12,
-                border: "1.5px solid oklch(.82 .03 160)",
-                background: "oklch(1 0 0 / .7)", height: 48,
+                border: "1.5px solid oklch(.28 .02 270 / .5)",
+                background: "oklch(.16 .012 270 / .7)", height: 48,
                 display: "flex", alignItems: "center",
               }}>
                 <input
@@ -285,7 +285,7 @@ export default function NovaMetaPage() {
                   min={new Date().toISOString().split("T")[0]}
                   style={{
                     flex: 1, padding: "0 14px", border: "none", background: "transparent",
-                    fontFamily: "inherit", fontSize: 14, color: "oklch(.2 .02 160)", outline: "none",
+                    fontFamily: "inherit", fontSize: 14, color: "#e0d6ff", outline: "none",
                   }}
                 />
               </div>
@@ -296,12 +296,12 @@ export default function NovaMetaPage() {
         {/* Step 2 — First stage */}
         {step === 2 && (
           <div>
-            <p style={{ margin: "0 0 20px", fontSize: 13, color: "oklch(.45 .04 160)", lineHeight: 1.6 }}>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: "#7C5CFF", lineHeight: 1.6 }}>
               Qual é o <strong>primeiro marco</strong> que você precisa atingir?
             </p>
             <div style={{
-              background: "oklch(1 0 0 / .6)", borderRadius: 16, padding: 16, marginBottom: 16,
-              border: "1px solid oklch(.88 .02 160)",
+              background: "oklch(.16 .012 270 / .6)", borderRadius: 16, padding: 16, marginBottom: 16,
+              border: "1px solid oklch(.28 .02 270 / .5)",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                 <div style={{
@@ -310,13 +310,13 @@ export default function NovaMetaPage() {
                   fontSize: 12, fontWeight: 800, fontFamily: "var(--font-mono, ui-monospace)",
                   color: `oklch(.4 .12 ${HUE})`,
                 }}>1</div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "oklch(.4 .06 160)" }}>Primeira etapa</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>Primeira etapa</span>
               </div>
               <Input value={firstStage} onChange={setFirstStage} placeholder="Ex: Escrever os primeiros 3 capítulos" maxLength={100} />
             </div>
             <div style={{ background: `oklch(.5 .12 ${HUE} / .08)`, borderRadius: 12, padding: 14, display: "flex", gap: 10 }}>
               <span style={{ fontSize: 18 }}>💡</span>
-              <p style={{ margin: 0, fontSize: 12, color: "oklch(.4 .06 160)", lineHeight: 1.5 }}>
+              <p style={{ margin: 0, fontSize: 12, color: "#e0d6ff", lineHeight: 1.5 }}>
                 Você vai poder adicionar mais etapas e ações dentro de cada etapa na tela de detalhe da meta.
               </p>
             </div>
@@ -334,7 +334,7 @@ export default function NovaMetaPage() {
               }}>
                 <Shield size={28} style={{ color: `oklch(.45 .12 ${HUE})` }} />
               </div>
-              <p style={{ margin: "0 0 8px", fontSize: 13, color: "oklch(.5 .04 160)", lineHeight: 1.6 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 13, color: "oklch(.55 .03 270)", lineHeight: 1.6 }}>
                 Um amigo, familiar ou colega que vai te cobrar. Pesquisas mostram que ter um guardião aumenta as chances de sucesso em até 65%.
               </p>
             </div>
@@ -351,7 +351,7 @@ export default function NovaMetaPage() {
             <button type="button" onClick={() => { setGuardianName(""); setGuardianContact(""); next(); }} style={{
               marginTop: 24, width: "100%", padding: 14, borderRadius: 12, border: 0, cursor: "pointer",
               background: "transparent", fontFamily: "inherit", fontSize: 13,
-              color: "oklch(.55 .04 160)", textDecoration: "underline",
+              color: "oklch(.55 .03 270)", textDecoration: "underline",
             }}>
               Pular — definirei depois
             </button>
@@ -370,7 +370,7 @@ export default function NovaMetaPage() {
                   <AlertOctagon size={22} style={{ color: "oklch(.5 .18 15)" }} />
                 </div>
               </div>
-              <p style={{ margin: 0, fontSize: 13, color: "oklch(.5 .04 160)", lineHeight: 1.6 }}>
+              <p style={{ margin: 0, fontSize: 13, color: "oklch(.55 .03 270)", lineHeight: 1.6 }}>
                 Metas com recompensa e punição definidas têm 3× mais chance de serem cumpridas.
               </p>
             </div>
@@ -386,7 +386,7 @@ export default function NovaMetaPage() {
               {guardianName && (reward || punishment) && (
                 <div style={{ background: `oklch(.5 .12 ${HUE} / .08)`, borderRadius: 12, padding: 14, display: "flex", gap: 10 }}>
                   <Shield size={18} style={{ color: `oklch(.45 .12 ${HUE})`, flexShrink: 0 }} />
-                  <p style={{ margin: 0, fontSize: 12, color: "oklch(.4 .06 160)", lineHeight: 1.5 }}>
+                  <p style={{ margin: 0, fontSize: 12, color: "#e0d6ff", lineHeight: 1.5 }}>
                     <strong>{guardianName}</strong> vai saber da recompensa e da punição quando você compartilhar a meta.
                   </p>
                 </div>
@@ -395,7 +395,7 @@ export default function NovaMetaPage() {
             <button type="button" onClick={() => { setReward(""); setPunishment(""); }} style={{
               marginTop: 16, width: "100%", padding: 14, borderRadius: 12, border: 0, cursor: "pointer",
               background: "transparent", fontFamily: "inherit", fontSize: 13,
-              color: "oklch(.55 .04 160)", textDecoration: "underline",
+              color: "oklch(.55 .03 270)", textDecoration: "underline",
             }}>
               Pular — prefiro sem apostas
             </button>
@@ -407,13 +407,13 @@ export default function NovaMetaPage() {
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0,
         padding: "12px 20px calc(env(safe-area-inset-bottom) + 16px)",
-        background: "oklch(.97 .005 160 / .85)", backdropFilter: "blur(12px)",
-        borderTop: "1px solid oklch(.55 .08 80 / .15)",
+        background: "oklch(.12 .012 270 / .85)", backdropFilter: "blur(12px)",
+        borderTop: "1px solid oklch(.28 .02 270 / .5)",
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
         <button type="button" onClick={back} style={{
           background: "transparent", border: 0, cursor: step > 0 ? "pointer" : "default",
-          fontFamily: "inherit", fontSize: 13, color: step > 0 ? "oklch(.45 .04 160)" : "transparent",
+          fontFamily: "inherit", fontSize: 13, color: step > 0 ? "#7C5CFF" : "transparent",
           display: "flex", alignItems: "center", gap: 4, padding: "8px 0",
         }}>
           {step > 0 && (
@@ -445,7 +445,7 @@ export default function NovaMetaPage() {
         ) : (
           <button type="button" onClick={handleSave} disabled={saving} style={{
             height: 48, padding: "0 22px", borderRadius: 14,
-            background: saving ? "oklch(.85 .02 160)" : `linear-gradient(135deg, oklch(.42 .16 ${HUE}), oklch(.52 .14 ${HUE}))`,
+            background: saving ? "oklch(.28 .02 270 / .3)" : `linear-gradient(135deg, oklch(.42 .16 ${HUE}), oklch(.52 .14 ${HUE}))`,
             color: "#fff", border: 0, cursor: saving ? "not-allowed" : "pointer",
             fontFamily: "inherit", fontSize: 14, fontWeight: 700,
             display: "inline-flex", alignItems: "center", gap: 6,

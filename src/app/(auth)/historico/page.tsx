@@ -57,7 +57,7 @@ function getScore(ci: CheckIn, scoreKeys: string[]) {
 function scoreColor(score: number, total: number): string {
   if (total === 0) return "var(--muted-foreground)";
   const ratio = score / total;
-  if (ratio >= 0.7) return "oklch(.45 .14 160)";
+  if (ratio >= 0.7) return "#7C5CFF";
   if (ratio >= 0.5) return "oklch(.55 .12 70)";
   return "oklch(.5 .16 20)";
 }
@@ -100,8 +100,8 @@ export default function HistoricoPage() {
     return (
       <div style={{
         minHeight: "100dvh",
-        background: `radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.95 .04 80 / .55) 0%, transparent 50%),
-                     linear-gradient(180deg, oklch(.98 .005 160) 0%, oklch(.94 .025 160) 100%)`,
+        background: `radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.47 .18 270 / .20) 0%, transparent 50%),
+                     linear-gradient(180deg, oklch(0.12 0.012 270) 0%, oklch(0.10 0.012 270) 100%)`,
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
         <p style={{ color: "var(--muted-foreground)", fontSize: 13 }}>Carregando…</p>
@@ -114,9 +114,9 @@ export default function HistoricoPage() {
       className="relative min-h-screen overflow-x-hidden pb-32"
       style={{
         background: `
-          radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.95 .04 80 / .55) 0%, transparent 50%),
-          radial-gradient(ellipse 100% 60% at 100% 100%, oklch(.85 .07 160 / .35) 0%, transparent 60%),
-          linear-gradient(180deg, oklch(.98 .005 160) 0%, oklch(.94 .025 160) 100%)
+          radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.47 .18 270 / .20) 0%, transparent 50%),
+          radial-gradient(ellipse 100% 60% at 100% 100%, oklch(.5 .14 270 / .15) 0%, transparent 60%),
+          linear-gradient(180deg, oklch(0.12 0.012 270) 0%, oklch(0.10 0.012 270) 100%)
         `,
         fontFamily: "var(--font-sans)",
         color: "var(--foreground)",
@@ -151,7 +151,7 @@ export default function HistoricoPage() {
               height: 44, padding: "0 22px", borderRadius: 14, border: 0, cursor: "pointer",
               background: "var(--primary)", color: "#fff",
               fontFamily: "inherit", fontSize: 14, fontWeight: 600,
-              boxShadow: "0 4px 12px -4px oklch(.5 .12 160 / .4)",
+              boxShadow: "0 4px 12px -4px oklch(.5 .12 270 / .4)",
             }}
           >
             Fazer primeiro check-in
@@ -195,8 +195,8 @@ export default function HistoricoPage() {
                     display: "grid",
                     gridTemplateColumns: "52px 1fr",
                     padding: "14px 24px",
-                    borderTop: "1px solid oklch(.5 .12 160 / .1)",
-                    background: isToday ? "oklch(.5 .12 160 / .04)" : "transparent",
+                    borderTop: "1px solid oklch(.5 .12 270 / .1)",
+                    background: isToday ? "oklch(.5 .12 270 / .04)" : "transparent",
                   }}
                 >
                   {/* Date col */}
@@ -230,7 +230,7 @@ export default function HistoricoPage() {
                               style={{
                                 display: "inline-block", width: 7, height: 7,
                                 borderRadius: "50%", flexShrink: 0,
-                                background: "oklch(.5 .02 160 / .22)",
+                                background: "oklch(.5 .02 270 / .22)",
                               }}
                             />
                           );

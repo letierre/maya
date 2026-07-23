@@ -21,9 +21,9 @@ const CONTEXT_QUESTIONS = [
   { id: "track_suicidal_thoughts", qKey: "q_suicida",     dKey: "q_suicida_desc"     },
 ];
 
-const P  = "oklch(.5 .12 160)";
-const PL = "oklch(.5 .12 160 / .12)";
-const PB = "1px solid oklch(.5 .12 160 / .15)";
+const P  = "#7C5CFF";
+const PL = "oklch(.5 .12 270 / .12)";
+const PB = "1px solid oklch(.5 .12 270 / .15)";
 
 export default function ConfiguracoesPage() {
   const router = useRouter();
@@ -85,7 +85,7 @@ export default function ConfiguracoesPage() {
     return (
       <div style={{
         minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "oklch(.98 .005 160)",
+        background: "oklch(0.12 0.012 270)",
       }}>
         <p style={{ color: "var(--muted-foreground)", fontSize: 13 }}>Carregando…</p>
       </div>
@@ -95,8 +95,8 @@ export default function ConfiguracoesPage() {
   return (
     <div style={{
       minHeight: "100dvh",
-      background: `radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.95 .04 80 / .4) 0%, transparent 60%),
-                   linear-gradient(180deg, oklch(.985 .004 160) 0%, oklch(.94 .022 160) 100%)`,
+      background: `radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.47 .18 270 / .15) 0%, transparent 60%),
+                   linear-gradient(180deg, oklch(0.12 0.012 270) 0%, oklch(0.10 0.012 270) 100%)`,
       fontFamily: "var(--font-sans)",
       color: "var(--foreground)",
       paddingBottom: 100,
@@ -113,7 +113,7 @@ export default function ConfiguracoesPage() {
             onClick={() => router.back()}
             style={{
               width: 36, height: 36, borderRadius: "50%",
-              border: PB, background: "oklch(1 0 0 / .55)",
+              border: PB, background: "oklch(0.16 0.012 270 / .85)",
               backdropFilter: "blur(8px)", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 16, flexShrink: 0,
@@ -140,7 +140,7 @@ export default function ConfiguracoesPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {CONTEXT_QUESTIONS.map((q) => (
             <div key={q.id} style={{
-              background: "oklch(1 0 0 / .55)",
+              background: "oklch(0.16 0.012 270 / .85)",
               backdropFilter: "blur(12px)",
               borderRadius: 20,
               border: PB,
@@ -189,7 +189,7 @@ export default function ConfiguracoesPage() {
         {/* ── Moeda ──────────────────────────────────────────────── */}
         <div style={{ marginTop: 10 }}>
           <div style={{
-            background: "oklch(1 0 0 / .55)",
+            background: "oklch(0.16 0.012 270 / .85)",
             backdropFilter: "blur(12px)",
             borderRadius: 20,
             border: PB,
