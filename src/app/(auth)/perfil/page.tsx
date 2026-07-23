@@ -7,6 +7,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { LANG_OPTIONS } from "@/lib/i18n";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { LogoutButton } from "@/components/LogoutButton";
+import { MayaAvatar } from "@/components/MayaAvatar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -17,10 +18,6 @@ interface Porque {
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const P   = "oklch(.5 .12 160)";
-const PL  = "oklch(.5 .12 160 / .12)";
-const PB  = "1px solid oklch(.5 .12 160 / .15)";
 
 const GENDER_OPTIONS = [
   { id: "masculino",  label: "Masculino"        },
@@ -34,95 +31,86 @@ const label11 = (text: string) => (
   <p style={{
     margin: "0 0 10px", fontSize: 11, fontWeight: 700,
     letterSpacing: ".12em", textTransform: "uppercase" as const,
-    color: "var(--muted-foreground)",
+    color: "#A78BFA",
   }}>
     {text}
   </p>
 );
 
+// ── Styles ────────────────────────────────────────────────────────────────────
+
 const card: React.CSSProperties = {
-  background: "oklch(1 0 0 / .55)",
-  backdropFilter: "blur(12px)",
+  background: "#1a1530",
   borderRadius: 20,
-  border: PB,
+  border: "1px solid rgba(167,139,250,0.25)",
   padding: "20px 18px",
   marginBottom: 12,
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%", boxSizing: "border-box" as const,
-  height: 44, borderRadius: 12, border: PB,
-  background: "oklch(.97 .005 160)",
+  height: 44, borderRadius: 12,
+  border: "1px solid rgba(167,139,250,0.25)",
+  background: "#0F0F14",
   padding: "0 14px", fontFamily: "inherit",
   fontSize: 14, fontWeight: 500,
-  color: "var(--foreground)", outline: "none",
+  color: "#e0d6ff", outline: "none",
 };
 
-// ── PorqueEditor ──────────────────────────────────────────────────────────────
+// ── Porque Editor ──────────────────────────────────────────────────────────────
 
 function PorqueEditor({
-  porque, onUpdate, onRemove, onPhoto,
+  pq, index, onUpdate, onRemove, uploading, onPhotoPick,
 }: {
-  porque: Porque;
-  onUpdate: (d: Partial<Omit<Porque, "id">>) => void;
-  onRemove: () => void;
-  onPhoto: (f: File) => void;
+  pq: Porque; index: number;
+  onUpdate: (index: number, field: string, value: string | null) => void;
+  onRemove: (index: number) => void;
+  uploading: boolean;
+  onPhotoPick: (index: number, file: File) => void;
 }) {
+  const photoSrc = pq.photoPath ? photoUrl(pq.photoPath) : null;
   const fileRef = useRef<HTMLInputElement>(null);
-  const photoSrc = porque.photoPath ? photoUrl(porque.photoPath) : null;
 
   return (
-    <div style={{
-      display: "flex", gap: 12,
-      padding: "12px 14px", borderRadius: 14,
-      background: "oklch(.5 .12 160 / .06)",
-      border: "1px solid oklch(.5 .12 160 / .1)",
-    }}>
-      {/* Photo thumb */}
-      <button
-        type="button"
-        onClick={() => fileRef.current?.click()}
+    <div style={{ ...card, display: "flex", gap: 14, alignItems: "flex-start" }}>
+      <div
+        onClick={() => !uploading && fileRef.current?.click()}
         style={{
-          width: 52, height: 52, borderRadius: 12,
-          flexShrink: 0, border: PB, overflow: "hidden",
-          background: "oklch(.92 .01 160)",
+          width: 56, height: 56, borderRadius: 14,
+          background: "#0F0F14",
+          border: "1px solid rgba(167,139,250,0.25)",
+          overflow: "hidden", cursor: "pointer", flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer",
         }}
       >
-        {photoSrc
-          ? <img src={photoSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          : <span style={{ fontSize: 18 }}>📷</span>
-        }
+        {photoSrc ? (
+          <img src={photoSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <span style={{ fontSize: 20, color: "#A78BFA" }}>📷</span>
+        )}
         <input
-          ref={fileRef} type="file" accept="image/*"
+          ref={fileRef}
+          type="file" accept="image/*" capture="environment"
           style={{ display: "none" }}
-          onChange={(e) => { if (e.target.files?.[0]) onPhoto(e.target.files[0]); e.target.value = ""; }}
-        />
-      </button>
-
-      {/* Text */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <textarea
-          value={porque.text}
-          onChange={(e) => onUpdate({ text: e.target.value })}
-          placeholder="Ex: Minha filha, minha saúde, meus sonhos…"
-          rows={2}
-          style={{
-            width: "100%", boxSizing: "border-box" as const,
-            resize: "none", border: "none", outline: "none",
-            background: "transparent", fontFamily: "inherit",
-            fontSize: 13.5, lineHeight: 1.55,
-            color: "var(--foreground)",
+          onChange={(e) => {
+            if (e.target.files?.[0]) onPhotoPick(index, e.target.files[0]);
+            e.target.value = "";
           }}
+        />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <input
+          value={pq.text}
+          onChange={(e) => onUpdate(index, "text", e.target.value)}
+          placeholder="Seu porquê..."
+          style={{ ...inputStyle, marginBottom: 8 }}
         />
         <button
           type="button"
-          onClick={onRemove}
+          onClick={() => onRemove(index)}
           style={{
-            background: "none", border: "none", cursor: "pointer",
-            fontFamily: "inherit", fontSize: 11,
-            color: "var(--muted-foreground)", padding: 0,
+            border: 0, background: "none", cursor: "pointer",
+            fontSize: 12, color: "#FF5C5C", padding: 0, fontWeight: 600,
           }}
         >
           Remover
@@ -136,47 +124,42 @@ function PorqueEditor({
 
 export default function PerfilPage() {
   const router = useRouter();
-  const { t, setLang } = useTranslation();
+  const { t } = useTranslation();
 
-  const [loading, setLoading]   = useState(true);
-  const [saved, setSaved]       = useState(false);
-  const [name, setName]         = useState("");
-  const [email, setEmail]       = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const [gender, setGender]     = useState("nao_dizer");
+  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [gender, setGender] = useState("nao_dizer");
   const [language, setLanguage] = useState("pt");
   const [uploading, setUploading] = useState(false);
-  const [porques, setPorques]   = useState<Porque[]>([]);
+  const [porques, setPorques] = useState<Porque[]>([]);
   const [savingPorques, setSavingPorques] = useState(false);
-
-  const [currentPassword,  setCurrentPassword]  = useState("");
-  const [newPassword,      setNewPassword]      = useState("");
-  const [confirmPassword,  setConfirmPassword]  = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
-  const [showPassword,     setShowPassword]     = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isFirstRender = useRef(true);
-  const autoSaveRef   = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const fileInputRef  = useRef<HTMLInputElement>(null);
-
-  // ── Load ────────────────────────────────────────────────────────────────────
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => r.json())
       .then((data) => {
-        setName(data.name || "");
-        setEmail(data.email || "");
-        setAvatarUrl(data.avatar_url || "");
-        setGender(data.gender || "nao_dizer");
-        setLanguage(data.language || "pt");
-        setPorques(data.porques || []);
+        if (data.name) setName(data.name);
+        if (data.email) setEmail(data.email);
+        if (data.avatar_url) setAvatarUrl(photoUrl(data.avatar_url));
+        if (data.gender) setGender(data.gender);
+        if (data.language) setLanguage(data.language);
+        if (data.porques?.length > 0) setPorques(data.porques);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
-
-  // ── Auto-save name / gender / language ──────────────────────────────────────
 
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return; }
@@ -189,104 +172,92 @@ export default function PerfilPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, gender, language }),
         });
-        if (res.ok) {
-          setSaved(true);
-          setLang(language as "pt" | "es" | "en");
-          try {
-            const prev = JSON.parse(localStorage.getItem("user_profile") || "{}");
-            localStorage.setItem("user_profile", JSON.stringify({ ...prev, name }));
-          } catch { /* noop */ }
-        }
+        if (res.ok) setSaved(true);
       } catch { /* silent */ }
     }, 900);
     return () => clearTimeout(autoSaveRef.current);
   }, [name, gender, language]);
 
-  // ── Avatar upload ────────────────────────────────────────────────────────────
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { toast.error("Foto deve ter no máximo 2MB"); return; }
+  const handleAvatarPick = async (file: File) => {
     setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
     try {
+      const compressed = await compressImage(file);
+      const path = await uploadToCloud(compressed, "avatars");
+      const formData = new FormData();
+      formData.append("avatar_path", path);
       const res = await fetch("/api/profile/avatar", { method: "POST", body: formData });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      const finalUrl = data.avatar_url + "?t=" + Date.now();
-      setAvatarUrl(finalUrl);
-      try {
-        const prev = JSON.parse(localStorage.getItem("user_profile") || "{}");
-        localStorage.setItem("user_profile", JSON.stringify({ ...prev, avatar_url: finalUrl }));
-      } catch { /* noop */ }
-      toast.success("Foto atualizada!");
+      if (res.ok) {
+        setAvatarUrl(photoUrl(path));
+        toast.success("Foto atualizada!");
+      }
     } catch { toast.error("Erro ao enviar foto"); }
     setUploading(false);
   };
 
-  // ── Password ─────────────────────────────────────────────────────────────────
-
-  const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error("Preencha todos os campos"); return;
-    }
-    if (newPassword !== confirmPassword) { toast.error("As senhas não coincidem"); return; }
-    if (newPassword.length < 6) { toast.error("Mínimo 6 caracteres"); return; }
-    setChangingPassword(true);
+  const handlePorquePhoto = async (index: number, file: File) => {
+    setUploading(true);
     try {
-      const res = await fetch("/api/profile/password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      const data = await res.json();
-      if (!res.ok) { toast.error(data.error || "Erro ao alterar senha"); }
-      else {
-        toast.success("Senha alterada!");
-        setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
-        setShowPassword(false);
-      }
-    } catch { toast.error("Erro ao alterar senha"); }
-    setChangingPassword(false);
+      const compressed = await compressImage(file);
+      const path = await uploadToCloud(compressed, "porques");
+      setPorques((prev) => prev.map((p, i) => i === index ? { ...p, photoPath: path } : p));
+      setSavingPorques(true);
+    } catch { toast.error("Erro ao enviar foto"); }
+    setUploading(false);
   };
 
-  // ── Porquês ──────────────────────────────────────────────────────────────────
-
-  const savePorques = async (updated: Porque[]) => {
-    setPorques(updated);
-    setSavingPorques(true);
-    try {
+  useEffect(() => {
+    if (!savingPorques) return;
+    const timer = setTimeout(async () => {
       await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ porques: updated }),
+        body: JSON.stringify({ porques }),
       });
-    } catch { /* silent */ }
-    setSavingPorques(false);
+      setSavingPorques(false);
+      toast.success("Porquê salvo!");
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [porques, savingPorques]);
+
+  const updatePorque = (index: number, field: string, value: string | null) => {
+    setPorques((prev) => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
+    setSavingPorques(true);
   };
 
-  const addPorque    = () => savePorques([...porques, { id: Math.random().toString(36).slice(2), text: "", photoPath: null }]);
-  const updatePorque = (id: string, data: Partial<Omit<Porque, "id">>) => savePorques(porques.map((p) => p.id === id ? { ...p, ...data } : p));
-  const removePorque = (id: string) => savePorques(porques.filter((p) => p.id !== id));
-  const handlePorquePhoto = async (id: string, file: File) => {
-    try {
-      const compressed = await compressImage(file);
-      const path = await uploadToCloud(compressed, "meals");
-      updatePorque(id, { photoPath: path });
-    } catch { toast.error("Erro ao processar imagem"); }
+  const addPorque = () => {
+    if (porques.length >= 5) return;
+    setPorques((prev) => [...prev, { id: crypto.randomUUID(), text: "", photoPath: null }]);
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  const removePorque = (index: number) => {
+    setPorques((prev) => prev.filter((_, i) => i !== index));
+    setSavingPorques(true);
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error("Senhas não conferem");
+      return;
+    }
+    setChangingPassword(true);
+    const res = await fetch("/api/profile/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+    if (res.ok) {
+      toast.success("Senha alterada!");
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+    } else {
+      toast.error("Erro ao alterar senha. Verifique a senha atual.");
+    }
+    setChangingPassword(false);
+  };
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "oklch(.98 .005 160)",
-      }}>
-        <p style={{ color: "var(--muted-foreground)", fontSize: 13 }}>Carregando…</p>
+      <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0F0F14" }}>
+        <p style={{ color: "#A78BFA", fontSize: 13 }}>Carregando…</p>
       </div>
     );
   }
@@ -296,14 +267,14 @@ export default function PerfilPage() {
   return (
     <div style={{
       minHeight: "100dvh",
-      background: "oklch(0.12 0.012 270)",
-      fontFamily: "var(--font-sans)",
+      background: "#0F0F14",
+      fontFamily: "Inter, system-ui, sans-serif",
       color: "#e0d6ff",
       paddingBottom: 100,
     }}>
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 20px" }}>
 
-        {/* ── Header ──────────────────────────────────────────────── */}
+        {/* Header */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "56px 0 24px",
@@ -313,7 +284,7 @@ export default function PerfilPage() {
               Minha jornada com Maya
             </h1>
             {saved && (
-              <p style={{ margin: "2px 0 0", fontSize: 11.5, color: P, fontWeight: 600 }}>
+              <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "#7C5CFF", fontWeight: 600 }}>
                 Salvo ✓
               </p>
             )}
@@ -323,74 +294,56 @@ export default function PerfilPage() {
             onClick={() => router.push("/configurações")}
             style={{
               height: 36, padding: "0 14px", borderRadius: 10,
-              border: PB, background: "oklch(1 0 0 / .55)",
-              backdropFilter: "blur(8px)", cursor: "pointer",
+              border: "1px solid rgba(167,139,250,0.25)",
+              background: "#1a1530",
+              cursor: "pointer",
               fontFamily: "inherit", fontSize: 13, fontWeight: 600,
-              color: "var(--foreground)", display: "flex", alignItems: "center", gap: 6,
+              color: "#e0d6ff", display: "flex", alignItems: "center", gap: 6,
             }}
           >
             ⚙️ {t("config_title")}
           </button>
         </div>
 
-        {/* ── Avatar + Nome + Email ────────────────────────────────── */}
+        {/* Avatar + Nome + Email */}
         <div style={card}>
-          {/* Avatar */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 20 }}>
             <div style={{ position: "relative", marginBottom: 10 }}>
               <div
                 onClick={() => !uploading && fileInputRef.current?.click()}
                 style={{
                   width: 88, height: 88, borderRadius: "50%",
-                  background: avatarUrl ? "transparent" : P,
+                  background: avatarUrl ? "transparent" : "rgba(124,92,255,0.15)",
                   overflow: "hidden", cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  border: `3px solid ${P}`,
-                  boxShadow: `0 0 0 4px oklch(.5 .12 160 / .12)`,
+                  border: "3px solid #7C5CFF",
+                  boxShadow: "0 0 0 4px rgba(124,92,255,0.12)",
                 }}
               >
-                {avatarUrl
-                  ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : <span style={{ fontSize: 28, color: "#fff", fontWeight: 700 }}>{initials}</span>
-                }
-                {uploading && (
-                  <div style={{
-                    position: "absolute", inset: 0, borderRadius: "50%",
-                    background: "oklch(.1 .02 160 / .5)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <span style={{ fontSize: 20 }}>⏳</span>
-                  </div>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <span style={{ fontSize: 28, fontWeight: 700, color: "#A78BFA" }}>{initials}</span>
                 )}
               </div>
-              {/* Camera badge */}
-              <div style={{
-                position: "absolute", bottom: 0, right: 0,
-                width: 26, height: 26, borderRadius: "50%",
-                background: P, border: "2px solid oklch(.985 .004 160)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 13, cursor: "pointer",
-              }}
-                onClick={() => !uploading && fileInputRef.current?.click()}
-              >
-                📷
-              </div>
+              <input
+                ref={fileInputRef}
+                type="file" accept="image/*" capture="environment"
+                style={{ display: "none" }}
+                onChange={(e) => { if (e.target.files?.[0]) handleAvatarPick(e.target.files[0]); e.target.value = ""; }}
+              />
             </div>
-            <p style={{ margin: 0, fontSize: 11.5, color: "var(--muted-foreground)" }}>
-              Toque para trocar a foto
+            <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>{name || "—"}</p>
+            <p style={{ margin: 0, fontSize: 13, color: "#9e96b5" }}>{email || "—"}</p>
+            <p style={{ margin: "4px 0 0", fontSize: 11, color: "#9e96b5" }}>
+              Membro desde 21 de Fevereiro de 2024
             </p>
-            <input
-              ref={fileInputRef} type="file" accept="image/*"
-              style={{ display: "none" }}
-              onChange={handleAvatarUpload}
-            />
           </div>
 
           {/* Name */}
           <div style={{ marginBottom: 14 }}>
             {label11("Nome")}
             <input
-              type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Seu nome"
@@ -398,186 +351,134 @@ export default function PerfilPage() {
             />
           </div>
 
-          {/* Email */}
-          <div>
-            {label11("Email")}
-            <input
-              type="email"
-              value={email}
-              disabled
-              style={{ ...inputStyle, opacity: 0.5, cursor: "not-allowed" }}
+          {/* Gender */}
+          <div style={{ marginBottom: 14 }}>
+            {label11(t("pergunta_genero"))}
+            <div style={{ display: "flex", gap: 8 }}>
+              {GENDER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setGender(opt.id)}
+                  style={{
+                    flex: 1, height: 40, borderRadius: 11, border: 0,
+                    cursor: "pointer", fontFamily: "inherit",
+                    fontSize: 13, fontWeight: 700,
+                    transition: "all .15s ease",
+                    background: gender === opt.id ? "#7C5CFF" : "#1e1840",
+                    color: gender === opt.id ? "#fff" : "#7C5CFF",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Language */}
+          <div style={{ marginBottom: 8 }}>
+            {label11("Idioma")}
+            <div style={{ display: "flex", gap: 8 }}>
+              {LANG_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setLanguage(opt.id)}
+                  style={{
+                    flex: 1, height: 40, borderRadius: 11, border: 0,
+                    cursor: "pointer", fontFamily: "inherit",
+                    fontSize: 13, fontWeight: 700,
+                    transition: "all .15s ease",
+                    background: language === opt.id ? "#7C5CFF" : "#1e1840",
+                    color: language === opt.id ? "#fff" : "#7C5CFF",
+                  }}
+                >
+                  {opt.flag} {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Porquês */}
+        <div style={card}>
+          {label11("Meus Porquês")}
+          {porques.map((pq, i) => (
+            <PorqueEditor
+              key={pq.id}
+              pq={pq} index={i}
+              onUpdate={updatePorque}
+              onRemove={removePorque}
+              uploading={uploading}
+              onPhotoPick={handlePorquePhoto}
             />
-            <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--muted-foreground)" }}>
-              O email não pode ser alterado
-            </p>
-          </div>
-        </div>
-
-        {/* ── Gênero ──────────────────────────────────────────────── */}
-        <div style={card}>
-          {label11(t("pergunta_genero"))}
-          <div style={{ display: "flex", gap: 8 }}>
-            {GENDER_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setGender(opt.id)}
-                style={{
-                  flex: 1, height: 42, borderRadius: 12, border: 0,
-                  cursor: "pointer", fontFamily: "inherit",
-                  fontSize: 12, fontWeight: 600,
-                  transition: "all .15s ease",
-                  background: gender === opt.id ? P : PL,
-                  color: gender === opt.id ? "#fff" : "var(--foreground)",
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Idioma ──────────────────────────────────────────────── */}
-        <div style={card}>
-          {label11("Idioma / Language")}
-          <div style={{ display: "flex", gap: 8 }}>
-            {LANG_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setLanguage(opt.id)}
-                style={{
-                  flex: 1, height: 42, borderRadius: 12, border: 0,
-                  cursor: "pointer", fontFamily: "inherit",
-                  fontSize: 13, fontWeight: 600,
-                  transition: "all .15s ease",
-                  background: language === opt.id ? P : PL,
-                  color: language === opt.id ? "#fff" : "var(--foreground)",
-                }}
-              >
-                {opt.flag} {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Meus Porquês ────────────────────────────────────────── */}
-        <div style={card}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <div>
-              {label11("❤️ Meus Porquês")}
-              <p style={{ margin: "-6px 0 0", fontSize: 12.5, color: "var(--muted-foreground)" }}>
-                O que te move? Pessoas, valores, sonhos…
-              </p>
-            </div>
-            {porques.length < 5 && (
-              <button
-                type="button"
-                onClick={addPorque}
-                style={{
-                  height: 34, padding: "0 12px", borderRadius: 10,
-                  border: PB, background: PL,
-                  cursor: "pointer", fontFamily: "inherit",
-                  fontSize: 12, fontWeight: 700, color: P,
-                  flexShrink: 0,
-                }}
-              >
-                + Novo
-              </button>
-            )}
-          </div>
-
-          {porques.length === 0 ? (
-            <div style={{
-              textAlign: "center", padding: "20px 0",
-              color: "var(--muted-foreground)", fontSize: 13,
-            }}>
-              <p style={{ margin: "0 0 4px", fontSize: 22 }}>💭</p>
-              <p style={{ margin: 0 }}>Adicione o que te motiva a cuidar de você.</p>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {porques.map((pq) => (
-                <PorqueEditor
-                  key={pq.id}
-                  porque={pq}
-                  onUpdate={(data) => updatePorque(pq.id, data)}
-                  onRemove={() => removePorque(pq.id)}
-                  onPhoto={(file) => handlePorquePhoto(pq.id, file)}
-                />
-              ))}
-            </div>
-          )}
-
-          {savingPorques && (
-            <p style={{ margin: "10px 0 0", fontSize: 11, color: "var(--muted-foreground)", textAlign: "right" }}>
-              Salvando…
-            </p>
+          ))}
+          {porques.length < 5 && (
+            <button
+              type="button"
+              onClick={addPorque}
+              style={{
+                width: "100%", padding: "12px", borderRadius: 12,
+                border: "1px dashed rgba(167,139,250,0.35)",
+                background: "transparent", cursor: "pointer",
+                fontFamily: "inherit", fontSize: 13, fontWeight: 600,
+                color: "#A78BFA",
+              }}
+            >
+              + Adicionar porquê
+            </button>
           )}
         </div>
 
-        {/* ── Trocar senha ────────────────────────────────────────── */}
+        {/* Senha */}
         <div style={card}>
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            style={{
-              width: "100%", display: "flex", alignItems: "center",
-              justifyContent: "space-between", background: "none",
-              border: "none", cursor: "pointer", fontFamily: "inherit",
-              padding: 0,
-            }}
-          >
-            {label11("🔒 Trocar senha")}
-            <span style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: -10 }}>
-              {showPassword ? "▲ Fechar" : "▼ Abrir"}
-            </span>
-          </button>
-
-          {showPassword && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
-              {[
-                { label: "Senha atual",          val: currentPassword,  set: setCurrentPassword },
-                { label: "Nova senha",            val: newPassword,      set: setNewPassword },
-                { label: "Confirmar nova senha",  val: confirmPassword,  set: setConfirmPassword },
-              ].map(({ label, val, set }) => (
-                <div key={label}>
-                  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)" }}>
-                    {label}
-                  </p>
-                  <input
-                    type="password"
-                    value={val}
-                    onChange={(e) => set(e.target.value)}
-                    style={inputStyle}
-                  />
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={handleChangePassword}
-                disabled={changingPassword}
-                style={{
-                  width: "100%", height: 46, borderRadius: 13, border: 0,
-                  background: changingPassword ? "oklch(.88 .02 160)" : P,
-                  color: changingPassword ? "oklch(.6 .04 160)" : "#fff",
-                  fontFamily: "inherit", fontSize: 14, fontWeight: 700,
-                  cursor: changingPassword ? "not-allowed" : "pointer",
-                  transition: "all .2s ease",
-                }}
-              >
-                {changingPassword ? "Alterando…" : "Alterar senha"}
-              </button>
-            </div>
-          )}
+          {label11("Alterar senha")}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <input
+              type={showPassword ? "text" : "password"}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Senha atual"
+              style={inputStyle}
+            />
+            <input
+              type={showPassword ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Nova senha"
+              style={inputStyle}
+            />
+            <input
+              type={showPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirmar nova senha"
+              style={inputStyle}
+            />
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#9e96b5", cursor: "pointer" }}>
+              <input type="checkbox" checked={showPassword} onChange={() => setShowPassword(!showPassword)} />
+              Mostrar senha
+            </label>
+            <button
+              type="button"
+              onClick={handleChangePassword}
+              disabled={changingPassword || !currentPassword || !newPassword}
+              style={{
+                width: "100%", height: 44, borderRadius: 12, border: 0,
+                cursor: (changingPassword || !currentPassword || !newPassword) ? "not-allowed" : "pointer",
+                fontFamily: "inherit", fontSize: 14, fontWeight: 700,
+                background: (changingPassword || !currentPassword || !newPassword) ? "#1e1840" : "#7C5CFF",
+                color: (changingPassword || !currentPassword || !newPassword) ? "#9e96b5" : "#fff",
+                opacity: (changingPassword || !currentPassword || !newPassword) ? 0.6 : 1,
+              }}
+            >
+              {changingPassword ? "Alterando…" : "Alterar senha"}
+            </button>
+          </div>
         </div>
 
-        {/* ── Sair ────────────────────────────────────────────────── */}
-        <div style={{
-          ...card,
-          display: "flex", justifyContent: "center",
-          background: "oklch(1 0 0 / .4)",
-        }}>
+        {/* Logout */}
+        <div style={{ marginTop: 8, marginBottom: 20 }}>
           <LogoutButton />
         </div>
 
