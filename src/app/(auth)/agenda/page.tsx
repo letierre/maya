@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft, ChevronRight, Calendar, Sun, List,
-  CheckCircle2, GripVertical, Plus, Clock, Star, Zap, Leaf,
+  CheckCircle2, GripVertical, Plus, Clock, Star, Zap, Leaf, AlertCircle,
 } from "lucide-react";
 import { getLocalDate } from "@/lib/utils";
 import type { AgendaItem, EisenhowerPriority } from "@/types";
@@ -24,8 +24,8 @@ function shiftDate(dateStr: string, days: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-const PRIORITY_CONFIG: Record<EisenhowerPriority, { icon: typeof Alert; color: string; label: string; shortLabel: string }> = {
-  importante_urgente:          { icon: Alert, color: "#FF4D4D", label: "Importante e urgente", shortLabel: "Urgente" },
+const PRIORITY_CONFIG: Record<EisenhowerPriority, { icon: typeof AlertCircle; color: string; label: string; shortLabel: string }> = {
+  importante_urgente:          { icon: AlertCircle, color: "#FF4D4D", label: "Importante e urgente", shortLabel: "Urgente" },
   importante_nao_urgente:      { icon: Star, color: "#FF9F43", label: "Importante não urgente", shortLabel: "Importante" },
   nao_importante_urgente:      { icon: Zap,  color: "#FFD43B", label: "Não importante mas urgente", shortLabel: "Urgente NP" },
   nao_importante_nao_urgente:  { icon: Leaf, color: "#4CD97B", label: "Não importante e não urgente", shortLabel: "Baixa" },
