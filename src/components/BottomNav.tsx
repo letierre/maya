@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { href: "/dashboard",    icon: Home,        label: "Início", slug: "dashboard" },
   { href: "/insights",     icon: null,        label: "Maya",   slug: "insights" },
   { href: "/analise",      icon: BarChart3,   label: "Análise", slug: "analise" },
-  { href: "/planejamento", icon: CalendarDays, label: "Plano",  slug: "planejamento" },
+  { href: "/agenda",       icon: CalendarDays, label: "Plano",  slug: "agenda" },
   { href: "/perfil",       icon: User,        label: "Perfil",  slug: "perfil" },
 ];
 
@@ -35,7 +35,7 @@ export function BottomNav() {
     if (slug === "dashboard") return pathname === "/dashboard";
     if (slug === "insights") return pathname.startsWith("/insights");
     if (slug === "analise") return pathname.startsWith("/analise");
-    if (slug === "planejamento") return pathname.startsWith("/planejamento");
+    if (slug === "agenda") return pathname.startsWith("/agenda") || pathname.startsWith("/planejamento");
     if (slug === "perfil") return pathname.startsWith("/perfil");
     return false;
   };

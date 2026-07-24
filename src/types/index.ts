@@ -279,3 +279,32 @@ export interface FinancialBudget {
   month: string;      // YYYY-MM
   created_at: string;
 }
+
+// ── Agenda ─────────────────────────────────────────────────────────────────────
+
+export type AgendaItemType = "compromisso" | "tarefa";
+
+export type EisenhowerPriority =
+  | "importante_urgente"
+  | "importante_nao_urgente"
+  | "nao_importante_urgente"
+  | "nao_importante_nao_urgente";
+
+export interface AgendaItem {
+  id: string;
+  user_id: string;
+  title: string;
+  item_type: AgendaItemType;
+  date: string;              // YYYY-MM-DD
+  start_time: string | null; // HH:MM
+  end_time: string | null;   // HH:MM
+  priority: EisenhowerPriority;
+  emoji: string | null;
+  status: "pendente" | "concluida";
+  linked_goal_id: string | null;
+  linked_action_id: string | null;
+  linked_weekly_task_id: string | null;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
