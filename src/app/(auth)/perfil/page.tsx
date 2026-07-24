@@ -316,21 +316,24 @@ export default function PerfilPage() {
                 onClick={() => !uploading && fileInputRef.current?.click()}
                 style={{
                   width: 88, height: 88, borderRadius: "50%",
-                  background: "rgba(124,92,255,0.15)",
+                  background: avatarSrc ? `url(${avatarSrc}) center/cover no-repeat` : "rgba(124,92,255,0.15)",
                   overflow: "hidden", cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   border: "3px solid #7C5CFF",
                   boxShadow: "0 0 0 4px rgba(124,92,255,0.12)",
+                  position: "relative",
                 }}
               >
-                {avatarSrc ? (
-                  <img src={avatarSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                ) : null}
-                <span style={{ fontSize: 28, fontWeight: 700, color: "#A78BFA", position: avatarSrc ? "absolute" : "static", zIndex: 1 }}>
-                  {initials}
-                </span>
+                {!avatarSrc && (
+                  <span style={{ fontSize: 28, fontWeight: 700, color: "#A78BFA" }}>
+                    {initials}
+                  </span>
+                )}
+                {uploading && (
+                  <span style={{ position: "absolute", fontSize: 11, color: "#fff", background: "rgba(0,0,0,0.5)", padding: "2px 8px", borderRadius: 8 }}>
+                    ...
+                  </span>
+                )}
               </div>
               <input
                 ref={fileInputRef}
