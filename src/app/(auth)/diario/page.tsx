@@ -182,18 +182,21 @@ export default function DiarioPage() {
         const isOpen = expanded.has(group.key);
         const firstEntryOfYear = years.length > 1 && (gi === 0 || monthGroups[gi - 1].year !== group.year);
 
-        // Build day-dot preview strip for collapsed state
-        const dayDots = group.entries.slice(0, 12).map((e) => ({
-          date: e.date,
-          mood: e.mood ? MOOD_EMOJIS[e.mood] : null,
-          hasContent: !!(e.title || e.content),
-        }));
+        // Build day-dot strip: one dot per day of the month
+        const [yearStr, monthStr] = group.key.split("-");
+        const daysInMonth = new Date(parseInt(yearStr), parseInt(monthStr) + 1, 0).getDate();
+        const entryDates = new Set(group.entries.map((e) => e.date));
+        const dayDots = Array.from({ length: daysInMonth }, (_, i) => {
+          const day = i + 1;
+          const dateStr = `${yearStr}-${String(parseInt(monthStr) + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          return { day, hasEntry: entryDates.has(dateStr) };
+        });
 
         return (
           <div key={group.key} id={`diary-year-${group.year}`}>
             {/* Year divider — only when multiple years exist */}
             {firstEntryOfYear && (
-              <div className="px-6 pt-8 pb-1">
+              <div style={{ padding: "0 20px 0 20px", marginTop: 28 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#5EEAD4" }}>
                   {group.year}
                 </span>
@@ -204,9 +207,9 @@ export default function DiarioPage() {
             <button
               type="button"
               onClick={() => toggleMonth(group.key)}
-              className="w-full text-left transition-all"
               style={{
-                margin: "0 12px",
+                width: "calc(100% - 32px)",
+                margin: "0 16px",
                 marginTop: gi === 0 ? 20 : 4,
                 padding: "14px 16px",
                 borderRadius: 16,
@@ -214,6 +217,7 @@ export default function DiarioPage() {
                 background: isOpen ? "rgba(124,92,255,0.06)" : "#1a1530",
                 cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "space-between",
+                textAlign: "left",
               }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -225,22 +229,18 @@ export default function DiarioPage() {
                     {group.entries.length} {group.entries.length === 1 ? "registro" : "registros"}
                   </span>
                 </div>
-                {/* Day-dot preview — only when collapsed */}
-                {!isOpen && dayDots.length > 0 && (
-                  <div style={{ display: "flex", gap: 3, marginTop: 8, alignItems: "center" }}>
+                {/* Day-dot strip — one dot per day of month (only when collapsed) */}
+                {!isOpen && (
+                  <div style={{ display: "flex", gap: 2, marginTop: 8, alignItems: "center" }}>
                     {dayDots.map((dot) => (
-                      <span key={dot.date}
+                      <span key={dot.day}
                         style={{
-                          width: 8, height: 8, borderRadius: "50%",
-                          background: dot.mood ? "rgba(124,92,255,0.4)" : "rgba(167,139,250,0.15)",
-                          border: dot.hasContent ? "1px solid rgba(167,139,250,0.3)" : "none",
+                          width: 6, height: 6, borderRadius: "50%",
+                          background: dot.hasEntry ? "rgba(124,92,255,0.55)" : "rgba(167,139,250,0.1)",
+                          flexShrink: 0,
                         }}
-                        title={dot.date}
                       />
                     ))}
-                    {group.entries.length > 12 && (
-                      <span style={{ fontSize: 9, color: "#9e96b5", marginLeft: 2 }}>+{group.entries.length - 12}</span>
-                    )}
                   </div>
                 )}
               </div>
