@@ -590,18 +590,18 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
         })}
       </div>
 
-      <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-        Quer detalhar? (opcional)
+      <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>
+        💬 Como está seu coração hoje?
       </p>
       <div ref={ref} contentEditable suppressContentEditableWarning
-        data-placeholder="Escreva em palavras próprias…"
+        data-placeholder="Escreva como você está se sentindo... use suas próprias palavras"
         onInput={(e) => onChange((e.target as HTMLElement).innerText)}
         style={{
-          outline: "none", fontSize: 16, lineHeight: 1.5, fontWeight: 500,
-          color: "var(--foreground)", minHeight: 48,
-          padding: "11px 14px", borderRadius: 14,
-          background: "oklch(0.14 0.012 270)", backdropFilter: "blur(8px)",
-          border: "1px solid oklch(0.5 0.12 270 / .12)",
+          outline: "none", fontSize: 16, lineHeight: 1.6, fontWeight: 400,
+          color: "#e0d6ff", minHeight: 80,
+          padding: "14px 16px", borderRadius: 16,
+          background: "#1a1530",
+          border: "1px solid rgba(167,139,250,0.25)",
         }}
       />
 

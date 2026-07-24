@@ -284,18 +284,19 @@ export function CheckInForm({ existingCheckIn }: CheckInFormProps) {
       </p>
 
       {/* 1. Sentimento primeiro */}
-      <Card className="rounded-2xl">
+      <Card className="rounded-2xl" style={{ background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)" }}>
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">🌱 {t("sentimento_label")}</CardTitle>
+          <CardTitle className="text-lg" style={{ color: "#e0d6ff" }}>💬 Como está seu coração hoje?</CardTitle>
         </CardHeader>
         <CardContent>
           <Textarea
             id="feeling"
-            placeholder={t("sentimento_placeholder")}
+            placeholder="Escreva como você está se sentindo... use suas próprias palavras"
             rows={3}
             value={form.feeling}
             onChange={(e) => setForm((prev) => ({ ...prev, feeling: e.target.value }))}
             className="resize-none rounded-xl"
+            style={{ background: "#0F0F14", border: "1px solid rgba(167,139,250,0.25)", color: "#e0d6ff", fontSize: 15, lineHeight: 1.6 }}
           />
         </CardContent>
       </Card>
