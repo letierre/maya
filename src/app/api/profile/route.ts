@@ -82,10 +82,29 @@ export async function GET() {
 
     const ctx = (prefs?.context as Record<string, unknown>) || {};
 
+    // Generate signed URL for avatar if exists
+    let avatarUrl: string | null = null;
+    const rawAvatar = user.user_metadata?.avatar_url;
+    if (rawAvatar && typeof rawAvatar === "string") {
+      try {
+        // Extract bucket and path from full Supabase URL or relative path
+        const urlMatch = rawAvatar.match(/\/storage\/v1\/object\/public\/(.+)/);
+        const storagePath = urlMatch ? urlMatch[1] : (rawAvatar.includes("/") ? rawAvatar : null);
+        if (storagePath) {
+          const bucket = storagePath.startsWith("avatars/") ? "avatars" : "user-content";
+          const { data } = await admin.storage.from(bucket).createSignedUrl(storagePath, 86400);
+          if (data?.signedUrl) avatarUrl = data.signedUrl;
+        }
+      } catch {
+        // Fallback: return raw URL as-is
+        avatarUrl = rawAvatar;
+      }
+    }
+
     return NextResponse.json({
       email: user.email,
       name: user.user_metadata?.name || "",
-      avatar_url: user.user_metadata?.avatar_url || null,
+      avatar_url: avatarUrl,
       created_at: user.created_at || null,
       gender: ctx.gender || "nao_dizer",
       language: ctx.language || "pt",

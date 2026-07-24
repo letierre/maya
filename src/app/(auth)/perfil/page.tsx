@@ -284,22 +284,8 @@ export default function PerfilPage() {
   }
 
   const initials = name ? name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase() : "EU";
-
-  // Avatar: extract path from full URL and use /api/media proxy (bucket is private)
-  const avatarSrc = (() => {
-    if (!avatarUrl) return null;
-    // If it's already a full Supabase URL, extract the path after /public/
-    const publicIdx = avatarUrl.indexOf("/public/");
-    if (publicIdx !== -1) {
-      const path = avatarUrl.slice(publicIdx + 8); // after "/public/"
-      return `/api/media?path=${encodeURIComponent(path)}`;
-    }
-    // If it's a relative path
-    if (avatarUrl.includes("/")) {
-      return `/api/media?path=${encodeURIComponent(avatarUrl)}`;
-    }
-    return null;
-  })();
+  // API now returns signed URL — use directly
+  const avatarSrc = avatarUrl || null;
 
   return (
     <div style={{
