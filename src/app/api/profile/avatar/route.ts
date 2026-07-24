@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `${user.id}.${ext}`;
+    const fileName = `${user.id}_${Date.now()}.${ext}`;
 
     const admin = getSupabaseAdmin();
 
