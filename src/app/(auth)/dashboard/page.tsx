@@ -469,14 +469,10 @@ export default function DashboardPage() {
   const spendingPct = todaySpending !== null && spendingLimit > 0 ? `${Math.round((todaySpending / spendingLimit) * 100)}% do limite` : null;
 
   // Humor: feeling text first, fallback to first mood tag (gender-adapted)
-  const humorValue = useMemo(() => {
-    if (!todayCheckIn) return null;
-    if (todayCheckIn.feeling) return `"${todayCheckIn.feeling.slice(0, 20)}${todayCheckIn.feeling.length > 20 ? "…" : ""}"`;
-    if (todayCheckIn.mood_tags?.length > 0) {
-      return formatMood(todayCheckIn.mood_tags[0], userGender);
-    }
-    return null;
-  }, [todayCheckIn, userGender]);
+  const humorValue = !todayCheckIn ? null
+    : todayCheckIn.feeling ? `"${todayCheckIn.feeling.slice(0, 20)}${todayCheckIn.feeling.length > 20 ? "…" : ""}"`
+    : todayCheckIn.mood_tags?.length > 0 ? formatMood(todayCheckIn.mood_tags[0], userGender)
+    : null;
 
   return (
     <div
