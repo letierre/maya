@@ -20,15 +20,19 @@ export default function LandingPage() {
 
         {/* ── Hero ──────────────────────────────────────────────── */}
         <div style={{ textAlign: "center", marginBottom: 44 }}>
-          {/* Maya photo */}
+          {/* Maya photo — same style as home hero */}
           <div style={{
-            width: 100, height: 100, borderRadius: "50%",
-            overflow: "hidden",
-            margin: "0 auto 22px",
-            boxShadow: "0 0 32px oklch(0.55 0.2 270 / 0.5), 0 0 64px oklch(0.55 0.2 270 / 0.25)",
-            border: "2px solid rgba(167,139,250,0.4)",
+            width: 200, height: 200, margin: "0 auto 14px",
+            position: "relative", display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <img src="/maya-avatar.png" alt="Maya" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src="/maya-avatar.png" alt="Maya"
+              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }} />
+            {/* Bottom fade */}
+            <div style={{
+              position: "absolute", bottom: 0, left: 0, right: 0, height: "30%",
+              background: "linear-gradient(to bottom, transparent 0%, oklch(0.12 0.012 270) 100%)",
+              pointerEvents: "none",
+            }} />
           </div>
 
           <h1 style={{
