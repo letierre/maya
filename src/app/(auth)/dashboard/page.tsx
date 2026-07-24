@@ -589,63 +589,68 @@ export default function DashboardPage() {
                   ? Math.round((day.cuidados / Math.max(totalHabits, 1)) * 10)
                   : null;
 
+              const sleepLabel = day.sleep === true ? "🌙" : day.sleep === false ? "😵" : "—";
+              const sleepOpacity = day.sleep !== null ? 1 : 0.3;
+
               return (
                 <div
                   key={day.date}
                   className="items-center px-2 py-1 rounded-lg"
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "60px 14px 38px 1fr",
+                    gridTemplateColumns: "54px 20px 34px 1fr",
                     gap: 8,
                     background: isToday ? "oklch(0.58 0.18 270 / .10)" : "transparent",
+                    alignItems: "center",
                   }}
                 >
                   <span
                     className="text-[11px] font-semibold tracking-tight"
-                    style={{
-                      color: isToday ? "#A78BFA" : "oklch(0.55 0.03 270)",
-                    }}
+                    style={{ color: isToday ? "#A78BFA" : "oklch(0.55 0.03 270)" }}
                   >
                     {labels[i]}
                   </span>
-                  <span
-                    className="text-[13px] leading-none"
-                    style={{ opacity: day.sleep === true ? 1 : 0.35 }}
-                  >
-                    {day.sleep === true ? "🌙" : "😵"}
+                  <span className="text-[13px] leading-none text-center" style={{ opacity: sleepOpacity }}>
+                    {sleepLabel}
                   </span>
                   <span
-                    className="text-[12px] font-bold tabular-nums"
+                    className="text-[12px] font-bold tabular-nums text-center"
                     style={{
-                      color:
-                        dayScore === null
-                          ? "oklch(0.55 0.03 270)"
-                          : dayScore >= 7
-                            ? "#22D18B"
-                            : dayScore >= 5
-                              ? "#f59e0b"
-                              : "#FF5C5C",
+                      color: dayScore === null ? "oklch(0.55 0.03 270)"
+                        : dayScore >= 7 ? "#22D18B"
+                        : dayScore >= 5 ? "#f59e0b"
+                        : "#FF5C5C",
                     }}
                   >
                     {dayScore !== null ? `${dayScore}/10` : "—"}
                   </span>
                   <div className="min-w-0 flex items-center gap-1.5 overflow-hidden">
-                    {moodTag && (
+                    {moodTag ? (
                       <span
                         className="px-1.5 py-px rounded-full text-[9.5px] font-semibold flex-none"
                         style={{
-                          background: moodNeg
-                            ? "oklch(.92 .05 30 / .25)"
-                            : "oklch(.55 .18 270 / .2)",
+                          maxWidth: 74, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          background: moodNeg ? "oklch(.92 .05 30 / .25)" : "oklch(.55 .18 270 / .2)",
                           color: moodNeg ? "#FF5C5C" : "#A78BFA",
                         }}
                       >
                         {formatMood(moodTag, userGender)}{extraMoods > 0 ? ` +${extraMoods}` : ""}
                       </span>
+                    ) : (
+                      <span className="text-[11px] truncate" style={{ color: "oklch(0.55 0.03 270)" }}>
+                        {day.feeling || "—"}
+                      </span>
                     )}
-                    <span className="text-[11px] truncate" style={{ color: "oklch(0.55 0.03 270)" }}>
-                      {day.feeling || "—"}
-                    </span>
+                    {moodTag && day.feeling && (
+                      <span className="text-[11px] truncate" style={{ color: "oklch(0.55 0.03 270)" }}>
+                        {day.feeling}
+                      </span>
+                    )}
+                    {moodTag && !day.feeling && (
+                      <span className="text-[10px] truncate" style={{ color: "oklch(0.45 0.03 270)", fontStyle: "italic" }}>
+                        sem relato
+                      </span>
+                    )}
                   </div>
                 </div>
               );
