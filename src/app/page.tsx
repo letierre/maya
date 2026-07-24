@@ -20,20 +20,15 @@ export default function LandingPage() {
 
         {/* ── Hero ──────────────────────────────────────────────── */}
         <div style={{ textAlign: "center", marginBottom: 44 }}>
-          {/* Maya avatar placeholder */}
+          {/* Maya photo */}
           <div style={{
-            width: 80, height: 80, borderRadius: "50%",
-            background: "radial-gradient(circle at 35% 30%, #A78BFA 0%, #7C5CFF 100%)",
+            width: 100, height: 100, borderRadius: "50%",
+            overflow: "hidden",
             margin: "0 auto 22px",
-            boxShadow: "0 0 32px oklch(0.55 0.2 270 / 0.5)",
+            boxShadow: "0 0 32px oklch(0.55 0.2 270 / 0.5), 0 0 64px oklch(0.55 0.2 270 / 0.25)",
+            border: "2px solid rgba(167,139,250,0.4)",
           }}>
-            <div style={{
-              width: "100%", height: "100%", borderRadius: "50%",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 36, color: "#fff", fontWeight: 700,
-            }}>
-              M
-            </div>
+            <img src="/maya-avatar.png" alt="Maya" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
 
           <h1 style={{
