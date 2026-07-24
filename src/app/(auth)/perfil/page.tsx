@@ -205,14 +205,15 @@ export default function PerfilPage() {
   const handleAvatarPick = async (file: File) => {
     setUploading(true);
     try {
-      const compressed = await compressImage(file);
-      const path = await uploadToCloud(compressed, "avatars");
       const formData = new FormData();
-      formData.append("avatar_path", path);
+      formData.append("file", file);
       const res = await fetch("/api/profile/avatar", { method: "POST", body: formData });
       if (res.ok) {
-        setAvatarUrl(path);
+        const data = await res.json();
+        setAvatarUrl(data.avatar_url);
         toast.success("Foto atualizada!");
+      } else {
+        toast.error("Erro ao enviar foto");
       }
     } catch { toast.error("Erro ao enviar foto"); }
     setUploading(false);
