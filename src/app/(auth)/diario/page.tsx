@@ -2,15 +2,10 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useTranslation } from "@/lib/useTranslation";
-import { Plus, ImageIcon, BookOpen, Sparkles, MoreVertical, ChevronDown } from "lucide-react";
+import { Plus, ImageIcon, BookOpen, Sparkles, ChevronDown } from "lucide-react";
 import { photoUrl } from "@/lib/photo-storage";
 import { getLocalDate } from "@/lib/utils";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { LogoutButton } from "@/components/LogoutButton";
 import type { DiaryEntry } from "@/types";
 
 const MOOD_EMOJIS: Record<number, string> = {
@@ -111,29 +106,6 @@ export default function DiarioPage() {
         `,
       }}
     >
-      {/* Floating kebab */}
-      <div className="absolute top-4 right-4 z-10">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <span className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm cursor-pointer"
-                style={{ background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", color: "#e0d6ff", backdropFilter: "blur(8px)" }}>
-                <MoreVertical className="w-4 h-4" />
-              </span>
-            }
-          />
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem render={
-              <Link href="/perfil" className="w-full text-left px-2 py-1.5 text-sm block">Meu Perfil</Link>
-            } />
-            <DropdownMenuItem render={
-              <Link href="/nutricao" className="w-full text-left px-2 py-1.5 text-sm block">🍽️ Nutrição</Link>
-            } />
-            <DropdownMenuItem render={<LogoutButton />} />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
       {/* Header */}
       <div className="px-6 pt-6 pb-2">
         <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Suas memórias</p>
@@ -378,9 +350,17 @@ export default function DiarioPage() {
           </>
         )}
         <button type="button" onClick={() => setFabOpen(!fabOpen)}
-          className={`size-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25 flex items-center justify-center transition-all z-40 ${fabOpen ? "rotate-45" : ""}`}
+          style={{
+            width: 56, height: 56, borderRadius: "50%",
+            background: "#7C5CFF", border: 0, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 4px 20px rgba(124,92,255,0.4)",
+            transform: fabOpen ? "rotate(45deg)" : "rotate(0deg)",
+            transition: "transform 0.2s ease",
+            zIndex: 40,
+          }}
           aria-label="Nova entrada">
-          <Plus className="size-6 transition-transform" />
+          <Plus size={24} color="#fff" />
         </button>
       </div>
     </div>
