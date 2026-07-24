@@ -281,7 +281,7 @@ export default function PerfilPage() {
         }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-0.025em", color: "#e0d6ff" }}>
-              Minha jornada com Maya
+              Minha jornada com Maya <span style={{ color: "#5EEAD4", fontSize: 14, fontWeight: 500 }}>— v3.1</span>
             </h1>
             {saved && (
               <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "#7C5CFF", fontWeight: 600 }}>
