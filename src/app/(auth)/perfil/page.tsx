@@ -285,14 +285,18 @@ export default function PerfilPage() {
 
   const initials = name ? name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase() : "EU";
 
-  // Avatar: try photoUrl first, fallback to direct Supabase storage URL
+  // Avatar: extract path from full URL and use /api/media proxy (bucket is private)
   const avatarSrc = (() => {
     if (!avatarUrl) return null;
-    const viaPhoto = photoUrl(avatarUrl);
-    if (viaPhoto) return viaPhoto;
-    // Fallback: direct Supabase storage URL
+    // If it's already a full Supabase URL, extract the path after /public/
+    const publicIdx = avatarUrl.indexOf("/public/");
+    if (publicIdx !== -1) {
+      const path = avatarUrl.slice(publicIdx + 8); // after "/public/"
+      return `/api/media?path=${encodeURIComponent(path)}`;
+    }
+    // If it's a relative path
     if (avatarUrl.includes("/")) {
-      return `https://yyackdqeaqcvbzdjiool.supabase.co/storage/v1/object/public/${avatarUrl}`;
+      return `/api/media?path=${encodeURIComponent(avatarUrl)}`;
     }
     return null;
   })();

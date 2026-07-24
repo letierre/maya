@@ -18,16 +18,21 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "path obrigatório" }, { status: 400 });
   }
 
-  // Security: only allow paths within user's own folder
-  const expectedPrefix = path.startsWith("meals/") ? `meals/${user.id}/` : `diary/${user.id}/`;
-  if (!path.startsWith(expectedPrefix)) {
+  // Security: only allow paths for this user's content
+  const bucket = path.startsWith("meals/") ? "meals" :
+                 path.startsWith("diary/") ? "diary" :
+                 path.startsWith("avatars/") ? "avatars" : null;
+  if (!bucket) {
     return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
   }
 
   try {
     const admin = getSupabaseAdmin();
+    const storageBucket = path.startsWith("meals/") ? "user-content" :
+                           path.startsWith("diary/") ? "user-content" :
+                           "avatars";
     const { data, error } = await admin.storage
-      .from("user-content")
+      .from(storageBucket)
       .download(path);
 
     if (error || !data) {
