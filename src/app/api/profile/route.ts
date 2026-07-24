@@ -15,43 +15,34 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const admin = getSupabaseAdmin();
 
-    // Update auth metadata (name, avatar)
-    if (body.name !== undefined || body.avatar_url !== undefined) {
-      const metadata: Record<string, string> = {};
-      if (body.name !== undefined) metadata.name = body.name;
-      if (body.avatar_url !== undefined) metadata.avatar_url = body.avatar_url;
-
-      const { error: updateError } = await admin.auth.admin.updateUserById(
-        user.id,
-        { user_metadata: metadata }
-      );
-
-      if (updateError) throw updateError;
+    // Update auth metadata (name)
+    if (body.name !== undefined) {
+      await admin.auth.admin.updateUserById(user.id, {
+        user_metadata: { name: body.name },
+      });
     }
 
     // Update preferences (gender, language, porques, context)
-    if (body.gender !== undefined || body.language !== undefined || body.porques !== undefined) {
-      const { data: prefs } = await admin
-        .from("user_preferences")
-        .select("context, enabled_questions, onboarding_completed")
-        .eq("user_id", user.id)
-        .single();
+    const { data: prefs } = await admin
+      .from("user_preferences")
+      .select("context, enabled_questions, onboarding_completed")
+      .eq("user_id", user.id)
+      .single();
 
-      const context = { ...((prefs?.context as Record<string, unknown>) || {}) };
-      if (body.gender !== undefined) context.gender = body.gender;
-      if (body.language !== undefined) context.language = body.language;
-      if (body.porques !== undefined) context.porques = body.porques;
+    const context = { ...((prefs?.context as Record<string, unknown>) || {}) };
+    if (body.gender !== undefined) context.gender = body.gender;
+    if (body.language !== undefined) context.language = body.language;
+    if (body.porques !== undefined) context.porques = body.porques;
 
-      await admin
-        .from("user_preferences")
-        .upsert({
-          user_id: user.id,
-          enabled_questions: prefs?.enabled_questions || [],
-          context,
-          onboarding_completed: prefs?.onboarding_completed ?? true,
-          updated_at: new Date().toISOString(),
-        });
-    }
+    await admin
+      .from("user_preferences")
+      .upsert({
+        user_id: user.id,
+        enabled_questions: prefs?.enabled_questions || [],
+        context,
+        onboarding_completed: prefs?.onboarding_completed ?? true,
+        updated_at: new Date().toISOString(),
+      });
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -74,11 +65,6 @@ export async function GET() {
 
   try {
     const admin = getSupabaseAdmin();
-
-    // Fetch fresh user data from admin API (bypasses stale JWT)
-    const { data: freshUser, error: userError } = await admin.auth.admin.getUserById(user.id);
-    const freshMetadata = freshUser?.user?.user_metadata || {};
-
     const { data: prefs } = await admin
       .from("user_preferences")
       .select("context")
@@ -87,35 +73,12 @@ export async function GET() {
 
     const ctx = (prefs?.context as Record<string, unknown>) || {};
 
-    // Generate signed URL for avatar if exists
-    let avatarUrl: string | null = null;
-    const rawAvatar = freshMetadata.avatar_url || user.user_metadata?.avatar_url;
-    if (rawAvatar && typeof rawAvatar === "string") {
-      try {
-        // Extract bucket and path from full Supabase URL or relative path
-        const urlMatch = rawAvatar.match(/\/storage\/v1\/object\/public\/(.+)/);
-        const storagePath = urlMatch ? urlMatch[1] : (rawAvatar.includes("/") ? rawAvatar : null);
-        if (storagePath) {
-          // Try bucket based on path prefix, fallback to user-content
-          const bucket = storagePath.startsWith("avatars/") ? "avatars" : "user-content";
-          const { data } = await admin.storage.from(bucket).createSignedUrl(storagePath, 86400);
-          if (data?.signedUrl) {
-            avatarUrl = data.signedUrl;
-          } else {
-            // Fallback: try user-content bucket
-            const { data: data2 } = await admin.storage.from("user-content").createSignedUrl(storagePath, 86400);
-            if (data2?.signedUrl) avatarUrl = data2.signedUrl;
-          }
-        }
-      } catch {
-        // Fallback: return raw URL as-is
-        avatarUrl = rawAvatar;
-      }
-    }
+    // Avatar: read from DB context — NOT from JWT user_metadata
+    const avatarUrl = (ctx.avatar_url as string) || null;
 
     return NextResponse.json({
       email: user.email,
-      name: freshMetadata.name || user.user_metadata?.name || "",
+      name: user.user_metadata?.name || "",
       avatar_url: avatarUrl,
       created_at: user.created_at || null,
       gender: ctx.gender || "nao_dizer",

@@ -42,13 +42,24 @@ export async function POST(req: NextRequest) {
 
     const avatarUrl = urlData.publicUrl;
 
-    // Update user metadata
-    const { error: updateError } = await admin.auth.admin.updateUserById(
-      user.id,
-      { user_metadata: { avatar_url: avatarUrl } }
-    );
+    // Store avatar URL in user_preferences (DB) — NOT in JWT metadata
+    const { data: prefs } = await admin
+      .from("user_preferences")
+      .select("context, enabled_questions, onboarding_completed")
+      .eq("user_id", user.id)
+      .single();
 
-    if (updateError) throw updateError;
+    const context = { ...((prefs?.context as Record<string, unknown>) || {}), avatar_url: avatarUrl };
+
+    await admin
+      .from("user_preferences")
+      .upsert({
+        user_id: user.id,
+        enabled_questions: prefs?.enabled_questions || [],
+        context,
+        onboarding_completed: prefs?.onboarding_completed ?? true,
+        updated_at: new Date().toISOString(),
+      });
 
     return NextResponse.json({ avatar_url: avatarUrl });
   } catch (error) {
