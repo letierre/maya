@@ -155,7 +155,7 @@ export default function DiarioEntryPage() {
           </div>
           <input type="date" ref={dateInputRef} value={entryDate}
             onChange={(e) => setEntryDate(e.target.value)}
-            style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0 }} />
+            style={{ position: "absolute", top: 0, left: 0, opacity: 0, width: 180, height: 28, cursor: "pointer" }} />
 
           {editing ? (
             <Button onClick={handleSave} disabled={saving}

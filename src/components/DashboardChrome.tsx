@@ -10,7 +10,7 @@ const FULLBLEED_PREFIXES = ["/metas", "/planejamento", "/financas", "/check-in",
 
 // Routes that DON'T show bottom nav — the header appears on these
 const NO_BOTTOM_NAV = [
-  "/check-in", "/diario/novo", "/metas/nova", "/metas/coach",
+  "/check-in", "/metas/nova", "/metas/coach",
   "/nutricao/registrar", "/financas/registrar",
 ];
 const NO_BOTTOM_NAV_PREFIXES = ["/insights"];

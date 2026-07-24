@@ -128,7 +128,7 @@ export default function NovoDiarioPage() {
       </div>
 
       {/* Date header */}
-      <div style={{ padding: "72px 24px 8px" }}>
+      <div style={{ padding: "72px 24px 8px", position: "relative" }}>
         <button type="button" onClick={openDatePicker}
           style={{
             background: "none", border: 0, cursor: "pointer",
@@ -145,7 +145,10 @@ export default function NovoDiarioPage() {
         </button>
         <input type="date" ref={dateInputRef} value={entryDate}
           onChange={(e) => setEntryDate(e.target.value)}
-          style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0 }} />
+          style={{
+            position: "absolute", top: 72, left: 24, opacity: 0,
+            width: 180, height: 24, cursor: "pointer",
+          }} />
       </div>
 
       {/* Title */}
