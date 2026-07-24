@@ -277,17 +277,17 @@ export default function DashboardPage() {
       .then((data) => setMayaNudgeText(data.nudges?.[0]?.message ?? ""))
       .catch(() => setMayaNudgeText(""));
 
-    // Finance data
+    // Finance data — API returns array directly
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    cachedFetch<{ transactions?: { amount: number }[]; budgets?: { monthly_limit: number }[] }>(
+    cachedFetch<Array<{ date: string; type: string; amount: number }>>(
       `/api/financas/transactions?month=${currentMonth}`
     )
-      .then((data) => {
-        if (data?.transactions) {
+      .then((txs) => {
+        if (Array.isArray(txs)) {
           const todayStr = today;
-          const todayTx = data.transactions.filter((tx: any) => tx.date === todayStr);
-          const total = todayTx.reduce((sum: number, tx: any) => sum + (tx.type === "despesa" ? tx.amount : 0), 0);
+          const todayTx = txs.filter((tx) => tx.date === todayStr);
+          const total = todayTx.reduce((sum, tx) => sum + (tx.type === "despesa" ? tx.amount : 0), 0);
           setTodaySpending(total);
         }
       })
@@ -467,6 +467,16 @@ export default function DashboardPage() {
   const todayDone = todayTasks.filter(t => t.status === "concluida").length;
   const todayTotal = todayTasks.length;
   const spendingPct = todaySpending !== null && spendingLimit > 0 ? `${Math.round((todaySpending / spendingLimit) * 100)}% do limite` : null;
+
+  // Humor: feeling text first, fallback to first mood tag (gender-adapted)
+  const humorValue = useMemo(() => {
+    if (!todayCheckIn) return null;
+    if (todayCheckIn.feeling) return `"${todayCheckIn.feeling.slice(0, 20)}${todayCheckIn.feeling.length > 20 ? "…" : ""}"`;
+    if (todayCheckIn.mood_tags?.length > 0) {
+      return formatMood(todayCheckIn.mood_tags[0], userGender);
+    }
+    return null;
+  }, [todayCheckIn, userGender]);
 
   return (
     <div
@@ -673,7 +683,7 @@ export default function DashboardPage() {
           <StatChip
             emoji="😊"
             label="Humor"
-            value={todayCheckIn?.feeling ? `"${todayCheckIn.feeling.slice(0, 20)}${todayCheckIn.feeling.length > 20 ? "…" : ""}"` : "—"}
+            value={humorValue || "—"}
             sub={todayCheckIn ? "Check-in feito" : "Pendente"}
             subColor={todayCheckIn ? "#22D18B" : undefined}
             onClick={() => router.push("/check-in")}
