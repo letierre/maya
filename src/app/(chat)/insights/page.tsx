@@ -150,16 +150,43 @@ export default function MayaChatPage() {
     const cache = loadProfileCache();
     if (cache?.name) setUserName(cache.name);
 
-    try {
-      const cached = localStorage.getItem(CHAT_CACHE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
+    // Load from server first, fallback to localStorage
+    fetch("/api/maya/messages")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const msgs = data.map((m: any) => ({
+            role: m.role,
+            content: m.content,
+            time: new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+            date: m.created_at.slice(0, 10),
+          }));
+          setMessages(msgs);
+        } else {
+          // Fallback to localStorage
+          try {
+            const cached = localStorage.getItem(CHAT_CACHE_KEY);
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setMessages(parsed);
+              }
+            }
+          } catch { /* noop */ }
         }
-      }
-    } catch { /* noop */ }
-    setHydrated(true);
+        setHydrated(true);
+      })
+      .catch(() => {
+        // Network error — use localStorage
+        try {
+          const cached = localStorage.getItem(CHAT_CACHE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);
+          }
+        } catch { /* noop */ }
+        setHydrated(true);
+      });
   }, []);
 
   useEffect(() => {
@@ -205,6 +232,12 @@ export default function MayaChatPage() {
       setTyping(false);
       current = [...current, { role: "assistant", content: parts[i], time: formatTime(), date: formatDate() }];
       setMessages(current);
+      // Persist assistant message to server
+      fetch("/api/maya/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "assistant", content: parts[i] }] }),
+      }).catch(() => {});
       if (i < parts.length - 1) {
         await new Promise((r) => setTimeout(r, 400));
       }
@@ -235,6 +268,13 @@ export default function MayaChatPage() {
     setMessages(updated);
     setInput("");
     setSending(true);
+
+    // Persist user message to server
+    fetch("/api/maya/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: [{ role: "user", content: trimmed }] }),
+    }).catch(() => {});
 
     try {
       const contextMsgs = updated.slice(-20).map(({ role, content, date, time }) => ({ role, content, date, time }));
