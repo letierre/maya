@@ -202,31 +202,34 @@ export default function DiarioEntryPage() {
               </div>
             </div>
 
-            {/* Title */}
+            {/* Title — grande, bold */}
             <input
-              placeholder={t("titulo_placeholder")}
+              placeholder="Título"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               style={{
-                width: "100%", boxSizing: "border-box", padding: "12px 14px",
-                borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)",
-                background: "#1a1530", color: "#e0d6ff", fontSize: 14, fontFamily: "inherit",
-                marginBottom: 12, outline: "none",
+                width: "100%", boxSizing: "border-box", padding: "16px 0",
+                border: 0, borderBottom: "1px solid rgba(167,139,250,0.2)",
+                background: "transparent", color: "#e0d6ff",
+                fontSize: 22, fontWeight: 700, fontFamily: "inherit",
+                marginBottom: 16, outline: "none", letterSpacing: "-0.02em",
               }}
+              onFocus={(e) => e.target.style.borderBottomColor = "#7C5CFF"}
+              onBlur={(e) => e.target.style.borderBottomColor = "rgba(167,139,250,0.2)"}
             />
 
-            {/* Content */}
+            {/* Content — área de texto ampla */}
             <textarea
-              placeholder={t("escrever_placeholder")}
-              rows={10}
+              placeholder="Escreva o que está pensando e sentindo..."
+              rows={12}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               style={{
-                width: "100%", boxSizing: "border-box", padding: "14px",
-                borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)",
-                background: "#1a1530", color: "#e0d6ff", fontSize: 14,
-                fontFamily: "inherit", lineHeight: 1.7, resize: "vertical",
-                marginBottom: 12, outline: "none",
+                width: "100%", boxSizing: "border-box", padding: 0,
+                border: 0,
+                background: "transparent", color: "#e0d6ff", fontSize: 15,
+                fontFamily: "inherit", lineHeight: 1.75, resize: "vertical",
+                marginBottom: 16, outline: "none",
               }}
             />
 
@@ -255,11 +258,12 @@ export default function DiarioEntryPage() {
                   border: "1.5px dashed rgba(167,139,250,0.3)",
                   background: "rgba(124,92,255,0.06)", display: "flex",
                   alignItems: "center", justifyContent: "center",
-                  cursor: "pointer", color: "#A78BFA",
+                  cursor: "pointer", color: "#A78BFA", flexDirection: "column", gap: 2,
                 }}>
-                {uploading ? <span style={{ fontSize: 11, color: "#9e96b5" }}>...</span> : <Plus size={22} />}
+                <Camera size={18} />
+                <span style={{ fontSize: 9, color: "#9e96b5" }}>{uploading ? "..." : "Foto"}</span>
               </button>
-              <input ref={photoInputRef} type="file" accept="image/*" capture="environment"
+              <input ref={photoInputRef} type="file" accept="image/*"
                 style={{ display: "none" }}
                 onChange={(e) => { if (e.target.files?.[0]) handlePhotoAdd(e.target.files[0]); e.target.value = ""; }} />
             </div>
