@@ -63,6 +63,37 @@ export default function AgendaPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showNewItem, setShowNewItem] = useState(false);
   const [newItemType, setNewItemType] = useState<"compromisso" | "tarefa">("tarefa");
+  const [newTitle, setNewTitle] = useState("");
+  const [newEmoji, setNewEmoji] = useState("");
+  const [newPriority, setNewPriority] = useState<EisenhowerPriority>("importante_nao_urgente");
+  const [newStartTime, setNewStartTime] = useState("09:00");
+  const [newEndTime, setNewEndTime] = useState("10:00");
+  const [saving, setSaving] = useState(false);
+
+  const handleCreate = async () => {
+    if (!newTitle.trim()) return;
+    setSaving(true);
+    const res = await fetch("/api/agenda", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: newTitle.trim(),
+        item_type: newItemType,
+        date: selectedDate,
+        start_time: newItemType === "compromisso" ? newStartTime : null,
+        end_time: newItemType === "compromisso" ? newEndTime : null,
+        priority: newPriority,
+        emoji: newEmoji || null,
+      }),
+    });
+    if (res.ok) {
+      const created = await res.json();
+      setItems(prev => [...prev, created]);
+      setShowNewItem(false);
+      setNewTitle(""); setNewEmoji(""); setNewPriority("importante_nao_urgente");
+    }
+    setSaving(false);
+  };
 
   const fetchItems = useCallback(async (date: string) => {
     setLoading(true);
@@ -391,9 +422,125 @@ export default function AgendaPage() {
         </div>
 
       </div>
+
+      {/* ── New Item Modal ──────────────────────────────────── */}
+      {showNewItem && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 100,
+          background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "flex-end", justifyContent: "center",
+        }}>
+          <div style={{
+            width: "100%", maxWidth: 480, maxHeight: "85dvh", overflowY: "auto",
+            background: "#151520", borderRadius: "24px 24px 0 0",
+            padding: "20px 20px calc(env(safe-area-inset-bottom) + 20px)",
+            border: "1px solid rgba(167,139,250,0.15)",
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 9999, background: "rgba(167,139,250,0.2)", margin: "0 auto 18px" }} />
+
+            <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>
+              {newItemType === "compromisso" ? "Novo compromisso" : "Nova tarefa"}
+            </h2>
+            <p style={{ margin: "0 0 20px", fontSize: 12, color: "#9e96b5" }}>
+              {formatDateLabel(selectedDate)}
+            </p>
+
+            {/* Type toggle */}
+            <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+              <button type="button" onClick={() => setNewItemType("compromisso")}
+                style={{
+                  flex: 1, padding: "10px 0", borderRadius: 12, border: 0, cursor: "pointer",
+                  fontFamily: "inherit", fontSize: 13, fontWeight: 700,
+                  background: newItemType === "compromisso" ? "#7C5CFF" : "#1a1530",
+                  color: newItemType === "compromisso" ? "#fff" : "#9e96b5",
+                }}>📅 Compromisso</button>
+              <button type="button" onClick={() => setNewItemType("tarefa")}
+                style={{
+                  flex: 1, padding: "10px 0", borderRadius: 12, border: 0, cursor: "pointer",
+                  fontFamily: "inherit", fontSize: 13, fontWeight: 700,
+                  background: newItemType === "tarefa" ? "#7C5CFF" : "#1a1530",
+                  color: newItemType === "tarefa" ? "#fff" : "#9e96b5",
+                }}>☑️ Tarefa</button>
+            </div>
+
+            {/* Title */}
+            <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="Título"
+              style={modalInput} autoFocus />
+
+            {/* Emoji */}
+            <input value={newEmoji} onChange={(e) => setNewEmoji(e.target.value)}
+              placeholder="Emoji (opcional) — ex: 💪"
+              style={{ ...modalInput, marginTop: 10 }} />
+
+            {/* Time (only for compromisso) */}
+            {newItemType === "compromisso" && (
+              <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>Início</label>
+                  <input type="time" value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)}
+                    style={modalInput} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>Fim</label>
+                  <input type="time" value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)}
+                    style={modalInput} />
+                </div>
+              </div>
+            )}
+
+            {/* Priority */}
+            <div style={{ marginTop: 14 }}>
+              <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>Prioridade</label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {(Object.entries(PRIORITY_CONFIG) as [EisenhowerPriority, typeof PRIORITY_CONFIG[EisenhowerPriority]][]).map(([key, cfg]) => {
+                  const Icon = cfg.icon;
+                  return (
+                    <button key={key} type="button" onClick={() => setNewPriority(key)}
+                      style={{
+                        padding: "6px 10px", borderRadius: 9999, border: 0, cursor: "pointer",
+                        fontFamily: "inherit", fontSize: 10, fontWeight: 600,
+                        background: newPriority === key ? cfg.color + "22" : "#1a1530",
+                        color: newPriority === key ? cfg.color : "#9e96b5",
+                        display: "flex", alignItems: "center", gap: 4,
+                      }}>
+                      <Icon size={10} /> {cfg.shortLabel}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+              <button type="button" onClick={() => setShowNewItem(false)}
+                style={{
+                  flex: 1, padding: "14px 0", borderRadius: 14,
+                  border: "1px solid rgba(167,139,250,0.2)", background: "transparent",
+                  cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#9e96b5",
+                }}>Cancelar</button>
+              <button type="button" onClick={handleCreate} disabled={saving || !newTitle.trim()}
+                style={{
+                  flex: 2, padding: "14px 0", borderRadius: 14, border: 0,
+                  cursor: (saving || !newTitle.trim()) ? "not-allowed" : "pointer",
+                  fontFamily: "inherit", fontSize: 14, fontWeight: 700,
+                  background: (saving || !newTitle.trim()) ? "#1e1840" : "#7C5CFF",
+                  color: (saving || !newTitle.trim()) ? "#9e96b5" : "#fff",
+                }}>{saving ? "Salvando…" : "Adicionar"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+const modalInput: React.CSSProperties = {
+  width: "100%", boxSizing: "border-box", padding: "12px 14px",
+  borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)",
+  background: "#0B0B10", color: "#e0d6ff", fontSize: 14,
+  fontFamily: "inherit", outline: "none",
+};
 
 const navBtnStyle: React.CSSProperties = {
   width: 40, height: 40, borderRadius: 12,
