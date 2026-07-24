@@ -598,8 +598,8 @@ export default function DashboardPage() {
                   className="items-center px-2 py-1 rounded-lg"
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "54px 20px 34px 1fr",
-                    gap: 8,
+                    gridTemplateColumns: "54px 20px 34px 80px 1fr",
+                    gap: 6,
                     background: isToday ? "oklch(0.58 0.18 270 / .10)" : "transparent",
                     alignItems: "center",
                   }}
@@ -624,10 +624,11 @@ export default function DashboardPage() {
                   >
                     {dayScore !== null ? `${dayScore}/10` : "—"}
                   </span>
-                  <div className="min-w-0 flex items-center gap-1.5 overflow-hidden">
+                  {/* Mood tag — coluna fixa */}
+                  <span className="flex items-center">
                     {moodTag ? (
                       <span
-                        className="px-1.5 py-px rounded-full text-[9.5px] font-semibold flex-none"
+                        className="px-1.5 py-px rounded-full text-[9.5px] font-semibold"
                         style={{
                           maxWidth: 74, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                           background: moodNeg ? "oklch(.92 .05 30 / .25)" : "oklch(.55 .18 270 / .2)",
@@ -637,21 +638,13 @@ export default function DashboardPage() {
                         {formatMood(moodTag, userGender)}{extraMoods > 0 ? ` +${extraMoods}` : ""}
                       </span>
                     ) : (
-                      <span className="text-[11px] truncate" style={{ color: "oklch(0.55 0.03 270)" }}>
-                        {day.feeling || "—"}
-                      </span>
+                      <span className="text-[11px]" style={{ color: "oklch(0.55 0.03 270)" }}>—</span>
                     )}
-                    {moodTag && day.feeling && (
-                      <span className="text-[11px] truncate" style={{ color: "oklch(0.55 0.03 270)" }}>
-                        {day.feeling}
-                      </span>
-                    )}
-                    {moodTag && !day.feeling && (
-                      <span className="text-[10px] truncate" style={{ color: "oklch(0.45 0.03 270)", fontStyle: "italic" }}>
-                        sem relato
-                      </span>
-                    )}
-                  </div>
+                  </span>
+                  {/* Feeling text — coluna flexível */}
+                  <span className="text-[11px] truncate" style={{ color: "oklch(0.55 0.03 270)" }}>
+                    {day.feeling || ""}
+                  </span>
                 </div>
               );
             })}
