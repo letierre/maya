@@ -103,7 +103,7 @@ function PorqueEditor({
         )}
         <input
           ref={fileRef}
-          type="file" accept="image/*" capture="environment"
+          type="file" accept="image/*"
           style={{ display: "none" }}
           onChange={(e) => {
             if (e.target.files?.[0]) onPhotoPick(index, e.target.files[0]);
@@ -333,7 +333,7 @@ export default function PerfilPage() {
               </div>
               <input
                 ref={fileInputRef}
-                type="file" accept="image/*" capture="environment"
+                type="file" accept="image/*"
                 style={{ display: "none" }}
                 onChange={(e) => { if (e.target.files?.[0]) handleAvatarPick(e.target.files[0]); e.target.value = ""; }}
               />

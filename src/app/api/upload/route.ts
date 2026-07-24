@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "base64 e folder obrigatórios" }, { status: 400 });
     }
 
-    if (!["meals", "diary"].includes(folder)) {
+    if (!["meals", "diary", "avatars"].includes(folder)) {
       return NextResponse.json({ error: "folder inválido" }, { status: 400 });
     }
 

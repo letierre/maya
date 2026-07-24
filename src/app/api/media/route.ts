@@ -28,9 +28,7 @@ export async function GET(request: Request) {
 
   try {
     const admin = getSupabaseAdmin();
-    const storageBucket = path.startsWith("meals/") ? "user-content" :
-                           path.startsWith("diary/") ? "user-content" :
-                           "avatars";
+    const storageBucket = "user-content";
     const { data, error } = await admin.storage
       .from(storageBucket)
       .download(path);

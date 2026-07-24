@@ -91,9 +91,16 @@ export async function GET() {
         const urlMatch = rawAvatar.match(/\/storage\/v1\/object\/public\/(.+)/);
         const storagePath = urlMatch ? urlMatch[1] : (rawAvatar.includes("/") ? rawAvatar : null);
         if (storagePath) {
+          // Try bucket based on path prefix, fallback to user-content
           const bucket = storagePath.startsWith("avatars/") ? "avatars" : "user-content";
           const { data } = await admin.storage.from(bucket).createSignedUrl(storagePath, 86400);
-          if (data?.signedUrl) avatarUrl = data.signedUrl;
+          if (data?.signedUrl) {
+            avatarUrl = data.signedUrl;
+          } else {
+            // Fallback: try user-content bucket
+            const { data: data2 } = await admin.storage.from("user-content").createSignedUrl(storagePath, 86400);
+            if (data2?.signedUrl) avatarUrl = data2.signedUrl;
+          }
         }
       } catch {
         // Fallback: return raw URL as-is

@@ -110,7 +110,7 @@ export function photoHash(base64: string): string {
 }
 
 /** Upload a base64 image to Supabase Storage. Returns the cloud path. */
-export async function uploadToCloud(base64: string, folder: "meals" | "diary"): Promise<string> {
+export async function uploadToCloud(base64: string, folder: "meals" | "diary" | "avatars"): Promise<string> {
   const res = await fetch("/api/upload", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
