@@ -7,7 +7,6 @@ import { useTranslation } from "@/lib/useTranslation";
 import { LANG_OPTIONS } from "@/lib/i18n";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { LogoutButton } from "@/components/LogoutButton";
-import { MayaAvatar } from "@/components/MayaAvatar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,17 +24,16 @@ const GENDER_OPTIONS = [
   { id: "nao_dizer",  label: "Prefiro não dizer"},
 ] as const;
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const label11 = (text: string) => (
-  <p style={{
-    margin: "0 0 10px", fontSize: 11, fontWeight: 700,
-    letterSpacing: ".12em", textTransform: "uppercase" as const,
-    color: "#A78BFA",
-  }}>
-    {text}
-  </p>
-);
+const NAV_LINKS = [
+  { href: "/planejamento", label: "Planejamento",   emoji: "📅" },
+  { href: "/metas",        label: "Metas",           emoji: "🎯" },
+  { href: "/diario",       label: "Diário",          emoji: "📖" },
+  { href: "/sono",         label: "Sono",            emoji: "😴" },
+  { href: "/nutricao",     label: "Nutrição",        emoji: "🥗" },
+  { href: "/financas",     label: "Finanças",        emoji: "💰" },
+  { href: "/historico",    label: "Histórico",       emoji: "📊" },
+  { href: "/configurações", label: "Configurações",  emoji: "⚙️" },
+];
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +55,16 @@ const inputStyle: React.CSSProperties = {
   color: "#e0d6ff", outline: "none",
 };
 
+const label11 = (text: string) => (
+  <p style={{
+    margin: "0 0 10px", fontSize: 11, fontWeight: 700,
+    letterSpacing: ".12em", textTransform: "uppercase" as const,
+    color: "#A78BFA",
+  }}>
+    {text}
+  </p>
+);
+
 // ── Porque Editor ──────────────────────────────────────────────────────────────
 
 function PorqueEditor({
@@ -72,13 +80,18 @@ function PorqueEditor({
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div style={{ ...card, display: "flex", gap: 14, alignItems: "flex-start" }}>
+    <div style={{
+      background: "#0F0F14", borderRadius: 14,
+      border: "1px solid rgba(167,139,250,0.15)",
+      padding: 14, marginBottom: 10,
+      display: "flex", gap: 14, alignItems: "flex-start",
+    }}>
       <div
         onClick={() => !uploading && fileRef.current?.click()}
         style={{
           width: 56, height: 56, borderRadius: 14,
-          background: "#0F0F14",
-          border: "1px solid rgba(167,139,250,0.25)",
+          background: "rgba(124,92,255,0.1)",
+          border: "1px solid rgba(167,139,250,0.2)",
           overflow: "hidden", cursor: "pointer", flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
@@ -86,7 +99,7 @@ function PorqueEditor({
         {photoSrc ? (
           <img src={photoSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
-          <span style={{ fontSize: 20, color: "#A78BFA" }}>📷</span>
+          <span style={{ fontSize: 20 }}>📷</span>
         )}
         <input
           ref={fileRef}
@@ -141,6 +154,7 @@ export default function PerfilPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [memberSince, setMemberSince] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isFirstRender = useRef(true);
@@ -152,10 +166,15 @@ export default function PerfilPage() {
       .then((data) => {
         if (data.name) setName(data.name);
         if (data.email) setEmail(data.email);
-        if (data.avatar_url) setAvatarUrl(photoUrl(data.avatar_url));
+        if (data.avatar_url) setAvatarUrl(data.avatar_url);
         if (data.gender) setGender(data.gender);
         if (data.language) setLanguage(data.language);
         if (data.porques?.length > 0) setPorques(data.porques);
+        if (data.created_at) {
+          setMemberSince(new Date(data.created_at).toLocaleDateString("pt-BR", {
+            day: "numeric", month: "long", year: "numeric",
+          }));
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -187,7 +206,7 @@ export default function PerfilPage() {
       formData.append("avatar_path", path);
       const res = await fetch("/api/profile/avatar", { method: "POST", body: formData });
       if (res.ok) {
-        setAvatarUrl(photoUrl(path));
+        setAvatarUrl(path);
         toast.success("Foto atualizada!");
       }
     } catch { toast.error("Erro ao enviar foto"); }
@@ -235,10 +254,7 @@ export default function PerfilPage() {
   };
 
   const handleChangePassword = async () => {
-    if (newPassword !== confirmPassword) {
-      toast.error("Senhas não conferem");
-      return;
-    }
+    if (newPassword !== confirmPassword) { toast.error("Senhas não conferem"); return; }
     setChangingPassword(true);
     const res = await fetch("/api/profile/password", {
       method: "POST",
@@ -249,7 +265,7 @@ export default function PerfilPage() {
       toast.success("Senha alterada!");
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
     } else {
-      toast.error("Erro ao alterar senha. Verifique a senha atual.");
+      toast.error("Erro ao alterar senha.");
     }
     setChangingPassword(false);
   };
@@ -263,6 +279,7 @@ export default function PerfilPage() {
   }
 
   const initials = name ? name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase() : "EU";
+  const avatarSrc = avatarUrl ? photoUrl(avatarUrl) : null;
 
   return (
     <div style={{
@@ -275,38 +292,16 @@ export default function PerfilPage() {
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 20px" }}>
 
         {/* Header */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "56px 0 24px",
-        }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-0.025em", color: "#e0d6ff" }}>
-              Minha jornada com Maya <span style={{ color: "#5EEAD4", fontSize: 14, fontWeight: 500 }}>— v3.1</span>
-            </h1>
-            {saved && (
-              <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "#7C5CFF", fontWeight: 600 }}>
-                Salvo ✓
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => router.push("/configurações")}
-            aria-label="Configurações"
-            style={{
-              width: 40, height: 40, borderRadius: 12,
-              border: "1px solid rgba(167,139,250,0.2)",
-              background: "rgba(124,92,255,0.08)",
-              cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 18,
-            }}
-          >
-            ⚙️
-          </button>
+        <div style={{ padding: "32px 0 24px" }}>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em", color: "#e0d6ff" }}>
+            Perfil
+          </h1>
+          {saved && (
+            <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "#7C5CFF", fontWeight: 600 }}>Salvo ✓</p>
+          )}
         </div>
 
-        {/* Avatar + Nome + Email */}
+        {/* Avatar + Name + Email */}
         <div style={card}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 20 }}>
             <div style={{ position: "relative", marginBottom: 10 }}>
@@ -319,25 +314,16 @@ export default function PerfilPage() {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   border: "3px solid #7C5CFF",
                   boxShadow: "0 0 0 4px rgba(124,92,255,0.12)",
-                  position: "relative",
                 }}
               >
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt=""
-                    style={{
-                      position: "absolute", inset: 0,
-                      width: "100%", height: "100%",
-                      objectFit: "cover",
-                    }}
+                {avatarSrc ? (
+                  <img src={avatarSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                   />
                 ) : null}
-                <span style={{
-                  fontSize: 28, fontWeight: 700, color: "#A78BFA",
-                  zIndex: 1,
-                }}>{initials}</span>
+                <span style={{ fontSize: 28, fontWeight: 700, color: "#A78BFA", position: avatarSrc ? "absolute" : "static", zIndex: 1 }}>
+                  {initials}
+                </span>
               </div>
               <input
                 ref={fileInputRef}
@@ -348,20 +334,17 @@ export default function PerfilPage() {
             </div>
             <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>{name || "—"}</p>
             <p style={{ margin: 0, fontSize: 13, color: "#9e96b5" }}>{email || "—"}</p>
-            <p style={{ margin: "4px 0 0", fontSize: 11, color: "#9e96b5" }}>
-              Membro desde 21 de Fevereiro de 2024
-            </p>
+            {memberSince && (
+              <p style={{ margin: "4px 0 0", fontSize: 11, color: "#9e96b5" }}>
+                Membro desde {memberSince}
+              </p>
+            )}
           </div>
 
           {/* Name */}
           <div style={{ marginBottom: 14 }}>
             {label11("Nome")}
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Seu nome"
-              style={inputStyle}
-            />
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" style={inputStyle} />
           </div>
 
           {/* Gender */}
@@ -369,19 +352,14 @@ export default function PerfilPage() {
             {label11(t("pergunta_genero"))}
             <div style={{ display: "flex", gap: 8 }}>
               {GENDER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setGender(opt.id)}
+                <button key={opt.id} type="button" onClick={() => setGender(opt.id)}
                   style={{
                     flex: 1, height: 40, borderRadius: 11, border: 0,
-                    cursor: "pointer", fontFamily: "inherit",
-                    fontSize: 13, fontWeight: 700,
+                    cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700,
                     transition: "all .15s ease",
                     background: gender === opt.id ? "#7C5CFF" : "#1e1840",
                     color: gender === opt.id ? "#fff" : "#7C5CFF",
-                  }}
-                >
+                  }}>
                   {opt.label}
                 </button>
               ))}
@@ -393,19 +371,14 @@ export default function PerfilPage() {
             {label11("Idioma")}
             <div style={{ display: "flex", gap: 8 }}>
               {LANG_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setLanguage(opt.id)}
+                <button key={opt.id} type="button" onClick={() => setLanguage(opt.id)}
                   style={{
                     flex: 1, height: 40, borderRadius: 11, border: 0,
-                    cursor: "pointer", fontFamily: "inherit",
-                    fontSize: 13, fontWeight: 700,
+                    cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700,
                     transition: "all .15s ease",
                     background: language === opt.id ? "#7C5CFF" : "#1e1840",
                     color: language === opt.id ? "#fff" : "#7C5CFF",
-                  }}
-                >
+                  }}>
                   {opt.flag} {opt.label}
                 </button>
               ))}
@@ -413,68 +386,70 @@ export default function PerfilPage() {
           </div>
         </div>
 
+        {/* Navegar — access to all sections */}
+        <div style={card}>
+          {label11("Navegar")}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+            {NAV_LINKS.map((link) => (
+              <button
+                key={link.href}
+                type="button"
+                onClick={() => router.push(link.href)}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                  padding: "12px 4px", borderRadius: 14,
+                  border: "1px solid rgba(167,139,250,0.15)",
+                  background: "#0F0F14",
+                  cursor: "pointer",
+                }}
+              >
+                <span style={{ fontSize: 20 }}>{link.emoji}</span>
+                <span style={{ fontSize: 10, fontWeight: 600, color: "#9e96b5" }}>{link.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Porquês */}
         <div style={card}>
           {label11("Meus Porquês")}
           {porques.map((pq, i) => (
-            <PorqueEditor
-              key={pq.id}
-              pq={pq} index={i}
-              onUpdate={updatePorque}
-              onRemove={removePorque}
-              uploading={uploading}
-              onPhotoPick={handlePorquePhoto}
+            <PorqueEditor key={pq.id} pq={pq} index={i}
+              onUpdate={updatePorque} onRemove={removePorque}
+              uploading={uploading} onPhotoPick={handlePorquePhoto}
             />
           ))}
           {porques.length < 5 && (
-            <button
-              type="button"
-              onClick={addPorque}
+            <button type="button" onClick={addPorque}
               style={{
                 width: "100%", padding: "12px", borderRadius: 12,
-                border: "1px dashed rgba(167,139,250,0.35)",
-                background: "transparent", cursor: "pointer",
-                fontFamily: "inherit", fontSize: 13, fontWeight: 600,
+                border: "1px dashed rgba(167,139,250,0.35)", background: "transparent",
+                cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600,
                 color: "#A78BFA",
-              }}
-            >
+              }}>
               + Adicionar porquê
             </button>
           )}
         </div>
 
-        {/* Senha */}
+        {/* Password */}
         <div style={card}>
           {label11("Alterar senha")}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <input
-              type={showPassword ? "text" : "password"}
-              value={currentPassword}
+            <input type={showPassword ? "text" : "password"} value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Senha atual"
-              style={inputStyle}
-            />
-            <input
-              type={showPassword ? "text" : "password"}
-              value={newPassword}
+              placeholder="Senha atual" style={inputStyle} />
+            <input type={showPassword ? "text" : "password"} value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Nova senha"
-              style={inputStyle}
-            />
-            <input
-              type={showPassword ? "text" : "password"}
-              value={confirmPassword}
+              placeholder="Nova senha" style={inputStyle} />
+            <input type={showPassword ? "text" : "password"} value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirmar nova senha"
-              style={inputStyle}
-            />
+              placeholder="Confirmar nova senha" style={inputStyle} />
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#9e96b5", cursor: "pointer" }}>
               <input type="checkbox" checked={showPassword} onChange={() => setShowPassword(!showPassword)} />
               Mostrar senha
             </label>
-            <button
-              type="button"
-              onClick={handleChangePassword}
+            <button type="button" onClick={handleChangePassword}
               disabled={changingPassword || !currentPassword || !newPassword}
               style={{
                 width: "100%", height: 44, borderRadius: 12, border: 0,
@@ -482,9 +457,7 @@ export default function PerfilPage() {
                 fontFamily: "inherit", fontSize: 14, fontWeight: 700,
                 background: (changingPassword || !currentPassword || !newPassword) ? "#1e1840" : "#7C5CFF",
                 color: (changingPassword || !currentPassword || !newPassword) ? "#9e96b5" : "#fff",
-                opacity: (changingPassword || !currentPassword || !newPassword) ? 0.6 : 1,
-              }}
-            >
+              }}>
               {changingPassword ? "Alterando…" : "Alterar senha"}
             </button>
           </div>
