@@ -7,6 +7,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { LANG_OPTIONS } from "@/lib/i18n";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { LogoutButton } from "@/components/LogoutButton";
+import { AvatarCropModal } from "@/components/AvatarCropModal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -155,6 +156,7 @@ export default function PerfilPage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [memberSince, setMemberSince] = useState("");
+  const [cropImage, setCropImage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isFirstRender = useRef(true);
@@ -202,9 +204,17 @@ export default function PerfilPage() {
     return () => clearTimeout(autoSaveRef.current);
   }, [name, gender, language]);
 
-  const handleAvatarPick = async (file: File) => {
+  const handleFilePick = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => setCropImage(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = async (blob: Blob) => {
+    setCropImage(null);
     setUploading(true);
     try {
+      const file = new File([blob], "avatar.jpg", { type: "image/jpeg" });
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/profile/avatar", { method: "POST", body: formData });
@@ -339,7 +349,7 @@ export default function PerfilPage() {
                 ref={fileInputRef}
                 type="file" accept="image/*"
                 style={{ display: "none" }}
-                onChange={(e) => { if (e.target.files?.[0]) handleAvatarPick(e.target.files[0]); e.target.value = ""; }}
+                onChange={(e) => { if (e.target.files?.[0]) handleFilePick(e.target.files[0]); e.target.value = ""; }}
               />
             </div>
             <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>{name || "—"}</p>
@@ -479,6 +489,15 @@ export default function PerfilPage() {
         </div>
 
       </div>
+
+      {/* Crop modal */}
+      {cropImage && (
+        <AvatarCropModal
+          image={cropImage}
+          onCrop={handleCropComplete}
+          onClose={() => setCropImage(null)}
+        />
+      )}
     </div>
   );
 }
