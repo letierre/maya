@@ -85,7 +85,8 @@ export async function GET() {
     return NextResponse.json({
       email: user.email,
       name: user.user_metadata?.name || "",
-      avatar_url: user.user_metadata?.avatar_url || "",
+      avatar_url: user.user_metadata?.avatar_url || null,
+      created_at: user.created_at || null,
       gender: ctx.gender || "nao_dizer",
       language: ctx.language || "pt",
       porques: (ctx.porques as Array<{ id: string; text: string; photoPath: string | null }>) || [],

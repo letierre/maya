@@ -164,16 +164,21 @@ export default function PerfilPage() {
     fetch("/api/profile")
       .then((r) => r.json())
       .then((data) => {
+        console.log("[PERFIL] Dados recebidos:", { avatar_url: data.avatar_url, created_at: data.created_at });
         if (data.name) setName(data.name);
         if (data.email) setEmail(data.email);
+        // Store raw path for upload, compute display URL separately
         if (data.avatar_url) setAvatarUrl(data.avatar_url);
         if (data.gender) setGender(data.gender);
         if (data.language) setLanguage(data.language);
         if (data.porques?.length > 0) setPorques(data.porques);
         if (data.created_at) {
-          setMemberSince(new Date(data.created_at).toLocaleDateString("pt-BR", {
-            day: "numeric", month: "long", year: "numeric",
-          }));
+          const d = new Date(data.created_at);
+          if (!isNaN(d.getTime())) {
+            setMemberSince(d.toLocaleDateString("pt-BR", {
+              day: "numeric", month: "long", year: "numeric",
+            }));
+          }
         }
         setLoading(false);
       })
@@ -279,7 +284,18 @@ export default function PerfilPage() {
   }
 
   const initials = name ? name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase() : "EU";
-  const avatarSrc = avatarUrl ? photoUrl(avatarUrl) : null;
+
+  // Avatar: try photoUrl first, fallback to direct Supabase storage URL
+  const avatarSrc = (() => {
+    if (!avatarUrl) return null;
+    const viaPhoto = photoUrl(avatarUrl);
+    if (viaPhoto) return viaPhoto;
+    // Fallback: direct Supabase storage URL
+    if (avatarUrl.includes("/")) {
+      return `https://yyackdqeaqcvbzdjiool.supabase.co/storage/v1/object/public/${avatarUrl}`;
+    }
+    return null;
+  })();
 
   return (
     <div style={{
