@@ -20,9 +20,7 @@ const QUESTIONS = [
 
 function formatDisplayDate(dateStr: string): string {
   return new Date(dateStr + "T12:00:00").toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
+    weekday: "long", day: "numeric", month: "long",
   });
 }
 
@@ -40,38 +38,18 @@ export default function DiarioEvolucaoPage() {
 
   const handleSave = async () => {
     const answered = QUESTIONS.filter((q) => answers[q.key]?.trim());
-    if (answered.length === 0) {
-      toast.error("Responda pelo menos uma pergunta");
-      return;
-    }
-
+    if (answered.length === 0) { toast.error("Responda pelo menos uma pergunta"); return; }
     setSaving(true);
-
-    // Build formatted content
     const content = QUESTIONS
       .filter((q) => answers[q.key]?.trim())
       .map((q) => `${q.label}\n${answers[q.key].trim()}`)
       .join("\n\n");
-
-    const title = "Diário de Evolução";
-
     const res = await fetch("/api/diary", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        date: entryDate,
-        title,
-        content,
-        photos: [],
-      }),
+      body: JSON.stringify({ date: entryDate, title: "Diário de Evolução", content, photos: [] }),
     });
-
-    if (!res.ok) {
-      toast.error(t("erro_salvar_entrada"));
-      setSaving(false);
-      return;
-    }
-
+    if (!res.ok) { toast.error(t("erro_salvar_entrada")); setSaving(false); return; }
     toast.success(t("entrada_salva"));
     router.push("/diario");
     router.refresh();
@@ -90,72 +68,69 @@ export default function DiarioEvolucaoPage() {
   const answeredCount = QUESTIONS.filter((q) => answers[q.key]?.trim()).length;
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
-      {/* Top bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="size-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors -ml-1"
-            aria-label={t("voltar")}
-          >
-            <ArrowLeft className="size-5" />
-          </button>
-          <div className="relative">
-            <button
-              type="button"
-              onClick={openDatePicker}
-              className="flex items-center gap-1 text-left hover:opacity-80 transition-opacity"
-            >
-              <h1 className="text-xl font-bold">{formatDisplayDate(entryDate)}</h1>
-              <ChevronDown className="size-4 text-muted-foreground" />
+    <div style={{ minHeight: "100dvh", background: "#0F0F14", paddingBottom: 100 }}>
+      <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 20px" }}>
+        {/* Top bar */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0 20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button type="button" onClick={() => router.back()}
+              style={{
+                width: 36, height: 36, borderRadius: "50%",
+                background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", color: "#A78BFA",
+              }}>
+              <ArrowLeft size={18} />
             </button>
-            <input
-              type="date"
-              ref={dateInputRef}
-              value={entryDate}
-              onChange={(e) => setEntryDate(e.target.value)}
-              className="absolute inset-0 opacity-0 cursor-pointer"
-            />
+            <div>
+              <button type="button" onClick={openDatePicker}
+                style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: 0, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+                <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#e0d6ff" }}>{formatDisplayDate(entryDate)}</h1>
+                <ChevronDown size={14} style={{ color: "#9e96b5" }} />
+              </button>
+              <input type="date" ref={dateInputRef} value={entryDate}
+                onChange={(e) => setEntryDate(e.target.value)}
+                style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0 }} />
+            </div>
           </div>
+          <Button onClick={handleSave} disabled={saving}
+            style={{ height: 38, paddingInline: 18, borderRadius: 12, background: "#7C5CFF", border: 0, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            {saving ? "Salvando…" : "Salvar"}
+          </Button>
         </div>
-        <Button
-          className="rounded-xl"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? t("salvando") : t("salvar")}
-        </Button>
-      </div>
 
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span>🌱</span>
-        <span>{answeredCount}/{QUESTIONS.length} respondidas</span>
-      </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+          <span style={{ fontSize: 20 }}>🌱</span>
+          <span style={{ fontSize: 13, color: "#9e96b5" }}>{answeredCount}/{QUESTIONS.length} respondidas</span>
+        </div>
 
-      <div className="space-y-5">
-        {QUESTIONS.map((q) => (
-          <div key={q.key} className="space-y-2">
-            <label className="text-sm font-medium">{q.label}</label>
-            <Textarea
-              placeholder="Escreva aqui..."
-              rows={q.rows}
-              value={answers[q.key] || ""}
-              onChange={(e) => updateAnswer(q.key, e.target.value)}
-              className="resize-none rounded-xl"
-            />
-          </div>
-        ))}
-      </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {QUESTIONS.map((q) => (
+            <div key={q.key}>
+              <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#e0d6ff", marginBottom: 8 }}>{q.label}</label>
+              <Textarea placeholder="Escreva aqui..." rows={q.rows}
+                value={answers[q.key] || ""}
+                onChange={(e) => updateAnswer(q.key, e.target.value)}
+                style={{
+                  resize: "none", borderRadius: 14, background: "#1a1530",
+                  border: "1px solid rgba(167,139,250,0.2)", color: "#e0d6ff",
+                  fontSize: 14, lineHeight: 1.6,
+                }}
+              />
+            </div>
+          ))}
+        </div>
 
-      <Button
-        variant="outline"
-        className="w-full rounded-xl"
-        onClick={() => router.back()}
-      >
-        {t("cancelar")}
-      </Button>
+        <button type="button" onClick={() => router.back()}
+          style={{
+            width: "100%", marginTop: 24, padding: "14px 0", borderRadius: 14,
+            border: "1px solid rgba(167,139,250,0.2)", background: "transparent",
+            cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600,
+            color: "#9e96b5",
+          }}>
+          Cancelar
+        </button>
+      </div>
     </div>
   );
 }

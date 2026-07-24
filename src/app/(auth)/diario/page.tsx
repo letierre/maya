@@ -88,8 +88,8 @@ export default function DiarioPage() {
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <span className="w-9 h-9 rounded-full bg-white/55 backdrop-blur-md flex items-center justify-center shadow-sm cursor-pointer"
-                style={{ color: "var(--foreground)" }}>
+              <span className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm cursor-pointer"
+                style={{ background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", color: "#e0d6ff", backdropFilter: "blur(8px)" }}>
                 <MoreVertical className="w-4 h-4" />
               </span>
             }
@@ -183,7 +183,7 @@ export default function DiarioPage() {
                   <div>
                     <div
                       className="text-lg font-bold leading-none tabular-nums tracking-tight"
-                      style={{ color: isToday ? "var(--primary)" : "var(--foreground)" }}
+                      style={{ color: isToday ? "#A78BFA" : "#e0d6ff" }}
                     >
                       {day}
                     </div>
@@ -269,31 +269,33 @@ export default function DiarioPage() {
             <button
               type="button"
               onClick={() => { router.push("/diario/evolucao"); setFabOpen(false); }}
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-lg transition-colors hover:bg-white/90"
               style={{
-                background: "oklch(1 0 0 / .85)",
-                backdropFilter: "blur(12px)",
-                borderColor: "oklch(.5 .12 270 / .15)",
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "12px 16px", borderRadius: 16,
+                border: "1px solid rgba(167,139,250,0.25)",
+                background: "#1a1530", cursor: "pointer",
+                color: "#e0d6ff", boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
               }}
             >
-              <span className="text-sm font-medium whitespace-nowrap">Diário de Evolução</span>
-              <span className="size-9 rounded-full bg-primary/10 flex items-center justify-center">
-                <Sparkles className="size-4 text-primary" />
+              <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", color: "#e0d6ff" }}>Diário de Evolução</span>
+              <span style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(124,92,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Sparkles size={16} style={{ color: "#A78BFA" }} />
               </span>
             </button>
             <button
               type="button"
               onClick={() => { router.push("/diario/novo"); setFabOpen(false); }}
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-lg transition-colors hover:bg-white/90"
               style={{
-                background: "oklch(1 0 0 / .85)",
-                backdropFilter: "blur(12px)",
-                borderColor: "oklch(.5 .12 270 / .15)",
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "12px 16px", borderRadius: 16,
+                border: "1px solid rgba(167,139,250,0.25)",
+                background: "#1a1530", cursor: "pointer",
+                color: "#e0d6ff", boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
               }}
             >
-              <span className="text-sm font-medium whitespace-nowrap">Diário Livre</span>
-              <span className="size-9 rounded-full bg-primary/10 flex items-center justify-center">
-                <BookOpen className="size-4 text-primary" />
+              <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", color: "#e0d6ff" }}>Diário Livre</span>
+              <span style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(124,92,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <BookOpen size={16} style={{ color: "#A78BFA" }} />
               </span>
             </button>
           </>

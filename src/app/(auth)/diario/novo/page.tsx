@@ -7,15 +7,10 @@ import { toast } from "sonner";
 import { useTranslation } from "@/lib/useTranslation";
 import { getLocalDate } from "@/lib/utils";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
-import { ChevronLeft, ChevronDown, Plus, X, ArrowRight } from "lucide-react";
+import { ChevronLeft, ChevronDown, Plus, X, ArrowRight, Camera } from "lucide-react";
 
-const MOODS = [
-  { value: 1, emoji: "😔" },
-  { value: 2, emoji: "😕" },
-  { value: 3, emoji: "😐" },
-  { value: 4, emoji: "🙂" },
-  { value: 5, emoji: "😊" },
-];
+const MOODS = [1, 2, 3, 4, 5] as const;
+const MOOD_EMOJI: Record<number, string> = { 1: "😔", 2: "😕", 3: "😐", 4: "🙂", 5: "😊" };
 
 function formatLongDate(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
@@ -38,7 +33,7 @@ export default function NovoDiarioPage() {
   const dateInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedMoodEmoji = MOODS.find((m) => m.value === mood)?.emoji ?? "😶";
+  const selectedMoodEmoji = mood ? MOOD_EMOJI[mood] : "😶";
 
   const wordCount = useMemo(() => {
     const text = content.trim();
@@ -56,21 +51,14 @@ export default function NovoDiarioPage() {
   };
 
   const handleSave = async () => {
-    if (!content.trim()) {
-      toast.error(t("escreva_algo"));
-      return;
-    }
+    if (!content.trim()) { toast.error(t("escreva_algo")); return; }
     setSaving(true);
     const res = await fetch("/api/diary", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ date: entryDate, title: title.trim(), content: content.trim(), mood, photos }),
     });
-    if (!res.ok) {
-      toast.error(t("erro_salvar_entrada"));
-      setSaving(false);
-      return;
-    }
+    if (!res.ok) { toast.error(t("erro_salvar_entrada")); setSaving(false); return; }
     toast.success(t("entrada_salva"));
     router.push("/diario");
     router.refresh();
@@ -81,16 +69,13 @@ export default function NovoDiarioPage() {
       const compressed = await compressImage(file);
       const path = await uploadToCloud(compressed, "diary");
       setPhotos((prev) => [...prev, path]);
-    } catch {
-      toast.error("Erro ao processar imagem");
-    }
+    } catch { toast.error("Erro ao processar imagem"); }
   }, []);
 
   const removePhoto = useCallback((path: string) => {
     setPhotos((prev) => prev.filter((p) => p !== path));
   }, []);
 
-  // Prevent pasting HTML — only plain text
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain");
@@ -98,210 +83,150 @@ export default function NovoDiarioPage() {
   };
 
   return (
-    <div
-      className="relative min-h-screen overflow-x-hidden pb-28"
-      style={{
-        background: `
-          radial-gradient(ellipse 80% 40% at 50% 0%, oklch(.95 .04 80 / .45) 0%, transparent 60%),
-          linear-gradient(180deg, oklch(.99 .003 80) 0%, oklch(.96 .015 80) 100%)
-        `,
-      }}
-    >
+    <div style={{ minHeight: "100dvh", background: "#0F0F14", paddingBottom: 100 }}>
       {/* Floating back */}
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="absolute top-4 left-4 z-10 w-9 h-9 rounded-full bg-white/55 backdrop-blur-md border-0 flex items-center justify-center shadow-sm cursor-pointer"
-        style={{ color: "var(--foreground)" }}
-        aria-label="Voltar"
-      >
-        <ChevronLeft className="w-4 h-4" />
+      <button type="button" onClick={() => router.back()}
+        style={{
+          position: "absolute", top: 16, left: 16, zIndex: 10,
+          width: 36, height: 36, borderRadius: "50%",
+          background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer", color: "#A78BFA", backdropFilter: "blur(8px)",
+        }}>
+        <ChevronLeft size={18} />
       </button>
 
       {/* Floating mood picker */}
-      <div className="absolute top-4 right-4 z-10">
-        <button
-          type="button"
-          onClick={() => setMoodOpen(!moodOpen)}
-          className="h-9 pl-3.5 pr-3 rounded-full bg-white/55 backdrop-blur-md border-0 cursor-pointer flex items-center gap-1 shadow-sm"
-          style={{ color: "var(--foreground)" }}
-        >
-          <span className="text-lg leading-none">{selectedMoodEmoji}</span>
-          <ChevronDown
-            className={`w-3 h-3 text-muted-foreground transition-transform ${moodOpen ? "rotate-180" : ""}`}
-          />
+      <div style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}>
+        <button type="button" onClick={() => setMoodOpen(!moodOpen)}
+          style={{
+            height: 36, paddingInline: 14, borderRadius: 9999,
+            background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)",
+            cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+            color: "#e0d6ff", backdropFilter: "blur(8px)",
+          }}>
+          <span style={{ fontSize: 18 }}>{selectedMoodEmoji}</span>
+          <ChevronDown size={12} style={{ color: "#9e96b5", transform: moodOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
         </button>
-
         {moodOpen && (
-          <div
-            className="absolute top-11 right-0 rounded-2xl p-1.5 flex gap-0.5 shadow-xl border"
-            style={{
-              background: "oklch(1 0 0 / .9)",
-              backdropFilter: "blur(16px)",
-              borderColor: "oklch(.5 .12 160 / .15)",
-            }}
-          >
+          <div style={{
+            position: "absolute", top: 44, right: 0, borderRadius: 16, padding: "6px 4px",
+            display: "flex", gap: 2, background: "#1a1530",
+            border: "1px solid rgba(167,139,250,0.25)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+          }}>
             {MOODS.map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                onClick={() => { setMood(m.value); setMoodOpen(false); }}
-                className="w-10 h-10 rounded-full border-0 cursor-pointer text-xl transition-colors"
+              <button key={m} type="button" onClick={() => { setMood(m); setMoodOpen(false); }}
                 style={{
-                  background: mood === m.value ? "oklch(.5 .12 160 / .15)" : "transparent",
-                  fontFamily: "inherit",
-                }}
-              >
-                {m.emoji}
+                  width: 40, height: 40, borderRadius: "50%", border: 0, cursor: "pointer",
+                  fontSize: 20, background: mood === m ? "rgba(124,92,255,0.2)" : "transparent",
+                }}>
+                {MOOD_EMOJI[m]}
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* Date header — letter style */}
-      <div className="px-8 pt-16 pb-2">
-        <div className="relative inline-flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={openDatePicker}
-            className="bg-transparent border-0 p-0 cursor-pointer inline-flex items-center gap-1.5"
-          >
-            <p className="m-0 font-mono text-[11px] text-muted-foreground tracking-wider uppercase">
-              {formatLongDate(entryDate)}
-            </p>
-            <ChevronDown className="w-3 h-3 text-muted-foreground" />
-          </button>
-          <input
-            type="date"
-            ref={dateInputRef}
-            value={entryDate}
-            onChange={(e) => setEntryDate(e.target.value)}
-            className="absolute opacity-0 pointer-events-none w-0 h-0"
-          />
-        </div>
+      {/* Date header */}
+      <div style={{ padding: "72px 24px 8px" }}>
+        <button type="button" onClick={openDatePicker}
+          style={{
+            background: "none", border: 0, cursor: "pointer",
+            display: "inline-flex", alignItems: "center", gap: 6,
+            fontFamily: "inherit", padding: 0,
+          }}>
+          <span style={{
+            fontSize: 11, fontFamily: "monospace", color: "#9e96b5",
+            letterSpacing: ".06em", textTransform: "uppercase",
+          }}>
+            {formatLongDate(entryDate)}
+          </span>
+          <ChevronDown size={12} style={{ color: "#9e96b5" }} />
+        </button>
+        <input type="date" ref={dateInputRef} value={entryDate}
+          onChange={(e) => setEntryDate(e.target.value)}
+          style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0 }} />
       </div>
 
-      {/* Title — contentEditable, no border */}
-      <div className="px-8 pb-4">
+      {/* Title */}
+      <div style={{ padding: "0 24px 12px" }}>
         <div
-          contentEditable
-          suppressContentEditableWarning
-          role="textbox"
-          aria-label="Título"
+          contentEditable suppressContentEditableWarning role="textbox" aria-label="Título"
           data-placeholder="Título (opcional)"
           onInput={(e) => setTitle((e.target as HTMLElement).innerText)}
           onPaste={handlePaste}
-          className="outline-none text-[28px] font-bold tracking-tight leading-[1.15] min-h-[1.15em]"
-          style={{ color: "var(--foreground)" }}
+          style={{
+            outline: "none", fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em",
+            lineHeight: 1.15, minHeight: "1.15em", color: "#e0d6ff",
+          }}
         />
       </div>
 
-      {/* Content — flowing contentEditable */}
-      <div className="px-8">
+      {/* Content */}
+      <div style={{ padding: "0 24px" }}>
         <div
-          contentEditable
-          suppressContentEditableWarning
-          role="textbox"
-          aria-multiline="true"
-          aria-label="Conteúdo do diário"
-          data-placeholder="Escreva o que estiver passando..."
+          contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true"
+          aria-label="Conteúdo do diário" data-placeholder="Escreva o que estiver passando..."
           onInput={(e) => setContent((e.target as HTMLElement).innerText)}
           onPaste={handlePaste}
-          className="outline-none text-base leading-[1.65] tracking-tight min-h-[50vh]"
-          style={{ color: "var(--foreground)" }}
+          style={{
+            outline: "none", fontSize: 15, lineHeight: 1.7, letterSpacing: "-0.005em",
+            minHeight: "40vh", color: "#e0d6ff",
+          }}
         />
       </div>
 
       {/* Photo strip */}
-      <div className="px-8 pt-6">
-        <div className="flex gap-2 items-center flex-wrap">
+      <div style={{ padding: "20px 24px 0" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {photos.map((p) => (
-            <div
-              key={p}
-              className="relative w-[72px] h-[72px] rounded-xl overflow-hidden border-[1.5px] border-white flex-none"
-              style={{ boxShadow: "0 2px 8px -2px oklch(.25 .02 160 / .15)" }}
-            >
-              <img src={photoUrl(p)!} alt="" className="w-full h-full object-cover" />
-              <button
-                type="button"
-                onClick={() => removePhoto(p)}
-                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/55 text-white flex items-center justify-center"
-              >
-                <X className="w-3 h-3" />
+            <div key={p} style={{
+              width: 72, height: 72, borderRadius: 14, overflow: "hidden",
+              border: "2px solid rgba(167,139,250,0.3)", flexShrink: 0, position: "relative",
+            }}>
+              <img src={photoUrl(p)!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <button type="button" onClick={() => removePhoto(p)}
+                style={{
+                  position: "absolute", top: 4, right: 4, width: 22, height: 22,
+                  borderRadius: "50%", background: "rgba(0,0,0,0.6)", border: 0,
+                  color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer",
+                }}>
+                <X size={12} />
               </button>
             </div>
           ))}
-          <button
-            type="button"
-            onClick={() => photoInputRef.current?.click()}
-            className="w-[72px] h-[72px] rounded-xl border-[1.5px] border-dashed flex-none flex items-center justify-center cursor-pointer transition-colors hover:bg-white/60"
+          <button type="button" onClick={() => photoInputRef.current?.click()}
             style={{
-              borderColor: "oklch(.5 .12 160 / .3)",
-              background: "oklch(1 0 0 / .4)",
-              color: "oklch(.5 .12 160 / .7)",
-            }}
-          >
-            <Plus className="w-5 h-5" />
+              width: 72, height: 72, borderRadius: 14,
+              border: "1.5px dashed rgba(167,139,250,0.3)",
+              background: "rgba(124,92,255,0.06)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", color: "#A78BFA",
+            }}>
+            <Plus size={22} />
           </button>
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files?.[0]) handlePhotoAdd(e.target.files[0]);
-              e.target.value = "";
-            }}
-          />
+          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }}
+            onChange={(e) => { if (e.target.files?.[0]) handlePhotoAdd(e.target.files[0]); e.target.value = ""; }} />
         </div>
       </div>
 
-      {/* Maya pill — só depois de escrever */}
-      {content.trim().length > 30 && (
-        <div className="px-8 pt-8">
-          <button
-            type="button"
-            onClick={() => router.push(`/insights?context=${entryDate}`)}
-            className="inline-flex items-center gap-2 border rounded-full cursor-pointer transition-colors hover:bg-white/80"
-            style={{
-              background: "oklch(1 0 0 / .6)",
-              backdropFilter: "blur(8px)",
-              borderColor: "oklch(.5 .12 160 / .2)",
-              padding: "8px 14px 8px 8px",
-              fontSize: 12.5,
-              fontWeight: 500,
-              color: "var(--foreground)",
-              letterSpacing: "-0.005em",
-            }}
-          >
-            <span
-              className="w-[22px] h-[22px] rounded-full overflow-hidden border border-white flex-none"
-            >
-              <img src="/Maya.png" alt="" className="w-full h-full object-cover" />
-            </span>
-            Conversar sobre isso com Maya
-            <ArrowRight className="w-3 h-3 text-muted-foreground" />
-          </button>
-        </div>
-      )}
-
-      {/* Bottom bar — fixed, above bottom nav */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-[60] px-4 py-3 flex items-center justify-between"
-        style={{
-          background: "linear-gradient(180deg, transparent 0%, oklch(.99 .003 80 / .88) 28%, oklch(.99 .003 80) 100%)",
-        }}
-      >
-        <span className="text-[11px] text-muted-foreground font-mono">
+      {/* Bottom bar */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60,
+        padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
+        background: "#0F0F14", borderTop: "1px solid rgba(167,139,250,0.1)",
+      }}>
+        <span style={{ fontSize: 11, color: "#9e96b5", fontFamily: "monospace" }}>
           {wordCount > 0 ? `${wordCount} ${wordCount === 1 ? "palavra" : "palavras"}` : "Comece a escrever"}
         </span>
-        <Button
-          onClick={handleSave}
-          disabled={saving || !content.trim()}
-          className="h-10 px-5 rounded-xl text-[13px] font-semibold"
-          style={{ boxShadow: "0 4px 12px -4px oklch(.5 .12 160 / .45)" }}
-        >
+        <Button onClick={handleSave} disabled={saving || !content.trim()}
+          style={{
+            height: 40, paddingInline: 20, borderRadius: 12,
+            background: "#7C5CFF", border: 0, color: "#fff",
+            fontSize: 13, fontWeight: 700, cursor: "pointer",
+            opacity: (saving || !content.trim()) ? 0.5 : 1,
+          }}>
           {saving ? "Salvando…" : "Concluir"}
         </Button>
       </div>
