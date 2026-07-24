@@ -9,6 +9,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { photoUrl } from "@/lib/photo-storage";
 import { ArrowRight, Pencil } from "lucide-react";
 import { MayaAvatar } from "@/components/MayaAvatar";
+import { getMoodLabel, getMoodById } from "@/lib/checkin-moods";
 import type { CheckIn, WeeklyTask } from "@/types";
 
 // ── Constants ───────────────────────────────────────────────────
@@ -59,6 +60,11 @@ const CAROUSEL_SLIDES = [
 const NEGATIVE_MOODS = new Set([
   "ansiosa", "triste", "cansada", "sobrecarregada", "irritada", "frustrada",
 ]);
+
+function formatMood(moodId: string, gender: string): string {
+  const chip = getMoodById(moodId);
+  return chip ? getMoodLabel(chip, gender) : moodId;
+}
 
 // ── Helpers ─────────────────────────────────────────────────────
 
@@ -197,6 +203,7 @@ export default function DashboardPage() {
   const [porquePhoto, setPorquePhoto] = useState<string | null>(null);
   const [kcalGoal] = useState(2200);
   const [userName, setUserName] = useState("");
+  const [userGender, setUserGender] = useState("");
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [todayTasks, setTodayTasks] = useState<WeeklyTask[]>([]);
   const [yesterdaySleep, setYesterdaySleep] = useState<boolean | null>(null);
@@ -248,6 +255,8 @@ export default function DashboardPage() {
         }
 
         if (profileData.name) setUserName(profileData.name);
+        if (profileData.gender) setUserGender(profileData.gender);
+        else if (prefsData.context?.gender) setUserGender(prefsData.context.gender as string);
         if (profileData.porques?.length > 0) {
           setPorques(profileData.porques);
           const pq = profileData.porques[0];
@@ -356,7 +365,7 @@ export default function DashboardPage() {
     }
 
     if (lastMood && NEGATIVE_MOODS.has(lastMood)) {
-      return `Sei que "${lastMood}" não é fácil, ${firstName}. Quer conversar sobre o que está pesando?`;
+      return `Sei que "${formatMood(lastMood, userGender)}" não é fácil, ${firstName}. Quer conversar sobre o que está pesando?`;
     }
 
     return mayaNudgeText || `Bom te ver, ${firstName}. Como está sendo seu dia?`;
@@ -625,7 +634,7 @@ export default function DashboardPage() {
                           color: moodNeg ? "#FF5C5C" : "#A78BFA",
                         }}
                       >
-                        {moodTag}{extraMoods > 0 ? ` +${extraMoods}` : ""}
+                        {formatMood(moodTag, userGender)}{extraMoods > 0 ? ` +${extraMoods}` : ""}
                       </span>
                     )}
                     <span className="text-[11px] truncate" style={{ color: "oklch(0.55 0.03 270)" }}>
