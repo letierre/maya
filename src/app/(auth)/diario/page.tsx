@@ -139,7 +139,7 @@ export default function DiarioPage() {
         <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Suas memórias</p>
         <h1 className="mt-1 text-[36px] font-bold tracking-tight leading-[1.05]">Diário</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          {entries.length} {entries.length === 1 ? "entrada" : "entradas"}
+          {entries.length} {entries.length === 1 ? "registro" : "registros"}
         </p>
       </div>
 
@@ -180,40 +180,77 @@ export default function DiarioPage() {
       {/* Timeline — accordion months */}
       {monthGroups.map((group, gi) => {
         const isOpen = expanded.has(group.key);
-        const firstEntryOfYear = gi === 0 || monthGroups[gi - 1].year !== group.year;
+        const firstEntryOfYear = years.length > 1 && (gi === 0 || monthGroups[gi - 1].year !== group.year);
+
+        // Build day-dot preview strip for collapsed state
+        const dayDots = group.entries.slice(0, 12).map((e) => ({
+          date: e.date,
+          mood: e.mood ? MOOD_EMOJIS[e.mood] : null,
+          hasContent: !!(e.title || e.content),
+        }));
 
         return (
           <div key={group.key} id={`diary-year-${group.year}`}>
-            {/* Year divider */}
+            {/* Year divider — only when multiple years exist */}
             {firstEntryOfYear && (
-              <div className="px-6 pt-8 pb-1" style={{ opacity: 0.5 }}>
+              <div className="px-6 pt-8 pb-1">
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "#5EEAD4" }}>
                   {group.year}
                 </span>
               </div>
             )}
 
-            {/* Month header — clickable */}
+            {/* Month header — clickable card */}
             <button
               type="button"
               onClick={() => toggleMonth(group.key)}
-              className="w-full text-left px-6 py-3.5 flex items-center justify-between hover:bg-white/[0.03] transition-colors"
-              style={{ borderTop: gi === 0 ? "none" : "1px solid rgba(167,139,250,0.08)" }}
+              className="w-full text-left transition-all"
+              style={{
+                margin: "0 12px",
+                marginTop: gi === 0 ? 20 : 4,
+                padding: "14px 16px",
+                borderRadius: 16,
+                border: isOpen ? "1px solid rgba(167,139,250,0.3)" : "1px solid rgba(167,139,250,0.1)",
+                background: isOpen ? "rgba(124,92,255,0.06)" : "#1a1530",
+                cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+              }}
             >
-              <div className="flex items-baseline gap-3">
-                <h2 className="text-[14px] font-bold m-0" style={{ color: "#e0d6ff" }}>
-                  {group.label}
-                </h2>
-                <span className="text-[11px] font-medium" style={{ color: "#9e96b5" }}>
-                  {group.entries.length} {group.entries.length === 1 ? "entrada" : "entradas"}
-                </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "#e0d6ff", margin: 0 }}>
+                    {group.label}
+                  </h2>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: "#9e96b5" }}>
+                    {group.entries.length} {group.entries.length === 1 ? "registro" : "registros"}
+                  </span>
+                </div>
+                {/* Day-dot preview — only when collapsed */}
+                {!isOpen && dayDots.length > 0 && (
+                  <div style={{ display: "flex", gap: 3, marginTop: 8, alignItems: "center" }}>
+                    {dayDots.map((dot) => (
+                      <span key={dot.date}
+                        style={{
+                          width: 8, height: 8, borderRadius: "50%",
+                          background: dot.mood ? "rgba(124,92,255,0.4)" : "rgba(167,139,250,0.15)",
+                          border: dot.hasContent ? "1px solid rgba(167,139,250,0.3)" : "none",
+                        }}
+                        title={dot.date}
+                      />
+                    ))}
+                    {group.entries.length > 12 && (
+                      <span style={{ fontSize: 9, color: "#9e96b5", marginLeft: 2 }}>+{group.entries.length - 12}</span>
+                    )}
+                  </div>
+                )}
               </div>
               <ChevronDown
-                size={16}
+                size={18}
                 style={{
-                  color: "#9e96b5",
+                  color: isOpen ? "#A78BFA" : "#9e96b5",
                   transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
                   transition: "transform 0.2s ease",
+                  flexShrink: 0, marginLeft: 8,
                 }}
               />
             </button>
