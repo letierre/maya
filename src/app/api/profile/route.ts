@@ -74,6 +74,11 @@ export async function GET() {
 
   try {
     const admin = getSupabaseAdmin();
+
+    // Fetch fresh user data from admin API (bypasses stale JWT)
+    const { data: freshUser, error: userError } = await admin.auth.admin.getUserById(user.id);
+    const freshMetadata = freshUser?.user?.user_metadata || {};
+
     const { data: prefs } = await admin
       .from("user_preferences")
       .select("context")
@@ -84,7 +89,7 @@ export async function GET() {
 
     // Generate signed URL for avatar if exists
     let avatarUrl: string | null = null;
-    const rawAvatar = user.user_metadata?.avatar_url;
+    const rawAvatar = freshMetadata.avatar_url || user.user_metadata?.avatar_url;
     if (rawAvatar && typeof rawAvatar === "string") {
       try {
         // Extract bucket and path from full Supabase URL or relative path
@@ -110,7 +115,7 @@ export async function GET() {
 
     return NextResponse.json({
       email: user.email,
-      name: user.user_metadata?.name || "",
+      name: freshMetadata.name || user.user_metadata?.name || "",
       avatar_url: avatarUrl,
       created_at: user.created_at || null,
       gender: ctx.gender || "nao_dizer",
