@@ -327,22 +327,34 @@ export default function PerfilPage() {
                 style={{
                   width: 88, height: 88, borderRadius: "50%",
                   background: avatarSrc ? `url(${avatarSrc}) center/cover no-repeat` : "rgba(124,92,255,0.15)",
-                  overflow: "hidden", cursor: "pointer",
+                  overflow: "hidden", cursor: uploading ? "default" : "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  border: "3px solid #7C5CFF",
-                  boxShadow: "0 0 0 4px rgba(124,92,255,0.12)",
+                  border: `3px solid ${uploading ? "#A78BFA" : "#7C5CFF"}`,
+                  boxShadow: uploading
+                    ? "0 0 0 4px rgba(124,92,255,0.25), 0 0 20px rgba(124,92,255,0.3)"
+                    : "0 0 0 4px rgba(124,92,255,0.12)",
                   position: "relative",
+                  opacity: uploading ? 0.7 : 1,
+                  transition: "all 0.3s ease",
                 }}
               >
-                {!avatarSrc && (
+                {!uploading && !avatarSrc && (
                   <span style={{ fontSize: 28, fontWeight: 700, color: "#A78BFA" }}>
                     {initials}
                   </span>
                 )}
                 {uploading && (
-                  <span style={{ position: "absolute", fontSize: 11, color: "#fff", background: "rgba(0,0,0,0.5)", padding: "2px 8px", borderRadius: 8 }}>
-                    ...
-                  </span>
+                  <div style={{
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                  }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: "50%",
+                      border: "2.5px solid rgba(167,139,250,0.2)",
+                      borderTopColor: "#A78BFA",
+                      animation: "spin 0.8s linear infinite",
+                    }} />
+                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                  </div>
                 )}
               </div>
               <input
