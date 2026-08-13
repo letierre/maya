@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getTimezoneOffset } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -15,6 +16,19 @@ export async function GET(req: NextRequest) {
   if (id) {
     const { data } = await admin.from("running_sessions").select("*").eq("id", id).eq("user_id", session.user.id).single();
     return NextResponse.json(data || null);
+  }
+
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+  if (from || to) {
+    const tz = searchParams.get("tz") || "America/Sao_Paulo";
+    let query = admin.from("running_sessions").select("*").eq("user_id", session.user.id);
+    if (from) query = query.gte("start_time", `${from}T00:00:00${getTimezoneOffset(tz, from)}`);
+    if (to) query = query.lte("start_time", `${to}T23:59:59${getTimezoneOffset(tz, to)}`);
+    query = query.order("start_time", { ascending: false }).limit(500);
+    const { data, error } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(data || []);
   }
 
   const { data, error } = await admin.from("running_sessions").select("*").eq("user_id", session.user.id).order("start_time", { ascending: false }).limit(limit);

@@ -53,6 +53,24 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(data || []);
     }
 
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    if (from || to) {
+      // Refeições de um período — respeita o fuso horário do usuário
+      const tz = searchParams.get("tz") || "America/Sao_Paulo";
+      let query = admin
+        .from("meals")
+        .select("*")
+        .eq("user_id", user.id);
+      if (from) query = query.gte("data_hora", `${from}T00:00:00${getTimezoneOffset(tz, from)}`);
+      if (to) query = query.lte("data_hora", `${to}T23:59:59${getTimezoneOffset(tz, to)}`);
+      query = query.order("data_hora", { ascending: false }).limit(500);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return NextResponse.json(data || []);
+    }
+
     // Favorited meals
     const favorited = searchParams.get("favorited");
     if (favorited === "true") {

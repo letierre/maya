@@ -3,7 +3,16 @@
 import { useEffect, useState, useMemo } from "react";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { MOOD_CHIPS } from "@/lib/checkin-moods";
+import { sleepScore } from "@/lib/sleep-utils";
 import type { CheckIn, SleepLog, FinancialTransaction, AgendaItem } from "@/types";
+import { MetasResumo } from "@/components/analise/MetasResumo";
+import { OKRProgress } from "@/components/analise/OKRProgress";
+import { AreaBalance } from "@/components/analise/AreaBalance";
+import { SemanalTrend } from "@/components/analise/SemanalTrend";
+import { ConquistasGrid } from "@/components/analise/ConquistasGrid";
+import { NutricaoResumo } from "@/components/analise/NutricaoResumo";
+import { MovimentoResumo } from "@/components/analise/MovimentoResumo";
+import { LeituraResumo } from "@/components/analise/LeituraResumo";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -153,14 +162,11 @@ export default function AnalisePage() {
       : null;
     const sonoDisplay = sleepHrs != null ? Math.round(sleepHrs * 10) / 10 : null; // hours with 1 decimal
 
-    const prevSleepDurations = prevSleep
-      .map((s) => s.duration_min)
-      .filter((d): d is number => d != null && d > 0);
-    const prevSleepHrs = prevSleepDurations.length > 0
-      ? prevSleepDurations.reduce((a, b) => a + b, 0) / prevSleepDurations.length / 60
-      : null;
-    const sonoPct = sleepHrs != null ? Math.round(sleepHrs / 8 * 100) : (sleptWellPct ?? 0);
-    const prevSonoPct = prevSleepHrs != null ? Math.round(prevSleepHrs / 8 * 100) : 0;
+    // Score de sono 0–100 (duração + qualidade + interrupções + sonhos)
+    const sonoScores = periodSleep.map((s) => sleepScore(s));
+    const sonoPct = sonoScores.length > 0 ? Math.round(avg(sonoScores) ?? 0) : (sleptWellPct ?? 0);
+    const prevSonoScores = prevSleep.map((s) => sleepScore(s));
+    const prevSonoPct = prevSonoScores.length > 0 ? Math.round(avg(prevSonoScores) ?? 0) : 0;
     const sonoTrend = prevSonoPct > 0 ? Math.round(((sonoPct - prevSonoPct) / prevSonoPct) * 100) : 0;
 
     // ── humor (uses chip valence, works for both gender forms) ──
@@ -475,6 +481,10 @@ export default function AnalisePage() {
 
   const tabLabel = tab === "semana" ? "esta semana" : tab === "mes" ? "este mês" : "este trimestre";
 
+  const exercisePct = periodCI.length > 0
+    ? Math.round((periodCI.filter((c) => c.exercise_walk === true).length / periodCI.length) * 100)
+    : null;
+
   return (
     <div style={{ minHeight: "100dvh", background: "oklch(0.12 0.012 270)", paddingBottom: 110 }}>
       <div style={{ padding: "22px 20px 4px" }}>
@@ -695,6 +705,11 @@ export default function AnalisePage() {
         </div>
       </div>
 
+      {/* Bem-estar complementar: nutrição, movimento, leitura */}
+      <NutricaoResumo from={daysAgo(periodDays - 1)} to={daysAgo(0)} />
+      <MovimentoResumo from={daysAgo(periodDays - 1)} to={daysAgo(0)} exercisePct={exercisePct} />
+      <LeituraResumo from={daysAgo(periodDays - 1)} to={daysAgo(0)} />
+
       {/* Mood timeline */}
       {moodTimeline.some((m) => m.dominant != null) && (
         <div style={{ padding: "4px 16px 0" }}>
@@ -818,6 +833,13 @@ export default function AnalisePage() {
           </div>
         </div>
       )}
+
+      {/* Crescimento pessoal */}
+      <MetasResumo />
+      <OKRProgress />
+      <AreaBalance />
+      <SemanalTrend />
+      <ConquistasGrid />
 
       {/* Empty state when no data at all */}
       {checkIns.length === 0 && (
