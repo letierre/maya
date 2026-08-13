@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Home, BarChart3, CalendarDays, User, BookOpen } from "lucide-react";
+import { Home, BarChart3, CalendarDays, User } from "lucide-react";
 import { MayaAvatar } from "@/components/MayaAvatar";
 
 const NAV_ITEMS = [
@@ -11,7 +11,6 @@ const NAV_ITEMS = [
   { href: "/insights",     icon: null,        label: "Maya",   slug: "insights" },
   // Comunidade oculta temporariamente — reativar quando houver usuários ativos suficientes
   // { href: "/comunidade",   icon: Heart,       label: "Comunidade", slug: "comunidade" },
-  { href: "/leitura",     icon: BookOpen,    label: "Leitura", slug: "leitura" },
   { href: "/analise",      icon: BarChart3,   label: "Análise", slug: "analise" },
   { href: "/agenda",       icon: CalendarDays, label: "Plano",  slug: "agenda" },
   { href: "/perfil",       icon: User,        label: "Perfil",  slug: "perfil" },
@@ -54,7 +53,6 @@ export function BottomNav() {
     if (slug === "agenda") return pathname.startsWith("/agenda");
     if (slug === "perfil") return pathname.startsWith("/perfil");
     if (slug === "comunidade") return pathname.startsWith("/comunidade");
-    if (slug === "leitura") return pathname.startsWith("/leitura");
     return false;
   };
 
