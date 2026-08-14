@@ -237,56 +237,6 @@ export default function AnalisePage() {
     };
   }, [periodCI, prevCI, periodSleep, prevSleep, periodFin, prevFin, periodDays]);
 
-  // ── maya insight ──────────────────────────────────────────────────────────
-
-  const mayaInsight = useMemo(() => {
-    if (checkIns.length < 5) return null;
-
-    // Split all check-ins into good-sleep and bad-sleep days
-    const goodSleepCI = checkIns.filter((c) => c.slept_well === true);
-    const badSleepCI = checkIns.filter((c) => c.slept_well === false);
-
-    if (goodSleepCI.length < 2 || badSleepCI.length < 2) {
-      // Not enough data to compare — fall back to a simpler insight
-      const hasSleepLogs = sleepLogs.length > 0;
-      if (hasSleepLogs) {
-        const avgHrs = sleepLogs
-          .map((s) => s.duration_min)
-          .filter((d): d is number => d != null)
-          .reduce((a, b) => a + b, 0) / sleepLogs.filter((s) => s.duration_min != null).length / 60;
-        return {
-          title: `Você dorme em média ${avgHrs.toFixed(1)}h por noite.`,
-          detail: "Acompanhar o sono é o primeiro passo para entender seu bem-estar.",
-          pct: null,
-        };
-      }
-      return {
-        title: "Continue registrando seu dia para eu encontrar padrões.",
-        detail: "Quanto mais check-ins você fizer, mais insights como este aparecerão.",
-        pct: null,
-      };
-    }
-
-    // Compute wellness per group
-    const goodAvg = goodSleepCI.reduce((s, c) => s + wellnessScore(c, habitKeys), 0) / goodSleepCI.length;
-    const badAvg = badSleepCI.reduce((s, c) => s + wellnessScore(c, habitKeys), 0) / badSleepCI.length;
-    const diff = Math.round(((goodAvg - badAvg) / Math.max(badAvg, 1)) * 100);
-
-    if (diff <= 5) {
-      return {
-        title: "Seu bem-estar não varia muito com o sono.",
-        detail: "Outros fatores podem estar impactando mais. Vamos continuar observando.",
-        pct: null,
-      };
-    }
-
-    return {
-      title: `Seu bem-estar melhora ${diff}% quando você dorme bem.`,
-      detail: `Baseado em ${goodSleepCI.length + badSleepCI.length} check-ins. O sono é um dos fatores que mais impactam sua qualidade de vida.`,
-      pct: diff,
-    };
-  }, [checkIns, sleepLogs, habitKeys]);
-
   // ── impact factors ────────────────────────────────────────────────────────
 
   const impactFactors = useMemo(() => {
@@ -673,30 +623,6 @@ export default function AnalisePage() {
                 ))}
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Maya detectou */}
-      {mayaInsight && (
-        <div style={{ padding: "0 16px", marginTop: 8 }}>
-          <div style={{
-            background: "oklch(0.16 0.012 270)",
-            border: "1px solid oklch(0.28 0.02 270 / 0.5)",
-            borderRadius: 18, padding: "16px 18px",
-          }}>
-            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "#A78BFA" }}>
-              💡 Maya detectou
-            </p>
-            <p style={{ margin: "6px 0 4px", fontSize: 15, fontWeight: 700, color: "#e0d6ff", lineHeight: 1.3 }}>
-              {mayaInsight.title}
-              {mayaInsight.pct != null && (
-                <span style={{ color: "#22D18B", marginLeft: 4 }}>↑{mayaInsight.pct}%</span>
-              )}
-            </p>
-            <p style={{ margin: 0, fontSize: 12, color: "oklch(0.55 0.03 270)", lineHeight: 1.4 }}>
-              {mayaInsight.detail}
-            </p>
           </div>
         </div>
       )}
