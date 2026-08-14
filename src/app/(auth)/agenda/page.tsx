@@ -1549,20 +1549,32 @@ function ListView({ allWeekTasks, compromissos, selectedDate }: { allWeekTasks: 
                   onClick={async (e) => {
                     e.stopPropagation();
                     const todayDow = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
-                    // Get or create current week's plan, then move task
-                    const weekRes = await fetch("/api/weekly-plans", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ main_focus: "", week_start: getCurrentWeekMonday() }),
-                    });
-                    if (weekRes.ok) {
-                      const plan = await weekRes.json();
+                    const weekStart = getCurrentWeekMonday();
+                    // Get current week's plan; create only if missing
+                    let planId: string | null = null;
+                    const getRes = await fetch(`/api/weekly-plans?week=${weekStart}`);
+                    if (getRes.ok) {
+                      const data = await getRes.json();
+                      planId = data.current?.id ?? null;
+                    }
+                    if (!planId) {
+                      const createRes = await fetch("/api/weekly-plans", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ week_start: weekStart }),
+                      });
+                      if (createRes.ok) {
+                        const plan = await createRes.json();
+                        planId = plan.id;
+                      }
+                    }
+                    if (planId) {
                       await fetch(`/api/weekly-plans/tasks/${t.id}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ day_of_week: todayDow, weekly_plan_id: plan.id }),
+                        body: JSON.stringify({ day_of_week: todayDow, weekly_plan_id: planId }),
                       });
-                      }
+                    }
                   }}
                   title="Mover para esta semana"
                   style={{ padding: "2px 6px", borderRadius: 6, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(124,92,255,0.06)", color: "#A78BFA", fontSize: 8, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0, whiteSpace: "nowrap" }}>

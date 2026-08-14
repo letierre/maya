@@ -57,11 +57,23 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { main_focus, main_focus_2, main_focus_3, linked_goal_id, focus_goal_ids, week_start } = body;
 
-  // At least one of main_focus, main_focus_2, main_focus_3 must be provided
-  if (!main_focus && !main_focus_2 && !main_focus_3) return NextResponse.json({ error: "Foco principal obrigatório" }, { status: 400 });
-
   const admin = getSupabaseAdmin();
   const weekStart = week_start || getWeekMondayDate();
+
+  // Fetch existing plan so we only overwrite fields explicitly provided.
+  // This lets callers "ensure a plan exists" (empty focus) or set a single
+  // stone without wiping the others.
+  const { data: existing } = await admin
+    .from("weekly_plans")
+    .select("main_focus, main_focus_2, main_focus_3, linked_goal_id")
+    .eq("user_id", session.user.id)
+    .eq("week_start", weekStart)
+    .maybeSingle();
+
+  const finalMainFocus   = main_focus   !== undefined ? main_focus              : (existing?.main_focus ?? "");
+  const finalMainFocus2  = main_focus_2 !== undefined ? (main_focus_2 || null)  : (existing?.main_focus_2 ?? null);
+  const finalMainFocus3  = main_focus_3 !== undefined ? (main_focus_3 || null)  : (existing?.main_focus_3 ?? null);
+  const finalLinkedGoal  = linked_goal_id !== undefined ? (linked_goal_id || null) : (existing?.linked_goal_id ?? null);
 
   const { data: plan, error } = await admin
     .from("weekly_plans")
@@ -69,10 +81,10 @@ export async function POST(req: Request) {
       {
         user_id: session.user.id,
         week_start: weekStart,
-        main_focus,
-        main_focus_2: main_focus_2 || null,
-        main_focus_3: main_focus_3 || null,
-        linked_goal_id: linked_goal_id || null,
+        main_focus: finalMainFocus,
+        main_focus_2: finalMainFocus2,
+        main_focus_3: finalMainFocus3,
+        linked_goal_id: finalLinkedGoal,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id,week_start" }
@@ -82,11 +94,14 @@ export async function POST(req: Request) {
 
   if (error || !plan) return NextResponse.json({ error: error?.message }, { status: 500 });
 
-  await admin.from("weekly_focus_goals").delete().eq("weekly_plan_id", plan.id);
-  if (focus_goal_ids?.length) {
-    await admin.from("weekly_focus_goals").insert(
-      focus_goal_ids.map((gid: string) => ({ weekly_plan_id: plan.id, goal_id: gid }))
-    );
+  // Only touch focus goals when explicitly provided (avoid wiping existing links)
+  if (focus_goal_ids !== undefined) {
+    await admin.from("weekly_focus_goals").delete().eq("weekly_plan_id", plan.id);
+    if (focus_goal_ids?.length) {
+      await admin.from("weekly_focus_goals").insert(
+        focus_goal_ids.map((gid: string) => ({ weekly_plan_id: plan.id, goal_id: gid }))
+      );
+    }
   }
 
   return NextResponse.json(plan, { status: 201 });
