@@ -80,8 +80,10 @@ export default function AnalisePage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"semana" | "mes" | "trimestre">("semana");
   const [hub, setHub] = useState<"bemestar" | "crescimento">("bemestar");
+  const [crescTab, setCrescTab] = useState<"semana" | "mes" | "trimestre">("trimestre");
 
   const periodDays = { semana: 7, mes: 30, trimestre: 90 }[tab];
+  const crescPeriodDays = { semana: 7, mes: 30, trimestre: 90 }[crescTab];
 
   useEffect(() => {
     Promise.all([
@@ -481,6 +483,9 @@ export default function AnalisePage() {
   ];
 
   const tabLabel = tab === "semana" ? "esta semana" : tab === "mes" ? "este mês" : "este trimestre";
+  const crescTabLabel = crescTab === "semana" ? "esta semana" : crescTab === "mes" ? "este mês" : "este trimestre";
+  const crescFrom = daysAgo(crescPeriodDays - 1);
+  const crescTo = daysAgo(0);
 
   const exercisePct = periodCI.length > 0
     ? Math.round((periodCI.filter((c) => c.exercise_walk === true).length / periodCI.length) * 100)
@@ -495,7 +500,7 @@ export default function AnalisePage() {
         <p style={{ margin: "2px 0 0", fontSize: 13, color: "oklch(0.55 0.03 270)" }}>
           {hub === "bemestar"
             ? `${periodCI.length} check-ins em ${tabLabel}`
-            : "Suas metas, OKRs e equilíbrio de vida"}
+            : `Seu crescimento em ${crescTabLabel}`}
         </p>
       </div>
 
@@ -885,11 +890,20 @@ export default function AnalisePage() {
       {/* ── HUB: CRESCIMENTO PESSOAL ── */}
       {hub === "crescimento" && (
         <>
+          {/* Tabs (período) — crescimento */}
+          <div style={{ padding: "12px 20px", display: "flex", gap: 8 }}>
+            {(["semana", "mes", "trimestre"] as const).map((t) => (
+              <button key={t} type="button" style={tabStyle(crescTab === t)} onClick={() => setCrescTab(t)}>
+                {t === "semana" ? "Semana" : t === "mes" ? "Mês" : "Trimestre"}
+              </button>
+            ))}
+          </div>
+
           <MetasResumo />
-          <OKRProgress />
-          <AreaBalance />
-          <SemanalTrend />
-          <ConquistasGrid />
+          <OKRProgress period={crescTab} />
+          <AreaBalance from={crescFrom} to={crescTo} />
+          <SemanalTrend from={crescFrom} to={crescTo} />
+          <ConquistasGrid from={crescFrom} to={crescTo} />
         </>
       )}
     </div>

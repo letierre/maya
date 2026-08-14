@@ -6,21 +6,20 @@ import { Section, CARD, FOREGROUND, MUTED, PURPLE } from "./Section";
 
 interface RawReview { week_score: number; biggest_win?: string; }
 interface RawPlan { week_start: string; weekly_reviews?: RawReview[]; }
-interface WeeklyPlansResp { current: RawPlan | null; history: RawPlan[]; }
+interface WeeklyPlansResp { plans: RawPlan[]; }
 
-export function SemanalTrend() {
+export function SemanalTrend({ from, to }: { from: string; to: string }) {
   const [resp, setResp] = useState<WeeklyPlansResp | null>(null);
 
   useEffect(() => {
-    safeCachedFetch<WeeklyPlansResp>("/api/weekly-plans").then((r) => {
+    safeCachedFetch<WeeklyPlansResp>(`/api/weekly-plans?from=${from}&to=${to}`).then((r) => {
       if (r) setResp(r);
     });
-  }, []);
+  }, [from, to]);
 
   if (!resp) return null;
 
-  const plans = [...(resp.history ?? []), ...(resp.current ? [resp.current] : [])];
-  const entries = plans
+  const entries = (resp.plans ?? [])
     .map((p) => {
       const review = p.weekly_reviews && p.weekly_reviews.length > 0 ? p.weekly_reviews[0] : null;
       return {
@@ -34,6 +33,8 @@ export function SemanalTrend() {
   if (entries.filter((e) => e.score != null).length === 0) return null;
 
   const latestWin = [...entries].reverse().find((e) => e.win)?.win ?? null;
+  // Com muitas semanas (trimestre) esconde o número sobre cada barra para não amontoar
+  const showLabels = entries.length <= 8;
 
   return (
     <Section title="Ritmo semanal">
@@ -54,9 +55,11 @@ export function SemanalTrend() {
                   height: "100%",
                 }}
               >
-                <span style={{ fontSize: 10, fontWeight: 700, color: e.score != null ? FOREGROUND : MUTED }}>
-                  {e.score ?? "–"}
-                </span>
+                {showLabels && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: e.score != null ? FOREGROUND : MUTED }}>
+                    {e.score ?? "–"}
+                  </span>
+                )}
                 <div
                   style={{
                     width: "100%",

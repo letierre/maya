@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
+import { getLocalDateFromISO } from "@/lib/utils";
 import type { UserAchievement } from "@/types";
 import { Section, FOREGROUND } from "./Section";
 
-export function ConquistasGrid() {
+export function ConquistasGrid({ from, to }: { from: string; to: string }) {
   const [achs, setAchs] = useState<UserAchievement[]>([]);
 
   useEffect(() => {
@@ -14,12 +15,19 @@ export function ConquistasGrid() {
     });
   }, []);
 
-  if (achs.length === 0) return null;
+  // Conquistas desbloqueadas dentro do período selecionado
+  const period = achs.filter((a) => {
+    if (!a.unlocked_at) return false;
+    const d = getLocalDateFromISO(a.unlocked_at);
+    return d >= from && d <= to;
+  });
+
+  if (period.length === 0) return null;
 
   return (
     <Section title="Conquistas">
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {achs.map((a) => {
+        {period.map((a) => {
           const meta = (a.metadata ?? {}) as { label?: string; icon?: string };
           return (
             <div

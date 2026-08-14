@@ -12,25 +12,27 @@ const AREA_KEYS = [
 ];
 
 interface RawTask { area: string; status: string; }
-interface RawPlan { weekly_tasks?: RawTask[]; }
-interface WeeklyPlansResp { current: RawPlan | null; }
+interface RawPlan { week_start: string; weekly_tasks?: RawTask[]; }
+interface WeeklyPlansResp { plans: RawPlan[]; }
 
-export function AreaBalance() {
-  const [resp, setResp] = useState<WeeklyPlansResp | null>(null);
+/** Roda da Vida agregando as tarefas de TODAS as semanas do período selecionado. */
+export function AreaBalance({ from, to }: { from: string; to: string }) {
+  const [plans, setPlans] = useState<RawPlan[]>([]);
 
   useEffect(() => {
-    safeCachedFetch<WeeklyPlansResp>("/api/weekly-plans").then((r) => {
-      if (r) setResp(r);
+    safeCachedFetch<WeeklyPlansResp>(`/api/weekly-plans?from=${from}&to=${to}`).then((r) => {
+      if (r?.plans) setPlans(r.plans);
     });
-  }, []);
+  }, [from, to]);
 
-  const tasks = resp?.current?.weekly_tasks ?? [];
   const done: Record<string, number> = {};
   const totals: Record<string, number> = {};
-  for (const t of tasks) {
-    if (!AREA_KEYS.includes(t.area)) continue;
-    totals[t.area] = (totals[t.area] ?? 0) + 1;
-    if (t.status === "concluida") done[t.area] = (done[t.area] ?? 0) + 1;
+  for (const p of plans) {
+    for (const t of p.weekly_tasks ?? []) {
+      if (!AREA_KEYS.includes(t.area)) continue;
+      totals[t.area] = (totals[t.area] ?? 0) + 1;
+      if (t.status === "concluida") done[t.area] = (done[t.area] ?? 0) + 1;
+    }
   }
 
   const hasData = AREA_KEYS.some((k) => (totals[k] ?? 0) > 0);

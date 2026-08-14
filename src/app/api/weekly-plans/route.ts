@@ -11,7 +11,23 @@ export async function GET(req: Request) {
   const admin = getSupabaseAdmin();
   const url = new URL(req.url);
   const weekParam = url.searchParams.get("week");
+  const from = url.searchParams.get("from");
+  const to = url.searchParams.get("to");
   const weekStart = weekParam || getWeekMondayDate();
+
+  // Período: devolve todos os planos do intervalo (com tarefas e reviews)
+  if (from || to) {
+    let query = admin
+      .from("weekly_plans")
+      .select(`*, weekly_reviews(*), weekly_focus_goals(goal_id), weekly_tasks(*)`)
+      .eq("user_id", session.user.id);
+    if (from) query = query.gte("week_start", from);
+    if (to) query = query.lte("week_start", to);
+    query = query.order("week_start", { ascending: true });
+    const { data, error } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ plans: data ?? [] });
+  }
 
   const { data: plan, error } = await admin
     .from("weekly_plans")
