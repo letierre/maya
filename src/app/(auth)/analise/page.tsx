@@ -79,6 +79,7 @@ export default function AnalisePage() {
   const [enabledKeys, setEnabledKeys] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"semana" | "mes" | "trimestre">("semana");
+  const [hub, setHub] = useState<"bemestar" | "crescimento">("bemestar");
 
   const periodDays = { semana: 7, mes: 30, trimestre: 90 }[tab];
 
@@ -489,15 +490,43 @@ export default function AnalisePage() {
     <div style={{ minHeight: "100dvh", background: "oklch(0.12 0.012 270)", paddingBottom: 110 }}>
       <div style={{ padding: "22px 20px 4px" }}>
         <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#e0d6ff", letterSpacing: "-0.02em" }}>
-          Visão geral
+          {hub === "bemestar" ? "Bem-estar" : "Crescimento pessoal"}
         </h1>
         <p style={{ margin: "2px 0 0", fontSize: 13, color: "oklch(0.55 0.03 270)" }}>
-          {periodCI.length} check-ins em {tabLabel}
+          {hub === "bemestar"
+            ? `${periodCI.length} check-ins em ${tabLabel}`
+            : "Suas metas, OKRs e equilíbrio de vida"}
         </p>
       </div>
 
+      {/* Hub switcher */}
+      <div style={{ padding: "14px 20px 0" }}>
+        <div style={{
+          display: "flex", borderRadius: 14, background: "#1a1530",
+          border: "1px solid rgba(167,139,250,0.15)", padding: 3,
+        }}>
+          {([
+            { key: "bemestar", icon: "🌿", label: "Bem-estar" },
+            { key: "crescimento", icon: "📈", label: "Crescimento" },
+          ] as const).map(({ key, icon, label }) => (
+            <button key={key} type="button" onClick={() => setHub(key)}
+              style={{
+                flex: 1, padding: "10px 0", borderRadius: 12, border: 0,
+                cursor: "pointer", display: "flex", alignItems: "center",
+                justifyContent: "center", gap: 6, fontFamily: "inherit",
+                fontSize: 13, fontWeight: 700,
+                background: hub === key ? "linear-gradient(135deg, #7C5CFF, #A78BFA)" : "transparent",
+                color: hub === key ? "#fff" : "#9e96b5",
+                transition: "all 0.2s ease",
+              }}>
+              <span style={{ fontSize: 14 }}>{icon}</span> {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Streak */}
-      {streak > 0 && (
+      {hub === "bemestar" && streak > 0 && (
         <div style={{ padding: "0 20px", marginBottom: 4 }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
@@ -512,15 +541,20 @@ export default function AnalisePage() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div style={{ padding: "12px 20px", display: "flex", gap: 8 }}>
-        {(["semana", "mes", "trimestre"] as const).map((t) => (
-          <button key={t} type="button" style={tabStyle(tab === t)} onClick={() => setTab(t)}>
-            {t === "semana" ? "Semana" : t === "mes" ? "Mês" : "Trimestre"}
-          </button>
-        ))}
-      </div>
+      {/* Tabs (período) — apenas no hub de bem-estar */}
+      {hub === "bemestar" && (
+        <div style={{ padding: "12px 20px", display: "flex", gap: 8 }}>
+          {(["semana", "mes", "trimestre"] as const).map((t) => (
+            <button key={t} type="button" style={tabStyle(tab === t)} onClick={() => setTab(t)}>
+              {t === "semana" ? "Semana" : t === "mes" ? "Mês" : "Trimestre"}
+            </button>
+          ))}
+        </div>
+      )}
 
+      {/* ── HUB: BEM-ESTAR ── */}
+      {hub === "bemestar" && (
+        <>
       {/* Evolution ring */}
       {periodCI.length >= 2 ? (
         <div style={{ display: "flex", justifyContent: "center", padding: "16px 0" }}>
@@ -834,13 +868,6 @@ export default function AnalisePage() {
         </div>
       )}
 
-      {/* Crescimento pessoal */}
-      <MetasResumo />
-      <OKRProgress />
-      <AreaBalance />
-      <SemanalTrend />
-      <ConquistasGrid />
-
       {/* Empty state when no data at all */}
       {checkIns.length === 0 && (
         <div style={{ padding: "40px 20px", textAlign: "center" }}>
@@ -851,6 +878,19 @@ export default function AnalisePage() {
             Faça seu primeiro check-in para começar a ver sua evolução por aqui.
           </p>
         </div>
+      )}
+        </>
+      )}
+
+      {/* ── HUB: CRESCIMENTO PESSOAL ── */}
+      {hub === "crescimento" && (
+        <>
+          <MetasResumo />
+          <OKRProgress />
+          <AreaBalance />
+          <SemanalTrend />
+          <ConquistasGrid />
+        </>
       )}
     </div>
   );
