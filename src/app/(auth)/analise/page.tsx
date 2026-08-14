@@ -684,8 +684,7 @@ export default function AnalisePage() {
             background: "oklch(0.16 0.012 270)",
             border: "1px solid oklch(0.28 0.02 270 / 0.5)",
             borderRadius: 18, padding: "12px 10px",
-            display: "flex", alignItems: "center", gap: 2,
-            overflowX: "auto",
+            display: "flex", flexWrap: "wrap", gap: 3,
           }}>
             {moodTimeline.map((m, i) => (
               <div key={i} style={{
