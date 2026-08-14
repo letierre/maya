@@ -10,6 +10,7 @@ import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { requestPushSubscription, hasPushPermission } from "@/lib/push-utils";
 import { LogoutButton } from "@/components/LogoutButton";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
+import { APP_VERSION } from "@/lib/version";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -629,6 +630,11 @@ export default function PerfilPage() {
         <div style={{ marginTop: 8, marginBottom: 20 }}>
           <LogoutButton />
         </div>
+
+        {/* Versão do app */}
+        <p style={{ margin: "0 0 24px", textAlign: "center", fontSize: 11, color: "#6a657a" }}>
+          Maya · v{APP_VERSION}
+        </p>
 
       </div>
 

@@ -9,7 +9,6 @@ import { MetasResumo } from "@/components/analise/MetasResumo";
 import { OKRProgress } from "@/components/analise/OKRProgress";
 import { AreaBalance } from "@/components/analise/AreaBalance";
 import { SemanalTrend } from "@/components/analise/SemanalTrend";
-import { ConquistasGrid } from "@/components/analise/ConquistasGrid";
 import { NutricaoResumo } from "@/components/analise/NutricaoResumo";
 import { MovimentoResumo } from "@/components/analise/MovimentoResumo";
 import { LeituraResumo } from "@/components/analise/LeituraResumo";
@@ -903,7 +902,6 @@ export default function AnalisePage() {
           <OKRProgress period={crescTab} />
           <AreaBalance from={crescFrom} to={crescTo} />
           <SemanalTrend from={crescFrom} to={crescTo} />
-          <ConquistasGrid from={crescFrom} to={crescTo} />
         </>
       )}
     </div>
