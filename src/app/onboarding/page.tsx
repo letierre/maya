@@ -55,11 +55,14 @@ export default function OnboardingPage() {
     const enabled = [
       "felt_judged",
       "talked_to_someone",
-      "meditation_prayer_breathing",
+      "meditation",
+      "breathing",
       "creative_activity",
       "ate_well",
       "bowel_movement",
-      "exercise_walk",
+      "walked",
+      "ran",
+      "strength_training",
       "drank_water",
       "slept_well",
       "did_something_enjoyable",
@@ -67,6 +70,7 @@ export default function OnboardingPage() {
     ];
 
     if (answers.has_medication) enabled.push("took_medication");
+    if (answers.has_faith) enabled.push("prayer");
     if (answers.track_suicidal_thoughts) enabled.push("suicidal_thoughts");
 
     try {

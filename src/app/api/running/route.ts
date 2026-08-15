@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getTimezoneOffset } from "@/lib/utils";
+import { getTimezoneOffset, getLocalDateFromISO } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -59,6 +59,22 @@ export async function POST(req: NextRequest) {
       notes: body.notes || null,
     }).select().single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // Auto-marca "correu" no check-in do dia (só atualiza se a linha já existir)
+    const runDate = getLocalDateFromISO(body.start_time);
+    const { data: existingCi } = await admin
+      .from("check_ins")
+      .select("id")
+      .eq("user_id", session.user.id)
+      .eq("date", runDate)
+      .maybeSingle();
+    if (existingCi) {
+      await admin
+        .from("check_ins")
+        .update({ ran: true, exercise_walk: true, updated_at: new Date().toISOString() })
+        .eq("id", existingCi.id);
+    }
+
     return NextResponse.json(data, { status: 201 });
   }
 

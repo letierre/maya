@@ -99,6 +99,12 @@ const translations: Record<Lang, Record<string, string>> = {
     q_suicida_label: "Teve pensamentos difíceis hoje?",
     q_gostou: "Fez algo que te deu prazer?",
     q_metas: "Avançou nas suas metas hoje?",
+    q_meditou: "Meditou hoje?",
+    q_orou: "Orou hoje?",
+    q_respirou: "Respirou de maneira intencional hoje?",
+    q_caminhou: "Caminhou hoje?",
+    q_correu: "Correu hoje?",
+    q_musculacao: "Fez musculação ou treino de força hoje?",
 
     // Check-in hints
     q_exercicio_hint: "Pequenas vitórias contam muito",
@@ -721,6 +727,12 @@ const translations: Record<Lang, Record<string, string>> = {
     q_suicida_label: "¿Tuviste pensamientos difíciles hoy?",
     q_gostou: "¿Hiciste algo que te dio placer?",
     q_metas: "¿Avanzaste en tus metas hoy?",
+    q_meditou: "¿Meditaste hoy?",
+    q_orou: "¿Oraste hoy?",
+    q_respirou: "¿Respiraste de manera intencional hoy?",
+    q_caminhou: "¿Caminaste hoy?",
+    q_correu: "¿Corriste hoy?",
+    q_musculacao: "¿Hiciste musculación o entrenamiento de fuerza hoy?",
 
     q_exercicio_hint: "Las pequeñas victorias cuentan mucho",
     q_agua_hint: "La hidratación es la base de todo",
@@ -1334,6 +1346,12 @@ const translations: Record<Lang, Record<string, string>> = {
     q_suicida_label: "Had difficult thoughts today?",
     q_gostou: "Did something that gave you pleasure?",
     q_metas: "Made progress on your goals today?",
+    q_meditou: "Meditated today?",
+    q_orou: "Prayed today?",
+    q_respirou: "Breathed intentionally today?",
+    q_caminhou: "Walked today?",
+    q_correu: "Ran today?",
+    q_musculacao: "Did strength training today?",
 
     q_exercicio_hint: "Small victories count a lot",
     q_agua_hint: "Hydration is the foundation of everything",

@@ -3,6 +3,32 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { ALL_QUESTION_KEYS } from "@/lib/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 
+// Expande as chaves legadas de check-in para as novas chaves granulares
+// (meditação/oração/respiração e caminhada/corrida/musculação), de forma
+// idempotente, para que usuários existentes não percam as perguntas.
+function normalizeEnabledQuestions(
+  keys: string[] | undefined | null,
+  context: Record<string, unknown> | undefined | null
+): string[] {
+  if (!Array.isArray(keys)) return [...ALL_QUESTION_KEYS];
+  const hasFaith = Boolean(context?.has_faith);
+  const out = new Set<string>();
+  for (const k of keys) {
+    if (k === "meditation_prayer_breathing") {
+      out.add("meditation");
+      if (hasFaith) out.add("prayer");
+      out.add("breathing");
+    } else if (k === "exercise_walk") {
+      out.add("walked");
+      out.add("ran");
+      out.add("strength_training");
+    } else {
+      out.add(k);
+    }
+  }
+  return [...out];
+}
+
 export async function GET() {
   const supabase = await createServerSupabaseClient();
   const { data: { session }, error: authError } = await supabase.auth.getSession();
@@ -31,7 +57,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      enabled_questions: prefs.enabled_questions,
+      enabled_questions: normalizeEnabledQuestions(prefs.enabled_questions, prefs.context),
       context: prefs.context || {},
       onboarding_completed: prefs.onboarding_completed,
     });

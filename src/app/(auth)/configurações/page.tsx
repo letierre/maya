@@ -59,11 +59,13 @@ export default function ConfiguracoesPage() {
     clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(async () => {
       const enabled = [
-        "felt_judged", "talked_to_someone", "meditation_prayer_breathing",
-        "creative_activity", "ate_well", "bowel_movement", "exercise_walk",
+        "felt_judged", "talked_to_someone", "meditation", "breathing",
+        "creative_activity", "ate_well", "bowel_movement",
+        "walked", "ran", "strength_training",
         "drank_water", "slept_well", "did_something_enjoyable", "worked_on_goals",
       ];
       if (answers.has_medication)          enabled.push("took_medication");
+      if (answers.has_faith)               enabled.push("prayer");
       if (answers.track_suicidal_thoughts) enabled.push("suicidal_thoughts");
       try {
         const res = await fetch("/api/preferences", {

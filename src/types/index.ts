@@ -5,11 +5,17 @@ export interface CheckIn {
   felt_judged: boolean;
   took_medication: boolean;
   talked_to_someone: boolean;
-  meditation_prayer_breathing: boolean;
+  meditation_prayer_breathing: boolean; // legado: agregado "fez qualquer um" (meditação/oração/respiração)
+  meditation: boolean;
+  prayer: boolean;
+  breathing: boolean;
   creative_activity: boolean;
   ate_well: boolean;
   bowel_movement: boolean;
-  exercise_walk: boolean;
+  exercise_walk: boolean; // legado: agregado "fez qualquer um" (caminhada/corrida/musculação)
+  walked: boolean;
+  ran: boolean;
+  strength_training: boolean;
   drank_water: boolean;
   water_cups: number;
   slept_well: boolean;

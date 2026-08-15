@@ -15,9 +15,13 @@ const HABIT_ORDER = [
   "slept_well",
   "took_medication",
   "talked_to_someone",
-  "meditation_prayer_breathing",
+  "meditation",
+  "prayer",
+  "breathing",
   "creative_activity",
-  "exercise_walk",
+  "walked",
+  "ran",
+  "strength_training",
   "did_something_enjoyable",
   "worked_on_goals",
   "bowel_movement",
@@ -26,6 +30,10 @@ const HABIT_ORDER = [
 
 type HabitKey = typeof HABIT_ORDER[number];
 
+// Grupos renderizados como passos multi-select (chips), não como pergunta Sim/Não.
+const MEDITATION_KEYS = ["meditation", "prayer", "breathing"] as const;
+const EXERCISE_KEYS = ["walked", "ran", "strength_training"] as const;
+
 interface HabitCopy { emoji: string; label: string; a: string; b: string; }
 
 const HABIT_COPY: Record<string, HabitCopy> = {
@@ -33,9 +41,13 @@ const HABIT_COPY: Record<string, HabitCopy> = {
   slept_well:                  { emoji: "😴", label: "Dormiu bem ontem?",             a: "Sim", b: "Não muito" },
   took_medication:             { emoji: "💊", label: "Tomou seus remédios?",          a: "Sim", b: "Esqueci"   },
   talked_to_someone:           { emoji: "🗣️", label: "Conversou pessoalmente com alguém?", a: "Sim", b: "Não hoje"  },
-  meditation_prayer_breathing: { emoji: "🧘", label: "Meditou, orou ou respirou de maneira intencional?", a: "Sim", b: "Não" },
+  meditation:                  { emoji: "🧘", label: "Meditou",                       a: "Sim", b: "Não"       },
+  prayer:                      { emoji: "🙏", label: "Orou",                          a: "Sim", b: "Não"       },
+  breathing:                   { emoji: "🌬️", label: "Respirou intencionalmente",     a: "Sim", b: "Não"       },
   creative_activity:           { emoji: "🎨", label: "Fez algo criativo?",            a: "Sim", b: "Não"       },
-  exercise_walk:               { emoji: "🏃", label: "Caminhou ou se exercitou?",     a: "Sim", b: "Não"       },
+  walked:                      { emoji: "🚶", label: "Caminhou",                      a: "Sim", b: "Não"       },
+  ran:                         { emoji: "🏃", label: "Correu",                        a: "Sim", b: "Não"       },
+  strength_training:           { emoji: "🏋️", label: "Musculação",                    a: "Sim", b: "Não"       },
   did_something_enjoyable:     { emoji: "😊", label: "Fez algo que gosta?",           a: "Sim", b: "Não"       },
   worked_on_goals:             { emoji: "🎯", label: "Avançou nas suas metas hoje?",  a: "Sim", b: "Não"       },
   bowel_movement:              { emoji: "🚽", label: "Funcionamento intestinal OK?",  a: "Sim", b: "Não"       },
@@ -47,6 +59,8 @@ const HABIT_COPY: Record<string, HabitCopy> = {
 type Step =
   | { kind: "feeling" }
   | { kind: "habit"; habitKey: string }
+  | { kind: "meditation" }
+  | { kind: "exercise" }
   | { kind: "gratitude" }
   | { kind: "confirm" }
   | { kind: "done" };
@@ -66,9 +80,13 @@ interface CheckInAnswers {
   sleep_end_time: string;
   took_medication: boolean;
   talked_to_someone: boolean;
-  meditation_prayer_breathing: boolean;
+  meditation: boolean;
+  prayer: boolean;
+  breathing: boolean;
   creative_activity: boolean;
-  exercise_walk: boolean;
+  walked: boolean;
+  ran: boolean;
+  strength_training: boolean;
   did_something_enjoyable: boolean;
   worked_on_goals: boolean;
   bowel_movement: boolean;
@@ -92,9 +110,13 @@ function defaultAnswers(): CheckInAnswers {
     sleep_end_time: "",
     took_medication: false,
     talked_to_someone: false,
-    meditation_prayer_breathing: false,
+    meditation: false,
+    prayer: false,
+    breathing: false,
     creative_activity: false,
-    exercise_walk: false,
+    walked: false,
+    ran: false,
+    strength_training: false,
     did_something_enjoyable: false,
     worked_on_goals: false,
     bowel_movement: false,
@@ -104,13 +126,26 @@ function defaultAnswers(): CheckInAnswers {
 }
 
 function buildSteps(enabledKeys: string[], hasSuicidal: boolean, hasSleepLog: boolean): Step[] {
-  const steps: Step[] = [{ kind: "feeling" }];
+  const has = (key: string) => enabledKeys.includes(key);
   const autoKeys = new Set(["ate_well", "worked_on_goals"]);
-  for (const key of HABIT_ORDER) {
-    if (key === "slept_well" && hasSleepLog) continue; // já registrou sono hoje
-    if (autoKeys.has(key)) continue; // auto-calculado pelo backend
-    if (enabledKeys.includes(key)) steps.push({ kind: "habit", habitKey: key });
-  }
+  const pushHabit = (key: string) => {
+    if (key === "slept_well" && hasSleepLog) return; // já registrou sono hoje
+    if (autoKeys.has(key)) return; // auto-calculado pelo backend
+    if (has(key)) steps.push({ kind: "habit", habitKey: key });
+  };
+
+  const steps: Step[] = [{ kind: "feeling" }];
+  pushHabit("drank_water");
+  pushHabit("slept_well");
+  pushHabit("took_medication");
+  pushHabit("talked_to_someone");
+  if (MEDITATION_KEYS.some(has)) steps.push({ kind: "meditation" });
+  pushHabit("creative_activity");
+  if (EXERCISE_KEYS.some(has)) steps.push({ kind: "exercise" });
+  pushHabit("did_something_enjoyable");
+  // worked_on_goals é auto-calculado (nunca vira passo)
+  pushHabit("bowel_movement");
+  pushHabit("felt_judged");
   steps.push({ kind: "gratitude" });
   if (hasSuicidal) steps.push({ kind: "confirm" });
   steps.push({ kind: "done" });
@@ -119,9 +154,6 @@ function buildSteps(enabledKeys: string[], hasSuicidal: boolean, hasSleepLog: bo
 
 function getHabitLabel(key: string, context: Record<string, boolean>): string {
   const base = HABIT_COPY[key]?.label ?? key;
-  if (key === "meditation_prayer_breathing") {
-    return context.has_faith ? "Meditou, orou ou respirou?" : "Meditou ou respirou?";
-  }
   if (key === "creative_activity") {
     return context.has_creative_hobby ? "Trabalhou no seu hobby criativo?" : "Fez algo criativo?";
   }
@@ -166,7 +198,9 @@ function EditCheckInView({ answers, setAnswers, enabledKeys, context, gender, on
 
   // Auto-calc fields: not shown as manual toggles
   const autoKeys = new Set(["slept_well", "ate_well", "worked_on_goals"]);
-  const habitsToShow = HABIT_ORDER.filter((key) => !autoKeys.has(key) && enabledKeys.includes(key));
+  // Grupos multi-select renderizados como chips (não como Sim/Não)
+  const groupedKeys = new Set<string>([...MEDITATION_KEYS, ...EXERCISE_KEYS]);
+  const habitsToShow = HABIT_ORDER.filter((key) => !autoKeys.has(key) && !groupedKeys.has(key) && enabledKeys.includes(key));
   const hasConfirm = enabledKeys.includes("suicidal_thoughts");
 
   // Score: all enabled habits minus suicidal/felt_judged
@@ -254,15 +288,13 @@ function EditCheckInView({ answers, setAnswers, enabledKeys, context, gender, on
                     display: "inline-flex", alignItems: "center", gap: 5,
                     transition: "all .15s ease",
                     background: active
-                      ? pos ? "oklch(0.5 0.12 270 / .18)" : "oklch(.72 .1 30 / .22)"
+                      ? pos ? "#7C5CFF" : "#FF5C5C"
                       : "oklch(0.14 0.012 270)",
                     backdropFilter: "blur(8px)",
-                    color: active
-                      ? pos ? "#e0d6ff" : "#ffb3b3"
-                      : "var(--foreground)",
-                    outline: active
-                      ? `2px solid ${pos ? "oklch(0.5 0.12 270 / .35)" : "oklch(.6 .1 30 / .35)"}`
-                      : "1px solid oklch(0.5 0.12 270 / .1)",
+                    color: active ? "#fff" : "var(--foreground)",
+                    outline: active ? "none" : "1px solid oklch(0.5 0.12 270 / .1)",
+                    boxShadow: active ? "0 3px 10px -2px oklch(0.5 0.12 270 / .55)" : "none",
+                    transform: active ? "scale(1.03)" : "none",
                   }}>
                   <span style={{ fontSize: 15 }}>{chip.emoji}</span>
                   {getMoodLabel(chip, gender)}
@@ -345,6 +377,34 @@ function EditCheckInView({ answers, setAnswers, enabledKeys, context, gender, on
                 );
               })}
             </div>
+          </section>
+        )}
+
+        {/* ── Meditação & respiração (multi-select) ── */}
+        {MEDITATION_KEYS.some((k) => enabledKeys.includes(k)) && (
+          <section>
+            <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+              Meditação & respiração
+            </p>
+            <HabitChipSelector
+              options={MEDITATION_OPTIONS.filter((o) => o.key !== "prayer" || !!context.has_faith)}
+              selected={{ meditation: answers.meditation, prayer: answers.prayer, breathing: answers.breathing }}
+              onToggle={(key) => setAnswers((a) => ({ ...a, [key]: !(a[key as keyof CheckInAnswers] as boolean) }))}
+            />
+          </section>
+        )}
+
+        {/* ── Exercício (multi-select) ── */}
+        {EXERCISE_KEYS.some((k) => enabledKeys.includes(k)) && (
+          <section>
+            <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+              Exercício
+            </p>
+            <HabitChipSelector
+              options={EXERCISE_OPTIONS}
+              selected={{ walked: answers.walked, ran: answers.ran, strength_training: answers.strength_training }}
+              onToggle={(key) => setAnswers((a) => ({ ...a, [key]: !(a[key as keyof CheckInAnswers] as boolean) }))}
+            />
           </section>
         )}
 
@@ -565,7 +625,7 @@ function CheckInStage({ stepIdx, totalForProgress, isDone, onClose, children }: 
       {!isDone && (
         <p style={{
           position: "fixed", top: 56, left: 0, right: 0, textAlign: "center", zIndex: 9,
-          margin: 0, fontFamily: "var(--font-mono, ui-monospace)", fontSize: 10,
+          margin: 0, fontFamily: "var(--font-sans)", fontSize: 10,
           color: "var(--muted-foreground)", letterSpacing: ".16em", textTransform: "uppercase",
         }}>
           {String(progress).padStart(2, "0")} de {String(totalForProgress).padStart(2, "0")}
@@ -589,6 +649,74 @@ function CheckInStage({ stepIdx, totalForProgress, isDone, onClose, children }: 
 }
 
 // ── Ritual steps ──────────────────────────────────────────────────────────────
+
+// Barra de ações fixa no rodapé — mantém Voltar/Continuar sempre visíveis,
+// mesmo quando o conteúdo cresce (ex.: muitos copos de água).
+function StepFooter({ onPrev, onNext, nextLabel, nextDisabled, secondary }: {
+  onPrev: () => void;
+  onNext?: () => void;
+  nextLabel?: string;
+  nextDisabled?: boolean;
+  secondary?: React.ReactNode;
+}) {
+  return (
+    <div style={{
+      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 20,
+      padding: "12px 24px calc(18px + env(safe-area-inset-bottom))",
+      background: "linear-gradient(180deg, transparent 0%, oklch(0.12 0.012 270 / .92) 30%, oklch(0.12 0.012 270) 100%)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button type="button" onClick={onPrev} style={{
+          background: "transparent", border: 0, cursor: "pointer",
+          fontFamily: "inherit", fontSize: 13, color: "var(--muted-foreground)",
+          padding: "8px 0", flexShrink: 0,
+        }}>← Voltar</button>
+        {secondary}
+        <div style={{ flex: 1 }} />
+        {onNext && (
+          <button type="button" onClick={onNext} disabled={nextDisabled} style={{
+            height: 48, padding: "0 22px", borderRadius: 14, border: 0,
+            cursor: nextDisabled ? "not-allowed" : "pointer",
+            background: nextDisabled ? "oklch(0.2 0.02 270)" : "#7C5CFF",
+            color: nextDisabled ? "oklch(0.55 0.03 270)" : "#fff",
+            fontFamily: "inherit", fontSize: 14, fontWeight: 600, flexShrink: 0,
+            boxShadow: nextDisabled ? "none" : "0 4px 14px -4px oklch(0.5 0.12 270 / .45)",
+          }}>{nextLabel ?? "Continuar"}</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Chips multi-select de hábito (usados nos grupos de meditação e exercício).
+function HabitChipSelector({ options, selected, onToggle }: {
+  options: { key: string; emoji: string; label: string }[];
+  selected: Record<string, boolean>;
+  onToggle: (key: string) => void;
+}) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {options.map((o) => {
+        const active = !!selected[o.key];
+        return (
+          <button key={o.key} type="button" onClick={() => onToggle(o.key)} style={{
+            padding: "11px 16px", borderRadius: 9999, border: 0, cursor: "pointer",
+            fontFamily: "inherit", fontSize: 13.5, fontWeight: 600,
+            display: "inline-flex", alignItems: "center", gap: 7,
+            transition: "all .15s ease",
+            background: active ? "#7C5CFF" : "oklch(0.14 0.012 270)",
+            color: active ? "#fff" : "var(--foreground)",
+            outline: active ? "2px solid oklch(0.5 0.12 270 / .5)" : "1px solid oklch(0.5 0.12 270 / .1)",
+            boxShadow: active ? "0 3px 10px -2px oklch(0.5 0.12 270 / .5)" : "none",
+          }}>
+            <span style={{ fontSize: 18, lineHeight: 1 }}>{o.emoji}</span>
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTagsChange, onNext, onPrev }: {
   initialValue: string;
@@ -635,16 +763,13 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
               display: "inline-flex", alignItems: "center", gap: 6,
               transition: "all .15s ease",
               background: active
-                ? pos ? "oklch(0.5 0.12 270 / .18)" : "oklch(.72 .1 30 / .22)"
+                ? pos ? "#7C5CFF" : "#FF5C5C"
                 : "oklch(0.14 0.012 270)",
               backdropFilter: "blur(8px)",
-              color: active
-                ? pos ? "#e0d6ff" : "oklch(.35 .09 30)"
-                : "var(--foreground)",
-              outline: active
-                ? `2px solid ${pos ? "oklch(0.5 0.12 270 / .35)" : "oklch(.6 .1 30 / .35)"}`
-                : "1px solid oklch(0.5 0.12 270 / .1)",
-              boxShadow: active ? "none" : "0 1px 3px oklch(0.2 0.02 270 / .06)",
+              color: active ? "#fff" : "var(--foreground)",
+              outline: active ? "none" : "1px solid oklch(0.5 0.12 270 / .1)",
+              boxShadow: active ? "0 3px 10px -2px oklch(0.5 0.12 270 / .55)" : "0 1px 3px oklch(0.2 0.02 270 / .06)",
+              transform: active ? "scale(1.03)" : "none",
             }}>
               <span style={{ fontSize: 17, lineHeight: 1 }}>{chip.emoji}</span>
               {getMoodLabel(chip, gender)}
@@ -775,30 +900,19 @@ function SleepStep({ onAnswer, onPrev }: {
         </div>
       </div>
 
-      <button type="button" onClick={() => quality && onAnswer(quality, startTime, endTime)}
-        disabled={!quality} style={{
-          marginTop: 24, width: "100%", height: 50, borderRadius: 14, border: 0,
-          cursor: quality ? "pointer" : "not-allowed",
-          background: quality ? "var(--primary)" : "oklch(0.2 0.02 270)",
-          color: quality ? "#fff" : "oklch(0.55 0.03 270)",
-          fontFamily: "inherit", fontSize: 15, fontWeight: 600,
-          transition: "all .2s ease",
-        }}>
-        Registrar sono
-      </button>
-
-      <button type="button" onClick={onPrev} style={{
-        position: "absolute", bottom: 28, left: 32,
-        background: "transparent", border: 0, cursor: "pointer",
-        fontFamily: "inherit", fontSize: 13, color: "var(--muted-foreground)",
-      }}>← Voltar</button>
-
-      <button type="button" onClick={() => onAnswer(3, "", "")} style={{
-        position: "absolute", bottom: 28, right: 32,
-        background: "transparent", border: 0, cursor: "pointer",
-        fontFamily: "inherit", fontSize: 12.5, color: "var(--muted-foreground)",
-        textDecoration: "underline",
-      }}>Pular</button>
+      <StepFooter
+        onPrev={onPrev}
+        onNext={() => quality && onAnswer(quality, startTime, endTime)}
+        nextLabel="Registrar sono"
+        nextDisabled={!quality}
+        secondary={
+          <button type="button" onClick={() => onAnswer(3, "", "")} style={{
+            background: "transparent", border: 0, cursor: "pointer",
+            fontFamily: "inherit", fontSize: 12.5, color: "var(--muted-foreground)",
+            textDecoration: "underline", padding: "8px 0", flexShrink: 0,
+          }}>Pular</button>
+        }
+      />
     </>
   );
 }
@@ -931,18 +1045,7 @@ function WaterStep({ initialCups, onAnswer, onPrev }: {
         onChange={(n) => setCups(Math.max(0, Math.min(n, WATER_MAX)))}
       />
 
-      <button type="button" onClick={onPrev} style={{
-        position: "absolute", bottom: 28, left: 32,
-        background: "transparent", border: 0, cursor: "pointer",
-        fontFamily: "inherit", fontSize: 13, color: "var(--muted-foreground)",
-      }}>← Voltar</button>
-
-      <button type="button" onClick={() => onAnswer(cups)} style={{
-        position: "absolute", bottom: 28, right: 32,
-        background: "transparent", border: 0, cursor: "pointer",
-        fontFamily: "inherit", fontSize: 12.5, color: "var(--muted-foreground)",
-        textDecoration: "underline",
-      }}>{cups === 0 ? "Não bebi" : "Continuar"}</button>
+      <StepFooter onPrev={onPrev} onNext={() => onAnswer(cups)} nextLabel={cups === 0 ? "Não bebi" : "Continuar"} />
     </>
   );
 }
@@ -992,11 +1095,67 @@ function HabitStep({ habitKey, context, onAnswer, onSkip, onPrev }: {
         fontFamily: "inherit", fontSize: 12.5, color: "var(--muted-foreground)",
         textDecoration: "underline", alignSelf: "center",
       }}>Prefiro não responder</button>
-      <button type="button" onClick={onPrev} style={{
-        position: "absolute", bottom: 28, left: 32,
-        background: "transparent", border: 0, cursor: "pointer",
-        fontFamily: "inherit", fontSize: 13, color: "var(--muted-foreground)",
-      }}>← Voltar</button>
+      <StepFooter onPrev={onPrev} />
+    </>
+  );
+}
+
+// ── Meditation Step (multi-select: meditou / orou / respirou) ─────────────────
+
+const MEDITATION_OPTIONS = [
+  { key: "meditation", emoji: "🧘", label: "Meditei" },
+  { key: "prayer", emoji: "🙏", label: "Orei" },
+  { key: "breathing", emoji: "🌬️", label: "Respirei intencionalmente" },
+];
+
+function MeditationStep({ selected, hasFaith, onToggle, onNext, onPrev }: {
+  selected: Record<string, boolean>;
+  hasFaith: boolean;
+  onToggle: (key: string) => void;
+  onNext: () => void;
+  onPrev: () => void;
+}) {
+  const options = MEDITATION_OPTIONS.filter((o) => o.key !== "prayer" || hasFaith);
+  return (
+    <>
+      <div style={{ fontSize: 64, lineHeight: 1, marginBottom: 16 }}>🧘</div>
+      <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
+        O que você fez hoje?
+      </h1>
+      <p style={{ margin: "6px 0 26px", fontSize: 13, color: "var(--muted-foreground)" }}>
+        Marque tudo o que se aplicar
+      </p>
+      <HabitChipSelector options={options} selected={selected} onToggle={onToggle} />
+      <StepFooter onPrev={onPrev} onNext={onNext} />
+    </>
+  );
+}
+
+// ── Exercise Step (multi-select: caminhou / correu / musculação) ──────────────
+
+const EXERCISE_OPTIONS = [
+  { key: "walked", emoji: "🚶", label: "Caminhei" },
+  { key: "ran", emoji: "🏃", label: "Corri" },
+  { key: "strength_training", emoji: "🏋️", label: "Musculação" },
+];
+
+function ExerciseStep({ selected, onToggle, onNext, onPrev }: {
+  selected: Record<string, boolean>;
+  onToggle: (key: string) => void;
+  onNext: () => void;
+  onPrev: () => void;
+}) {
+  return (
+    <>
+      <div style={{ fontSize: 64, lineHeight: 1, marginBottom: 16 }}>🏃</div>
+      <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
+        Você se exercitou hoje?
+      </h1>
+      <p style={{ margin: "6px 0 26px", fontSize: 13, color: "var(--muted-foreground)" }}>
+        Marque tudo o que se aplicar
+      </p>
+      <HabitChipSelector options={EXERCISE_OPTIONS} selected={selected} onToggle={onToggle} />
+      <StepFooter onPrev={onPrev} onNext={onNext} />
     </>
   );
 }
@@ -1062,21 +1221,7 @@ function GratitudeStep({ initialValue, initialPhotos, onChange, onPhotosChange, 
       </div>
       <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }}
         onChange={(e) => { if (e.target.files?.[0]) handlePhotoAdd(e.target.files[0]); e.target.value = ""; }} />
-      <div style={{ position: "absolute", bottom: 28, left: 32, right: 32, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <button type="button" onClick={onPrev} style={{ background: "transparent", border: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, color: "var(--muted-foreground)" }}>← Voltar</button>
-        <button type="button" onClick={onNext} style={{
-          height: 48, padding: "0 24px", borderRadius: 14,
-          background: "#7C5CFF", color: "#fff", border: 0, cursor: "pointer",
-          fontFamily: "inherit", fontSize: 14, fontWeight: 600,
-          display: "inline-flex", alignItems: "center", gap: 6,
-          boxShadow: "0 4px 14px -4px oklch(0.5 0.12 270 / .45)",
-        }}>
-          Continuar
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M5 12h14M13 5l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
+      <StepFooter onPrev={onPrev} onNext={onNext} />
     </>
   );
 }
@@ -1108,11 +1253,7 @@ function ConfirmStep({ onAnswer, onPrev }: { onAnswer: (v: boolean) => void; onP
           color: "#FF6B6B", textAlign: "left", padding: "0 18px",
         }}>Sim, tive esse pensamento.</button>
       </div>
-      <button type="button" onClick={onPrev} style={{
-        position: "absolute", bottom: 28, left: 32,
-        background: "transparent", border: 0, cursor: "pointer",
-        fontFamily: "inherit", fontSize: 13, color: "var(--muted-foreground)",
-      }}>← Voltar</button>
+      <StepFooter onPrev={onPrev} />
     </>
   );
 }
@@ -1163,10 +1304,12 @@ export default function CheckInPage() {
       fetch("/api/preferences").then((r) => r.json()).catch(() => ({})),
       fetch(`/api/check-ins?date=${today}`).then((r) => r.json()).catch(() => null),
       fetch(`/api/sleep?from=${today}&to=${today}&limit=1`).then((r) => r.json()).catch(() => []),
-    ]).then(([prefs, existing, sleepLogs]) => {
+      fetch(`/api/running?from=${today}&to=${today}`).then((r) => r.json()).catch(() => []),
+    ]).then(([prefs, existing, sleepLogs, runningSessions]) => {
       const enabled: string[] = prefs.enabled_questions ?? [];
       const ctx: Record<string, boolean> = prefs.context ?? {};
       const hasSleepLog = Array.isArray(sleepLogs) && sleepLogs.length > 0;
+      const hasRunningSession = Array.isArray(runningSessions) && runningSessions.length > 0;
       if (hasSleepLog) {
         setTodaySleep({ quality: sleepLogs[0].quality ?? null, duration_min: sleepLogs[0].duration_min ?? null });
       }
@@ -1175,20 +1318,24 @@ export default function CheckInPage() {
       setGender((prefs.context?.gender as string) ?? "nao_dizer");
       setSteps(buildSteps(enabled, enabled.includes("suicidal_thoughts"), hasSleepLog));
 
-      if (existing && existing.date === today) {
-        setIsEditing(true);
-        setAnswers((prev) => ({
-          ...prev,
-          feeling: existing.feeling ?? "",
-          mood_tags: existing.mood_tags ?? [],
-          gratitude: existing.gratitude ?? "",
-          gratitude_photos: existing.gratitude_photos ?? [],
-          water_cups: existing.water_cups ?? 0,
-          ...Object.fromEntries(
+      const isExisting = !!existing && existing.date === today;
+      if (isExisting) setIsEditing(true);
+
+      setAnswers((prev) => {
+        const next = { ...prev };
+        if (hasRunningSession) next.ran = true;
+        if (isExisting) {
+          next.feeling = existing.feeling ?? "";
+          next.mood_tags = existing.mood_tags ?? [];
+          next.gratitude = existing.gratitude ?? "";
+          next.gratitude_photos = existing.gratitude_photos ?? [];
+          next.water_cups = existing.water_cups ?? 0;
+          Object.assign(next, Object.fromEntries(
             [...HABIT_ORDER, "suicidal_thoughts", "ate_well"].map((k) => [k, existing[k] ?? false])
-          ),
-        }));
-      }
+          ));
+        }
+        return next;
+      });
       setLoading(false);
     });
   }, []);
@@ -1238,6 +1385,11 @@ export default function CheckInPage() {
     setAnswers((a) => ({ ...a, [key]: value }));
     setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 180);
   }, [steps.length]);
+
+  // Toggle de chips multi-select (meditação/exercício) — não avança sozinho.
+  const handleToggle = useCallback((key: string) => {
+    setAnswers((a) => ({ ...a, [key]: !(a[key as keyof CheckInAnswers] as boolean) }));
+  }, []);
 
   const handleWaterAnswer = useCallback((cups: number) => {
     setAnswers((a) => ({ ...a, water_cups: cups, drank_water: cups >= WATER_GOAL }));
@@ -1364,6 +1516,21 @@ export default function CheckInPage() {
           onAnswer={handleHabitAnswer} onSkip={goNext} onPrev={goPrev} />
       );
     }
+    if (cur.kind === "meditation") return (
+      <MeditationStep
+        selected={{ meditation: answers.meditation, prayer: answers.prayer, breathing: answers.breathing }}
+        hasFaith={!!context.has_faith}
+        onToggle={handleToggle}
+        onNext={goNext} onPrev={goPrev}
+      />
+    );
+    if (cur.kind === "exercise") return (
+      <ExerciseStep
+        selected={{ walked: answers.walked, ran: answers.ran, strength_training: answers.strength_training }}
+        onToggle={handleToggle}
+        onNext={goNext} onPrev={goPrev}
+      />
+    );
     if (cur.kind === "gratitude") return (
       <GratitudeStep
         initialValue={answers.gratitude} initialPhotos={answers.gratitude_photos}

@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getLocalDate } from "@/lib/utils";
+import { getLocalDate, getTimezoneOffset } from "@/lib/utils";
 import { analyzeAllSpecialists } from "@/lib/specialists";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -69,11 +69,23 @@ export async function POST(req: NextRequest) {
       felt_judged: body.felt_judged ?? false,
       took_medication: body.took_medication ?? false,
       talked_to_someone: body.talked_to_someone ?? false,
-      meditation_prayer_breathing: body.meditation_prayer_breathing ?? false,
+      meditation: body.meditation ?? false,
+      prayer: body.prayer ?? false,
+      breathing: body.breathing ?? false,
+      // Legado: agregado "fez qualquer um" derivado dos campos granulares
+      meditation_prayer_breathing:
+        (body.meditation ?? false) || (body.prayer ?? false) || (body.breathing ?? false) ||
+        (body.meditation_prayer_breathing ?? false),
       creative_activity: body.creative_activity ?? false,
       ate_well: body.ate_well ?? false,
       bowel_movement: body.bowel_movement ?? false,
-      exercise_walk: body.exercise_walk ?? false,
+      walked: body.walked ?? false,
+      ran: body.ran ?? false,
+      strength_training: body.strength_training ?? false,
+      // Legado: agregado "fez qualquer um" derivado dos campos granulares
+      exercise_walk:
+        (body.walked ?? false) || (body.ran ?? false) || (body.strength_training ?? false) ||
+        (body.exercise_walk ?? false),
       water_cups: body.water_cups ?? 0,
       drank_water: body.water_cups !== undefined ? body.water_cups >= 6 : (body.drank_water ?? false),
       slept_well: body.slept_well ?? false,
@@ -94,7 +106,7 @@ export async function POST(req: NextRequest) {
     const todayDow = new Date(checkDate + "T12:00:00").getDay();
     const monDow = todayDow === 0 ? 6 : todayDow - 1; // 0=Mon..6=Sun
 
-    const [planRes, agendaRes, actionsRes] = await Promise.all([
+    const [planRes, agendaRes, actionsRes, runningRes] = await Promise.all([
       // Weekly plan tasks completed today
       admin.from("weekly_tasks")
         .select("id")
@@ -118,6 +130,13 @@ export async function POST(req: NextRequest) {
         .gte("updated_at", `${checkDate}T00:00:00`)
         .lte("updated_at", `${checkDate}T23:59:59`)
         .limit(1),
+      // Corrida registrada hoje (auto-marca "correu")
+      admin.from("running_sessions")
+        .select("id")
+        .eq("user_id", user.id)
+        .gte("start_time", `${checkDate}T00:00:00${getTimezoneOffset("America/Sao_Paulo", checkDate)}`)
+        .lte("start_time", `${checkDate}T23:59:59${getTimezoneOffset("America/Sao_Paulo", checkDate)}`)
+        .limit(1),
     ]);
 
     const workedOnGoals =
@@ -127,6 +146,12 @@ export async function POST(req: NextRequest) {
 
     if (workedOnGoals) {
       row.worked_on_goals = true;
+    }
+
+    // Auto-marca "correu" quando há sessão de corrida no dia (independente do que o cliente enviou)
+    if ((runningRes.data?.length ?? 0) > 0) {
+      row.ran = true;
+      row.exercise_walk = true;
     }
 
     const { data: existing } = await admin
