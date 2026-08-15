@@ -695,22 +695,24 @@ function HabitChipSelector({ options, selected, onToggle }: {
   onToggle: (key: string) => void;
 }) {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`, gap: 8 }}>
       {options.map((o) => {
         const active = !!selected[o.key];
         return (
           <button key={o.key} type="button" onClick={() => onToggle(o.key)} style={{
-            padding: "11px 16px", borderRadius: 9999, border: 0, cursor: "pointer",
-            fontFamily: "inherit", fontSize: 13.5, fontWeight: 600,
-            display: "inline-flex", alignItems: "center", gap: 7,
+            padding: "14px 6px", borderRadius: 14, border: 0, cursor: "pointer",
+            fontFamily: "inherit", minWidth: 0,
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 7,
             transition: "all .15s ease",
             background: active ? "#7C5CFF" : "oklch(0.14 0.012 270)",
             color: active ? "#fff" : "var(--foreground)",
             outline: active ? "2px solid oklch(0.5 0.12 270 / .5)" : "1px solid oklch(0.5 0.12 270 / .1)",
             boxShadow: active ? "0 3px 10px -2px oklch(0.5 0.12 270 / .5)" : "none",
           }}>
-            <span style={{ fontSize: 18, lineHeight: 1 }}>{o.emoji}</span>
-            {o.label}
+            <span style={{ fontSize: 24, lineHeight: 1 }}>{o.emoji}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.25, textAlign: "center" }}>
+              {o.label}
+            </span>
           </button>
         );
       })}
