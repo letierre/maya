@@ -990,7 +990,7 @@ function AgendaPage() {
 
       {/* ── LISTA ───────────────────────────────────────────── */}
       {viewMode === "lista" && (
-        <ListView allWeekTasks={allWeekTasks} compromissos={items} selectedDate={selectedDate} />
+        <ListView allWeekTasks={allWeekTasks} compromissos={items} selectedDate={selectedDate} setAllWeekTasks={setAllWeekTasks} />
       )}
 
       {/* ── Detail popup for compromisso ────────────────────── */}
@@ -1446,7 +1446,7 @@ const navBtnStyle: React.CSSProperties = {
   color: "#e0d6ff",
 };
 
-function ListView({ allWeekTasks, compromissos, selectedDate }: { allWeekTasks: any[]; compromissos: AgendaItem[]; selectedDate: string }) {
+function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks }: { allWeekTasks: any[]; compromissos: AgendaItem[]; selectedDate: string; setAllWeekTasks: React.Dispatch<React.SetStateAction<any[]>> }) {
   const [goals, setGoals] = useState<any[]>([]);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -1569,11 +1569,19 @@ function ListView({ allWeekTasks, compromissos, selectedDate }: { allWeekTasks: 
                       }
                     }
                     if (planId) {
-                      await fetch(`/api/weekly-plans/tasks/${t.id}`, {
+                      const moveRes = await fetch(`/api/weekly-plans/tasks/${t.id}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ day_of_week: todayDow, weekly_plan_id: planId }),
                       });
+                      if (moveRes.ok) {
+                        // Update local state so it leaves "Atrasadas" and shows in "Hoje"
+                        setAllWeekTasks((prev: any[]) => prev.map((wt: any) =>
+                          wt.id === t.id
+                            ? { ...wt, day_of_week: todayDow, _weekStart: weekStart, weekly_plan_id: planId }
+                            : wt
+                        ));
+                      }
                     }
                   }}
                   title="Mover para esta semana"
