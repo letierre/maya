@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
       end_time: body.end_time || null,
       priority: body.priority || "importante_nao_urgente",
       emoji: body.emoji || null,
+      area: body.area || null,
       status: "pendente",
       description: body.description || null,
       color: body.color || null,
@@ -104,6 +105,7 @@ export async function PATCH(req: NextRequest) {
   if (body.end_time !== undefined) updates.end_time = body.end_time;
   if (body.priority !== undefined) updates.priority = body.priority;
   if (body.emoji !== undefined) updates.emoji = body.emoji;
+  if (body.area !== undefined) updates.area = body.area;
   if (body.date !== undefined) updates.date = body.date;
   if (body.item_type !== undefined) updates.item_type = body.item_type;
   if (body.position !== undefined) updates.position = body.position;

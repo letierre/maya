@@ -25,6 +25,7 @@ import type { PlanningCompanionResponse, QuarterlyCycle } from "@/types";
 export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
   const [plan, setPlan] = useState<any>(null);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [agendaItems, setAgendaItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   // Start at 0 (Monday) to avoid hydration crash, client useEffect corrects it
   const [selectedDay, setSelectedDay] = useState(0);
@@ -47,6 +48,13 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
     const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
     return `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
   }, [selectedDate]);
+
+  // Sunday of the same week (to fetch agenda items from Mon–Sun)
+  const currentWeekEnd = useMemo(() => {
+    const d = new Date(currentWeekStart + "T12:00:00");
+    d.setDate(d.getDate() + 6);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, [currentWeekStart]);
 
   // Add task form
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -106,6 +114,11 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
   useEffect(() => {
     setLoading(true);
     fetchPlan();
+    // Fetch agenda items (compromissos/tarefas criados direto na agenda) for the week
+    fetch(`/api/agenda?from=${currentWeekStart}&to=${currentWeekEnd}`)
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setAgendaItems(d); })
+      .catch(() => {});
     // Fetch Maya's plan insight
     setInsightLoading(true);
     fetch(`/api/maya/plan-insight?week=${currentWeekStart}`)
@@ -222,13 +235,20 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
   const taskCountsByArea = useMemo(() => {
     const acc: Record<string, number> = {};
     ALL_AREAS.forEach(a => acc[a] = tasks.filter((t: any) => t.area === a && t.status === "concluida").length);
+    // Mescla itens da agenda (compromissos/tarefas criados direto na agenda) na Roda da Vida
+    agendaItems.forEach((it: any) => {
+      if (it.area && it.area !== "outros" && it.status === "concluida") acc[it.area] = (acc[it.area] ?? 0) + 1;
+    });
     return acc;
-  }, [tasks]);
+  }, [tasks, agendaItems]);
   const taskTotalByArea = useMemo(() => {
     const acc: Record<string, number> = {};
     ALL_AREAS.forEach(a => acc[a] = tasks.filter((t: any) => t.area === a).length);
+    agendaItems.forEach((it: any) => {
+      if (it.area && it.area !== "outros") acc[it.area] = (acc[it.area] ?? 0) + 1;
+    });
     return acc;
-  }, [tasks]);
+  }, [tasks, agendaItems]);
 
   const selectedDayTasks = tasks.filter((t: any) => t.day_of_week === selectedDay)
     .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));

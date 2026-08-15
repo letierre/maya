@@ -7,7 +7,8 @@ import {
   CheckCircle2, GripVertical, Plus, Clock, Star, Zap, Leaf, AlertCircle, Target,
 } from "lucide-react";
 import { getLocalDate } from "@/lib/utils";
-import type { AgendaItem, EisenhowerPriority } from "@/types";
+import { AREA_CONFIG, AREA_LABELS } from "@/lib/planejamento-constants";
+import type { AgendaItem, EisenhowerPriority, TaskArea } from "@/types";
 import { MetasPanel } from "@/components/MetasPanel";
 import { PlanejamentoPanel } from "@/components/PlanejamentoPanel";
 import { GoalDetailSheet } from "@/components/GoalDetailSheet";
@@ -143,6 +144,7 @@ function AgendaPage() {
   const [newEndTime, setNewEndTime] = useState("10:00");
   const [newDescription, setNewDescription] = useState("");
   const [newColor, setNewColor] = useState("#7C5CFF");
+  const [newArea, setNewArea] = useState<TaskArea | "">("");
   const [newRepeat, setNewRepeat] = useState("none");
   const [newNotify, setNewNotify] = useState<number | null>(null);
   const [newDueDate, setNewDueDate] = useState("");
@@ -165,6 +167,7 @@ function AgendaPage() {
       end_time: newItemType === "compromisso" ? newEndTime : null,
       priority: newPriority,
       emoji: newEmoji || null,
+      area: newArea || null,
       description: newDescription || null,
       color: newColor,
       repeat_type: newRepeat,
@@ -210,7 +213,7 @@ function AgendaPage() {
     setEditingIsRepeat(false);
     setNewTitle(""); setNewEmoji(""); setNewPriority("importante_nao_urgente");
     setNewStartTime("09:00"); setNewEndTime("10:00");
-    setNewDescription(""); setNewColor("#7C5CFF");
+    setNewDescription(""); setNewColor("#7C5CFF"); setNewArea("");
     setNewRepeat("none"); setNewNotify(null); setNewDueDate(""); setNewLinkedGoalId("");
   };
 
@@ -224,6 +227,7 @@ function AgendaPage() {
     setNewEndTime(item.end_time?.slice(0, 5) || "10:00");
     setNewDescription(item.description || "");
     setNewColor(item.color || "#7C5CFF");
+    setNewArea((item.area as TaskArea) || "");
     setNewRepeat(item.repeat_type || "none");
     setNewNotify(item.notify_minutes ?? null);
     setNewDueDate(item.due_date || "");
@@ -1251,6 +1255,31 @@ function AgendaPage() {
               placeholder="Descrição (opcional)"
               rows={2}
               style={{ ...modalInput, marginTop: 10, resize: "none", height: 56 }} />
+
+            {/* Área — vincula à Roda da Vida */}
+            <div style={{ marginTop: 14 }}>
+              <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>
+                Área da Roda da Vida {newArea && <span style={{ color: "#A78BFA" }}>· {AREA_LABELS[newArea as TaskArea]}</span>}
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 4 }}>
+                {(Object.keys(AREA_CONFIG) as TaskArea[]).filter(a => a !== "outros").map(a => {
+                  const area = AREA_CONFIG[a];
+                  const active = newArea === a;
+                  return (
+                    <button key={a} type="button" onClick={() => setNewArea(active ? "" : a)}
+                      style={{
+                        padding: "7px 4px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                        border: active ? "2px solid #7C5CFF" : "1px solid rgba(167,139,250,0.15)",
+                        background: active ? "rgba(124,92,255,0.1)" : "#0B0B10",
+                      }}>
+                      <span style={{ fontSize: 14 }}>{area?.emoji}</span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: active ? "#A78BFA" : "#9e96b5" }}>{AREA_LABELS[a]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Vincular a meta */}
             {(activeGoals.length > 0 || weekPedras.length > 0) && (

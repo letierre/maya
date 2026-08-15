@@ -318,6 +318,7 @@ export interface AgendaItem {
   end_time: string | null;   // HH:MM
   priority: EisenhowerPriority;
   emoji: string | null;
+  area: TaskArea | null;
   status: "pendente" | "concluida";
   description: string | null;
   color: string | null;
