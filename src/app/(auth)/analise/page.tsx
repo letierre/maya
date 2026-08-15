@@ -11,6 +11,7 @@ import { AreaBalance } from "@/components/analise/AreaBalance";
 import { SemanalTrend } from "@/components/analise/SemanalTrend";
 import { NutricaoResumo } from "@/components/analise/NutricaoResumo";
 import { MovimentoResumo } from "@/components/analise/MovimentoResumo";
+import { PausaResumo } from "@/components/analise/PausaResumo";
 import { LeituraResumo } from "@/components/analise/LeituraResumo";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -229,11 +230,31 @@ export default function AnalisePage() {
       ? Math.round(((prevDespesasDaily - despesasDaily) / prevDespesasDaily) * 100)
       : 0; // positive = spending less (good)
 
+    // ── movimento (caminhada/corrida/musculação) ──
+    const movimentoPct = periodCI.length > 0
+      ? Math.round((periodCI.filter((c) => c.walked === true || c.ran === true || c.strength_training === true).length / periodCI.length) * 100)
+      : 0;
+    const prevMovimentoPct = prevCI.length > 0
+      ? Math.round((prevCI.filter((c) => c.walked === true || c.ran === true || c.strength_training === true).length / prevCI.length) * 100)
+      : 0;
+    const movimentoTrend = prevMovimentoPct > 0 ? Math.round(((movimentoPct - prevMovimentoPct) / prevMovimentoPct) * 100) : 0;
+
+    // ── pausa (meditação/oração/respiração) ──
+    const pausaPct = periodCI.length > 0
+      ? Math.round((periodCI.filter((c) => c.meditation === true || c.prayer === true || c.breathing === true).length / periodCI.length) * 100)
+      : 0;
+    const prevPausaPct = prevCI.length > 0
+      ? Math.round((prevCI.filter((c) => c.meditation === true || c.prayer === true || c.breathing === true).length / prevCI.length) * 100)
+      : 0;
+    const pausaTrend = prevPausaPct > 0 ? Math.round(((pausaPct - prevPausaPct) / prevPausaPct) * 100) : 0;
+
     return {
       sono: { pct: sonoPct, trend: sonoTrend, display: sonoDisplay, sleptWellPct },
       humor: { pct: humorPct, trend: humorTrend },
       foco: { pct: focoPct, trend: focoTrend },
       gastos: { pct: Math.round(despesas), trend: gastosTrend },
+      movimento: { pct: movimentoPct, trend: movimentoTrend },
+      pausa: { pct: pausaPct, trend: pausaTrend },
     };
   }, [periodCI, prevCI, periodSleep, prevSleep, periodFin, prevFin, periodDays]);
 
@@ -249,8 +270,6 @@ export default function AnalisePage() {
     const habitLabels: Record<string, string> = {
       slept_well: "Sono",
       ate_well: "Alimentação",
-      exercise_walk: "Exercício",
-      meditation_prayer_breathing: "Meditação",
       meditation: "Meditação",
       prayer: "Oração",
       breathing: "Respiração",
@@ -435,16 +454,26 @@ export default function AnalisePage() {
         ? `R$${areas.gastos.pct}`
         : "—",
     },
+    {
+      label: "Movimento",
+      pct: areas.movimento.pct,
+      trend: areas.movimento.trend,
+      positive: areas.movimento.trend >= 0,
+      detail: null,
+    },
+    {
+      label: "Pausa",
+      pct: areas.pausa.pct,
+      trend: areas.pausa.trend,
+      positive: areas.pausa.trend >= 0,
+      detail: null,
+    },
   ];
 
   const tabLabel = tab === "semana" ? "esta semana" : tab === "mes" ? "este mês" : "este trimestre";
   const crescTabLabel = crescTab === "semana" ? "esta semana" : crescTab === "mes" ? "este mês" : "este trimestre";
   const crescFrom = daysAgo(crescPeriodDays - 1);
   const crescTo = daysAgo(0);
-
-  const exercisePct = periodCI.length > 0
-    ? Math.round((periodCI.filter((c) => c.exercise_walk === true).length / periodCI.length) * 100)
-    : null;
 
   return (
     <div style={{ minHeight: "100dvh", background: "oklch(0.12 0.012 270)", paddingBottom: 110 }}>
@@ -677,7 +706,8 @@ export default function AnalisePage() {
 
       {/* Bem-estar complementar: nutrição, movimento, leitura */}
       <NutricaoResumo from={daysAgo(periodDays - 1)} to={daysAgo(0)} />
-      <MovimentoResumo from={daysAgo(periodDays - 1)} to={daysAgo(0)} exercisePct={exercisePct} />
+      <MovimentoResumo from={daysAgo(periodDays - 1)} to={daysAgo(0)} checkIns={periodCI} />
+      <PausaResumo checkIns={periodCI} />
       <LeituraResumo from={daysAgo(periodDays - 1)} to={daysAgo(0)} />
 
       {/* Mood timeline */}

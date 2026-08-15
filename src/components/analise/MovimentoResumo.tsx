@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
-import { Section, CARD, LILAC, Stat } from "./Section";
+import type { CheckIn } from "@/types";
+import { Section, CARD, MUTED, LILAC, Stat } from "./Section";
 
 interface RunningSession {
   id: string;
@@ -13,11 +14,11 @@ interface RunningSession {
 export function MovimentoResumo({
   from,
   to,
-  exercisePct,
+  checkIns,
 }: {
   from: string;
   to: string;
-  exercisePct?: number | null;
+  checkIns: CheckIn[];
 }) {
   const [sessions, setSessions] = useState<RunningSession[]>([]);
 
@@ -27,8 +28,16 @@ export function MovimentoResumo({
     });
   }, [from, to]);
 
+  const days = checkIns.length;
+  const walkedDays = checkIns.filter((c) => c.walked === true).length;
+  const ranDays = checkIns.filter((c) => c.ran === true).length;
+  const strengthDays = checkIns.filter((c) => c.strength_training === true).length;
+  const activeDays = checkIns.filter(
+    (c) => c.walked === true || c.ran === true || c.strength_training === true,
+  ).length;
+
   const hasRun = sessions.length > 0;
-  const hasExercise = exercisePct != null && exercisePct > 0;
+  const hasExercise = activeDays > 0;
   if (!hasRun && !hasExercise) return null;
 
   const totalKm = sessions.reduce((s, r) => s + (r.distance_meters || 0), 0) / 1000;
@@ -41,8 +50,14 @@ export function MovimentoResumo({
     stats.push({ value: Math.round(totalMin), label: "min" });
   }
   if (hasExercise) {
-    stats.push({ value: `${Math.round(exercisePct ?? 0)}%`, label: "dias ativos", color: LILAC });
+    stats.push({ value: `${activeDays}/${days}`, label: "dias ativos", color: LILAC });
   }
+
+  const breakdown = [
+    { emoji: "🚶", label: "caminhada", n: walkedDays },
+    { emoji: "🏃", label: "corrida", n: ranDays },
+    { emoji: "🏋️", label: "musculação", n: strengthDays },
+  ].filter((b) => b.n > 0);
 
   return (
     <Section title="Movimento">
@@ -52,6 +67,25 @@ export function MovimentoResumo({
             <Stat key={s.label} value={s.value} label={s.label} color={s.color} />
           ))}
         </div>
+        {breakdown.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+            {breakdown.map((b) => (
+              <span
+                key={b.label}
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: MUTED,
+                  background: "oklch(0.2 0.03 270)",
+                  borderRadius: 9999,
+                  padding: "4px 10px",
+                }}
+              >
+                {b.emoji} {b.label} · {b.n} {b.n === 1 ? "dia" : "dias"}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </Section>
   );
