@@ -28,6 +28,18 @@ function daysAgo(n: number): string {
   return `${y}-${m}-${day}`;
 }
 
+/** Largura (px) do viewBox do gráfico de tendência — mín. 280 p/ a semana não ficar apertada. */
+function trendChartWidth(count: number): number {
+  return Math.max(count * 16, 280);
+}
+
+/** X de um ponto do gráfico: espalha os dias igualmente por toda a largura do viewBox. */
+function trendChartX(i: number, count: number): number {
+  const w = trendChartWidth(count);
+  if (count <= 1) return w / 2;
+  return (i / (count - 1)) * w;
+}
+
 /** Filter array to entries within the last `days` (inclusive of today) */
 function filterPeriod<T extends { date: string }>(items: T[], days: number): T[] {
   const since = daysAgo(days - 1);
@@ -631,10 +643,10 @@ export default function AnalisePage() {
             borderRadius: 18, padding: "16px 8px 8px",
             overflow: "hidden",
           }}>
-            <svg viewBox={`0 0 ${Math.max(trendData.length * 16, 280)} 120`} style={{ width: "100%", height: 120 }}>
+            <svg viewBox={`0 0 ${trendChartWidth(trendData.length)} 120`} preserveAspectRatio="none" style={{ width: "100%", height: 120 }}>
               {/* Grid lines */}
               {[25, 50, 75].map((y) => (
-                <line key={y} x1={0} x2={Math.max(trendData.length * 16, 280)} y1={120 - y * 1.2} y2={120 - y * 1.2}
+                <line key={y} x1={0} x2={trendChartWidth(trendData.length)} y1={120 - y * 1.2} y2={120 - y * 1.2}
                   stroke="oklch(0.22 0.02 270)" strokeWidth={0.5} strokeDasharray="4 3" />
               ))}
               {/* Line */}
@@ -645,19 +657,14 @@ export default function AnalisePage() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 points={trendData
-                  .map((p, i) => {
-                    if (p.score == null) return null;
-                    const x = i * 16 + 8;
-                    const y = 120 - p.score * 1.2;
-                    return `${x},${y}`;
-                  })
+                  .map((p, i) => p.score == null ? null : `${trendChartX(i, trendData.length)},${120 - p.score * 1.2}`)
                   .filter(Boolean)
                   .join(" ")}
               />
               {/* Dots */}
               {trendData.map((p, i) => {
                 if (p.score == null) return null;
-                const x = i * 16 + 8;
+                const x = trendChartX(i, trendData.length);
                 const y = 120 - p.score * 1.2;
                 return (
                   <circle key={i} cx={x} cy={y} r={3} fill="#7C5CFF"
@@ -670,12 +677,12 @@ export default function AnalisePage() {
                 points={
                   (() => {
                     const pts = trendData
-                      .map((p, i) => p.score != null ? `${i * 16 + 8},${120 - p.score * 1.2}` : null)
+                      .map((p, i) => p.score != null ? `${trendChartX(i, trendData.length)},${120 - p.score * 1.2}` : null)
                       .filter(Boolean);
                     if (pts.length === 0) return "";
-                    const firstX = trendData.findIndex((p) => p.score != null) * 16 + 8;
-                    const lastX = (trendData.length - 1 - [...trendData].reverse().findIndex((p) => p.score != null)) * 16 + 8;
-                    return `${firstX},120 ${pts.join(" ")} ${lastX},120`;
+                    const firstI = trendData.findIndex((p) => p.score != null);
+                    const lastI = trendData.length - 1 - [...trendData].reverse().findIndex((p) => p.score != null);
+                    return `${trendChartX(firstI, trendData.length)},120 ${pts.join(" ")} ${trendChartX(lastI, trendData.length)},120`;
                   })()
                 }
               />
