@@ -555,26 +555,21 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
             />
           )}
 
-          {/* Vertex dots — rótulo "feitos/total" (ex.: 6/6) */}
+          {/* Vertex dots — marcam a posição do volume concluído de cada área */}
           {AREAS.map((a, i) => {
             const d = done[a.key] ?? 0;
-            const t = totals[a.key] ?? 0;
             const pct = mounted ? doneVolume[i] : 0;
             if (d <= 0) return null;
             const [px, py] = vertPt(i, pct).split(",");
-            const isFull = t > 0 && d >= t;
             return (
               <g key={a.key}>
-                <circle cx={px} cy={py} r={isFull ? 6 : 5} fill={a.color} opacity={0.2} />
-                <circle cx={px} cy={py} r={isFull ? 3 : 2.5} fill={a.color} stroke="#fff" strokeWidth="0.8" />
-                <text x={px} y={Number(py) - 14} textAnchor="middle" fontSize={isFull ? 10 : 9} fontWeight="700" fill={a.color}>
-                  {`${d}/${t}`}
-                </text>
+                <circle cx={px} cy={py} r={5} fill={a.color} opacity={0.2} />
+                <circle cx={px} cy={py} r={2.5} fill={a.color} stroke="#fff" strokeWidth="0.8" />
               </g>
             );
           })}
 
-          {/* Area labels */}
+          {/* Area labels — emoji + título + contagem feitos/total, fora da roda */}
           {AREAS.map((a, i) => {
             const a2 = angle(i);
             const labelDist = R + (i === 1 ? 36 : i === 7 ? 33 : 26); // Carreira & Saúde need extra breathing room
@@ -583,6 +578,8 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
             const pct = mounted ? doneVolume[i] : 0;
             const planPct = mounted ? planned[i] : 0;
             const empty = pct === 0 && planPct === 0;
+            const d = done[a.key] ?? 0;
+            const t = totals[a.key] ?? 0;
             const customEmoji = emojis?.[a.key] ?? DEFAULT_EMOJIS[a.key];
             return (
               <g key={a.key} opacity={empty ? 0.4 : 1} style={{ transition: "opacity .6s" }}>
@@ -597,6 +594,12 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
                   fontSize="8.5" fontWeight="600" fill={a.color} letterSpacing=".03em">
                   {a.label}
                 </text>
+                {t > 0 && (
+                  <text x={lx} y={ly + 26} textAnchor="middle" dominantBaseline="middle"
+                    fontSize="7.5" fontWeight="700" fill="#b8b0d6" letterSpacing=".02em">
+                    {`${d}/${t}`}
+                  </text>
+                )}
               </g>
             );
           })}
