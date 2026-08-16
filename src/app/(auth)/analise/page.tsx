@@ -288,7 +288,7 @@ export default function AnalisePage() {
       strength_training: "Musculação",
       worked_on_goals: "Foco",
       creative_activity: "Criatividade",
-      did_something_enjoyable: "Diversão",
+      did_something_enjoyable: "Fazer algo que gosta",
       talked_to_someone: "Conexão social",
       drank_water: "Hidratação",
     };
