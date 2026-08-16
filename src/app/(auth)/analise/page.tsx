@@ -81,6 +81,7 @@ export default function AnalisePage() {
   const [tab, setTab] = useState<"semana" | "mes" | "trimestre">("semana");
   const [hub, setHub] = useState<"bemestar" | "crescimento">("bemestar");
   const [crescTab, setCrescTab] = useState<"semana" | "mes" | "trimestre">("trimestre");
+  const [openInfo, setOpenInfo] = useState<string | null>(null);
 
   const periodDays = { semana: 7, mes: 30, trimestre: 90 }[tab];
   const crescPeriodDays = { semana: 7, mes: 30, trimestre: 90 }[crescTab];
@@ -410,6 +411,7 @@ export default function AnalisePage() {
       trend: areas.sono.trend,
       positive: areas.sono.trend >= 0,
       detail: areas.sono.display != null ? `${areas.sono.display}h` : `${areas.sono.sleptWellPct ?? 0}%`,
+      description: "Qualidade do sono no período, combinando duração, qualidade, interrupções e sonhos. Sem registro detalhado, usa o % de noites bem dormidas.",
     },
     {
       label: "Humor",
@@ -417,6 +419,7 @@ export default function AnalisePage() {
       trend: areas.humor.trend,
       positive: areas.humor.trend >= 0,
       detail: null,
+      description: "Equilíbrio emocional: proporção de humores positivos em relação aos negativos registrados nos check-ins.",
     },
     {
       label: "Foco",
@@ -424,6 +427,7 @@ export default function AnalisePage() {
       trend: areas.foco.trend,
       positive: areas.foco.trend >= 0,
       detail: null,
+      description: "Execução do que você planejou na agenda, somada a ter trabalhado nas suas metas.",
     },
     {
       label: "Movimento",
@@ -431,6 +435,7 @@ export default function AnalisePage() {
       trend: areas.movimento.trend,
       positive: areas.movimento.trend >= 0,
       detail: null,
+      description: "% de dias em que você se movimentou — caminhada, corrida ou musculação.",
     },
     {
       label: "Pausa",
@@ -438,6 +443,7 @@ export default function AnalisePage() {
       trend: areas.pausa.trend,
       positive: areas.pausa.trend >= 0,
       detail: null,
+      description: "% de dias com uma prática de pausa: meditação, oração ou respiração intencional.",
     },
   ];
 
@@ -639,35 +645,70 @@ export default function AnalisePage() {
           Áreas em destaque
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          {areaCards.map((a) => (
-            <div key={a.label} style={{
-              background: "oklch(0.16 0.012 270)",
-              border: "1px solid oklch(0.28 0.02 270 / 0.5)",
-              borderRadius: 16, padding: "14px 12px",
-            }}>
-              <p style={{ margin: 0, fontSize: 11, color: "oklch(0.55 0.03 270)", fontWeight: 500 }}>{a.label}</p>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 4 }}>
-                <span style={{ fontSize: 20, fontWeight: 700, color: "#e0d6ff" }}>
-                  {a.label === "Sono" && a.detail ? a.detail : `${a.pct}%`}
-                </span>
-                {a.trend !== 0 && (
-                  <span style={{ fontSize: 12, fontWeight: 600, color: a.positive ? "#22D18B" : "#FF5C5C" }}>
-                    {a.trend > 0 ? "+" : ""}{a.trend}%
+          {areaCards.map((a, idx) => {
+            const spansFull = idx === areaCards.length - 1 && areaCards.length % 2 === 1;
+            const infoOpen = openInfo === a.label;
+            return (
+              <div key={a.label} style={{
+                background: "oklch(0.16 0.012 270)",
+                border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+                borderRadius: 16, padding: "14px 12px",
+                ...(spansFull ? { gridColumn: "1 / -1" } : {}),
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <p style={{ margin: 0, fontSize: 11, color: "oklch(0.55 0.03 270)", fontWeight: 500 }}>{a.label}</p>
+                  <button
+                    type="button"
+                    onClick={() => setOpenInfo(infoOpen ? null : a.label)}
+                    aria-label={`O que é ${a.label}`}
+                    title={`O que é ${a.label}`}
+                    style={{
+                      width: 18, height: 18, borderRadius: "50%",
+                      border: "1px solid oklch(0.5 0.12 270 / 0.4)",
+                      background: "transparent", cursor: "pointer",
+                      color: infoOpen ? "#7C5CFF" : "oklch(0.55 0.03 270)",
+                      fontSize: 11, fontWeight: 700, lineHeight: 1,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      padding: 0, flexShrink: 0, fontFamily: "inherit",
+                      transition: "color .15s ease, border-color .15s ease",
+                    }}
+                  >
+                    i
+                  </button>
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 4 }}>
+                  <span style={{ fontSize: 20, fontWeight: 700, color: "#e0d6ff" }}>
+                    {a.label === "Sono" && a.detail ? a.detail : `${a.pct}%`}
                   </span>
+                  {a.trend !== 0 && (
+                    <span style={{ fontSize: 12, fontWeight: 600, color: a.positive ? "#22D18B" : "#FF5C5C" }}>
+                      {a.trend > 0 ? "+" : ""}{a.trend}%
+                    </span>
+                  )}
+                </div>
+                {/* Mini bar */}
+                <div style={{
+                  height: 3, borderRadius: 9999, marginTop: 8,
+                  background: "oklch(0.25 0.02 270)", overflow: "hidden",
+                }}>
+                  <div style={{
+                    height: "100%", width: `${Math.min(a.pct, 100)}%`, borderRadius: 9999,
+                    background: "linear-gradient(90deg, #7C5CFF, #A78BFA)",
+                  }} />
+                </div>
+                {infoOpen && (
+                  <p style={{
+                    margin: "8px 0 0", fontSize: 11, lineHeight: 1.45,
+                    color: "oklch(0.62 0.03 270)",
+                    background: "oklch(0.2 0.02 270)",
+                    borderRadius: 10, padding: "8px 10px",
+                  }}>
+                    {a.description}
+                  </p>
                 )}
               </div>
-              {/* Mini bar */}
-              <div style={{
-                height: 3, borderRadius: 9999, marginTop: 8,
-                background: "oklch(0.25 0.02 270)", overflow: "hidden",
-              }}>
-                <div style={{
-                  height: "100%", width: `${Math.min(a.pct, 100)}%`, borderRadius: 9999,
-                  background: "linear-gradient(90deg, #7C5CFF, #A78BFA)",
-                }} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
