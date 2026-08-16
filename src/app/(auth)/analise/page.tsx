@@ -46,18 +46,32 @@ function avg(arr: number[]): number | null {
   return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
 
-/** Wellness score 0–100 from a single check-in, based on enabled habit keys */
+/** Wellness score 0–100 from a single check-in, based on enabled habit keys.
+ *  Hábito cumprido = 100, não cumprido = 0. Hábitos não respondidos (undefined)
+ *  ficam fora da média — não viram "neutro 50" nem penalizam como "não feito". */
 function wellnessScore(ci: CheckIn, habitKeys: string[]): number {
   if (habitKeys.length === 0) return 50;
   let sum = 0;
   let count = 0;
   for (const k of habitKeys) {
     if (k === "suicidal_thoughts" || k === "water_cups") continue;
-    const v = (ci as unknown as Record<string, unknown>)[k];
+
+    // Hidratação é contínua: 0 copos = 0, 4+ copos = 100 (mesma meta da UI).
     if (k === "drank_water") {
-      sum += (ci.water_cups ?? 0) >= 4 ? 100 : (ci.water_cups ?? 0) > 0 ? 50 : 0;
+      const cups = ci.water_cups ?? 0;
+      sum += Math.min((cups / 4) * 100, 100);
+      count++;
+      continue;
+    }
+
+    const v = (ci as unknown as Record<string, unknown>)[k];
+    if (v === undefined) continue; // não respondido — não entra na média
+
+    if (k === "felt_judged") {
+      // Sentir-se julgado é negativo para o bem-estar: inverte a pontuação.
+      sum += v === true ? 0 : 100;
     } else {
-      sum += v === true ? 100 : v === false ? 0 : 50;
+      sum += v === true ? 100 : 0;
     }
     count++;
   }
