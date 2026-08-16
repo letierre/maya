@@ -333,26 +333,6 @@ export default function AnalisePage() {
     return factors.slice(0, 4);
   }, [checkIns, habitKeys]);
 
-  // ── streak ─────────────────────────────────────────────────────────────────
-
-  const streak = useMemo(() => {
-    if (checkIns.length === 0) return 0;
-    const today = daysAgo(0);
-    const dates = new Set(checkIns.map((c) => c.date));
-    let count = 0;
-    const d = new Date();
-    while (true) {
-      const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      if (dates.has(ds)) {
-        count++;
-        d.setDate(d.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-    return count;
-  }, [checkIns]);
-
   // ── trend data (wellness per day) ──────────────────────────────────────────
 
   const trendData = useMemo(() => {
@@ -519,22 +499,6 @@ export default function AnalisePage() {
           ))}
         </div>
       </div>
-
-      {/* Streak */}
-      {hub === "bemestar" && streak > 0 && (
-        <div style={{ padding: "0 20px", marginBottom: 4 }}>
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            background: "oklch(0.18 0.02 270)", borderRadius: 9999,
-            padding: "8px 16px", border: "1px solid oklch(0.28 0.02 270 / 0.5)",
-          }}>
-            <span style={{ fontSize: 18 }}>🔥</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>
-              {streak} {streak === 1 ? "dia" : "dias"} seguidos
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Tabs (período) — apenas no hub de bem-estar */}
       {hub === "bemestar" && (
