@@ -19,10 +19,12 @@ export const CARD: CSSProperties = {
 
 export function Section({
   title,
+  subtitle,
   children,
   paddingTop = 20,
 }: {
   title: string;
+  subtitle?: string;
   children: ReactNode;
   paddingTop?: number;
 }) {
@@ -30,7 +32,7 @@ export function Section({
     <div style={{ padding: `${paddingTop}px 16px 0` }}>
       <p
         style={{
-          margin: "0 0 10px",
+          margin: subtitle ? "0 0 2px" : "0 0 10px",
           fontSize: 10.5,
           fontWeight: 700,
           letterSpacing: ".12em",
@@ -41,6 +43,11 @@ export function Section({
       >
         {title}
       </p>
+      {subtitle && (
+        <p style={{ margin: "0 0 10px", fontSize: 11, color: MUTED, paddingLeft: 4, fontWeight: 500 }}>
+          {subtitle}
+        </p>
+      )}
       {children}
     </div>
   );

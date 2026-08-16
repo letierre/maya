@@ -93,7 +93,7 @@ export function AreaBalance({ from, to }: { from: string; to: string }) {
   };
 
   return (
-    <Section title="Equilíbrio de áreas">
+    <Section title="Equilíbrio de áreas" subtitle="baseado nas tarefas e compromissos planejados">
       <LifeWheel done={done} totals={totals} />
       <button
         type="button"

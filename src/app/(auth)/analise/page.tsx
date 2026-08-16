@@ -857,8 +857,11 @@ export default function AnalisePage() {
       {/* Fatores de impacto */}
       {impactFactors.length > 0 && (
         <div style={{ padding: "20px 16px 0" }}>
-          <p style={{ margin: "0 0 10px", fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "oklch(0.65 0.12 270)", paddingLeft: 4 }}>
+          <p style={{ margin: "0 0 2px", fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "oklch(0.65 0.12 270)", paddingLeft: 4 }}>
             O que mais impacta seu bem-estar
+          </p>
+          <p style={{ margin: "0 0 10px", fontSize: 11, color: "oklch(0.55 0.03 270)", paddingLeft: 4, fontWeight: 500 }}>
+            baseado nos seus check-ins
           </p>
           <div style={{
             background: "oklch(0.16 0.012 270)",
