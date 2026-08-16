@@ -232,7 +232,7 @@ export default function DashboardPage() {
   }, [checkIns, enabledKeys, sleepLogs]);
 
   // Sparkline data
-  const scoreKeys = enabledKeys.filter((k) => k !== "suicidal_thoughts");
+  const scoreKeys = enabledKeys.filter((k) => k !== "suicidal_thoughts" && k !== "felt_judged");
   const sparkData = useMemo(() => {
     const ciByDay = new Map<string, CheckIn>();
     for (const ci of checkIns) ciByDay.set(ci.date, ci);
