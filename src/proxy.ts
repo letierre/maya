@@ -13,7 +13,7 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // Update request cookies so getSession() can read them
+          // Update request cookies so getUser() can read them
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
@@ -28,34 +28,34 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh/validate the session
+  const { pathname } = request.nextUrl;
+
+  // Landing e callback de autenticação sempre liberados (sem custo de rede)
+  if (pathname === "/" || pathname.startsWith("/auth/")) {
+    return supabaseResponse;
+  }
+
+  // getUser valida o token e renova automaticamente quando só o access token expirou
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const protectedPaths = [
-    "/dashboard", "/check-in", "/historico", "/configurações",
-    "/onboarding", "/diario", "/perfil", "/insights", "/nutricao",
-    "/sono", "/financas", "/analise",
-  ];
-  const isProtected = protectedPaths.some((p) =>
-    request.nextUrl.pathname.startsWith(p)
-  );
+  const isAuthPage = pathname === "/login" || pathname === "/cadastro";
 
-  if (isProtected && !user) {
+  // Logado tentando acessar login/cadastro → manda pro dashboard
+  if (isAuthPage && user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/dashboard";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 
-  if (
-    (request.nextUrl.pathname === "/login" ||
-      request.nextUrl.pathname === "/cadastro") &&
-    user
-  ) {
+  // Não logado acessando rota protegida → login, com redirect de volta
+  if (!isAuthPage && !user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }
 
@@ -63,7 +63,8 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
+  // Não roda em /api (autenticação própria) nem em arquivos estáticos (caminhos com extensão)
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api|_next|favicon.ico|.*\\..*).*)",
   ],
 };
