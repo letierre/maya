@@ -21,7 +21,12 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-async function detectAllTriggers(userId: string, today: string, firstName: string, gender: string): Promise<NudgeResult[]> {
+async function detectAllTriggers(
+  userId: string,
+  today: string,
+  firstName: string,
+  gender: string,
+): Promise<{ results: NudgeResult[]; memFacts: string[]; recentChatTopics: { role: string; content: string }[] }> {
   const admin = getSupabaseAdmin();
 
   const soloSolo = gender === "feminino" ? "sozinha" : "sozinho";
@@ -312,6 +317,9 @@ async function detectAllTriggers(userId: string, today: string, firstName: strin
     });
   }
 
+  const memFacts = ((memories || []) as any[]).map((m: any) => m.fact as string);
+  const recentChatTopics = (recentChatMessages || []) as { role: string; content: string }[];
+
   return { results, memFacts, recentChatTopics };
 }
 
@@ -323,7 +331,9 @@ Seu tom é de amiga próxima — natural, sem termos técnicos, sem parecer rob�
 Você nunca julga. Você é genuína, sem malícia, sem ironia.
 
 REGRAS:
+- Você é a MESMA Maya do chat — não existem duas Mayas. Tudo o que foi conversado lá vale aqui.
 - NUNCA repita uma pergunta que a pessoa já respondeu (veja memórias e chat)
+- NUNCA contradiga o que a pessoa acabou de te dizer: se ela disse que algo NÃO vai acontecer hoje, mudou de dia ou cancelou, honre essa mudança e não fale como se fosse acontecer.
 - Se a pessoa já te contou algo importante, faça referência natural
 - NUNCA recite dados como relatório
 - NUNCA force positividade
@@ -344,7 +354,7 @@ async function generateNudgeViaLLM(
     : "";
 
   const chatBlock = recentChatTopics
-    ? `\n\nA pessoa já conversou com você sobre: ${recentChatTopics}. NÃO repita perguntas já respondidas.`
+    ? `\n\n## CONVERSA RECENTE NO CHAT (fonte da verdade)\nVocê conversou com a pessoa recentemente. Esta é a MESMA conversa — você é a mesma Maya.\n${recentChatTopics}\n\nREGRAS DE CONTINUIDADE (críticas):\n- Tudo o que foi decidido, adiado ou corrigido nessa conversa vale também aqui: se a pessoa disse que algo NÃO vai acontecer hoje, mudou de dia ou cancelou, NÃO fale como se fosse acontecer.\n- NUNCA contradiga o que a pessoa acabou de te dizer. Honre a mudança.\n- NÃO repita perguntas já respondidas.`
     : "";
 
   const userPrompt = `Gere uma mensagem curta de nudge para ${firstName || "a pessoa"}.
@@ -399,6 +409,18 @@ export async function GET() {
     const firstName = userName.split(" ")[0];
     const gender = (context.gender as string) || "nao_dizer";
 
+    // ── Continuidade: não faz nudge se a pessoa já conversou hoje ──
+    // (evita que um nudge cacheado contradiga uma conversa recente no chat)
+    const { count: todayMsgCount } = await admin
+      .from("chat_messages")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", today + "T00:00:00Z")
+      .lte("created_at", today + "T23:59:59Z");
+    if (todayMsgCount && todayMsgCount > 0) {
+      return NextResponse.json({ nudges: [] });
+    }
+
     // ── Cache check ──
     const cachedNudge = context.maya_nudge as { id: string; message: string; date: string; saved: boolean; releaseHour: number } | undefined;
     if (cachedNudge?.date === today && cachedNudge.message) {
@@ -408,17 +430,6 @@ export async function GET() {
       const brH = now.getHours();
       if (brH < cachedNudge.releaseHour) return NextResponse.json({ nudges: [] });
       return NextResponse.json({ nudges: [{ id: cachedNudge.id, message: cachedNudge.message, action: (cachedNudge as any).action }] });
-    }
-
-    // ── Don't nudge if user already chatted today ──
-    const { count: todayMsgCount } = await admin
-      .from("chat_messages")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .gte("created_at", today + "T00:00:00Z")
-      .lte("created_at", today + "T23:59:59Z");
-    if (todayMsgCount && todayMsgCount > 0) {
-      return NextResponse.json({ nudges: [] });
     }
 
     // Get or create check-in count
@@ -435,11 +446,13 @@ export async function GET() {
 
     // Detect ALL triggers, pick highest priority
     const { results: nudges, memFacts, recentChatTopics } = await detectAllTriggers(user.id, today, firstName, gender);
+    // Transcrição das últimas trocas em ordem cronológica, com papéis explícitos,
+    // para o nudge não contradizer o que foi conversado no chat.
     const chatSummary = (recentChatTopics || [])
       .filter((m: any) => m.role === "user" || m.role === "assistant")
-      .slice(0, 5)
-      .map((m: any) => m.content?.slice(0, 100))
-      .join(" | ");
+      .reverse()
+      .map((m: any) => `${m.role === "assistant" ? "Maya" : "Usuário"}: ${m.content?.slice(0, 200)}`)
+      .join("\n");
     const bestNudge = nudges.sort((a, b) => a.priority - b.priority)[0];
 
     if (bestNudge) {
@@ -493,12 +506,14 @@ export async function GET() {
 
 async function cacheNudge(admin: any, userId: string, context: Record<string, unknown>, id: string, message: string, date: string, action?: { label: string; href: string }) {
   const releaseHour = 9 + Math.floor(Math.random() * 9);
-  admin
-    .from("user_preferences")
-    .update({ context: { ...context, maya_nudge: { id, message, date, saved: false, releaseHour, action } } })
-    .eq("user_id", userId)
-    .then(() => {})
-    .catch(() => {});
+  try {
+    await admin
+      .from("user_preferences")
+      .update({ context: { ...context, maya_nudge: { id, message, date, saved: false, releaseHour, action } } })
+      .eq("user_id", userId);
+  } catch {
+    /* best-effort */
+  }
 }
 
 // ── POST — Mark nudge as saved to chat ─────────────────────────────────────────
