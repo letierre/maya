@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { MOOD_CHIPS } from "@/lib/checkin-moods";
+import { didExercise, didPause } from "@/lib/checkin-answered";
 import { sleepScore } from "@/lib/sleep-utils";
 import type { CheckIn, SleepLog, AgendaItem } from "@/types";
 import { GrowthScore } from "@/components/analise/GrowthScore";
@@ -243,19 +244,19 @@ export default function AnalisePage() {
 
     // ── movimento (caminhada/corrida/musculação) ──
     const movimentoPct = periodCI.length > 0
-      ? Math.round((periodCI.filter((c) => c.walked === true || c.ran === true || c.strength_training === true).length / periodCI.length) * 100)
+      ? Math.round((periodCI.filter((c) => didExercise(c)).length / periodCI.length) * 100)
       : 0;
     const prevMovimentoPct = prevCI.length > 0
-      ? Math.round((prevCI.filter((c) => c.walked === true || c.ran === true || c.strength_training === true).length / prevCI.length) * 100)
+      ? Math.round((prevCI.filter((c) => didExercise(c)).length / prevCI.length) * 100)
       : 0;
     const movimentoTrend = prevMovimentoPct > 0 ? Math.round(((movimentoPct - prevMovimentoPct) / prevMovimentoPct) * 100) : 0;
 
     // ── pausa (meditação/oração/respiração) ──
     const pausaPct = periodCI.length > 0
-      ? Math.round((periodCI.filter((c) => c.meditation === true || c.prayer === true || c.breathing === true).length / periodCI.length) * 100)
+      ? Math.round((periodCI.filter((c) => didPause(c)).length / periodCI.length) * 100)
       : 0;
     const prevPausaPct = prevCI.length > 0
-      ? Math.round((prevCI.filter((c) => c.meditation === true || c.prayer === true || c.breathing === true).length / prevCI.length) * 100)
+      ? Math.round((prevCI.filter((c) => didPause(c)).length / prevCI.length) * 100)
       : 0;
     const pausaTrend = prevPausaPct > 0 ? Math.round(((pausaPct - prevPausaPct) / prevPausaPct) * 100) : 0;
 

@@ -1,6 +1,7 @@
 "use client";
 
 import type { CheckIn } from "@/types";
+import { didPause } from "@/lib/checkin-answered";
 import { Section, CARD, MUTED, LILAC, Stat } from "./Section";
 
 export function PausaResumo({ checkIns }: { checkIns: CheckIn[] }) {
@@ -8,9 +9,7 @@ export function PausaResumo({ checkIns }: { checkIns: CheckIn[] }) {
   const medDays = checkIns.filter((c) => c.meditation === true).length;
   const prayDays = checkIns.filter((c) => c.prayer === true).length;
   const breatheDays = checkIns.filter((c) => c.breathing === true).length;
-  const pauseDays = checkIns.filter(
-    (c) => c.meditation === true || c.prayer === true || c.breathing === true,
-  ).length;
+  const pauseDays = checkIns.filter((c) => didPause(c)).length;
 
   if (pauseDays === 0) return null;
 

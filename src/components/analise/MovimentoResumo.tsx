@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
+import { didExercise } from "@/lib/checkin-answered";
 import type { CheckIn } from "@/types";
 import { Section, CARD, MUTED, LILAC, Stat } from "./Section";
 
@@ -32,9 +33,7 @@ export function MovimentoResumo({
   const walkedDays = checkIns.filter((c) => c.walked === true).length;
   const ranDays = checkIns.filter((c) => c.ran === true).length;
   const strengthDays = checkIns.filter((c) => c.strength_training === true).length;
-  const activeDays = checkIns.filter(
-    (c) => c.walked === true || c.ran === true || c.strength_training === true,
-  ).length;
+  const activeDays = checkIns.filter((c) => didExercise(c)).length;
 
   const hasRun = sessions.length > 0;
   const hasExercise = activeDays > 0;
