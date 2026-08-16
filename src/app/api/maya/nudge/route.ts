@@ -484,13 +484,11 @@ export async function GET() {
       );
 
       // Cache for today with enhanced message
-      await cacheNudge(admin, user.id, context, bestNudge.id, enhancedMessage, today, bestNudge.action);
+      const releaseHour = await cacheNudge(admin, user.id, context, bestNudge.id, enhancedMessage, today, bestNudge.action);
 
       // Respect random release hour — don't show if too early
-      const now = new Date();
-      const brH = now.getHours();
-      const savedNudge = (context.maya_nudge as any);
-      if (savedNudge?.releaseHour && brH < savedNudge.releaseHour) {
+      const brH = new Date().getHours();
+      if (brH < releaseHour) {
         return NextResponse.json({ nudges: [] });
       }
 
@@ -504,7 +502,7 @@ export async function GET() {
   }
 }
 
-async function cacheNudge(admin: any, userId: string, context: Record<string, unknown>, id: string, message: string, date: string, action?: { label: string; href: string }) {
+async function cacheNudge(admin: any, userId: string, context: Record<string, unknown>, id: string, message: string, date: string, action?: { label: string; href: string }): Promise<number> {
   const releaseHour = 9 + Math.floor(Math.random() * 9);
   try {
     await admin
@@ -514,6 +512,7 @@ async function cacheNudge(admin: any, userId: string, context: Record<string, un
   } catch {
     /* best-effort */
   }
+  return releaseHour;
 }
 
 // ── POST — Mark nudge as saved to chat ─────────────────────────────────────────
