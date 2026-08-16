@@ -60,23 +60,15 @@ function avg(arr: number[]): number | null {
 }
 
 /** Wellness score 0–100 from a single check-in, based on enabled habit keys.
- *  Hábito cumprido = 100, não cumprido = 0. Só entram os hábitos realmente
- *  respondidos (answered_questions); os pulados ficam fora da média. Check-ins
- *  legados (sem a coluna) mantêm o comportamento antigo de contar todos. */
+ *  Hábito cumprido = 100, não cumprido = 0. Todo hábito habilitado conta —
+ *  pular = "não fez", então o pulado também entra na média como 0. */
 function wellnessScore(ci: CheckIn, habitKeys: string[]): number {
   if (habitKeys.length === 0) return 50;
-
-  // null/[] = legado → conta todos os hábitos habilitados (comportamento antigo).
-  const answered =
-    Array.isArray(ci.answered_questions) && ci.answered_questions.length > 0
-      ? ci.answered_questions
-      : null;
 
   let sum = 0;
   let count = 0;
   for (const k of habitKeys) {
     if (k === "suicidal_thoughts" || k === "water_cups") continue;
-    if (answered && !answered.includes(k)) continue; // pulado — não entra na média
 
     // Hidratação é contínua: 0 copos = 0, 4+ copos = 100 (mesma meta da UI).
     if (k === "drank_water") {

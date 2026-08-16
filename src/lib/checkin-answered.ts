@@ -1,50 +1,18 @@
-// Helpers para distinguir hábito "respondido" de "pulado".
-//
-// A coluna `answered_questions` (text[] nullable) guarda apenas as chaves
-// granulares que a pessoa de fato respondeu no check-in. `null` ou `[]` = check-in
-// legado (anterior à coluna) → consideramos todos os hábitos como respondidos.
-// Array não-vazio = só as chaves presentes contam; as demais foram puladas.
-
-// Agregados "fez qualquer um" (derivados dos campos granulares) NÃO aparecem em
-// answered_questions, então mapeamos o grupo para saber se foi respondido.
-const GROUP_KEYS: Record<string, string[]> = {
-  exercise_walk: ["walked", "ran", "strength_training"],
-  meditation_prayer_breathing: ["meditation", "prayer", "breathing"],
-};
+// "Pular" agora conta como "não fez": todo hábito habilitado entra no score.
+// A coluna `answered_questions` deixou de ser usada para scoring. Estas funções
+// preservam a assinatura usada nos consumers (achievements, analise, histórico,
+// Maya, analyzer), mas retornam "tudo conta". A remoção definitiva da coluna
+// fica para a fase 2.
 
 // Aceita `CheckIn`, `Record<string, unknown>` ou `any` — basta ter a coluna.
 type AnsweredLike = { answered_questions?: unknown };
 
-/** Retorna as chaves respondidas como string[], ou null se não há array válido. */
-function answeredArray(ci: AnsweredLike): string[] | null {
-  const a = ci.answered_questions;
-  if (!Array.isArray(a)) return null;
-  return a.filter((x): x is string => typeof x === "string");
+/** Todo hábito habilitado conta no score (pular = não fez). */
+export function answeredKeys(_ci: AnsweredLike, keys: string[]): string[] {
+  return keys;
 }
 
-/** Check-in legado (sem answered_questions preenchido) → tudo conta como respondido. */
-export function isLegacy(ci: AnsweredLike): boolean {
-  const a = answeredArray(ci);
-  return a === null || a.length === 0;
-}
-
-/** Dentre `keys`, retorna apenas as efetivamente respondidas (legado → todas). */
-export function answeredKeys(ci: AnsweredLike, keys: string[]): string[] {
-  const a = answeredArray(ci);
-  if (a === null || a.length === 0) return keys;
-  const set = new Set(a);
-  return keys.filter((k) => set.has(k));
-}
-
-/**
- * Um hábito (ou grupo agregado) foi respondido no check-in? Legado → true.
- * Chaves agregadas (exercise_walk, meditation_prayer_breathing) contam como
- * respondidas se QUALQUER uma das chaves granulares do grupo estiver presente.
- */
-export function habitAnswered(ci: AnsweredLike, key: string): boolean {
-  const a = answeredArray(ci);
-  if (a === null || a.length === 0) return true;
-  const group = GROUP_KEYS[key];
-  if (group) return group.some((k) => a.includes(k));
-  return a.includes(key);
+/** Todo hábito é tratado como "respondido" (pular = não fez). */
+export function habitAnswered(_ci: AnsweredLike, _key: string): boolean {
+  return true;
 }
