@@ -212,42 +212,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/**
- * Atualiza um campo específico do check-in de hoje para um usuário.
- * Usado por outros endpoints (sono, refeições, agenda) para manter
- * o check-in sempre sincronizado em tempo real.
- */
-export async function syncCheckInField(
-  admin: ReturnType<typeof import("@/lib/supabase/admin").getSupabaseAdmin>,
-  userId: string,
-  date: string,
-  field: string,
-  value: boolean | number
-) {
-  const { data: existing } = await admin
-    .from("check_ins")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("date", date)
-    .limit(1)
-    .single();
-
-  if (existing) {
-    await admin
-      .from("check_ins")
-      .update({ [field]: value, updated_at: new Date().toISOString() })
-      .eq("id", existing.id);
-  } else {
-    await admin
-      .from("check_ins")
-      .insert({
-        user_id: userId,
-        date,
-        [field]: value,
-      });
-  }
-}
-
 // Clears the Maya nudge & home-message caches so the next dashboard load
 // generates fresh messages reflecting the latest data.
 function invalidateMayaNudgeCache(
