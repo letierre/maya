@@ -22,7 +22,6 @@ export interface CheckIn {
   suicidal_thoughts: boolean;
   did_something_enjoyable: boolean;
   worked_on_goals: boolean;
-  answered_questions?: string[] | null; // hábitos realmente respondidos (null = legado)
   feeling: string;
   mood_tags: string[];
   gratitude: string;

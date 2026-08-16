@@ -61,8 +61,6 @@ export const checkIns = pgTable(
       .notNull()
       .default(false),
     workedOnGoals: boolean("worked_on_goals").notNull().default(false),
-    // Hábitos realmente respondidos no check-in (null = legado). Ver 037.
-    answeredQuestions: text("answered_questions").array(),
     feeling: text("feeling").notNull().default(""),
     gratitude: text("gratitude").notNull().default(""),
     gratitudePhotos: jsonb("gratitude_photos").notNull().default([]),

@@ -15,21 +15,16 @@ export async function syncCheckInField(
   const admin = getSupabaseAdmin();
   const { data: existing } = await admin
     .from("check_ins")
-    .select("id, answered_questions")
+    .select("id")
     .eq("user_id", userId)
     .eq("date", date)
     .limit(1)
     .single();
 
   if (existing) {
-    // Marca o campo como "respondido" (auto-detectado por outro módulo).
-    const answered = new Set<string>(
-      Array.isArray(existing.answered_questions) ? existing.answered_questions : []
-    );
-    answered.add(field);
     await admin
       .from("check_ins")
-      .update({ [field]: value, answered_questions: [...answered], updated_at: new Date().toISOString() })
+      .update({ [field]: value, updated_at: new Date().toISOString() })
       .eq("id", existing.id);
   } else {
     await admin
@@ -38,7 +33,6 @@ export async function syncCheckInField(
         user_id: userId,
         date,
         [field]: value,
-        answered_questions: [field],
       });
   }
 }

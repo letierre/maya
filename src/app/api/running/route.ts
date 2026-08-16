@@ -64,18 +64,14 @@ export async function POST(req: NextRequest) {
     const runDate = getLocalDateFromISO(body.start_time);
     const { data: existingCi } = await admin
       .from("check_ins")
-      .select("id, answered_questions")
+      .select("id")
       .eq("user_id", session.user.id)
       .eq("date", runDate)
       .maybeSingle();
     if (existingCi) {
-      const answered = new Set<string>(
-        Array.isArray(existingCi.answered_questions) ? existingCi.answered_questions : []
-      );
-      answered.add("ran");
       await admin
         .from("check_ins")
-        .update({ ran: true, exercise_walk: true, answered_questions: [...answered], updated_at: new Date().toISOString() })
+        .update({ ran: true, exercise_walk: true, updated_at: new Date().toISOString() })
         .eq("id", existingCi.id);
     }
 
