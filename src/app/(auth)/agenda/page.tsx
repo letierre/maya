@@ -12,6 +12,7 @@ import type { AgendaItem, EisenhowerPriority, TaskArea } from "@/types";
 import { MetasPanel } from "@/components/MetasPanel";
 import { PlanejamentoPanel } from "@/components/PlanejamentoPanel";
 import { GoalDetailSheet } from "@/components/GoalDetailSheet";
+import { toast } from "sonner";
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -1482,6 +1483,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks }:
   const [editDone, setEditDone] = useState(false);
   const [editDate, setEditDate] = useState("");
   const [detailGoalId, setDetailGoalId] = useState<string | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
 
   const refreshGoals = () => {
     fetch("/api/goals").then(r => r.json()).then(d => { if (Array.isArray(d)) setGoals(d.filter((g: any) => g.status === "ativa")); }).catch(() => {});
@@ -1497,6 +1499,54 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks }:
     mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
     return `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
   }
+
+  const moveToToday = async (t: any, dateLabel: string) => {
+    if (movingId) return;
+    setMovingId(t.id);
+    const todayDow = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+    const weekStart = getCurrentWeekMonday();
+    // Get current week's plan; create only if missing
+    let planId: string | null = null;
+    const getRes = await fetch(`/api/weekly-plans?week=${weekStart}`);
+    if (getRes.ok) {
+      const data = await getRes.json();
+      planId = data.current?.id ?? null;
+    }
+    if (!planId) {
+      const createRes = await fetch("/api/weekly-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ week_start: weekStart }),
+      });
+      if (createRes.ok) {
+        const plan = await createRes.json();
+        planId = plan.id;
+      }
+    }
+    if (planId) {
+      const moveRes = await fetch(`/api/weekly-plans/tasks/${t.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ day_of_week: todayDow, weekly_plan_id: planId }),
+      });
+      if (moveRes.ok) {
+        toast.warning(`⚠️ ${t.title} estava atrasada`, {
+          description: dateLabel ? `Movida de ${dateLabel} para hoje` : "Movida para hoje",
+        });
+        // Pequena pausa para o pulso aparecer antes de sair da lista de atrasadas
+        setTimeout(() => {
+          setAllWeekTasks((prev: any[]) => prev.map((wt: any) =>
+            wt.id === t.id
+              ? { ...wt, day_of_week: todayDow, _weekStart: weekStart, weekly_plan_id: planId }
+              : wt
+          ));
+          setMovingId(null);
+        }, 450);
+        return;
+      }
+    }
+    setMovingId(null);
+  };
 
   const todayComp = compromissos.filter(c => c.item_type === "compromisso");
   const todayAgendaTarefas = compromissos.filter(c => c.item_type === "tarefa");
@@ -1565,7 +1615,11 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks }:
               dateLabel = `${String(mon.getDate()).padStart(2, "0")}/${String(mon.getMonth() + 1).padStart(2, "0")}`;
             }
             return (
-              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0", borderTop: "1px solid rgba(167,139,250,0.05)" }}>
+              <div key={t.id} style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "8px 6px",
+                borderTop: "1px solid rgba(167,139,250,0.05)", borderRadius: 8,
+                animation: movingId === t.id ? "agendaMovePulse 0.45s ease" : "none",
+              }}>
                 <span style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0, border: "1.5px solid rgba(255,159,67,0.4)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                   onClick={async (e) => {
                     e.stopPropagation();
@@ -1575,47 +1629,11 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks }:
                 <span style={{ flex: 1, fontSize: 11, color: "#FF9F43", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} onClick={() => openEditor(t)}>{t.title}</span>
                 <span style={{ fontSize: 8, color: "#9e96b5", flexShrink: 0 }}>{dateLabel}</span>
                 <button type="button"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    const todayDow = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
-                    const weekStart = getCurrentWeekMonday();
-                    // Get current week's plan; create only if missing
-                    let planId: string | null = null;
-                    const getRes = await fetch(`/api/weekly-plans?week=${weekStart}`);
-                    if (getRes.ok) {
-                      const data = await getRes.json();
-                      planId = data.current?.id ?? null;
-                    }
-                    if (!planId) {
-                      const createRes = await fetch("/api/weekly-plans", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ week_start: weekStart }),
-                      });
-                      if (createRes.ok) {
-                        const plan = await createRes.json();
-                        planId = plan.id;
-                      }
-                    }
-                    if (planId) {
-                      const moveRes = await fetch(`/api/weekly-plans/tasks/${t.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ day_of_week: todayDow, weekly_plan_id: planId }),
-                      });
-                      if (moveRes.ok) {
-                        // Update local state so it leaves "Atrasadas" and shows in "Hoje"
-                        setAllWeekTasks((prev: any[]) => prev.map((wt: any) =>
-                          wt.id === t.id
-                            ? { ...wt, day_of_week: todayDow, _weekStart: weekStart, weekly_plan_id: planId }
-                            : wt
-                        ));
-                      }
-                    }
-                  }}
+                  onClick={(e) => { e.stopPropagation(); moveToToday(t, dateLabel); }}
+                  disabled={movingId === t.id}
                   title="Mover para esta semana"
-                  style={{ padding: "2px 6px", borderRadius: 6, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(124,92,255,0.06)", color: "#A78BFA", fontSize: 8, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0, whiteSpace: "nowrap" }}>
-                  Hoje →
+                  style={{ padding: "2px 6px", borderRadius: 6, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(124,92,255,0.06)", color: "#A78BFA", fontSize: 8, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0, whiteSpace: "nowrap", opacity: movingId === t.id ? 0.5 : 1 }}>
+                  {movingId === t.id ? "…" : "Hoje →"}
                 </button>
               </div>
             );
