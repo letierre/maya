@@ -995,7 +995,7 @@ function AgendaPage() {
 
       {/* ── LISTA ───────────────────────────────────────────── */}
       {viewMode === "lista" && (
-        <ListView allWeekTasks={allWeekTasks} compromissos={items} selectedDate={selectedDate} setAllWeekTasks={setAllWeekTasks} />
+        <ListView allWeekTasks={allWeekTasks} compromissos={items} selectedDate={selectedDate} setAllWeekTasks={setAllWeekTasks} refreshItems={() => fetchItems(selectedDate)} />
       )}
 
       {/* ── Detail popup for compromisso ────────────────────── */}
@@ -1476,7 +1476,7 @@ const navBtnStyle: React.CSSProperties = {
   color: "#e0d6ff",
 };
 
-function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks }: { allWeekTasks: any[]; compromissos: AgendaItem[]; selectedDate: string; setAllWeekTasks: React.Dispatch<React.SetStateAction<any[]>> }) {
+function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, refreshItems }: { allWeekTasks: any[]; compromissos: AgendaItem[]; selectedDate: string; setAllWeekTasks: React.Dispatch<React.SetStateAction<any[]>>; refreshItems: () => void }) {
   const [goals, setGoals] = useState<any[]>([]);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -1500,12 +1500,35 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks }:
     return `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
   }
 
-  const moveToToday = async (t: any, dateLabel: string) => {
-    if (movingId) return;
-    setMovingId(t.id);
-    const todayDow = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
-    const weekStart = getCurrentWeekMonday();
-    // Get current week's plan; create only if missing
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  const todayStr = getLocalDate();
+
+  // Segunda (0) .. Domingo (6) de uma data YYYY-MM-DD
+  const dowOf = (dateStr: string): number => {
+    const d = new Date(dateStr + "T12:00:00");
+    return d.getDay() === 0 ? 6 : d.getDay() - 1;
+  };
+
+  // Segunda-feira (YYYY-MM-DD) da semana que contém dateStr
+  const weekStartOf = (dateStr: string): string => {
+    const d = new Date(dateStr + "T12:00:00");
+    const mon = new Date(d);
+    mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return `${mon.getFullYear()}-${pad2(mon.getMonth() + 1)}-${pad2(mon.getDate())}`;
+  };
+
+  // Data YYYY-MM-DD de uma tarefa semanal (a partir de _weekStart + day_of_week)
+  const taskDate = (t: any): string => {
+    if (t._weekStart && t.day_of_week != null && t.day_of_week >= 0) {
+      const mon = new Date(t._weekStart + "T12:00:00");
+      mon.setDate(mon.getDate() + t.day_of_week);
+      return `${mon.getFullYear()}-${pad2(mon.getMonth() + 1)}-${pad2(mon.getDate())}`;
+    }
+    return todayStr;
+  };
+
+  // Garante que existe um plano semanal para a semana e devolve o id (cria se faltar)
+  const ensureWeeklyPlan = async (weekStart: string): Promise<string | null> => {
     let planId: string | null = null;
     const getRes = await fetch(`/api/weekly-plans?week=${weekStart}`);
     if (getRes.ok) {
@@ -1523,29 +1546,54 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks }:
         planId = plan.id;
       }
     }
-    if (planId) {
-      const moveRes = await fetch(`/api/weekly-plans/tasks/${t.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ day_of_week: todayDow, weekly_plan_id: planId }),
+    return planId;
+  };
+
+  // Move uma tarefa semanal para um dia específico (cria o plano da semana se preciso)
+  const moveTaskToDay = async (t: any, dateStr: string, extra: Record<string, unknown> = {}) => {
+    const dow = dowOf(dateStr);
+    const weekStart = weekStartOf(dateStr);
+    const planId = await ensureWeeklyPlan(weekStart);
+    if (!planId) return { ok: false, weekStart, dow, planId };
+    const moveRes = await fetch(`/api/weekly-plans/tasks/${t.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ day_of_week: dow, weekly_plan_id: planId, ...extra }),
+    });
+    return { ok: moveRes.ok, weekStart, dow, planId };
+  };
+
+  // Marca/desmarca uma tarefa semanal como concluída (atualiza o estado local)
+  const toggleTaskDone = async (t: any) => {
+    const newStatus = t.status === "concluida" ? "pendente" : "concluida";
+    setAllWeekTasks((prev: any[]) => prev.map((wt: any) => wt.id === t.id ? { ...wt, status: newStatus } : wt));
+    await fetch(`/api/weekly-plans/tasks/${t.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+  };
+
+  const moveToToday = async (t: any, dateLabel: string) => {
+    if (movingId) return;
+    setMovingId(t.id);
+    const { ok, weekStart, dow, planId } = await moveTaskToDay(t, todayStr);
+    if (ok) {
+      toast.warning(`⚠️ ${t.title} estava atrasada`, {
+        description: dateLabel ? `Movida de ${dateLabel} para hoje` : "Movida para hoje",
       });
-      if (moveRes.ok) {
-        toast.warning(`⚠️ ${t.title} estava atrasada`, {
-          description: dateLabel ? `Movida de ${dateLabel} para hoje` : "Movida para hoje",
-        });
-        // Pequena pausa para o pulso aparecer antes de sair da lista de atrasadas
-        setTimeout(() => {
-          setAllWeekTasks((prev: any[]) => prev.map((wt: any) =>
-            wt.id === t.id
-              ? { ...wt, day_of_week: todayDow, _weekStart: weekStart, weekly_plan_id: planId }
-              : wt
-          ));
-          setMovingId(null);
-        }, 450);
-        return;
-      }
+      // Pequena pausa para o pulso aparecer antes de sair da lista de atrasadas
+      setTimeout(() => {
+        setAllWeekTasks((prev: any[]) => prev.map((wt: any) =>
+          wt.id === t.id
+            ? { ...wt, day_of_week: dow, _weekStart: weekStart, weekly_plan_id: planId }
+            : wt
+        ));
+        setMovingId(null);
+      }, 450);
+    } else {
+      setMovingId(null);
     }
-    setMovingId(null);
   };
 
   const todayComp = compromissos.filter(c => c.item_type === "compromisso");
@@ -1575,29 +1623,56 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks }:
     setEditingItem(item);
     setEditTitle(item.title || "");
     setEditDone(item.status === "concluida");
+    setEditDate(item.item_type ? (item.date || selectedDate) : taskDate(item));
   };
 
   const saveEdit = async () => {
     if (!editTitle.trim() || !editingItem) return;
+    const updates: Record<string, unknown> = {
+      title: editTitle.trim(),
+      status: editDone ? "concluida" : "pendente",
+    };
     if (editingItem.item_type) {
-      await fetch("/api/agenda", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editingItem.id, title: editTitle.trim(), status: editDone ? "concluida" : "pendente" }) });
+      // Item da agenda (compromisso/tarefa): pode mudar o dia
+      await fetch("/api/agenda", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingItem.id, ...updates, date: editDate || editingItem.date }),
+      });
+      setEditingItem(null);
+      refreshItems();
     } else {
-      await fetch(`/api/weekly-plans/tasks/${editingItem.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: editTitle.trim(), status: editDone ? "concluida" : "pendente" }) });
+      // Tarefa do plano semanal: pode mudar o dia (mover para outra data)
+      if (editDate && editDate !== taskDate(editingItem)) {
+        const { ok, weekStart, dow, planId } = await moveTaskToDay(editingItem, editDate, updates);
+        if (ok) {
+          setAllWeekTasks((prev: any[]) => prev.map((wt: any) => wt.id === editingItem.id
+            ? { ...wt, ...updates, day_of_week: dow, _weekStart: weekStart, weekly_plan_id: planId }
+            : wt));
+        }
+      } else {
+        await fetch(`/api/weekly-plans/tasks/${editingItem.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates),
+        });
+        setAllWeekTasks((prev: any[]) => prev.map((wt: any) => wt.id === editingItem.id ? { ...wt, ...updates } : wt));
+      }
+      setEditingItem(null);
     }
-    setEditingItem(null);
-    // Refresh compromissos too
-    window.location.reload();
   };
 
   const deleteItem = async () => {
     if (!confirm("Tem certeza que deseja excluir?")) return;
     if (editingItem.item_type) {
       await fetch(`/api/agenda?id=${(editingItem as any)._origId || editingItem.id}`, { method: "DELETE" });
+      setEditingItem(null);
+      refreshItems();
     } else {
       await fetch(`/api/weekly-plans/tasks/${editingItem.id}`, { method: "DELETE" });
+      setAllWeekTasks((prev: any[]) => prev.filter((wt: any) => wt.id !== editingItem.id));
+      setEditingItem(null);
     }
-    setEditingItem(null);
-    window.location.reload();
   };
 
   return (
@@ -1621,10 +1696,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks }:
                 animation: movingId === t.id ? "agendaMovePulse 0.45s ease" : "none",
               }}>
                 <span style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0, border: "1.5px solid rgba(255,159,67,0.4)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await fetch(`/api/weekly-plans/tasks/${t.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "concluida" }) });
-                  }}
+                  onClick={(e) => { e.stopPropagation(); toggleTaskDone(t); }}
                 />
                 <span style={{ flex: 1, fontSize: 11, color: "#FF9F43", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} onClick={() => openEditor(t)}>{t.title}</span>
                 <span style={{ fontSize: 8, color: "#9e96b5", flexShrink: 0 }}>{dateLabel}</span>
@@ -1651,11 +1723,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks }:
             return (
               <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(167,139,250,0.05)" }}>
                 <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: 4, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    const newStatus = done ? "pendente" : "concluida";
-                    await fetch(`/api/weekly-plans/tasks/${t.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
-                  }}>
+                  onClick={(e) => { e.stopPropagation(); toggleTaskDone(t); }}>
                   {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10"/></svg>}
                 </span>
                 <span style={{ flex: 1, fontSize: 11, color: done ? "#5a5470" : "#e0d6ff", textDecoration: done ? "line-through" : "none", cursor: "pointer" }} onClick={() => openEditor(t)}>{t.title}</span>
@@ -1700,11 +1768,15 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks }:
             const area = AREA_CONFIG_PT[t.area] || { emoji: "⚪" };
             const done = t.status === "concluida";
             return (
-              <button key={t.id} type="button" onClick={() => openEditor(t)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)", background: "none", borderLeft: 0, borderRight: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)" }}>
+                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: 4, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  onClick={(e) => { e.stopPropagation(); toggleTaskDone(t); }}>
+                  {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10"/></svg>}
+                </span>
                 <span style={{ fontSize: 12 }}>{area.emoji}</span>
-                <span style={{ flex: 1, fontSize: 12, color: done ? "#5a5470" : "#e0d6ff", textDecoration: done ? "line-through" : "none" }}>{t.title}</span>
+                <span style={{ flex: 1, fontSize: 12, color: done ? "#5a5470" : "#e0d6ff", textDecoration: done ? "line-through" : "none", cursor: "pointer" }} onClick={() => openEditor(t)}>{t.title}</span>
                 {t.scheduled_time && <span style={{ fontSize: 9, color: "#9e96b5", fontFamily: "monospace" }}>{t.scheduled_time.slice(0,5)}</span>}
-              </button>
+              </div>
             );
           })}
         </div>
@@ -1738,6 +1810,14 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks }:
             <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>Editar</h3>
             <input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Título" autoFocus
               style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 14, fontFamily: "inherit", outline: "none" }} />
+            {/* Mudar de dia */}
+            <div style={{ marginTop: 12 }}>
+              <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>Mudar de dia</label>
+              <div style={{ overflow: "hidden", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10" }}>
+                <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", border: "none", outline: "none", background: "transparent", color: "#e0d6ff", fontSize: 14, fontFamily: "inherit" }} />
+              </div>
+            </div>
             {/* Toggle concluído */}
             <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, cursor: "pointer" }}>
               <input type="checkbox" checked={editDone} onChange={e => setEditDone(e.target.checked)}
