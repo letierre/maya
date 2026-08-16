@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { MOOD_CHIPS } from "@/lib/checkin-moods";
-import { didExercise, didPause } from "@/lib/checkin-answered";
+import { didExercise, didPause, isLegacyExercise, isLegacyPause } from "@/lib/checkin-answered";
 import { sleepScore } from "@/lib/sleep-utils";
 import type { CheckIn, SleepLog, AgendaItem } from "@/types";
 import { GrowthScore } from "@/components/analise/GrowthScore";
@@ -66,8 +66,16 @@ function avg(arr: number[]): number | null {
 function wellnessScore(ci: CheckIn, habitKeys: string[]): number {
   if (habitKeys.length === 0) return 50;
 
+  // Check-ins anteriores à divisão granular (migration 035) só têm o agregado
+  // legado: o granular fica false e só exercise_walk/meditation_prayer_breathing
+  // guardam a resposta. Nesse caso o grupo conta como 1 hábito, não 3.
+  const legacyExercise = isLegacyExercise(ci);
+  const legacyPause = isLegacyPause(ci);
+
   let sum = 0;
   let count = 0;
+  let exerciseDone = false; // colapsa o grupo exercício em 1 slot no legado
+  let pauseDone = false; // colapsa o grupo pausa em 1 slot no legado
   for (const k of habitKeys) {
     if (k === "suicidal_thoughts" || k === "water_cups") continue;
 
@@ -76,6 +84,26 @@ function wellnessScore(ci: CheckIn, habitKeys: string[]): number {
       const cups = ci.water_cups ?? 0;
       sum += Math.min((cups / 4) * 100, 100);
       count++;
+      continue;
+    }
+
+    const isExercise = k === "walked" || k === "ran" || k === "strength_training";
+    const isPause = k === "meditation" || k === "prayer" || k === "breathing";
+
+    if (legacyExercise && isExercise) {
+      if (!exerciseDone) {
+        sum += 100;
+        count++;
+        exerciseDone = true;
+      }
+      continue;
+    }
+    if (legacyPause && isPause) {
+      if (!pauseDone) {
+        sum += 100;
+        count++;
+        pauseDone = true;
+      }
       continue;
     }
 
@@ -304,6 +332,14 @@ export default function AnalisePage() {
       const trueScores: number[] = [];
       const falseScores: number[] = [];
       checkIns.forEach((ci, i) => {
+        // Dias legados (só agregado) não dizem qual sub-hábito foi feito:
+        // exclui do correlacionamento dos granulares de exercício/pausa.
+        if (k === "walked" || k === "ran" || k === "strength_training") {
+          if (isLegacyExercise(ci)) return;
+        } else if (k === "meditation" || k === "prayer" || k === "breathing") {
+          if (isLegacyPause(ci)) return;
+        }
+
         let val: boolean;
         if (k === "drank_water") {
           val = (ci.water_cups ?? 0) >= 4;

@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { CheckIn } from "@/types";
 import { answeredKeys } from "@/lib/checkin-answered";
+import { getMoodById, getMoodLabel } from "@/lib/checkin-moods";
+import { NEGATIVE_MOODS } from "@/lib/dashboard-constants";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -30,14 +32,6 @@ const HABIT_EMOJI: Record<string, string> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatStart(checkIns: CheckIn[]): string {
-  if (checkIns.length === 0) return "";
-  const oldest = [...checkIns].sort((a, b) => a.date.localeCompare(b.date))[0];
-  const d = new Date(oldest.date + "T12:00:00");
-  const month = d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
-  return `${month}/${d.getFullYear()}`;
-}
-
 function groupByMonth(checkIns: CheckIn[]) {
   const now = new Date();
   const groups = new Map<string, { label: string; entries: CheckIn[]; key: string }>();
@@ -58,15 +52,7 @@ function groupByMonth(checkIns: CheckIn[]) {
 }
 
 function getScore(ci: CheckIn, scoreKeys: string[]) {
-  return scoreKeys.filter((k) => (ci as Record<string, unknown>)[k] === true).length;
-}
-
-function scoreColor(score: number, total: number): string {
-  if (total === 0) return "var(--muted-foreground)";
-  const ratio = score / total;
-  if (ratio >= 0.7) return "#7C5CFF";
-  if (ratio >= 0.5) return "oklch(.55 .12 70)";
-  return "oklch(.5 .16 20)";
+  return scoreKeys.filter((k) => (ci as unknown as Record<string, unknown>)[k] === true).length;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -75,6 +61,7 @@ export default function HistoricoPage() {
   const router = useRouter();
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [enabledKeys, setEnabledKeys] = useState<string[]>([]);
+  const [gender, setGender] = useState<string>("nao_dizer");
   const [loading, setLoading] = useState(true);
   const [openMonths, setOpenMonths] = useState<Set<string>>(new Set());
 
@@ -84,6 +71,7 @@ export default function HistoricoPage() {
       fetch("/api/preferences").then((r) => r.json()).catch(() => ({})),
     ]).then(([data, prefs]) => {
       setEnabledKeys(prefs.enabled_questions ?? []);
+      setGender((prefs.context?.gender as string) ?? "nao_dizer");
       if (Array.isArray(data)) {
         setCheckIns(
           [...data].sort((a: CheckIn, b: CheckIn) => b.date.localeCompare(a.date))
@@ -181,7 +169,7 @@ export default function HistoricoPage() {
           <button
             type="button"
             onClick={() => toggleMonth(group.key)}
-            className="w-full px-6 pb-3.5 flex items-center gap-2"
+            className="w-full px-6 pb-2.5 flex items-center gap-2.5"
             style={{
               background: "transparent", border: 0, cursor: "pointer",
               fontFamily: "inherit", opacity: group.muted ? 0.7 : 1,
@@ -195,112 +183,162 @@ export default function HistoricoPage() {
             <h2 className="text-[11px] font-bold tracking-[.16em] uppercase m-0 flex-1 text-left">
               {group.label}
             </h2>
-            <span className="text-[11px] text-muted-foreground tabular-nums">
+            <span style={{
+              fontSize: 10, fontWeight: 700, color: "#A78BFA", fontVariantNumeric: "tabular-nums",
+              background: "rgba(124,92,255,0.14)",
+              padding: "2px 9px", borderRadius: 9999,
+            }}>
               {group.entries.length}
             </span>
           </button>
 
           {/* Entries */}
           {openMonths.has(group.key) && (
-          <div style={{ opacity: group.muted ? 0.75 : 1 }}>
-            {group.entries.map((ci) => {
-              const d = new Date(ci.date + "T12:00:00");
-              const day = d.getDate().toString().padStart(2, "0");
-              const wk = d.toLocaleDateString("pt-BR", { weekday: "short" }).toUpperCase().replace(".", "");
-              const isToday = ci.date === today;
-              const answered = answeredKeys(ci, scoreKeys);
-              const score = getScore(ci, answered);
-              const color = scoreColor(score, answered.length);
+            <div className="px-5" style={{ opacity: group.muted ? 0.75 : 1 }}>
+              {group.entries.map((ci) => {
+                const d = new Date(ci.date + "T12:00:00");
+                const day = d.getDate().toString().padStart(2, "0");
+                const wk = d.toLocaleDateString("pt-BR", { weekday: "short" }).toUpperCase().replace(".", "");
+                const isToday = ci.date === today;
+                const answered = answeredKeys(ci, scoreKeys);
+                const score = getScore(ci, answered);
+                const total = answered.length;
+                const ratio = total > 0 ? score / total : 0;
 
-              return (
-                <button
-                  key={ci.id}
-                  type="button"
-                  onClick={() => router.push(`/check-in/${ci.id}`)}
-                  className="w-full text-left transition-colors hover:bg-white/30"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "52px 1fr",
-                    padding: "14px 24px",
-                    borderTop: "1px solid oklch(.5 .12 270 / .1)",
-                    background: isToday ? "oklch(.5 .12 270 / .04)" : "transparent",
-                  }}
-                >
-                  {/* Date col */}
-                  <div>
-                    <div
-                      className="text-lg font-bold leading-none tabular-nums tracking-tight"
-                      style={{ color: isToday ? "var(--primary)" : "var(--foreground)" }}
-                    >
-                      {day}
-                    </div>
-                    <div className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground mt-1">
-                      {wk}
-                    </div>
-                  </div>
+                const accent = total === 0 ? "#9e96b5"
+                  : ratio >= 0.7 ? "#A78BFA"
+                  : ratio >= 0.5 ? "#f59e0b"
+                  : "#FF5C5C";
+                const accentBg = total === 0 ? "rgba(158,150,181,0.12)"
+                  : ratio >= 0.7 ? "rgba(124,92,255,0.18)"
+                  : ratio >= 0.5 ? "rgba(245,158,11,0.16)"
+                  : "rgba(255,92,92,0.16)";
 
-                  {/* Content col */}
-                  <div className="min-w-0">
-                    {/* Score + habits row */}
-                    <div className="flex items-center gap-2 mb-1">
-                      {/* Habit emoji strip */}
-                      <div className="flex items-center gap-[4px] flex-1 min-w-0">
-                        {answered.map((key) => {
-                          const done = (ci as Record<string, unknown>)[key] === true;
-                          return done ? (
-                            <span key={key} style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>
-                              {HABIT_EMOJI[key] ?? "•"}
-                            </span>
-                          ) : (
-                            <span
-                              key={key}
-                              style={{
-                                display: "inline-block", width: 7, height: 7,
-                                borderRadius: "50%", flexShrink: 0,
-                                background: "oklch(.5 .02 270 / .22)",
-                              }}
-                            />
-                          );
-                        })}
+                const moodTag = ci.mood_tags?.[0];
+                const moodChip = moodTag ? getMoodById(moodTag) : undefined;
+
+                return (
+                  <button
+                    key={ci.id}
+                    type="button"
+                    onClick={() => router.push(`/check-in/${ci.id}`)}
+                    className="w-full text-left block transition-transform duration-150 hover:-translate-y-[1px] active:translate-y-0"
+                    style={{
+                      background: isToday ? "oklch(0.5 0.12 270 / .08)" : "oklch(0.16 0.012 270 / 0.7)",
+                      border: isToday ? "1px solid oklch(0.5 0.12 270 / .28)" : "1px solid oklch(0.5 0.12 270 / .12)",
+                      borderRadius: 18,
+                      padding: "14px 16px",
+                      marginBottom: 10,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                      {/* Date box */}
+                      <div style={{ flexShrink: 0, width: 44, textAlign: "center" }}>
+                        <div
+                          style={{
+                            fontSize: 20, fontWeight: 700, lineHeight: 1,
+                            fontVariantNumeric: "tabular-nums",
+                            color: isToday ? "var(--primary)" : "var(--foreground)",
+                          }}
+                        >
+                          {day}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 9, fontWeight: 700, letterSpacing: ".12em",
+                            color: "var(--muted-foreground)", marginTop: 5,
+                          }}
+                        >
+                          {wk}
+                        </div>
                       </div>
 
-                      {/* Score */}
-                      <span
-                        style={{
-                          fontSize: 12, fontWeight: 700, tabularNums: "true",
-                          color, flexShrink: 0,
-                          fontFamily: "var(--font-mono, ui-monospace)",
-                          letterSpacing: "-.01em",
-                        } as React.CSSProperties}
-                      >
-                        {score}/{answered.length}
-                      </span>
+                      {/* Content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {/* Mood chip + score */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                          {moodChip && (
+                            <span
+                              style={{
+                                fontSize: 10, fontWeight: 600,
+                                padding: "1px 8px", borderRadius: 9999,
+                                background: NEGATIVE_MOODS.has(moodTag!)
+                                  ? "oklch(.92 .05 30 / .25)"
+                                  : "oklch(.55 .18 270 / .2)",
+                                color: NEGATIVE_MOODS.has(moodTag!) ? "#FF5C5C" : "#A78BFA",
+                              }}
+                            >
+                              {moodChip.emoji} {getMoodLabel(moodChip, gender)}
+                            </span>
+                          )}
+                          <div style={{ flex: 1 }} />
+                          <span
+                            style={{
+                              fontSize: 11.5, fontWeight: 700, tabularNums: "true",
+                              color: accent, background: accentBg,
+                              padding: "2px 9px", borderRadius: 9999,
+                              fontFamily: "var(--font-mono, ui-monospace)",
+                              letterSpacing: "-.01em",
+                            } as React.CSSProperties}
+                          >
+                            {score}/{total}
+                          </span>
+                        </div>
+
+                        {/* Feeling / gratitude excerpt */}
+                        {ci.feeling ? (
+                          <p
+                            className="m-0 text-[12.5px] text-muted-foreground italic"
+                            style={{
+                              overflow: "hidden", whiteSpace: "nowrap",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {ci.feeling}
+                          </p>
+                        ) : ci.gratitude ? (
+                          <p
+                            className="m-0 text-[12.5px] text-muted-foreground"
+                            style={{
+                              overflow: "hidden", whiteSpace: "nowrap",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            🙏 {ci.gratitude}
+                          </p>
+                        ) : (
+                          <p className="m-0 text-[12px] text-muted-foreground" style={{ opacity: 0.5 }}>
+                            Sem anotação
+                          </p>
+                        )}
+
+                        {/* Habit emoji strip */}
+                        <div className="flex items-center gap-[5px] mt-2">
+                          {answered.map((key) => {
+                            const done = (ci as unknown as Record<string, unknown>)[key] === true;
+                            return done ? (
+                              <span key={key} style={{ fontSize: 14, lineHeight: 1, flexShrink: 0 }}>
+                                {HABIT_EMOJI[key] ?? "•"}
+                              </span>
+                            ) : (
+                              <span
+                                key={key}
+                                style={{
+                                  display: "inline-block", width: 6, height: 6,
+                                  borderRadius: "50%", flexShrink: 0,
+                                  background: "oklch(.5 .02 270 / .22)",
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
-
-                    {/* Feeling excerpt */}
-                    {ci.feeling && (
-                      <p
-                        className="m-0 text-[12.5px] text-muted-foreground italic"
-                        style={{
-                          overflow: "hidden", whiteSpace: "nowrap",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {ci.feeling}
-                      </p>
-                    )}
-
-                    {/* No feeling, no gratitude — show muted placeholder */}
-                    {!ci.feeling && !ci.gratitude && (
-                      <p className="m-0 text-[12px] text-muted-foreground" style={{ opacity: 0.5 }}>
-                        Sem anotação
-                      </p>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
       ))}

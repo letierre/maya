@@ -47,3 +47,33 @@ export function didPause(ci: {
     ci.breathing === true
   );
 }
+
+/** Check-in antigo que marcou exercício só no agregado legado (granular ficou false). */
+export function isLegacyExercise(ci: {
+  exercise_walk?: boolean;
+  walked?: boolean;
+  ran?: boolean;
+  strength_training?: boolean;
+}): boolean {
+  return (
+    ci.exercise_walk === true &&
+    ci.walked !== true &&
+    ci.ran !== true &&
+    ci.strength_training !== true
+  );
+}
+
+/** Check-in antigo que marcou pausa só no agregado legado (granular ficou false). */
+export function isLegacyPause(ci: {
+  meditation_prayer_breathing?: boolean;
+  meditation?: boolean;
+  prayer?: boolean;
+  breathing?: boolean;
+}): boolean {
+  return (
+    ci.meditation_prayer_breathing === true &&
+    ci.meditation !== true &&
+    ci.prayer !== true &&
+    ci.breathing !== true
+  );
+}
