@@ -158,9 +158,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Deriva answered_questions: o que o usuário respondeu + o que foi auto-detectado.
+    // Hábitos auto-calculados que ficaram true também entram — senão a home
+    // ("Cuidados de hoje" / "O Fio") os ignora e diverge do "Seu dia até agora".
     const answered = new Set<string>(row.answered_questions);
     if (workedOnGoals) answered.add("worked_on_goals");
     if ((runningRes.data?.length ?? 0) > 0) answered.add("ran");
+    if (row.ate_well) answered.add("ate_well");
+    if (row.drank_water) answered.add("drank_water");
+    if (row.slept_well) answered.add("slept_well");
     row.answered_questions = [...answered];
 
     const { data: existing } = await admin
