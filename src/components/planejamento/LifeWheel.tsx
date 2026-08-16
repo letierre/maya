@@ -591,12 +591,12 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
                   </text>
                 )}
                 <text x={lx} y={ly + 14} textAnchor="middle" dominantBaseline="middle"
-                  fontSize="8.5" fontWeight="600" fill={a.color} letterSpacing=".03em">
+                  fontSize="9.5" fontWeight="600" fill={a.color} letterSpacing=".03em">
                   {a.label}
                 </text>
                 {t > 0 && (
                   <text x={lx} y={ly + 26} textAnchor="middle" dominantBaseline="middle"
-                    fontSize="7.5" fontWeight="700" fill="#b8b0d6" letterSpacing=".02em">
+                    fontSize="8.5" fontWeight="700" fill="#b8b0d6" letterSpacing=".02em">
                     {`${d}/${t}`}
                   </text>
                 )}
