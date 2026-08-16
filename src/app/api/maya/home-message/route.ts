@@ -59,11 +59,24 @@ export async function GET(req: NextRequest) {
 
     const context = (prefs?.context ?? {}) as Record<string, unknown>;
     const cached = context.maya_home_message as
-      | { message: string; state: string; date: string }
+      | { message: string; state: string; date: string; generatedAt?: string }
       | undefined;
 
     if (cached?.date === today && cached.message) {
-      return NextResponse.json({ message: cached.message, state: cached.state });
+      // Continuidade: se a pessoa conversou no chat DEPOIS de esta mensagem
+      // ter sido gerada, regenera — para a Maya da home não contradizer o chat.
+      const { data: latestChat } = await admin
+        .from("chat_messages")
+        .select("created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const lastChatAt = latestChat?.[0]?.created_at;
+      const generatedAt = cached.generatedAt ? new Date(cached.generatedAt).getTime() : 0;
+      if (!lastChatAt || new Date(lastChatAt).getTime() <= generatedAt) {
+        return NextResponse.json({ message: cached.message, state: cached.state });
+      }
+      // senão, cai no fluxo de regeneração abaixo com o contexto do chat fresco
     }
 
     // ── Fetch user data ──
@@ -103,7 +116,7 @@ export async function GET(req: NextRequest) {
       admin.from("specialist_insights").select("*").eq("user_id", user.id)
         .gte("created_at", `${today}T00:00:00Z`).limit(1),
       admin.from("chat_messages").select("role, content").eq("user_id", user.id)
-        .order("created_at", { ascending: false }).limit(6),
+        .order("created_at", { ascending: false }).limit(8),
     ]);
 
     const checks = (recentCheckIns || []) as any[];
@@ -191,11 +204,13 @@ export async function GET(req: NextRequest) {
     const state = detectState({ hasTodayCheckIn, todayMood, lastSleepQuality, anyNegativePattern });
 
     // ── Recent chat topics (for continuity) ──
+    // Transcrição das últimas trocas em ordem cronológica, com papéis explícitos,
+    // para a home "lembrar" o que foi dito e não parecer outra Maya.
     const recentChatTopics = (recentChatMessages || [])
       .filter((m: any) => m.role === "assistant" || m.role === "user")
-      .slice(0, 5)
-      .map((m: any) => m.content?.slice(0, 100))
-      .join(" | ");
+      .reverse()
+      .map((m: any) => `${m.role === "assistant" ? "Maya" : "Usuário"}: ${m.content?.slice(0, 200)}`)
+      .join("\n");
 
     // ── Build MayaInput ──
     const mayaInput = {
@@ -266,7 +281,7 @@ export async function GET(req: NextRequest) {
     }
 
     // ── Cache ──
-    cacheHomeMessage(admin, user.id, context, message, state, today);
+    await cacheHomeMessage(admin, user.id, context, message, state, today);
 
     // Log if fallback was used (helps monitoring)
     if (usedFallback) {
@@ -285,7 +300,7 @@ export async function GET(req: NextRequest) {
 
 // ── Cache helper ──────────────────────────────────────────────────────────
 
-function cacheHomeMessage(
+async function cacheHomeMessage(
   admin: ReturnType<typeof getSupabaseAdmin>,
   userId: string,
   context: Record<string, unknown>,
@@ -293,35 +308,17 @@ function cacheHomeMessage(
   state: string,
   date: string,
 ) {
-  admin
-    .from("user_preferences")
-    .update({
-      context: {
-        ...context,
-        maya_home_message: { message, state, date, generatedAt: new Date().toISOString() },
-      },
-    })
-    .eq("user_id", userId)
-    .then(() => {})
-    .catch(() => {});
-}
-
-// ── Cache invalidation (called by other endpoints) ───────────────────────
-
-export async function invalidateHomeMessageCache(
-  admin: ReturnType<typeof getSupabaseAdmin>,
-  userId: string,
-) {
-  admin
-    .from("user_preferences")
-    .select("context")
-    .eq("user_id", userId)
-    .single()
-    .then(({ data }) => {
-      if (!data) return;
-      const ctx = { ...(data.context as Record<string, unknown>) };
-      delete ctx.maya_home_message;
-      return admin.from("user_preferences").update({ context: ctx }).eq("user_id", userId);
-    })
-    .catch(() => {});
+  try {
+    await admin
+      .from("user_preferences")
+      .update({
+        context: {
+          ...context,
+          maya_home_message: { message, state, date, generatedAt: new Date().toISOString() },
+        },
+      })
+      .eq("user_id", userId);
+  } catch {
+    /* best-effort */
+  }
 }

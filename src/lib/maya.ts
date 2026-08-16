@@ -377,7 +377,7 @@ export function buildHomeMessagePrompt(
   const system = buildMayaSystemPrompt(input);
 
   const chatContext = input.recentChatTopics
-    ? `\n\n## CONVERSA RECENTE NO CHAT\nA pessoa conversou com você recentemente sobre:\n${input.recentChatTopics}\n\nNÃO repita perguntas que já foram respondidas nessas conversas. Se algo foi discutido, faça referência naturalmente.`
+    ? `\n\n## CONVERSA RECENTE NO CHAT (fonte da verdade)\nVocê conversou com a pessoa recentemente. Esta é a MESMA conversa — você é a mesma Maya, não existem duas Mayas.\n${input.recentChatTopics}\n\nREGRAS DE CONTINUIDADE (críticas):\n- Tudo o que foi decidido, adiado ou corrigido nessa conversa vale também aqui: se a pessoa disse que algo NÃO vai acontecer hoje, mudou de dia ou cancelou, NÃO fale como se fosse acontecer.\n- NUNCA contradiga o que a pessoa acabou de te dizer. Honre a mudança.\n- NÃO repita perguntas já respondidas. Referencie o que já foi conversado com naturalidade.`
     : "";
 
   const user = `## SUA TAREFA AGORA
@@ -407,7 +407,7 @@ export function buildNudgePrompt(
   const system = buildMayaSystemPrompt(input);
 
   const chatContext = input.recentChatTopics
-    ? `\n\nA pessoa já conversou com você sobre: ${input.recentChatTopics}. NÃO repita perguntas já respondidas.`
+    ? `\n\nA pessoa já conversou com você sobre: ${input.recentChatTopics}. REGRAS DE CONTINUIDADE: você é a mesma Maya do chat — NÃO contradiga o que a pessoa acabou de decidir ou corrigir, e NÃO repita perguntas já respondidas.`
     : "";
 
   const user = `## SUA TAREFA AGORA
