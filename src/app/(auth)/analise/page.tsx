@@ -828,7 +828,7 @@ export default function AnalisePage() {
 
           <MetasResumo />
           <OKRProgress period={crescTab} />
-          <FinancasResumo />
+          <FinancasResumo period={crescTab} />
           <AreaBalance from={crescFrom} to={crescTo} />
           <SemanalTrend from={crescFrom} to={crescTo} />
         </>
