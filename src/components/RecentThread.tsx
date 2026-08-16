@@ -52,10 +52,8 @@ export function RecentThread({ days, userGender }: RecentThreadProps) {
             const isToday = i === 0;
             const moodTag = day.mood_tags?.[0];
             const extraMoods = (day.mood_tags?.length ?? 0) - 1;
-            const dayScore =
-              day.cuidados !== null && (day.cuidadosTotal ?? 0) > 0
-                ? Math.round((day.cuidados / (day.cuidadosTotal ?? 1)) * 10)
-                : null;
+            const hasScore = day.cuidados !== null && (day.cuidadosTotal ?? 0) > 0;
+            const ratio = hasScore ? (day.cuidados ?? 0) / (day.cuidadosTotal ?? 1) : null;
 
             const sq = day.sleepQuality;
             const sleepLabel = sq != null ? (sq >= 4 ? "🌙" : sq >= 3 ? "😐" : "😵") : "—";
@@ -88,16 +86,16 @@ export function RecentThread({ days, userGender }: RecentThreadProps) {
                   className="text-[12px] font-bold tabular-nums text-center"
                   style={{
                     color:
-                      dayScore === null
+                      ratio === null
                         ? "oklch(0.55 0.03 270)"
-                        : dayScore >= 7
+                        : ratio >= 0.7
                           ? "#22D18B"
-                          : dayScore >= 5
+                          : ratio >= 0.5
                             ? "#f59e0b"
                             : "#FF5C5C",
                   }}
                 >
-                  {dayScore !== null ? `${dayScore}/10` : "—"}
+                  {hasScore ? `${day.cuidados}/${day.cuidadosTotal}` : "—"}
                 </span>
 
                 {/* Mood tag */}
