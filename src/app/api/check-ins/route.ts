@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
       if (error) throw error;
 
       // Invalidate Maya nudge cache so next dashboard load reflects today's data
-      invalidateMayaNudgeCache(admin, user.id);
+      await invalidateMayaNudgeCache(admin, user.id);
       // Fire-and-forget: refresh all specialist insights
       analyzeAllSpecialists(user.id).catch(() => {});
 
@@ -214,21 +214,22 @@ export async function POST(req: NextRequest) {
 
 // Clears the Maya nudge & home-message caches so the next dashboard load
 // generates fresh messages reflecting the latest data.
-function invalidateMayaNudgeCache(
+async function invalidateMayaNudgeCache(
   admin: ReturnType<typeof import("@/lib/supabase/admin").getSupabaseAdmin>,
   userId: string
 ) {
-  admin
-    .from("user_preferences")
-    .select("context")
-    .eq("user_id", userId)
-    .single()
-    .then(({ data }) => {
-      if (!data) return;
-      const ctx = { ...(data.context as Record<string, unknown>) };
-      delete ctx.maya_nudge;
-      delete ctx.maya_home_message;
-      return admin.from("user_preferences").update({ context: ctx }).eq("user_id", userId);
-    })
-    .catch(() => {});
+  try {
+    const { data } = await admin
+      .from("user_preferences")
+      .select("context")
+      .eq("user_id", userId)
+      .single();
+    if (!data) return;
+    const ctx = { ...(data.context as Record<string, unknown>) };
+    delete ctx.maya_nudge;
+    delete ctx.maya_home_message;
+    await admin.from("user_preferences").update({ context: ctx }).eq("user_id", userId);
+  } catch {
+    /* best-effort */
+  }
 }
