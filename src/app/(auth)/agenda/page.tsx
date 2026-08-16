@@ -1502,6 +1502,10 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
 
   const pad2 = (n: number) => String(n).padStart(2, "0");
   const todayStr = getLocalDate();
+  const shortDate = (dateStr: string) => {
+    const [, m, d] = dateStr.split("-");
+    return `${d}/${m}`;
+  };
 
   // Segunda (0) .. Domingo (6) de uma data YYYY-MM-DD
   const dowOf = (dateStr: string): number => {
@@ -1572,6 +1576,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     });
+    toast.success(newStatus === "concluida" ? `"${t.title}" concluída` : `"${t.title}" reaberta`);
   };
 
   const moveToToday = async (t: any, dateLabel: string) => {
@@ -1632,6 +1637,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       title: editTitle.trim(),
       status: editDone ? "concluida" : "pendente",
     };
+    const dayChanged = !!editDate && editDate !== (editingItem.item_type ? (editingItem.date || selectedDate) : taskDate(editingItem));
     if (editingItem.item_type) {
       // Item da agenda (compromisso/tarefa): pode mudar o dia
       await fetch("/api/agenda", {
@@ -1643,7 +1649,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       refreshItems();
     } else {
       // Tarefa do plano semanal: pode mudar o dia (mover para outra data)
-      if (editDate && editDate !== taskDate(editingItem)) {
+      if (dayChanged) {
         const { ok, weekStart, dow, planId } = await moveTaskToDay(editingItem, editDate, updates);
         if (ok) {
           setAllWeekTasks((prev: any[]) => prev.map((wt: any) => wt.id === editingItem.id
@@ -1660,19 +1666,20 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       }
       setEditingItem(null);
     }
+    toast.success(dayChanged ? `Movida para ${shortDate(editDate)}` : "Alterações salvas");
   };
 
   const deleteItem = async () => {
     if (!confirm("Tem certeza que deseja excluir?")) return;
     if (editingItem.item_type) {
       await fetch(`/api/agenda?id=${(editingItem as any)._origId || editingItem.id}`, { method: "DELETE" });
-      setEditingItem(null);
       refreshItems();
     } else {
       await fetch(`/api/weekly-plans/tasks/${editingItem.id}`, { method: "DELETE" });
       setAllWeekTasks((prev: any[]) => prev.filter((wt: any) => wt.id !== editingItem.id));
-      setEditingItem(null);
     }
+    setEditingItem(null);
+    toast.success("Atividade excluída");
   };
 
   return (
