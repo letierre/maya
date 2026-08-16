@@ -5,6 +5,7 @@ import { cachedFetch } from "@/lib/fetch-cache";
 import { MOOD_CHIPS } from "@/lib/checkin-moods";
 import { sleepScore } from "@/lib/sleep-utils";
 import type { CheckIn, SleepLog, AgendaItem } from "@/types";
+import { GrowthScore } from "@/components/analise/GrowthScore";
 import { MetasResumo } from "@/components/analise/MetasResumo";
 import { OKRProgress } from "@/components/analise/OKRProgress";
 import { FinancasResumo } from "@/components/analise/FinancasResumo";
@@ -927,6 +928,7 @@ export default function AnalisePage() {
             ))}
           </div>
 
+          <GrowthScore from={crescFrom} to={crescTo} />
           <MetasResumo />
           <OKRProgress period={crescTab} />
           <FinancasResumo period={crescTab} />
