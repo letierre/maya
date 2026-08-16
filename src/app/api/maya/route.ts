@@ -4,6 +4,7 @@ import { buildMayaSystemPrompt, GoalSummary, WeekPlanSummary, SpecialistSummarie
 import { getLatestInsights } from "@/lib/specialists";
 import { calculateStreak, getWeekMondayDate } from "@/lib/utils";
 import { toImageBlock } from "@/lib/llm";
+import { habitAnswered } from "@/lib/checkin-answered";
 import { NextResponse } from "next/server";
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -231,12 +232,12 @@ export async function POST(request: Request) {
           c.talked_to_someone && "conversou",
         ].filter(Boolean) as string[],
         negatives: [
-          !c.exercise_walk && "exercício",
-          !c.ate_well && "comeu bem",
-          !c.drank_water && "água",
-          !c.slept_well && "dormiu bem",
-          !c.did_something_enjoyable && "algo que gostou",
-          !c.worked_on_goals && "metas",
+          !c.exercise_walk && habitAnswered(c, "exercise_walk") && "exercício",
+          !c.ate_well && habitAnswered(c, "ate_well") && "comeu bem",
+          !c.drank_water && habitAnswered(c, "drank_water") && "água",
+          !c.slept_well && habitAnswered(c, "slept_well") && "dormiu bem",
+          !c.did_something_enjoyable && habitAnswered(c, "did_something_enjoyable") && "algo que gostou",
+          !c.worked_on_goals && habitAnswered(c, "worked_on_goals") && "metas",
         ].filter(Boolean) as string[],
       })),
       recentDiary: diaryEntries.map((d: Record<string, unknown>) => ({

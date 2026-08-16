@@ -4,6 +4,7 @@ import { buildMayaSystemPrompt, GoalSummary, WeekPlanSummary } from "@/lib/maya"
 import { getLatestInsights } from "@/lib/specialists";
 import { calculateStreak, getWeekMondayDate } from "@/lib/utils";
 import { callLLM } from "@/lib/llm";
+import { habitAnswered } from "@/lib/checkin-answered";
 import { NextResponse } from "next/server";
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -398,10 +399,10 @@ export async function POST(request: Request) {
           c.worked_on_goals && "metas",
         ].filter(Boolean) as string[],
         negatives: [
-          !c.exercise_walk && "sem exercício",
-          !c.ate_well && "comeu mal",
-          !c.drank_water && "pouca água",
-          !c.slept_well && "dormiu mal",
+          !c.exercise_walk && habitAnswered(c, "exercise_walk") && "sem exercício",
+          !c.ate_well && habitAnswered(c, "ate_well") && "comeu mal",
+          !c.drank_water && habitAnswered(c, "drank_water") && "pouca água",
+          !c.slept_well && habitAnswered(c, "slept_well") && "dormiu mal",
         ].filter(Boolean) as string[],
       })),
       recentDiary: diaryEntries.map((d: Record<string, unknown>) => ({

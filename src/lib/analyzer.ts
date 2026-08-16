@@ -1,4 +1,5 @@
 import type { CheckIn, DiaryEntry } from "@/types";
+import { habitAnswered } from "@/lib/checkin-answered";
 
 interface UserContext {
   name: string;
@@ -50,14 +51,14 @@ export function buildAnalysisPrompt(input: AnalysisInput): string {
       c.took_medication && "remédios",
     ].filter(Boolean);
     const negatives = [
-      !c.exercise_walk && "exercício",
-      !c.ate_well && "comeu bem",
-      !c.drank_water && "água",
-      !c.slept_well && "dormiu bem",
-      !c.meditation_prayer_breathing && "meditou/orou",
-      !c.did_something_enjoyable && "algo que gostou",
-      !c.worked_on_goals && "metas",
-      !c.talked_to_someone && "conversou",
+      !c.exercise_walk && habitAnswered(c, "exercise_walk") && "exercício",
+      !c.ate_well && habitAnswered(c, "ate_well") && "comeu bem",
+      !c.drank_water && habitAnswered(c, "drank_water") && "água",
+      !c.slept_well && habitAnswered(c, "slept_well") && "dormiu bem",
+      !c.meditation_prayer_breathing && habitAnswered(c, "meditation_prayer_breathing") && "meditou/orou",
+      !c.did_something_enjoyable && habitAnswered(c, "did_something_enjoyable") && "algo que gostou",
+      !c.worked_on_goals && habitAnswered(c, "worked_on_goals") && "metas",
+      !c.talked_to_someone && habitAnswered(c, "talked_to_someone") && "conversou",
     ].filter(Boolean);
     const suicidal = c.suicidal_thoughts;
     return `${c.date}: ${c.feeling ? `"${c.feeling.slice(0, 80)}"` : "sem registro de sentimento"} | ✅ ${positives.join(", ") || "nenhum"} | ❌ ${negatives.join(", ") || "nenhum"}${suicidal ? " | ⚠️ pensamento suicida" : ""}`;

@@ -221,16 +221,21 @@ export async function GET(req: NextRequest) {
         has_faith: hasFaith,
         has_creative_hobby: hasCreativeHobby,
       },
-      recentCheckIns: checks.map((c: any) => ({
-        date: c.date,
-        positives: Object.entries(c)
-          .filter(([k, v]) => v === true && k !== "suicidal_thoughts" && k !== "felt_judged")
-          .map(([k]) => k),
-        negatives: Object.entries(c)
-          .filter(([k, v]) => v === false && k !== "suicidal_thoughts" && k !== "felt_judged")
-          .map(([k]) => k),
-        feeling: c.feeling || "",
-      })),
+      recentCheckIns: checks.map((c: any) => {
+        const answered = Array.isArray(c.answered_questions) && c.answered_questions.length > 0
+          ? new Set(c.answered_questions.filter((k: unknown) => typeof k === "string"))
+          : null;
+        return {
+          date: c.date,
+          positives: Object.entries(c)
+            .filter(([k, v]) => v === true && k !== "suicidal_thoughts" && k !== "felt_judged" && (answered === null || answered.has(k)))
+            .map(([k]) => k),
+          negatives: Object.entries(c)
+            .filter(([k, v]) => v === false && k !== "suicidal_thoughts" && k !== "felt_judged" && (answered === null || answered.has(k)))
+            .map(([k]) => k),
+          feeling: c.feeling || "",
+        };
+      }),
       recentDiary: diaries.map((d: any) => ({
         date: d.date,
         content: d.content || "",

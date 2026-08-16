@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { CheckIn } from "@/types";
+import { answeredKeys } from "@/lib/checkin-answered";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -96,10 +97,6 @@ export default function HistoricoPage() {
   }, []);
 
   const scoreKeys = useMemo(
-    () => enabledKeys.filter((k) => k !== "suicidal_thoughts" && k !== "felt_judged"),
-    [enabledKeys]
-  );
-  const habitKeys = useMemo(
     () => enabledKeys.filter((k) => k !== "suicidal_thoughts" && k !== "felt_judged"),
     [enabledKeys]
   );
@@ -211,8 +208,9 @@ export default function HistoricoPage() {
               const day = d.getDate().toString().padStart(2, "0");
               const wk = d.toLocaleDateString("pt-BR", { weekday: "short" }).toUpperCase().replace(".", "");
               const isToday = ci.date === today;
-              const score = getScore(ci, scoreKeys);
-              const color = scoreColor(score, scoreKeys.length);
+              const answered = answeredKeys(ci, scoreKeys);
+              const score = getScore(ci, answered);
+              const color = scoreColor(score, answered.length);
 
               return (
                 <button
@@ -247,7 +245,7 @@ export default function HistoricoPage() {
                     <div className="flex items-center gap-2 mb-1">
                       {/* Habit emoji strip */}
                       <div className="flex items-center gap-[4px] flex-1 min-w-0">
-                        {habitKeys.map((key) => {
+                        {answered.map((key) => {
                           const done = (ci as Record<string, unknown>)[key] === true;
                           return done ? (
                             <span key={key} style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>
@@ -275,7 +273,7 @@ export default function HistoricoPage() {
                           letterSpacing: "-.01em",
                         } as React.CSSProperties}
                       >
-                        {score}/{scoreKeys.length}
+                        {score}/{answered.length}
                       </span>
                     </div>
 
