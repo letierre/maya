@@ -57,6 +57,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const confirmationFailed = searchParams.get("error") === "confirmation_failed";
+  const redirectTo = searchParams.get("redirect");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +81,12 @@ function LoginForm() {
       }
 
       console.log("[LOGIN] Sucesso, redirecionando...");
-      window.location.href = "/dashboard";
+      // Volta para onde o usuário estava (passado pelo middleware via ?redirect=)
+      const target =
+        redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")
+          ? redirectTo
+          : "/dashboard";
+      window.location.href = target;
     } catch (err: any) {
       console.error("[LOGIN] Erro capturado:", err);
       setError(err?.message || "Erro inesperado ao fazer login. Tente novamente.");
