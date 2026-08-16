@@ -4,9 +4,10 @@ import { useEffect, useState, useMemo } from "react";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { MOOD_CHIPS } from "@/lib/checkin-moods";
 import { sleepScore } from "@/lib/sleep-utils";
-import type { CheckIn, SleepLog, FinancialTransaction, AgendaItem } from "@/types";
+import type { CheckIn, SleepLog, AgendaItem } from "@/types";
 import { MetasResumo } from "@/components/analise/MetasResumo";
 import { OKRProgress } from "@/components/analise/OKRProgress";
+import { FinancasResumo } from "@/components/analise/FinancasResumo";
 import { AreaBalance } from "@/components/analise/AreaBalance";
 import { SemanalTrend } from "@/components/analise/SemanalTrend";
 import { NutricaoResumo } from "@/components/analise/NutricaoResumo";
@@ -74,7 +75,6 @@ function getMoodValence(chipId: string): "positive" | "negative" | null {
 export default function AnalisePage() {
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [sleepLogs, setSleepLogs] = useState<SleepLog[]>([]);
-  const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
   const [enabledKeys, setEnabledKeys] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,12 +90,10 @@ export default function AnalisePage() {
       cachedFetch<CheckIn[]>("/api/check-ins"),
       cachedFetch<{ enabled_questions?: string[] }>("/api/preferences"),
       cachedFetch<SleepLog[]>("/api/sleep?limit=200"),
-      cachedFetch<FinancialTransaction[]>("/api/financas/transactions"),
     ])
-      .then(([ci, prefs, sleep, fin]) => {
+      .then(([ci, prefs, sleep]) => {
         if (Array.isArray(ci)) setCheckIns(ci);
         if (Array.isArray(sleep)) setSleepLogs(sleep);
-        if (Array.isArray(fin)) setTransactions(fin);
         setEnabledKeys(prefs.enabled_questions || []);
         setLoading(false);
       })
@@ -120,9 +118,6 @@ export default function AnalisePage() {
 
   const periodSleep = useMemo(() => filterPeriod(sleepLogs, periodDays), [sleepLogs, periodDays]);
   const prevSleep = useMemo(() => filterPrevPeriod(sleepLogs, periodDays), [sleepLogs, periodDays]);
-
-  const periodFin = useMemo(() => filterPeriod(transactions, periodDays), [transactions, periodDays]);
-  const prevFin = useMemo(() => filterPrevPeriod(transactions, periodDays), [transactions, periodDays]);
 
   // ── wellness score 0–100 ─────────────────────────────────────────────────
 
@@ -216,20 +211,6 @@ export default function AnalisePage() {
     const prevFocoPct = prevExecPct != null ? Math.round((prevExecPct + prevMetasPct) / 2) : prevMetasPct;
     const focoTrend = prevFocoPct > 0 ? Math.round(((focoPct - prevFocoPct) / prevFocoPct) * 100) : 0;
 
-    // ── gastos ──
-    const despesas = periodFin
-      .filter((t) => t.type === "despesa")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-    const prevDespesas = prevFin
-      .filter((t) => t.type === "despesa")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-    // Normalize by days so comparison is fair
-    const despesasDaily = periodDays > 0 ? despesas / periodDays : despesas;
-    const prevDespesasDaily = periodDays > 0 ? prevDespesas / periodDays : prevDespesas;
-    const gastosTrend = prevDespesasDaily > 0
-      ? Math.round(((prevDespesasDaily - despesasDaily) / prevDespesasDaily) * 100)
-      : 0; // positive = spending less (good)
-
     // ── movimento (caminhada/corrida/musculação) ──
     const movimentoPct = periodCI.length > 0
       ? Math.round((periodCI.filter((c) => c.walked === true || c.ran === true || c.strength_training === true).length / periodCI.length) * 100)
@@ -252,11 +233,10 @@ export default function AnalisePage() {
       sono: { pct: sonoPct, trend: sonoTrend, display: sonoDisplay, sleptWellPct },
       humor: { pct: humorPct, trend: humorTrend },
       foco: { pct: focoPct, trend: focoTrend },
-      gastos: { pct: Math.round(despesas), trend: gastosTrend },
       movimento: { pct: movimentoPct, trend: movimentoTrend },
       pausa: { pct: pausaPct, trend: pausaTrend },
     };
-  }, [periodCI, prevCI, periodSleep, prevSleep, periodFin, prevFin, periodDays]);
+  }, [periodCI, prevCI, periodSleep, prevSleep, agendaItems, periodDays]);
 
   // ── impact factors ────────────────────────────────────────────────────────
 
@@ -444,15 +424,6 @@ export default function AnalisePage() {
       trend: areas.foco.trend,
       positive: areas.foco.trend >= 0,
       detail: null,
-    },
-    {
-      label: "Gastos",
-      pct: typeof areas.gastos.pct === "number" && areas.gastos.pct > 0 ? areas.gastos.pct : 0,
-      trend: areas.gastos.trend,
-      positive: areas.gastos.trend >= 0, // trending down = good (spending less)
-      detail: typeof areas.gastos.pct === "number" && areas.gastos.pct > 0
-        ? `R$${areas.gastos.pct}`
-        : "—",
     },
     {
       label: "Movimento",
@@ -692,11 +663,7 @@ export default function AnalisePage() {
               }}>
                 <div style={{
                   height: "100%", width: `${Math.min(a.pct, 100)}%`, borderRadius: 9999,
-                  background: a.label === "Gastos" && areas.gastos.trend < 0
-                    ? "#FF5C5C"
-                    : a.label === "Gastos"
-                      ? "#22D18B"
-                      : "linear-gradient(90deg, #7C5CFF, #A78BFA)",
+                  background: "linear-gradient(90deg, #7C5CFF, #A78BFA)",
                 }} />
               </div>
             </div>
@@ -861,6 +828,7 @@ export default function AnalisePage() {
 
           <MetasResumo />
           <OKRProgress period={crescTab} />
+          <FinancasResumo />
           <AreaBalance from={crescFrom} to={crescTo} />
           <SemanalTrend from={crescFrom} to={crescTo} />
         </>
