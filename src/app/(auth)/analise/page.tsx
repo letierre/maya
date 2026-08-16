@@ -521,16 +521,13 @@ export default function AnalisePage() {
       {/* ── HUB: BEM-ESTAR ── */}
       {hub === "bemestar" && (
         <>
-      {/* Evolution ring */}
+      {/* Score de bem-estar */}
       {periodCI.length >= 2 ? (
-        <div style={{ display: "flex", justifyContent: "center", padding: "16px 0" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "16px 0" }}>
           <div style={{
             width: 140, height: 140, borderRadius: "50%",
-            background: evolutionPct != null
-              ? `conic-gradient(#7C5CFF ${Math.max(0, Math.min(evolutionPct + 50, 100)) * 3.6}deg, #22D18B ${Math.abs(evolutionPct) * 3.6}deg, oklch(0.22 0.02 270) 0deg)`
-              : `conic-gradient(#7C5CFF ${(wellnessAvg ?? 50) * 3.6}deg, oklch(0.22 0.02 270) 0deg)`,
+            background: `conic-gradient(#7C5CFF ${Math.max(0, Math.min(wellnessAvg ?? 50, 100)) * 3.6}deg, oklch(0.22 0.02 270) 0deg)`,
             display: "flex", alignItems: "center", justifyContent: "center",
-            position: "relative",
           }}>
             <div style={{
               width: 106, height: 106, borderRadius: "50%",
@@ -538,22 +535,29 @@ export default function AnalisePage() {
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
             }}>
               <span style={{ fontSize: 32, fontWeight: 800, color: "#e0d6ff", lineHeight: 1 }}>
-                {evolutionPct != null
-                  ? (evolutionPct > 0 ? "+" : "") + evolutionPct
-                  : wellnessAvg != null
-                    ? Math.round(wellnessAvg)
-                    : "—"}
+                {wellnessAvg != null ? Math.round(wellnessAvg) : "—"}
               </span>
               <span style={{ fontSize: 10, color: "oklch(0.55 0.03 270)", marginTop: 2 }}>
-                {evolutionPct != null ? "vs anterior" : "Bem-estar"}
+                Bem-estar
               </span>
             </div>
           </div>
+          {evolutionPct != null && (
+            <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{
+                fontSize: 13, fontWeight: 700,
+                color: evolutionPct > 0 ? "#22D18B" : evolutionPct < 0 ? "#FF5C5C" : "oklch(0.55 0.03 270)",
+              }}>
+                {evolutionPct > 0 ? "▲ +" : evolutionPct < 0 ? "▼ " : "— "}{evolutionPct}%
+              </span>
+              <span style={{ fontSize: 12, color: "oklch(0.55 0.03 270)" }}>vs período anterior</span>
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ display: "flex", justifyContent: "center", padding: "24px 0" }}>
           <p style={{ color: "oklch(0.55 0.03 270)", fontSize: 14 }}>
-            Registre {3 - periodCI.length} {3 - periodCI.length === 1 ? "dia" : "dias"} a mais para ver sua evolução.
+            Registre {3 - periodCI.length} {3 - periodCI.length === 1 ? "dia" : "dias"} a mais para ver seu bem-estar.
           </p>
         </div>
       )}
