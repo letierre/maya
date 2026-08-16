@@ -1300,6 +1300,17 @@ export default function CheckInPage() {
   const latestAnswers = useRef<CheckInAnswers>(defaultAnswers());
   latestAnswers.current = answers;
 
+  // Hábitos pulados ("Pular") — ficam fora do answered_questions.
+  const skippedRef = useRef<Set<string>>(new Set());
+  // answered_questions do check-in existente (modo edição), para não "responder" hábitos pulados.
+  const existingAnsweredRef = useRef<string[] | null>(null);
+
+  // Hábitos realmente respondidos: exclui os pulados e os auto-calculados pelo backend.
+  const computeAnswered = useCallback(() => {
+    if (existingAnsweredRef.current) return existingAnsweredRef.current;
+    return enabledKeys.filter((k) => !skippedRef.current.has(k) && k !== "ate_well" && k !== "worked_on_goals");
+  }, [enabledKeys]);
+
   useEffect(() => {
     const today = getLocalDate();
     Promise.all([
@@ -1322,10 +1333,14 @@ export default function CheckInPage() {
 
       const isExisting = !!existing && existing.date === today;
       if (isExisting) setIsEditing(true);
+      existingAnsweredRef.current = Array.isArray(existing?.answered_questions) && existing.answered_questions.length > 0
+        ? existing.answered_questions
+        : null;
 
       setAnswers((prev) => {
         const next = { ...prev };
         if (hasRunningSession) next.ran = true;
+        if (hasSleepLog) next.slept_well = (sleepLogs[0]?.quality ?? 0) >= 3;
         if (isExisting) {
           next.feeling = existing.feeling ?? "";
           next.mood_tags = existing.mood_tags ?? [];
@@ -1350,7 +1365,7 @@ export default function CheckInPage() {
       await fetch("/api/check-ins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(answers),
+        body: JSON.stringify({ ...answers, answered_questions: computeAnswered() }),
       });
       if (answers.suicidal_thoughts) {
         toast.warning(
@@ -1365,7 +1380,7 @@ export default function CheckInPage() {
       toast.error("Erro ao salvar alterações");
       setSaving(false);
     }
-  }, [answers, router]);
+  }, [answers, router, computeAnswered]);
 
   // ── Ritual navigation ───────────────────────────────────────────────────────
 
@@ -1419,7 +1434,7 @@ export default function CheckInPage() {
   useEffect(() => {
     if (!isDone || savedRef.current) return;
     savedRef.current = true;
-    const data = latestAnswers.current;
+    const data = { ...latestAnswers.current, answered_questions: computeAnswered() };
 
     // Post sleep log separately if quality was captured
     if (data.sleep_quality !== null) {
@@ -1469,7 +1484,7 @@ export default function CheckInPage() {
 
     const timer = setTimeout(() => { invalidateFetchCache("/api/check-ins"); router.push("/dashboard"); router.refresh(); }, 1800);
     return () => clearTimeout(timer);
-  }, [isDone, router]);
+  }, [isDone, router, computeAnswered]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -1515,7 +1530,9 @@ export default function CheckInPage() {
       );
       return (
         <HabitStep habitKey={cur.habitKey} context={context}
-          onAnswer={handleHabitAnswer} onSkip={goNext} onPrev={goPrev} />
+          onAnswer={handleHabitAnswer}
+          onSkip={() => { skippedRef.current.add(cur.habitKey); goNext(); }}
+          onPrev={goPrev} />
       );
     }
     if (cur.kind === "meditation") return (

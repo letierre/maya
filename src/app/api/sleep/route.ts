@@ -91,12 +91,16 @@ export async function POST(req: NextRequest) {
 	    const sleptWell = body.quality >= 3;
 	    const { data: existingCi } = await admin
 	      .from("check_ins")
-	      .select("id")
+	      .select("id, answered_questions")
 	      .eq("user_id", session.user.id)
 	      .eq("date", date)
 	      .maybeSingle();
 	    if (existingCi) {
-	      await admin.from("check_ins").update({ slept_well: sleptWell, updated_at: new Date().toISOString() }).eq("id", existingCi.id);
+	      const answered = new Set<string>(
+	        Array.isArray(existingCi.answered_questions) ? existingCi.answered_questions : []
+	      );
+	      answered.add("slept_well");
+	      await admin.from("check_ins").update({ slept_well: sleptWell, answered_questions: [...answered], updated_at: new Date().toISOString() }).eq("id", existingCi.id);
 	    }
 	  }
 

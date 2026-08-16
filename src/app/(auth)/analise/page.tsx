@@ -47,14 +47,23 @@ function avg(arr: number[]): number | null {
 }
 
 /** Wellness score 0–100 from a single check-in, based on enabled habit keys.
- *  Hábito cumprido = 100, não cumprido = 0. Hábitos não respondidos (undefined)
- *  ficam fora da média — não viram "neutro 50" nem penalizam como "não feito". */
+ *  Hábito cumprido = 100, não cumprido = 0. Só entram os hábitos realmente
+ *  respondidos (answered_questions); os pulados ficam fora da média. Check-ins
+ *  legados (sem a coluna) mantêm o comportamento antigo de contar todos. */
 function wellnessScore(ci: CheckIn, habitKeys: string[]): number {
   if (habitKeys.length === 0) return 50;
+
+  // null/[] = legado → conta todos os hábitos habilitados (comportamento antigo).
+  const answered =
+    Array.isArray(ci.answered_questions) && ci.answered_questions.length > 0
+      ? ci.answered_questions
+      : null;
+
   let sum = 0;
   let count = 0;
   for (const k of habitKeys) {
     if (k === "suicidal_thoughts" || k === "water_cups") continue;
+    if (answered && !answered.includes(k)) continue; // pulado — não entra na média
 
     // Hidratação é contínua: 0 copos = 0, 4+ copos = 100 (mesma meta da UI).
     if (k === "drank_water") {
@@ -65,7 +74,7 @@ function wellnessScore(ci: CheckIn, habitKeys: string[]): number {
     }
 
     const v = (ci as unknown as Record<string, unknown>)[k];
-    if (v === undefined) continue; // não respondido — não entra na média
+    if (v === undefined) continue;
 
     if (k === "felt_judged") {
       // Sentir-se julgado é negativo para o bem-estar: inverte a pontuação.
@@ -96,6 +105,7 @@ export default function AnalisePage() {
   const [hub, setHub] = useState<"bemestar" | "crescimento">("bemestar");
   const [crescTab, setCrescTab] = useState<"semana" | "mes" | "trimestre">("trimestre");
   const [openInfo, setOpenInfo] = useState<string | null>(null);
+  const [ringInfo, setRingInfo] = useState(false);
 
   const periodDays = { semana: 7, mes: 30, trimestre: 90 }[tab];
   const crescPeriodDays = { semana: 7, mes: 30, trimestre: 90 }[crescTab];
@@ -538,23 +548,43 @@ export default function AnalisePage() {
       {/* Score de bem-estar */}
       {periodCI.length >= 2 ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "16px 0" }}>
-          <div style={{
-            width: 140, height: 140, borderRadius: "50%",
-            background: `conic-gradient(#7C5CFF ${Math.max(0, Math.min(wellnessAvg ?? 50, 100)) * 3.6}deg, oklch(0.22 0.02 270) 0deg)`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
+          <div style={{ position: "relative" }}>
             <div style={{
-              width: 106, height: 106, borderRadius: "50%",
-              background: "oklch(0.12 0.012 270)",
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              width: 140, height: 140, borderRadius: "50%",
+              background: `conic-gradient(#7C5CFF ${Math.max(0, Math.min(wellnessAvg ?? 50, 100)) * 3.6}deg, oklch(0.22 0.02 270) 0deg)`,
+              display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              <span style={{ fontSize: 32, fontWeight: 800, color: "#e0d6ff", lineHeight: 1 }}>
-                {wellnessAvg != null ? Math.round(wellnessAvg) : "—"}
-              </span>
-              <span style={{ fontSize: 10, color: "oklch(0.55 0.03 270)", marginTop: 2 }}>
-                Bem-estar
-              </span>
+              <div style={{
+                width: 106, height: 106, borderRadius: "50%",
+                background: "oklch(0.12 0.012 270)",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              }}>
+                <span style={{ fontSize: 32, fontWeight: 800, color: "#e0d6ff", lineHeight: 1 }}>
+                  {wellnessAvg != null ? Math.round(wellnessAvg) : "—"}
+                </span>
+                <span style={{ fontSize: 10, color: "oklch(0.55 0.03 270)", marginTop: 2 }}>
+                  Bem-estar
+                </span>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setRingInfo((v) => !v)}
+              aria-label="O que é bem-estar"
+              title="O que é bem-estar"
+              style={{
+                position: "absolute", top: 6, right: 6,
+                width: 20, height: 20, borderRadius: "50%",
+                border: "1px solid oklch(0.5 0.12 270 / 0.4)",
+                background: "oklch(0.16 0.012 270)", cursor: "pointer",
+                color: ringInfo ? "#7C5CFF" : "oklch(0.55 0.03 270)",
+                fontSize: 11, fontWeight: 700, lineHeight: 1,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                padding: 0, fontFamily: "inherit",
+              }}
+            >
+              i
+            </button>
           </div>
           {evolutionPct != null && (
             <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
@@ -566,6 +596,18 @@ export default function AnalisePage() {
               </span>
               <span style={{ fontSize: 12, color: "oklch(0.55 0.03 270)" }}>vs período anterior</span>
             </div>
+          )}
+          {ringInfo && (
+            <p style={{
+              margin: "10px 0 0", maxWidth: 320, fontSize: 11, lineHeight: 1.45,
+              color: "oklch(0.62 0.03 270)",
+              background: "oklch(0.2 0.02 270)",
+              borderRadius: 10, padding: "8px 10px", textAlign: "center",
+            }}>
+              Nota de 0 a 100 que mede quanto dos seus hábitos você cumpriu no período.
+              Só entram os hábitos que você realmente respondeu (os pulados não contam);
+              sentir-se julgado reduz a nota e a água pontua conforme os copos.
+            </p>
           )}
         </div>
       ) : (
