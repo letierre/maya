@@ -15,6 +15,17 @@ import { InsightsCarousel } from "@/components/InsightsCarousel";
 import { EvolucaoSpark } from "@/components/EvolucaoSpark";
 import type { CheckIn, SleepLog, WeeklyTask } from "@/types";
 
+/** Chaves de hábito efetivamente respondidas no check-in (answered_questions).
+ *  Check-in legado (sem a coluna) → conta todas as chaves (comportamento antigo). */
+function answeredKeys(ci: CheckIn, keys: string[]): string[] {
+  const answered = ci.answered_questions;
+  if (Array.isArray(answered) && answered.length > 0) {
+    const set = new Set(answered);
+    return keys.filter((k) => set.has(k));
+  }
+  return keys;
+}
+
 // ── Page ────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -168,14 +179,15 @@ export default function DashboardPage() {
   const enabledNonSuicidal = enabledKeys.filter(
     (k) => k !== "suicidal_thoughts" && k !== "felt_judged"
   );
-  const totalHabits = enabledNonSuicidal.length;
 
+  // Hábitos respondidos hoje — pulados ficam fora (espelha a nota de bem-estar).
+  const todayAnswered = todayCheckIn ? answeredKeys(todayCheckIn, enabledNonSuicidal) : [];
   const positiveCount = todayCheckIn
-    ? enabledNonSuicidal.filter(
+    ? todayAnswered.filter(
         (k) => (todayCheckIn as unknown as Record<string, unknown>)[k] === true
       ).length
     : 0;
-
+  const totalHabits = todayAnswered.length;
   const positivePct = totalHabits > 0 ? Math.round((positiveCount / totalHabits) * 100) : 0;
 
   // Week days for "O Fio"
@@ -200,6 +212,7 @@ export default function DashboardPage() {
       const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const ci = ciByDay.get(ds);
       const sl = sleepByDay.get(ds);
+      const answered = ci ? answeredKeys(ci, habitKeys) : [];
 
       days.push({
         date: ds,
@@ -207,8 +220,9 @@ export default function DashboardPage() {
         sleepQuality: sl?.quality ?? null,
         sleepHrs: sl?.duration_min ? Math.floor((sl.duration_min / 60) * 10) / 10 : null,
         cuidados: ci
-          ? habitKeys.filter((k) => (ci as unknown as Record<string, unknown>)[k] === true).length
+          ? answered.filter((k) => (ci as unknown as Record<string, unknown>)[k] === true).length
           : null,
+        cuidadosTotal: ci ? answered.length : null,
         mood_tags: ci?.mood_tags ?? [],
         feeling: ci?.feeling ?? "",
         today: ds === today,
@@ -230,7 +244,7 @@ export default function DashboardPage() {
       const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const ci = ciByDay.get(ds);
       points.push(
-        ci ? scoreKeys.filter((k) => (ci as unknown as Record<string, unknown>)[k] === true).length : 0
+        ci ? answeredKeys(ci, scoreKeys).filter((k) => (ci as unknown as Record<string, unknown>)[k] === true).length : 0
       );
     }
     return points;
@@ -289,7 +303,7 @@ export default function DashboardPage() {
       <OutrosRecursos />
 
       {/* ═══ O FIO ═══ */}
-      <RecentThread days={weekDays} totalHabits={totalHabits} userGender={userGender} />
+      <RecentThread days={weekDays} userGender={userGender} />
 
       {/* ═══ CTA REGISTRAR ═══ */}
       <div className="px-3.5 pt-4">

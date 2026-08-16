@@ -14,6 +14,7 @@ export interface ThreadDay {
   sleepQuality: number | null;
   sleepHrs: number | null;
   cuidados: number | null;
+  cuidadosTotal: number | null;
   mood_tags: string[];
   feeling: string;
   today: boolean;
@@ -21,11 +22,10 @@ export interface ThreadDay {
 
 interface RecentThreadProps {
   days: ThreadDay[];
-  totalHabits: number;
   userGender: string;
 }
 
-export function RecentThread({ days, totalHabits, userGender }: RecentThreadProps) {
+export function RecentThread({ days, userGender }: RecentThreadProps) {
   const last3 = days.slice(-3).reverse(); // [today, yesterday, 2d ago]
   const labels = ["Hoje", "Ontem", "Anteontem"];
 
@@ -53,8 +53,8 @@ export function RecentThread({ days, totalHabits, userGender }: RecentThreadProp
             const moodTag = day.mood_tags?.[0];
             const extraMoods = (day.mood_tags?.length ?? 0) - 1;
             const dayScore =
-              day.cuidados !== null
-                ? Math.round((day.cuidados / Math.max(totalHabits, 1)) * 10)
+              day.cuidados !== null && (day.cuidadosTotal ?? 0) > 0
+                ? Math.round((day.cuidados / (day.cuidadosTotal ?? 1)) * 10)
                 : null;
 
             const sq = day.sleepQuality;
