@@ -70,27 +70,30 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
     });
   }, [emojis]);
 
-  const progress = AREAS.map(a => {
-    const t = totals[a.key] ?? 0;
-    return t > 0 ? Math.round(((done[a.key] ?? 0) / t) * 100) : 0;
-  });
-
   const maxTotal = Math.max(...AREAS.map(a => totals[a.key] ?? 0), 1);
+
+  // Volume planejado — quantidade de itens relativa à área com mais itens.
   const planned = AREAS.map(a => {
     const t = totals[a.key] ?? 0;
     return t > 0 ? Math.round((t / maxTotal) * 100) : 0;
   });
 
-  const hasData = planned.some(p => p > 0);
-  const hasDone = progress.some(p => p > 0);
+  // Volume concluído — quantidade concluída relativa à área com mais itens.
+  // (mesma escala da linha "planejado"; evita a ilusão de 1/1 === 6/6)
+  const doneVolume = AREAS.map(a => {
+    const d = done[a.key] ?? 0;
+    return d > 0 ? Math.round((d / maxTotal) * 100) : 0;
+  });
 
-  const donePoints  = AREAS.map((_, i) => vertPt(i, mounted ? progress[i] : 0)).join(" ");
+  const hasData = planned.some(p => p > 0);
+  const hasDone = doneVolume.some(p => p > 0);
+
+  const donePoints  = AREAS.map((_, i) => vertPt(i, mounted ? doneVolume[i] : 0)).join(" ");
   const plannedPts  = AREAS.map((_, i) => vertPt(i, mounted ? planned[i] : 0)).join(" ");
   const outerRing   = AREAS.map((_, i) => ringPt(i, 1)).join(" ");
   const ring75      = AREAS.map((_, i) => ringPt(i, 0.75)).join(" ");
   const ring50      = AREAS.map((_, i) => ringPt(i, 0.5)).join(" ");
   const ring25      = AREAS.map((_, i) => ringPt(i, 0.25)).join(" ");
-  const fullDone    = progress.filter(p => p >= 100).length;
 
   const totalPlanned = AREAS.reduce((s, a) => s + (totals[a.key] ?? 0), 0);
   const totalDone    = AREAS.reduce((s, a) => s + (done[a.key] ?? 0), 0);
@@ -418,7 +421,7 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
       }
     } catch { /* cancelled */ }
     setSharing(false);
-  }, [totalPlanned, totalDone, pctGlobal, weekLabel, stones, mounted, progress]);
+  }, [totalPlanned, totalDone, pctGlobal, weekLabel, stones, mounted, doneVolume]);
 
   return (
     <div
@@ -552,18 +555,20 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
             />
           )}
 
-          {/* Vertex dots */}
+          {/* Vertex dots — rótulo "feitos/total" (ex.: 6/6) */}
           {AREAS.map((a, i) => {
-            const pct = mounted ? progress[i] : 0;
-            if (pct === 0) return null;
+            const d = done[a.key] ?? 0;
+            const t = totals[a.key] ?? 0;
+            const pct = mounted ? doneVolume[i] : 0;
+            if (d <= 0) return null;
             const [px, py] = vertPt(i, pct).split(",");
-            const isFull = pct >= 100;
+            const isFull = t > 0 && d >= t;
             return (
               <g key={a.key}>
                 <circle cx={px} cy={py} r={isFull ? 6 : 5} fill={a.color} opacity={0.2} />
                 <circle cx={px} cy={py} r={isFull ? 3 : 2.5} fill={a.color} stroke="#fff" strokeWidth="0.8" />
                 <text x={px} y={Number(py) - 14} textAnchor="middle" fontSize={isFull ? 10 : 9} fontWeight="700" fill={a.color}>
-                  {isFull ? "✓" : `${pct}%`}
+                  {`${d}/${t}`}
                 </text>
               </g>
             );
@@ -575,7 +580,7 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
             const labelDist = R + (i === 1 ? 36 : i === 7 ? 33 : 26); // Carreira & Saúde need extra breathing room
             const lx = CX + labelDist * Math.cos(a2);
             const ly = CY + labelDist * Math.sin(a2);
-            const pct = mounted ? progress[i] : 0;
+            const pct = mounted ? doneVolume[i] : 0;
             const planPct = mounted ? planned[i] : 0;
             const empty = pct === 0 && planPct === 0;
             const customEmoji = emojis?.[a.key] ?? DEFAULT_EMOJIS[a.key];
