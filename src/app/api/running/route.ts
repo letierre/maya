@@ -96,3 +96,19 @@ export async function PATCH(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+// DELETE — remove uma sessão (confirmação é feita no cliente)
+export async function DELETE(req: NextRequest) {
+  const supabase = await createServerSupabaseClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "id obrigatório" }, { status: 400 });
+
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("running_sessions").delete().eq("id", id).eq("user_id", session.user.id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}

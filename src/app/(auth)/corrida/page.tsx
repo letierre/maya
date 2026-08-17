@@ -8,7 +8,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 interface Coord { lat: number; lng: number; timestamp: number; }
-interface Session { id: string; start_time: string; end_time: string | null; distance_meters: number; duration_seconds: number; avg_pace: number | null; route_coordinates: Coord[]; }
+interface Session { id: string; start_time: string; end_time: string | null; distance_meters: number; duration_seconds: number; avg_pace: number | null; max_speed: number | null; calories_estimate: number | null; notes: string | null; route_coordinates: Coord[]; }
 
 function formatPace(secPerKm: number): string {
   if (!secPerKm || secPerKm <= 0) return "--";
@@ -45,6 +45,8 @@ export default function CorridaPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Init map — cria imediatamente (sem aguardar geolocalização) e recentraliza depois
   useEffect(() => {
@@ -187,13 +189,22 @@ export default function CorridaPage() {
     runStats.current = null;
   };
 
-  const viewSession = (s: Session) => {
-    setSelectedSession(s);
-    if (mapRef.current && s.route_coordinates?.length > 0) {
-      const coords = s.route_coordinates.map((c: Coord) => [c.lng, c.lat] as [number, number]);
-      if (routeLineRef.current) routeLineRef.current.setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } });
-      mapRef.current.fitBounds(coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0])), { padding: 40 });
-    }
+  const deleteSession = async () => {
+    if (!selectedSession) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/running?id=${selectedSession.id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Corrida excluída");
+        setHistory(prev => prev.filter(s => s.id !== selectedSession.id));
+        setSelectedSession(null);
+        setConfirmDelete(false);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Erro ao excluir");
+      }
+    } catch { toast.error("Erro ao excluir"); }
+    setDeleting(false);
   };
 
   return (
@@ -239,7 +250,7 @@ export default function CorridaPage() {
           {history.length === 0 ? (
             <p style={{ textAlign: "center", color: "#9e96b5", padding: 40 }}>Nenhuma corrida ainda</p>
           ) : history.map(s => (
-            <button key={s.id} type="button" onClick={() => { viewSession(s); setShowHistory(false); }}
+            <button key={s.id} type="button" onClick={() => { setSelectedSession(s); setConfirmDelete(false); }}
               style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, border: "1px solid rgba(167,139,250,0.1)", background: "#1a1530", marginBottom: 8, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
               <span style={{ fontSize: 22 }}>🏃</span>
               <div style={{ flex: 1 }}>
@@ -268,6 +279,53 @@ export default function CorridaPage() {
           )}
         </div>
       )}
+
+      {/* Detalhes da corrida selecionada */}
+      {selectedSession && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => { if (!deleting) setSelectedSession(null); }}>
+          <div style={{ background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 20, width: "100%", maxWidth: 400, padding: 20 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>Corrida</h2>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#9e96b5" }}>
+                  {new Date(selectedSession.start_time).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+              <button type="button" onClick={() => setSelectedSession(null)} style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(167,139,250,0.1)", border: 0, color: "#A78BFA", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>✕</button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+              <StatBox label="Distância" value={`${(selectedSession.distance_meters / 1000).toFixed(2)} km`} />
+              <StatBox label="Tempo" value={formatDuration(selectedSession.duration_seconds)} />
+              <StatBox label="Ritmo médio" value={formatPace(selectedSession.avg_pace || 0)} />
+              <StatBox label="Velocidade máx" value={selectedSession.max_speed ? `${selectedSession.max_speed.toFixed(1)} km/h` : "--"} />
+            </div>
+
+            {!confirmDelete ? (
+              <button type="button" onClick={() => setConfirmDelete(true)} disabled={deleting}
+                style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1px solid rgba(255,77,77,0.4)", background: "rgba(255,77,77,0.1)", color: "#FF4D4D", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                Excluir corrida
+              </button>
+            ) : (
+              <div>
+                <p style={{ fontSize: 13, color: "#e0d6ff", marginBottom: 10, textAlign: "center" }}>
+                  Excluir esta corrida? Essa ação não pode ser desfeita.
+                </p>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button type="button" onClick={() => setConfirmDelete(false)} disabled={deleting}
+                    style={{ flex: 1, padding: "12px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#A78BFA", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                    Cancelar
+                  </button>
+                  <button type="button" onClick={deleteSession} disabled={deleting}
+                    style={{ flex: 1, padding: "12px", borderRadius: 12, border: 0, background: "#FF4D4D", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: deleting ? 0.5 : 1 }}>
+                    {deleting ? "Excluindo…" : "Excluir"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -280,6 +338,15 @@ function StatChip({ icon, label, value }: { icon: React.ReactNode; label: string
         <span style={{ fontSize: 10, color: "#9e96b5", fontWeight: 500 }}>{label}</span>
       </div>
       <span style={{ fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>{value}</span>
+    </div>
+  );
+}
+
+function StatBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.1)", borderRadius: 12, padding: "12px", textAlign: "center" }}>
+      <div style={{ fontSize: 10, color: "#9e96b5", fontWeight: 500, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: "#e0d6ff", fontVariantNumeric: "tabular-nums" }}>{value}</div>
     </div>
   );
 }
