@@ -31,6 +31,7 @@ export default function CorridaPage() {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const watchId = useRef<number | null>(null);
   const routeLineRef = useRef<mapboxgl.GeoJSONSource | null>(null);
+  const runStats = useRef<{ totalDist: number; maxSpeed: number; startedAt: number } | null>(null);
 
   const [running, setRunning] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
@@ -82,31 +83,49 @@ export default function CorridaPage() {
   // Load history
   useEffect(() => { fetch("/api/running?limit=20").then(r => r.json()).then(d => { if (Array.isArray(d)) setHistory(d); }).catch(() => {}); }, []);
 
+  // Limpa GPS/timer se o usuário sair da tela durante uma corrida
+  useEffect(() => () => {
+    if (watchId.current) {
+      navigator.geolocation.clearWatch(watchId.current);
+      clearInterval((watchId as any).timer);
+      watchId.current = null;
+    }
+  }, []);
+
   // GPS tracking
   const startRun = () => {
     if (!navigator.geolocation) { toast.error("GPS não disponível"); return; }
     setRunning(true); setStartTime(new Date()); setDistance(0); setElapsed(0); setPace(0); setCoords([]);
-    const start = Date.now();
+    const startedAt = Date.now();
     const points: Coord[] = [];
     let lastPoint: Coord | null = null;
-    let totalDist = 0;
+    runStats.current = { totalDist: 0, maxSpeed: 0, startedAt };
 
-    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
+    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
 
     const id = navigator.geolocation.watchPosition(
       (pos) => {
+        // Ignora fixos imprecisos (GPS indoor/sinal fraco) que inflam a distância parado
+        if (pos.coords.accuracy != null && pos.coords.accuracy > 20) return;
+
         const pt: Coord = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
-        points.push(pt);
-        setCoords([...points]);
-        if (pos.coords.speed != null) setSpeed(pos.coords.speed * 3.6);
+        if (pos.coords.speed != null) {
+          const kmh = pos.coords.speed * 3.6;
+          if (kmh > runStats.current!.maxSpeed) runStats.current!.maxSpeed = kmh;
+          setSpeed(kmh);
+        }
         if (lastPoint) {
           const d = haversine(lastPoint.lat, lastPoint.lng, pt.lat, pt.lng);
-          totalDist += d;
-          setDistance(Math.round(totalDist));
+          // Ignora micro-jitter (< 1 m) que o GPS gera mesmo parado
+          if (d < 1) return;
+          runStats.current!.totalDist += d;
+          setDistance(Math.round(runStats.current!.totalDist));
+          const elapsedSec = (Date.now() - startedAt) / 1000;
+          if (runStats.current!.totalDist > 10) setPace(elapsedSec / (runStats.current!.totalDist / 1000));
         }
         lastPoint = pt;
-        const elapsedSec = (Date.now() - start) / 1000;
-        if (totalDist > 10) setPace(elapsedSec / (totalDist / 1000));
+        points.push(pt);
+        setCoords([...points]);
         // Update route line
         if (routeLineRef.current && points.length >= 2) {
           routeLineRef.current.setData({
@@ -125,17 +144,23 @@ export default function CorridaPage() {
   const stopRun = async () => {
     if (watchId.current) { navigator.geolocation.clearWatch(watchId.current); clearInterval((watchId as any).timer); watchId.current = null; }
     setRunning(false);
-    if (distance < 10) { toast.error("Distância muito curta"); return; }
+
+    const stats = runStats.current;
+    const dist = stats ? Math.round(stats.totalDist) : distance;
+    const maxSpeed = stats ? Math.round(stats.maxSpeed * 10) / 10 : Math.round(speed * 10) / 10;
+    const duration = stats ? Math.max(1, Math.floor((Date.now() - stats.startedAt) / 1000)) : elapsed;
+
+    if (dist < 10) { toast.error("Corrida muito curta para salvar"); runStats.current = null; return; }
     setSaving(true);
-    const duration = elapsed;
-    const avgPace = distance > 10 ? duration / (distance / 1000) : 0;
+    const avgPace = dist > 10 ? duration / (dist / 1000) : 0;
     try {
       const res = await fetch("/api/running", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          start_time: startTime?.toISOString(), end_time: new Date().toISOString(),
-          distance_meters: Math.round(distance), duration_seconds: duration,
-          avg_pace: Math.round(avgPace), max_speed: Math.round(speed * 10) / 10,
+          start_time: startTime ? startTime.toISOString() : new Date().toISOString(),
+          end_time: new Date().toISOString(),
+          distance_meters: dist, duration_seconds: duration,
+          avg_pace: Math.round(avgPace), max_speed: maxSpeed,
           route_coordinates: coords,
         }),
       });
@@ -143,9 +168,13 @@ export default function CorridaPage() {
         toast.success("Corrida salva!");
         const saved = await res.json();
         setHistory(prev => [saved, ...prev]);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Erro ao salvar");
       }
     } catch { toast.error("Erro ao salvar"); }
     setSaving(false);
+    runStats.current = null;
   };
 
   const viewSession = (s: Session) => {
@@ -206,7 +235,7 @@ export default function CorridaPage() {
 
       {/* Action button — floating over map */}
       {!showHistory && (
-        <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 20 }}>
+        <div style={{ position: "fixed", bottom: "calc(64px + env(safe-area-inset-bottom) + 20px)", left: "50%", transform: "translateX(-50%)", zIndex: 20 }}>
           {!running ? (
             <button type="button" onClick={startRun}
               style={{ width: 72, height: 72, borderRadius: "50%", background: "#7C5CFF", border: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(124,92,255,0.5)" }}>
