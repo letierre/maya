@@ -198,6 +198,33 @@ export function getCatById(id: string, type: "receita" | "despesa"): FinCat {
   return { id: "outros", emoji: "⚙️", hue: 160, subcats: [] };
 }
 
+/**
+ * Resolve uma categoria pelo id armazenado (ex: "moradia" ou "user_<uuid>")
+ * considerando também categorias criadas pelo usuário. É a forma unificada de
+ * traduzir o `category` de transações/orçamentos em uma FinCat exibível.
+ */
+export function resolveCat(
+  id: string,
+  type: "receita" | "despesa",
+  userCategories: UserCategory[],
+): FinCat {
+  if (id.startsWith("user_")) {
+    const uc = userCategories.find((u) => `user_${u.id}` === id);
+    if (uc) {
+      return {
+        id,
+        emoji: uc.emoji,
+        hue: uc.hue,
+        subcats: uc.subcats.map((label, i) => ({ id: `u${i}`, label })),
+        custom: true,
+      };
+    }
+    // Categoria do usuário não encontrada (excluída) — cai em "outros"
+    return { id: "outros", emoji: "📦", hue: 160, subcats: [] };
+  }
+  return getCatById(id, type);
+}
+
 export type CustomCat = {
   name: string;
   emoji: string;

@@ -4,15 +4,20 @@ import { useState } from "react";
 import type { FinancialBudget } from "@/types";
 import type { Lang } from "@/lib/i18n";
 import { t as tFn } from "@/lib/i18n";
-import { EXPENSE_CATS, type FinCat, type CustomCat } from "@/lib/financas-categories";
+import { mergeCats, type FinCat, type CustomCat, type UserCategory } from "@/lib/financas-categories";
 
-function catLabel(c: FinCat, lang: Lang, customCat: CustomCat | null): string {
-  if (c.custom) return customCat?.name ?? tFn(lang, "fin_cat_personalizada");
+function catLabel(c: FinCat, lang: Lang, customCat: CustomCat | null, userCategories: UserCategory[]): string {
+  if (c.custom) {
+    if (c.id.startsWith("user_")) {
+      return userCategories.find((u) => `user_${u.id}` === c.id)?.name ?? tFn(lang, "fin_cat_outros");
+    }
+    return customCat?.name ?? tFn(lang, "fin_cat_personalizada");
+  }
   return tFn(lang, `fin_cat_${c.id}`);
 }
 
 export function BudgetModal({
-  budgets, month, onClose, onSaved, lang, currency, customCat,
+  budgets, month, onClose, onSaved, lang, currency, customCat, userCategories, hiddenCatIds,
 }: {
   budgets: FinancialBudget[];
   month: string;
@@ -21,7 +26,10 @@ export function BudgetModal({
   lang: Lang;
   currency: string;
   customCat: CustomCat | null;
+  userCategories: UserCategory[];
+  hiddenCatIds: string[];
 }) {
+  const cats = mergeCats("despesa", hiddenCatIds, userCategories, customCat);
   const [values, setValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
     for (const b of budgets) init[b.category] = String(b.monthly_limit);
@@ -31,7 +39,7 @@ export function BudgetModal({
 
   const save = async () => {
     setSaving(true);
-    const promises = EXPENSE_CATS
+    const promises = cats
       .filter((c) => values[c.id] && Number(values[c.id]) > 0)
       .map((c) =>
         fetch("/api/financas/budgets", {
@@ -74,9 +82,9 @@ export function BudgetModal({
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {EXPENSE_CATS.map((c) => {
-            const label = catLabel(c, lang, customCat);
-            const emoji = c.custom ? (customCat?.emoji ?? c.emoji) : c.emoji;
+          {cats.map((c) => {
+            const label = catLabel(c, lang, customCat, userCategories);
+            const emoji = c.custom && !c.id.startsWith("user_") ? (customCat?.emoji ?? c.emoji) : c.emoji;
             return (
               <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{

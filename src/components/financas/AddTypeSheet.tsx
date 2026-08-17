@@ -1,14 +1,15 @@
 "use client";
 
-import { Pencil, Camera } from "lucide-react";
+import { Pencil, Camera, Wallet } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import { t as tFn } from "@/lib/i18n";
 
 export function AddTypeSheet({
-  onManual, onPhoto, onClose, lang,
+  onManual, onPhoto, onBudget, onClose, lang,
 }: {
   onManual: () => void;
   onPhoto: () => void;
+  onBudget: () => void;
   onClose: () => void;
   lang: Lang;
 }) {
@@ -24,6 +25,12 @@ export function AddTypeSheet({
       title: tFn(lang, "fin_add_foto"),
       desc: tFn(lang, "fin_add_foto_desc"),
       action: onPhoto,
+    },
+    {
+      icon: <Wallet size={22} style={{ color: "#7C5CFF" }} />,
+      title: tFn(lang, "fin_add_budget"),
+      desc: tFn(lang, "fin_add_budget_desc"),
+      action: onBudget,
     },
   ];
 
