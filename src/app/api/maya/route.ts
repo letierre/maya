@@ -5,6 +5,7 @@ import { getLatestInsights } from "@/lib/specialists";
 import { calculateStreak, getWeekMondayDate } from "@/lib/utils";
 import { toImageBlock } from "@/lib/llm";
 import { habitAnswered } from "@/lib/checkin-answered";
+import { getMoodById, getMoodLabel } from "@/lib/checkin-moods";
 import { NextResponse } from "next/server";
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -206,13 +207,15 @@ export async function POST(request: Request) {
       image_urls: (m as { image_urls?: string[] }).image_urls,
     }));
 
+    const userGender = (context.gender as string) || "nao_dizer";
+
     const systemPrompt = buildMayaSystemPrompt({
       currentHour,
       currentDate,
       language: (context.language as string) || "pt",
       profile: {
         name: (user.user_metadata?.name as string) || "",
-        gender: (context.gender as string) || "nao_dizer",
+        gender: userGender,
         has_medication: context.has_medication === true,
         has_faith: context.has_faith === true,
         has_creative_hobby: context.has_creative_hobby === true,
@@ -220,6 +223,10 @@ export async function POST(request: Request) {
       recentCheckIns: checkIns.map((c: Record<string, unknown>) => ({
         date: c.date as string,
         feeling: (c.feeling as string) || "",
+        moodTags: ((c.mood_tags as string[]) || []).map((id) => {
+          const chip = getMoodById(id);
+          return chip ? getMoodLabel(chip, userGender) : id;
+        }),
         positives: [
           c.exercise_walk && "exercício",
           c.ate_well && "comeu bem",

@@ -45,7 +45,7 @@ export interface SpecialistSummaries {
 
 interface MayaInput {
   profile: UserContext;
-  recentCheckIns: { date: string; positives: string[]; negatives: string[]; feeling: string }[];
+  recentCheckIns: { date: string; positives: string[]; negatives: string[]; feeling: string; moodTags?: string[] }[];
   recentDiary: { date: string; content: string; mood: number | null }[];
   memories: string[];
   porques: Porque[];
@@ -122,9 +122,28 @@ export function buildMayaSystemPrompt(input: MayaInput): string {
 
   const checkInBlock = recentCheckIns.length > 0
     ? `## CHECK-INS RECENTES\n${recentCheckIns.map(c =>
-        `${c.date}: ${c.feeling ? `"${c.feeling.slice(0, 60)}"` : "sem registro"} | ✅ ${c.positives.join(", ") || "nenhum"}`
+        `${c.date}: ${(c.moodTags || []).length ? `[${(c.moodTags || []).join(", ")}] ` : ""}${c.feeling ? `"${c.feeling.slice(0, 60)}"` : "sem registro"} | ✅ ${c.positives.join(", ") || "nenhum"}`
       ).join("\n")}`
     : "";
+
+  const todayCheckIn = currentDate
+    ? recentCheckIns.find((c) => c.date === currentDate)
+    : undefined;
+
+  const todayMoodBlock = `## HUMOR DE HOJE — CONTEXTO PARA COMEÇAR BEM
+${
+  todayCheckIn
+    ? `O usuário fez check-in HOJE e registrou:
+${(todayCheckIn.moodTags || []).length > 0 ? `- Humor: ${(todayCheckIn.moodTags || []).join(", ")}` : ""}${todayCheckIn.feeling ? `\n- Nas palavras dele: "${todayCheckIn.feeling.slice(0, 200)}"` : ""}
+
+**Como usar o humor de hoje:**
+- Leia isto ANTES de perguntar como ele está. Vai calibrar seu tom e suas perguntas durante toda a conversa.
+- AINDA ASSIM, pergunte como ele está AGORA. O humor muda ao longo do dia — o check-in foi em outro momento, não assuma que continua igual.
+- Use o check-in como ponte, não como verdade: "De manhã você estava ansioso... e agora, como está?" mostra que você lembra e se importa, sem presumir.
+- Se o humor era negativo, acolha com mais suavidade. Se era positivo, celebre com leveza.`
+    : `O usuário AINDA NÃO fez check-in hoje. Você não sabe como ele está.
+- Pergunte naturalmente como ele está. Não mencione o check-in.`
+}`;
 
   const diaryBlock = recentDiary.length > 0
     ? `## DIÁRIO RECENTE\n${recentDiary.map(d =>
@@ -361,6 +380,7 @@ ${porquesBlock}
 ${memoriesBlock}
 ${goalsBlock}
 ${visionsBlock}
+${todayMoodBlock}
 ${checkInBlock}
 ${diaryBlock}`;
 }
