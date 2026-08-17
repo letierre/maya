@@ -52,7 +52,7 @@ export default function CorridaPage() {
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
     const tk = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    if (!tk) { setMapError("Mapa indisponível: token do Mapbox não configurado"); return; }
+    if (!tk) { setMapError("Mapa indisponível: token do Mapbox ausente neste build — redeploie no Vercel"); return; }
     mapboxgl.accessToken = tk;
 
     let map: mapboxgl.Map;
