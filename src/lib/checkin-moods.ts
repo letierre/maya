@@ -14,6 +14,8 @@ export const MOOD_CHIPS: MoodChip[] = [
   { id: "tranquila",     label: "Tranquilo",      labelF: "Tranquila",      emoji: "😌", valence: "positive" },
   { id: "esperancosa",   label: "Esperançoso",    labelF: "Esperançosa",    emoji: "🌱", valence: "positive" },
   { id: "disposta",      label: "Disposto",       labelF: "Disposta",       emoji: "⚡", valence: "positive" },
+  { id: "confiante",     label: "Confiante",      labelF: "Confiante",      emoji: "💪", valence: "positive" },
+  { id: "aliviada",      label: "Aliviado",       labelF: "Aliviada",       emoji: "😮‍💨", valence: "positive" },
   // negativos
   { id: "cansada",       label: "Cansado",        labelF: "Cansada",        emoji: "😴", valence: "negative" },
   { id: "ansiosa",       label: "Ansioso",        labelF: "Ansiosa",        emoji: "😰", valence: "negative" },
@@ -24,6 +26,9 @@ export const MOOD_CHIPS: MoodChip[] = [
   { id: "sobrecarregada",label: "Sobrecarregado", labelF: "Sobrecarregada", emoji: "🌊", valence: "negative" },
   { id: "raiva",         label: "Com raiva",      labelF: "Com raiva",      emoji: "😡", valence: "negative" },
   { id: "culpada",       label: "Culpado",        labelF: "Culpada",        emoji: "😔", valence: "negative" },
+  { id: "exausta",       label: "Exausto",        labelF: "Exausta",        emoji: "🫠", valence: "negative" },
+  { id: "entediada",     label: "Entediado",      labelF: "Entediada",      emoji: "🥱", valence: "negative" },
+  { id: "solitaria",     label: "Solitário",      labelF: "Solitária",      emoji: "🫥", valence: "negative" },
 ];
 
 export function getMoodLabel(chip: MoodChip, gender: string): string {

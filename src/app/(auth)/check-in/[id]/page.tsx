@@ -14,6 +14,7 @@ import {
   defaultAnswers,
   HABIT_COPY,
   getHabitLabel,
+  saveSleepLogFromAnswers,
 } from "@/components/CheckInEditor";
 
 // Janela (em dias) em que um check-in antigo ainda pode ser editado.
@@ -65,6 +66,7 @@ function answersEqual(a: CheckInAnswers, b: CheckInAnswers): boolean {
     "took_medication", "talked_to_someone", "meditation", "prayer", "breathing",
     "creative_activity", "walked", "ran", "strength_training",
     "did_something_enjoyable", "worked_on_goals", "bowel_movement", "felt_judged", "ate_well",
+    "sleep_quality", "sleep_start_time", "sleep_end_time",
   ];
   for (const k of keys) if (a[k] !== b[k]) return false;
   if (!arraysEqual(a.mood_tags ?? [], b.mood_tags ?? [])) return false;
@@ -124,6 +126,17 @@ export default function EditCheckInPage({
             }
           })
           .catch(() => {});
+
+        // Corrida do dia: pré-marca "correu" mesmo que o check-in salvo não reflita
+        fetch(`/api/running?from=${ci.date}&to=${ci.date}`)
+          .then((r) => r.json())
+          .then((sessions) => {
+            if (Array.isArray(sessions) && sessions.length > 0) {
+              setAnswers((a) => ({ ...a, ran: true }));
+              setOriginal((o) => ({ ...o, ran: true }));
+            }
+          })
+          .catch(() => {});
       } catch {
         if (!cancelled) setNotFound(true);
       } finally {
@@ -138,6 +151,8 @@ export default function EditCheckInPage({
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
+      // Se o usuário preencheu o sono no editor, salva o log de sono primeiro
+      saveSleepLogFromAnswers(answers);
       await fetch("/api/check-ins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

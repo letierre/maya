@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getLocalDate } from "@/lib/utils";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { MOOD_CHIPS, getMoodLabel } from "@/lib/checkin-moods";
+import { DEFAULT_DAILY_KCAL } from "@/lib/meal-utils";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -120,6 +121,70 @@ export function getHabitLabel(key: string, context: Record<string, boolean>): st
     return context.has_creative_hobby ? "Trabalhou no seu hobby criativo?" : "Fez algo criativo?";
   }
   return base;
+}
+
+// Salva o log de sono a partir das respostas do editor (usado no save do editor).
+export function saveSleepLogFromAnswers(answers: CheckInAnswers) {
+  if (answers.sleep_quality == null) return;
+  const sleepStart = answers.sleep_start_time ? `${answers.date}T${answers.sleep_start_time}:00-03:00` : null;
+  let sleepEnd: string | null = null;
+  let durationMin: number | null = null;
+  if (answers.sleep_start_time && answers.sleep_end_time) {
+    const [sh, sm] = answers.sleep_start_time.split(":").map(Number);
+    const [eh, em] = answers.sleep_end_time.split(":").map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = eh * 60 + em;
+    const crossMidnight = endMin <= startMin;
+    const endDate = crossMidnight
+      ? new Date(new Date(answers.date + "T12:00:00").getTime() + 86400000).toISOString().split("T")[0]
+      : answers.date;
+    sleepEnd = `${endDate}T${answers.sleep_end_time}:00-03:00`;
+    durationMin = crossMidnight ? (24 * 60 - startMin) + endMin : endMin - startMin;
+  }
+  return fetch("/api/sleep", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      date: answers.date,
+      quality: answers.sleep_quality,
+      duration_min: durationMin,
+      sleep_start: sleepStart,
+      sleep_end: sleepEnd,
+      source: "checkin",
+    }),
+  }).catch(() => {});
+}
+
+// ── Indicadores visuais do dia ────────────────────────────────────────────────
+
+const SLEEP_EMOJIS = [
+  { emoji: "😩", label: "Péssimo", quality: 1 },
+  { emoji: "😕", label: "Ruim",    quality: 2 },
+  { emoji: "😐", label: "Ok",      quality: 3 },
+  { emoji: "🙂", label: "Bom",     quality: 4 },
+  { emoji: "😊", label: "Ótimo",   quality: 5 },
+];
+
+const SLEEP_GOAL_MIN = 8 * 60; // meta de 8h de sono
+
+function DayProgressBar({ pct, color = "#7C5CFF" }: { pct: number; color?: string }) {
+  const clamped = Math.max(0, Math.min(100, pct));
+  return (
+    <div style={{ height: 6, borderRadius: 9999, background: "oklch(0.28 0.02 270 / 0.4)", overflow: "hidden" }}>
+      <div style={{
+        width: `${clamped}%`, height: "100%", borderRadius: 9999,
+        background: color, transition: "width .3s ease",
+      }} />
+    </div>
+  );
+}
+
+function formatSleepDuration(min: number | null): string {
+  if (min == null) return "";
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  if (h <= 0) return `${m}min`;
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
 // ── Water widgets ─────────────────────────────────────────────────────────────
@@ -300,6 +365,15 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
     if (gratitudeRef.current && answers.gratitude) gratitudeRef.current.innerText = answers.gratitude;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [meals, setMeals] = useState<{ macros: { calorias_kcal: number } | null }[]>([]);
+
+  useEffect(() => {
+    fetch(`/api/meals?date=${answers.date}`)
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setMeals(data); })
+      .catch(() => {});
+  }, [answers.date]);
+
   // Auto-calc fields: not shown as manual toggles
   const autoKeys = new Set(["slept_well", "ate_well", "worked_on_goals"]);
   // Grupos multi-select renderizados como chips (não como Sim/Não)
@@ -311,6 +385,14 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
   const scoreKeys = enabledKeys.filter((k) => k !== "suicidal_thoughts" && k !== "felt_judged");
   const score = scoreKeys.filter((k) => answers[k as HabitKey] === true).length;
   const scoreTotal = scoreKeys.length;
+
+  // Indicadores visuais (comida / sono)
+  const mealCount = meals.length;
+  const kcal = meals.reduce((sum, m) => sum + (m.macros?.calorias_kcal ?? 0), 0);
+  const kcalPct = Math.round((kcal / DEFAULT_DAILY_KCAL) * 100);
+  const sleepMin = todaySleep?.duration_min ?? null;
+  const sleepPct = sleepMin != null ? Math.round((sleepMin / SLEEP_GOAL_MIN) * 100) : 0;
+  const hasSleepLog = todaySleep != null;
 
   const handlePhotoAdd = async (file: File) => {
     try {
@@ -374,8 +456,11 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
 
         {/* ── Sentimento ── */}
         <section>
-          <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+          <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
             Como você está
+          </p>
+          <p style={{ margin: "0 0 12px", fontSize: 13.5, color: "var(--muted-foreground)" }}>
+            Escolha mais de um humor que tenha feito sentido até esse momento
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12 }}>
             {MOOD_CHIPS.map((chip) => {
@@ -513,6 +598,104 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
             />
           </section>
         )}
+
+        {/* ── Indicadores do dia (feedback visual) ── */}
+        <section>
+          <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#A78BFA" }}>
+            📊 Indicadores do dia
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* Comida */}
+            <div style={{
+              padding: "12px 14px", borderRadius: 14,
+              background: "oklch(0.16 0.012 270 / 0.7)", backdropFilter: "blur(8px)",
+              border: "1px solid oklch(0.5 0.12 270 / .12)",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>🍽️ Comida</span>
+                <span style={{ fontSize: 12, color: "#9e96b5", textAlign: "right" }}>
+                  {mealCount > 0
+                    ? `${mealCount} refeiç${mealCount === 1 ? "ão" : "ões"} · ${kcal} kcal`
+                    : "nada registrado"}
+                </span>
+              </div>
+              <DayProgressBar pct={kcalPct} />
+              {mealCount === 0 && (
+                <p style={{ margin: "8px 0 0", fontSize: 11, color: "#9e96b5" }}>
+                  Registre suas refeições para acompanhar sua meta diária de {DEFAULT_DAILY_KCAL} kcal
+                </p>
+              )}
+            </div>
+
+            {/* Sono */}
+            <div style={{
+              padding: "12px 14px", borderRadius: 14,
+              background: "oklch(0.16 0.012 270 / 0.7)", backdropFilter: "blur(8px)",
+              border: "1px solid oklch(0.5 0.12 270 / .12)",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>😴 Sono</span>
+                <span style={{ fontSize: 12, color: "#9e96b5", textAlign: "right" }}>
+                  {hasSleepLog
+                    ? [formatSleepDuration(sleepMin), todaySleep?.quality != null ? `${todaySleep.quality}/5` : ""].filter(Boolean).join(" · ") || "registrado"
+                    : "não registrado"}
+                </span>
+              </div>
+              <DayProgressBar pct={sleepPct} color="#A78BFA" />
+
+              {/* Sem registro de sono → campo para adicionar aqui mesmo */}
+              {!hasSleepLog && (
+                <div style={{ marginTop: 12, borderTop: "1px solid oklch(0.28 0.02 270 / 0.4)", paddingTop: 12 }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#e0d6ff" }}>
+                    Como foi seu sono da última noite?
+                  </p>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {SLEEP_EMOJIS.map(({ emoji, label, quality: q }) => (
+                      <button key={q} type="button"
+                        onClick={() => setAnswers((a) => ({ ...a, sleep_quality: q, slept_well: q >= 3 }))}
+                        style={{
+                          flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                          padding: "10px 2px", borderRadius: 12, border: 0, cursor: "pointer",
+                          background: answers.sleep_quality === q ? "oklch(0.5 0.12 270 / .18)" : "oklch(0.14 0.012 270)",
+                          outline: answers.sleep_quality === q ? "2px solid oklch(0.5 0.12 270 / .5)" : "none",
+                          transition: "all .15s ease",
+                        }}>
+                        <span style={{ fontSize: 22 }}>{emoji}</span>
+                        <span style={{ fontSize: 9, fontWeight: 600, color: answers.sleep_quality === q ? "#e0d6ff" : "var(--muted-foreground)" }}>
+                          {label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Dormi</p>
+                      <input type="time" value={answers.sleep_start_time}
+                        onChange={(e) => setAnswers((a) => ({ ...a, sleep_start_time: e.target.value }))}
+                        style={{
+                          width: "100%", height: 40, padding: "0 10px", borderRadius: 10, boxSizing: "border-box",
+                          border: "1px solid oklch(0.5 0.04 270 / .3)",
+                          background: "oklch(0.14 0.012 270)", color: "var(--foreground)",
+                          fontFamily: "inherit", fontSize: 13, outline: "none",
+                        }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Acordei</p>
+                      <input type="time" value={answers.sleep_end_time}
+                        onChange={(e) => setAnswers((a) => ({ ...a, sleep_end_time: e.target.value }))}
+                        style={{
+                          width: "100%", height: 40, padding: "0 10px", borderRadius: 10, boxSizing: "border-box",
+                          border: "1px solid oklch(0.5 0.04 270 / .3)",
+                          background: "oklch(0.14 0.012 270)", color: "var(--foreground)",
+                          fontFamily: "inherit", fontSize: 13, outline: "none",
+                        }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
 
         {/* ── Resumo automático ── */}
         <section>

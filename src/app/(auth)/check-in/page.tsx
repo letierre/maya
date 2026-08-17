@@ -22,6 +22,7 @@ import {
   WaterCupSelector,
   WATER_GOAL,
   WATER_MAX,
+  saveSleepLogFromAnswers,
 } from "@/components/CheckInEditor";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -220,7 +221,7 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
         Como você está?
       </h1>
       <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--muted-foreground)" }}>
-        Selecione o que faz sentido agora
+        Escolha mais de um humor que tenha feito sentido até esse momento
       </p>
 
       {/* Emotion chips */}
@@ -673,12 +674,13 @@ export default function CheckInPage() {
       setGender((prefs.context?.gender as string) ?? "nao_dizer");
       setSteps(buildSteps(enabled, enabled.includes("suicidal_thoughts"), hasSleepLog));
 
-      const isExisting = !!existing && existing.date === today;
+      const isExisting = !!existing && existing.date === today &&
+        ((existing.mood_tags?.length ?? 0) > 0 ||
+         ((existing.feeling ?? "").trim() !== "") ||
+         ((existing.gratitude ?? "").trim() !== ""));
       if (isExisting) setIsEditing(true);
       setAnswers((prev) => {
         const next = { ...prev };
-        if (hasRunningSession) next.ran = true;
-        if (hasSleepLog) next.slept_well = (sleepLogs[0]?.quality ?? 0) >= 3;
         if (isExisting) {
           next.feeling = existing.feeling ?? "";
           next.mood_tags = existing.mood_tags ?? [];
@@ -689,6 +691,9 @@ export default function CheckInPage() {
             [...HABIT_ORDER, "suicidal_thoughts", "ate_well"].map((k) => [k, existing[k] ?? false])
           ));
         }
+        // Fonte de verdade: uma corrida/ sono do dia sempre sobrescreve o valor salvo.
+        if (hasRunningSession) next.ran = true;
+        if (hasSleepLog) next.slept_well = (sleepLogs[0]?.quality ?? 0) >= 3;
         return next;
       });
       setLoading(false);
@@ -700,6 +705,8 @@ export default function CheckInPage() {
   const handleEditSave = useCallback(async () => {
     setSaving(true);
     try {
+      // Se o usuário preencheu o sono no editor, salva o log de sono primeiro
+      saveSleepLogFromAnswers(answers);
       await fetch("/api/check-ins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

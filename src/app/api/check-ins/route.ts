@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getLocalDate, getTimezoneOffset } from "@/lib/utils";
+import { ateWellFromMeals } from "@/lib/meal-utils";
 import { analyzeAllSpecialists } from "@/lib/specialists";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -106,7 +107,7 @@ export async function POST(req: NextRequest) {
     const todayDow = new Date(checkDate + "T12:00:00").getDay();
     const monDow = todayDow === 0 ? 6 : todayDow - 1; // 0=Mon..6=Sun
 
-    const [planRes, agendaRes, actionsRes, runningRes] = await Promise.all([
+    const [planRes, agendaRes, actionsRes, runningRes, mealsRes, sleepRes] = await Promise.all([
       // Weekly plan tasks completed today
       admin.from("weekly_tasks")
         .select("id")
@@ -137,6 +138,19 @@ export async function POST(req: NextRequest) {
         .gte("start_time", `${checkDate}T00:00:00${getTimezoneOffset("America/Sao_Paulo", checkDate)}`)
         .lte("start_time", `${checkDate}T23:59:59${getTimezoneOffset("America/Sao_Paulo", checkDate)}`)
         .limit(1),
+      // Refeições do dia (auto-detecta "comeu bem")
+      admin.from("meals")
+        .select("macros, status_analise, classificacao")
+        .eq("user_id", user.id)
+        .gte("data_hora", `${checkDate}T00:00:00${getTimezoneOffset("America/Sao_Paulo", checkDate)}`)
+        .lte("data_hora", `${checkDate}T23:59:59${getTimezoneOffset("America/Sao_Paulo", checkDate)}`),
+      // Sono do dia (auto-detecta "dormiu bem")
+      admin.from("sleep_logs")
+        .select("quality")
+        .eq("user_id", user.id)
+        .eq("date", checkDate)
+        .order("date", { ascending: false })
+        .limit(1),
     ]);
 
     const workedOnGoals =
@@ -152,6 +166,16 @@ export async function POST(req: NextRequest) {
     if ((runningRes.data?.length ?? 0) > 0) {
       row.ran = true;
       row.exercise_walk = true;
+    }
+
+    // Auto-detecta "comeu bem" a partir das refeições do dia (fonte de verdade)
+    if ((mealsRes.data?.length ?? 0) > 0) {
+      row.ate_well = ateWellFromMeals((mealsRes.data ?? []) as any[]);
+    }
+
+    // Auto-detecta "dormiu bem" a partir do sono do dia (fonte de verdade)
+    if ((sleepRes.data?.length ?? 0) > 0) {
+      row.slept_well = (sleepRes.data?.[0]?.quality ?? 0) >= 3;
     }
 
     const { data: existing } = await admin
