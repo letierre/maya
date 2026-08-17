@@ -44,30 +44,40 @@ export default function CorridaPage() {
   const [history, setHistory] = useState<Session[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
 
-  // Init map
-  useEffect(() => { (async () => {
+  // Init map — cria imediatamente (sem aguardar geolocalização) e recentraliza depois
+  useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
     const tk = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    if (!tk) return;
+    if (!tk) { setMapError("Mapa indisponível: token do Mapbox não configurado"); return; }
     mapboxgl.accessToken = tk;
-    // Try to get user's actual location for initial center
-    let initCenter: [number, number] = [-46.6333, -23.5505]; // fallback: São Paulo
+
+    let map: mapboxgl.Map;
+    try {
+      map = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/dark-v11",
+        center: [-46.6333, -23.5505], // fallback: São Paulo (recentraliza abaixo)
+        zoom: 13,
+      });
+    } catch {
+      setMapError("Não foi possível carregar o mapa");
+      return;
+    }
+    mapRef.current = map;
+
+    // Centraliza na localização real sem bloquear a criação do mapa
     if (navigator.geolocation) {
-      try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 600000 });
-        });
-        initCenter = [pos.coords.longitude, pos.coords.latitude];
-      } catch { /* use fallback */ }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (mapRef.current) mapRef.current.jumpTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 14 });
+        },
+        () => { /* mantém fallback */ },
+        { timeout: 5000, maximumAge: 600000 }
+      );
     }
 
-    const map = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/dark-v11",
-      center: initCenter,
-      zoom: 14,
-    });
     map.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showUserHeading: true }));
     map.on("load", () => {
       map.addSource("route", { type: "geojson", data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [] } } });
@@ -76,9 +86,9 @@ export default function CorridaPage() {
       // Track map load
       fetch("/api/running/mapbox-usage", { method: "POST" }).catch(() => {});
     });
-    mapRef.current = map;
+
     return () => { map.remove(); mapRef.current = null; };
-  })(); }, []);
+  }, []);
 
   // Load history
   useEffect(() => { fetch("/api/running?limit=20").then(r => r.json()).then(d => { if (Array.isArray(d)) setHistory(d); }).catch(() => {}); }, []);
@@ -212,7 +222,16 @@ export default function CorridaPage() {
       )}
 
       {/* Map */}
-      {!showHistory && <div ref={mapContainer} style={{ flex: 1, minHeight: 300 }} />}
+      {!showHistory && (
+        <div style={{ position: "relative", flex: 1, minHeight: 300, display: "flex", flexDirection: "column" }}>
+          <div ref={mapContainer} style={{ flex: 1, minHeight: 300 }} />
+          {mapError && (
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "#0B0B10" }}>
+              <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center" }}>{mapError}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* History */}
       {showHistory && (
