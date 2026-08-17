@@ -309,7 +309,7 @@ export default function CorridaPage() {
             ) : (
               <div>
                 <p style={{ fontSize: 13, color: "#e0d6ff", marginBottom: 10, textAlign: "center" }}>
-                  Excluir esta corrida? Essa ação não pode ser desfeita.
+                  Excluir esta corrida? Ela também será removida do check-in do dia. Essa ação não pode ser desfeita.
                 </p>
                 <div style={{ display: "flex", gap: 10 }}>
                   <button type="button" onClick={() => setConfirmDelete(false)} disabled={deleting}

@@ -97,7 +97,7 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-// DELETE — remove uma sessão (confirmação é feita no cliente)
+// DELETE — remove uma sessão e, se for a última corrida do dia, desmarca "correu" do check-in
 export async function DELETE(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
   const { data: { session } } = await supabase.auth.getSession();
@@ -108,7 +108,44 @@ export async function DELETE(req: NextRequest) {
   if (!id) return NextResponse.json({ error: "id obrigatório" }, { status: 400 });
 
   const admin = getSupabaseAdmin();
-  const { error } = await admin.from("running_sessions").delete().eq("id", id).eq("user_id", session.user.id);
+  const userId = session.user.id;
+
+  // Busca a data antes de excluir, para poder desmarcar o check-in do dia
+  const { data: run } = await admin.from("running_sessions").select("start_time").eq("id", id).eq("user_id", userId).single();
+
+  const { error } = await admin.from("running_sessions").delete().eq("id", id).eq("user_id", userId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (run?.start_time) {
+    const runDate = getLocalDateFromISO(run.start_time);
+    const offset = getTimezoneOffset("America/Sao_Paulo", runDate);
+
+    // Se ainda existir outra corrida no mesmo dia, mantém o check-in marcado
+    const { data: remaining } = await admin
+      .from("running_sessions")
+      .select("id")
+      .eq("user_id", userId)
+      .gte("start_time", `${runDate}T00:00:00${offset}`)
+      .lte("start_time", `${runDate}T23:59:59${offset}`);
+
+    if (remaining && remaining.length === 0) {
+      const { data: ci } = await admin
+        .from("check_ins")
+        .select("id, walked, strength_training")
+        .eq("user_id", userId)
+        .eq("date", runDate)
+        .maybeSingle();
+
+      if (ci) {
+        // "exercise_walk" é o agregado de caminhar/correr/musculação — só desmarca se nada mais foi feito
+        const stillExercised = ci.walked === true || ci.strength_training === true;
+        await admin
+          .from("check_ins")
+          .update({ ran: false, exercise_walk: stillExercised, updated_at: new Date().toISOString() })
+          .eq("id", ci.id);
+      }
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
