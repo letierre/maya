@@ -253,7 +253,7 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
   const selectedDayTasks = tasks.filter((t: any) => t.day_of_week === selectedDay)
     .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
   const doneSelectedDay = selectedDayTasks.filter((t: any) => t.status === "concluida").length;
-  const openTasks = tasks.filter((t: any) => t.day_of_week == null || t.day_of_week === -1);
+  const openTasks = tasks.filter((t: any) => t.day_of_week == null);
 
   const assignToToday = async (task: any) => {
     const today = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;

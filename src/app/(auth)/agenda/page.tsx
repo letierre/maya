@@ -1619,7 +1619,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   const currentWeekMonday = getCurrentWeekMonday();
   const dayPlanTasks = allWeekTasks.filter((t: any) => t.day_of_week === selDow && t.status !== "pulada");
   // Tasks without a specific day (Em aberto) — from all loaded weeks
-  const openWeekTasks = allWeekTasks.filter((t: any) => (t.day_of_week == null || t.day_of_week === -1) && t.status !== "pulada");
+  const openWeekTasks = allWeekTasks.filter((t: any) => t.day_of_week == null && t.status !== "pulada");
   // Overdue tasks: from previous days this week OR past weeks, not completed/skipped
   const overdueTasks = allWeekTasks.filter((t: any) => {
     if (t.status === "concluida" || t.status === "pulada") return false;
@@ -1659,7 +1659,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
     setEditTitle(item.title || "");
     setEditDone(item.status === "concluida");
     // Para tarefas "Em aberto" (sem dia), o campo de data começa vazio para o usuário escolher
-    const isOpen = !item.item_type && (item.day_of_week == null || item.day_of_week === -1);
+    const isOpen = !item.item_type && item.day_of_week == null;
     setEditDate(item.item_type ? (item.date || selectedDate) : (isOpen ? "" : taskDate(item)));
   };
 
@@ -1670,7 +1670,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       status: editDone ? "concluida" : "pendente",
     };
     // Tarefa semanal sem dia definido ("Em aberto")
-    const isWeeklyOpen = !editingItem.item_type && (editingItem.day_of_week == null || editingItem.day_of_week === -1);
+    const isWeeklyOpen = !editingItem.item_type && editingItem.day_of_week == null;
     // Data atual do item (para detectar mudança de dia)
     const originalDate = editingItem.item_type
       ? (editingItem.date || selectedDate)
