@@ -406,6 +406,28 @@ export default function AnalisePage() {
     return { xFor, yFor, firstI, lastI, w };
   }, [trendData]);
 
+  // ── rótulos do eixo X (rodapé): esparsos conforme o período ─────────────────
+  const xLabels = useMemo(() => {
+    const { firstI, lastI, w, xFor } = trendScale;
+    if (lastI <= firstI) return [];
+    const span = lastI - firstI;
+    // Semana mostra todos os dias; mês/trimestre ~6-7 rótulos espaçados.
+    const target = periodDays <= 7 ? span + 1 : periodDays <= 31 ? 6 : 7;
+    const idxs = new Set<number>();
+    for (let t = 0; t < target; t++) {
+      idxs.add(firstI + Math.round((span * t) / (target - 1)));
+    }
+    return Array.from(idxs)
+      .sort((a, b) => a - b)
+      .map((i) => {
+        const d = trendData[i].date; // "YYYY-MM-DD" local
+        return {
+          label: `${d.slice(8, 10)}/${d.slice(5, 7)}`,
+          xPct: (xFor(i) / w) * 100,
+        };
+      });
+  }, [trendScale, trendData, periodDays]);
+
   // ── mood timeline ──────────────────────────────────────────────────────────
 
   const moodTimeline = useMemo(() => {
@@ -701,18 +723,28 @@ export default function AnalisePage() {
                 </linearGradient>
               </defs>
             </svg>
-            {/* X-axis labels */}
-            {periodDays <= 14 && (
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 6px 0" }}>
-                {trendData
-                  .filter((_, i) => i >= trendScale.firstI && i <= trendScale.lastI)
-                  .map((p) => (
-                    <span key={p.date} style={{ fontSize: 9, color: "oklch(0.5 0.02 270)", minWidth: 20, textAlign: "center" }}>
-                      {p.label}
-                    </span>
-                  ))}
-              </div>
-            )}
+            {/* X-axis labels (rodapé) */}
+            <div style={{ position: "relative", height: 16, marginTop: 2 }}>
+              {xLabels.map((l, idx) => {
+                const isFirst = idx === 0;
+                const isLast = idx === xLabels.length - 1;
+                return (
+                  <span
+                    key={l.label}
+                    style={{
+                      position: "absolute",
+                      left: `${l.xPct}%`,
+                      transform: isFirst ? "translateX(0)" : isLast ? "translateX(-100%)" : "translateX(-50%)",
+                      fontSize: 9,
+                      color: "oklch(0.5 0.02 270)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {l.label}
+                  </span>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
