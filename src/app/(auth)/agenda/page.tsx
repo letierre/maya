@@ -1573,7 +1573,23 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
 
   // Marca/desmarca uma tarefa semanal como concluída (atualiza o estado local)
   const toggleTaskDone = async (t: any) => {
-    const newStatus = t.status === "concluida" ? "pendente" : "concluida";
+    const completing = t.status !== "concluida";
+    const newStatus = completing ? "concluida" : "pendente";
+    const isOpen = t.day_of_week == null;
+
+    // Completar uma tarefa "Em aberto": grava no dia de hoje (referência p/ análises)
+    if (completing && isOpen) {
+      const { ok, weekStart, dow, planId } = await moveTaskToDay(t, todayStr, { status: "concluida" });
+      if (ok) {
+        setAllWeekTasks((prev: any[]) => prev.map((wt: any) => wt.id === t.id
+          ? { ...wt, status: "concluida", day_of_week: dow, _weekStart: weekStart, weekly_plan_id: planId }
+          : wt));
+        toast.success(`"${t.title}" concluída hoje`);
+        return;
+      }
+      // fallback: se falhar criar o plano, só marca o status abaixo
+    }
+
     setAllWeekTasks((prev: any[]) => prev.map((wt: any) => wt.id === t.id ? { ...wt, status: newStatus } : wt));
     await fetch(`/api/weekly-plans/tasks/${t.id}`, {
       method: "PATCH",
@@ -1695,6 +1711,14 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
             ? { ...wt, ...updates, day_of_week: dow, _weekStart: weekStart, weekly_plan_id: planId }
             : wt));
         }
+      } else if (isWeeklyOpen && editDone) {
+        // "Em aberto" marcada como concluída sem escolher dia: grava no dia de hoje
+        const { ok, weekStart, dow, planId } = await moveTaskToDay(editingItem, todayStr, updates);
+        if (ok) {
+          setAllWeekTasks((prev: any[]) => prev.map((wt: any) => wt.id === editingItem.id
+            ? { ...wt, ...updates, day_of_week: dow, _weekStart: weekStart, weekly_plan_id: planId }
+            : wt));
+        }
       } else {
         await fetch(`/api/weekly-plans/tasks/${editingItem.id}`, {
           method: "PATCH",
@@ -1705,7 +1729,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       }
       setEditingItem(null);
     }
-    toast.success(dayChanged ? `Movida para ${shortDate(editDate)}` : "Alterações salvas");
+    toast.success(dayChanged ? `Movida para ${shortDate(editDate)}` : (isWeeklyOpen && editDone ? `"${editTitle.trim()}" concluída hoje` : "Alterações salvas"));
   };
 
   const deleteItem = async () => {
