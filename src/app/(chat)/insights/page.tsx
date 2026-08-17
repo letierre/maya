@@ -54,6 +54,13 @@ function formatDate(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// Converts a server timestamp (UTC) to the user's LOCAL date "YYYY-MM-DD",
+// matching the format produced by formatDate() so date separators stay consistent.
+function localDateFromTimestamp(ts: string): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const PT_DAYS = [
   "Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira",
   "Quinta-feira", "Sexta-feira", "Sábado",
@@ -254,7 +261,7 @@ export default function MayaChatPage() {
                     hour: "2-digit",
                     minute: "2-digit",
                   }),
-                  date: msg.created_at.slice(0, 10),
+                  date: localDateFromTimestamp(msg.created_at),
                 };
               })
           : [];
@@ -419,7 +426,7 @@ export default function MayaChatPage() {
             hour: "2-digit",
             minute: "2-digit",
           }),
-          date: m.created_at.slice(0, 10),
+          date: localDateFromTimestamp(m.created_at),
         }));
       if (older.length > 0) {
         setMessages((prev) => [...older, ...prev]);

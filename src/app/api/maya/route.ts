@@ -200,12 +200,17 @@ export async function POST(request: Request) {
 	      currentDate = now.toLocaleDateString("en-CA", { timeZone: clientTz });
 	    }
 
-    // Send messages WITH image_urls for multimodal support
-    const anthropicMessages = messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-      image_urls: (m as { image_urls?: string[] }).image_urls,
-    }));
+    // Send messages WITH image_urls for multimodal support.
+    // Prefix each message with [HH:MM] so Maya understands the rhythm and
+    // gaps between messages (crucial for reading intent).
+    const anthropicMessages = messages.map((m) => {
+      const timePrefix = m.time ? `[${m.time}] ` : "";
+      return {
+        role: m.role,
+        content: timePrefix + m.content,
+        image_urls: (m as { image_urls?: string[] }).image_urls,
+      };
+    });
 
     const userGender = (context.gender as string) || "nao_dizer";
 
