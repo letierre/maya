@@ -997,7 +997,7 @@ function AgendaPage() {
 
       {/* ── LISTA ───────────────────────────────────────────── */}
       {viewMode === "lista" && (
-        <ListView allWeekTasks={allWeekTasks} compromissos={items} selectedDate={selectedDate} setAllWeekTasks={setAllWeekTasks} refreshItems={() => fetchItems(selectedDate)} loading={loading || weekLoading} />
+        <ListView allWeekTasks={allWeekTasks} compromissos={items} selectedDate={selectedDate} setAllWeekTasks={setAllWeekTasks} refreshItems={() => fetchItems(selectedDate)} loading={loading || weekLoading} toggleAgendaTask={toggleTask} />
       )}
 
       {/* ── Detail popup for compromisso ────────────────────── */}
@@ -1478,7 +1478,7 @@ const navBtnStyle: React.CSSProperties = {
   color: "#e0d6ff",
 };
 
-function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, refreshItems, loading }: { allWeekTasks: any[]; compromissos: AgendaItem[]; selectedDate: string; setAllWeekTasks: React.Dispatch<React.SetStateAction<any[]>>; refreshItems: () => void; loading: boolean }) {
+function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, refreshItems, loading, toggleAgendaTask }: { allWeekTasks: any[]; compromissos: AgendaItem[]; selectedDate: string; setAllWeekTasks: React.Dispatch<React.SetStateAction<any[]>>; refreshItems: () => void; loading: boolean; toggleAgendaTask: (item: AgendaItem) => void }) {
   const [goals, setGoals] = useState<any[]>([]);
   const [goalsLoading, setGoalsLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -1828,12 +1828,20 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       {todayAgendaTarefas.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>Tarefas do dia</h3>
-          {todayAgendaTarefas.map(t => (
-            <button key={t.id} type="button" onClick={() => openEditor(t)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)", background: "none", borderLeft: 0, borderRight: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-              <span style={{ fontSize: 12 }}>{t.emoji || "☑️"}</span>
-              <span style={{ flex: 1, fontSize: 12, color: t.status === "concluida" ? "#5a5470" : "#e0d6ff", textDecoration: t.status === "concluida" ? "line-through" : "none" }}>{t.title}</span>
-            </button>
-          ))}
+          {todayAgendaTarefas.map(t => {
+            const done = t.status === "concluida";
+            return (
+              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)" }}>
+                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: 4, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  onClick={(e) => { e.stopPropagation(); toggleAgendaTask(t); }}>
+                  {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10"/></svg>}
+                </span>
+                {t.emoji && <span style={{ fontSize: 12, flexShrink: 0 }}>{t.emoji}</span>}
+                <span style={{ flex: 1, fontSize: 12, color: done ? "#5a5470" : "#e0d6ff", textDecoration: done ? "line-through" : "none", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} onClick={() => openEditor(t)}>{t.title}</span>
+                {t.start_time && <span style={{ fontSize: 9, color: "#9e96b5", fontFamily: "monospace", flexShrink: 0 }}>{t.start_time.slice(0,5)}</span>}
+              </div>
+            );
+          })}
         </div>
       )}
 
