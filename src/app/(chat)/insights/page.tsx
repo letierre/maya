@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "@/lib/useTranslation";
-import { Send, ArrowLeft, Image as ImageIcon } from "lucide-react";
+import { Send, ArrowLeft, Plus, Mic, Camera, FileText, X, Image as ImageIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
@@ -96,6 +96,28 @@ function DateSeparator({ label }: { label: string }) {
   );
 }
 
+function AttachMenuItem({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-3 px-4 py-3 text-left w-full border-0 cursor-pointer"
+      style={{ background: "transparent", color: "#D8D2E7", fontSize: 14 }}
+    >
+      <span style={{ color: "#A78BFA", display: "inline-flex" }}>{icon}</span>
+      {label}
+    </button>
+  );
+}
+
 function splitIntoParts(text: string): string[] {
   const parts = text
     .split(/\n\n+/)
@@ -156,20 +178,21 @@ function Ticks({ status }: { status: "sent" | "delivered" | "read" }) {
   );
 }
 
-function TypingIndicator() {
+function TypingIndicator({ label }: { label: string }) {
   return (
-    <div className="flex justify-start mb-1.5 maya-chat-msg">
+    <div className="flex justify-start mb-2 maya-chat-msg">
       <div
-        className="rounded-[8px] px-3.5 py-2"
-        style={{
-          background: "var(--card)",
-          boxShadow: "0 1px 0.5px rgba(11,20,26,.13)",
-        }}
+        className="rounded-[10px] px-3.5 py-2.5"
+        style={{ background: "#0D0E14" }}
       >
-        <div className="flex items-center gap-1">
-          <span className="size-2 rounded-full bg-[var(--maya-secondary)]/60 animate-bounce [animation-delay:0ms]" />
-          <span className="size-2 rounded-full bg-[var(--maya-secondary)]/60 animate-bounce [animation-delay:150ms]" />
-          <span className="size-2 rounded-full bg-[var(--maya-secondary)]/60 animate-bounce [animation-delay:300ms]" />
+        <div className="flex items-center gap-1.5">
+          <span style={{ color: "var(--maya-secondary)" }}>✦</span>
+          <span style={{ color: "#D8D2E7", fontSize: 13 }}>{label}</span>
+          <span className="flex items-center gap-1 ml-0.5">
+            <span className="size-1.5 rounded-full bg-[var(--maya-secondary)]/80 animate-bounce [animation-delay:0ms]" />
+            <span className="size-1.5 rounded-full bg-[var(--maya-secondary)]/80 animate-bounce [animation-delay:150ms]" />
+            <span className="size-1.5 rounded-full bg-[var(--maya-secondary)]/80 animate-bounce [animation-delay:300ms]" />
+          </span>
         </div>
       </div>
     </div>
@@ -198,6 +221,7 @@ export default function MayaChatPage() {
   const [userName, setUserName] = useState("");
   const [selectedImages, setSelectedImages] = useState<string[]>([]); // base64 previews
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
 
   // ── Refs ──
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -205,6 +229,8 @@ export default function MayaChatPage() {
   const sendingRef = useRef(false);
   const nudgeActionRef = useRef<{ label: string; href: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   // ── Chat scroll management ──
   const { handleScroll } = useChatScroll({
@@ -593,39 +619,57 @@ export default function MayaChatPage() {
       className="flex flex-col"
       style={{
         height: containerHeight,
-        background: "var(--background)",
+        background: "linear-gradient(180deg, #090A10 0%, #06070B 100%)",
       }}
     >
       {/* ── Header ── */}
       <div
-        className="shrink-0 flex items-center gap-3 px-4 py-2.5"
+        className="shrink-0 flex items-center gap-3 px-4"
         style={{
-          background: "var(--chat)",
-          borderBottom: "1px solid var(--border)",
+          minHeight: 58,
+          background: "rgba(13,14,20,0.6)",
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
         }}
       >
         <button
           type="button"
           onClick={() => router.push("/dashboard")}
-          className="size-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors -ml-1"
+          className="size-9 flex items-center justify-center rounded-full transition-colors -ml-1"
+          style={{ color: "#D8D2E7" }}
           aria-label="Voltar"
         >
           <ArrowLeft className="size-5" />
         </button>
 
-        <MayaAvatar state="mini" size={36} />
+        <MayaAvatar state="mini" size={38} />
 
         <div className="min-w-0">
-          <p className="text-sm font-semibold leading-tight">Maya</p>
           <p
-            className="text-[11px] leading-tight"
-            style={{ color: "var(--muted-foreground)" }}
+            className="leading-tight"
+            style={{ fontSize: 16, fontWeight: 600, color: "#FFFFFF" }}
           >
-            {typing
-              ? t("maya_typing")
-              : hydrated
-                ? "Online"
-                : "carregando..."}
+            Maya
+          </p>
+          <p
+            className="leading-tight flex items-center gap-1.5"
+            style={{ fontSize: 11.5, color: "#8A8794" }}
+          >
+            {hydrated ? (
+              <>
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "#22C55E",
+                    display: "inline-block",
+                  }}
+                />
+                Online
+              </>
+            ) : (
+              "carregando..."
+            )}
           </p>
         </div>
       </div>
@@ -675,13 +719,16 @@ export default function MayaChatPage() {
 
         {/* Welcome message (empty state) */}
         {hydrated && messages.length === 0 && welcomeMessage && (
-          <div className="flex justify-center pt-12 maya-chat-msg">
+          <div className="flex justify-start pt-12 maya-chat-msg">
             <div
-              className="rounded-[8px] px-4 py-3 text-sm text-center max-w-sm"
+              className="px-4 py-3 text-center"
               style={{
-                background: "var(--card)",
-                color: "var(--maya-text)",
-                boxShadow: "0 2px 8px oklch(0.3 0.03 270 / 0.3)",
+                background: "#0D0E14",
+                color: "#D8D2E7",
+                borderRadius: "10px",
+                fontSize: 15,
+                lineHeight: 1.4,
+                maxWidth: "88%",
               }}
             >
               <div className="whitespace-pre-line">{welcomeMessage}</div>
@@ -708,20 +755,31 @@ export default function MayaChatPage() {
               separatorLabel = getDateLabel(msg.date);
           }
 
+          // Spacing: tighter within the same author's sequence, looser on
+          // context change (author switch or date break).
+          const sameAuthor = prevMsg && prevMsg.role === msg.role && !separatorLabel;
+          const gap = separatorLabel ? 16 : sameAuthor ? 12 : 22;
+
           return (
             <div key={i} className="maya-chat-msg">
               {separatorLabel && <DateSeparator label={separatorLabel} />}
               <div
-                className={`flex ${isAssistant ? "justify-start" : "justify-end"} mb-1.5`}
+                className={`flex ${isAssistant ? "justify-start" : "justify-end"}`}
+                style={{ marginBottom: gap }}
               >
                 <div
-                  className="max-w-[80%] rounded-[8px] px-3 pt-1.5 pb-2 text-[14px] leading-[1.32] whitespace-pre-line"
+                  className="whitespace-pre-line"
                   style={{
-                    background: isAssistant
-                      ? "var(--card)"
-                      : "var(--maya-primary)",
-                    color: isAssistant ? "var(--maya-text)" : "#fff",
-                    boxShadow: "0 1px 0.5px rgba(11,20,26,.13)",
+                    maxWidth: isAssistant ? "88%" : "78%",
+                    background: isAssistant ? "#0D0E14" : "var(--maya-primary)",
+                    color: isAssistant ? "#D8D2E7" : "#FFFFFF",
+                    borderRadius: isAssistant
+                      ? "10px"
+                      : "16px 16px 5px 16px",
+                    padding: "10px 13px",
+                    fontSize: 15,
+                    fontWeight: 400,
+                    lineHeight: 1.4,
                   }}
                 >
                   {msg.content}
@@ -773,14 +831,17 @@ export default function MayaChatPage() {
                   {/* Time + ticks for user messages only */}
                   {!isAssistant && (
                     <span
-                      className="text-[11px] leading-none whitespace-nowrap"
+                      className="whitespace-nowrap"
                       style={{
                         float: "right",
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 3,
-                        margin: "8px -4px -5px 8px",
-                        color: "rgba(255,255,255,0.7)",
+                        margin: "8px -4px -6px 8px",
+                        fontSize: 10.5,
+                        fontWeight: 400,
+                        lineHeight: 1,
+                        color: "rgba(255,255,255,0.72)",
                       }}
                     >
                       {msg.time}
@@ -794,24 +855,65 @@ export default function MayaChatPage() {
         })}
 
         {/* Typing indicator */}
-        {typing && <TypingIndicator />}
+        {typing && <TypingIndicator label={t("maya_pensando")} />}
 
         {/* Bottom sentinel — ResizeObserver uses this to scroll to bottom */}
         <div ref={bottomRef} style={{ flexShrink: 0 }} />
       </div>
       </div>
 
-      {/* ── Input bar ── */}
+      {/* ── Composer ── */}
       <div
-        className="shrink-0 px-3 pt-2.5"
+        className="shrink-0 px-3 pt-2"
         style={{
-          background: "var(--chat)",
-          borderTop: "1px solid var(--border)",
+          background: "rgba(13,14,20,0.7)",
+          borderTop: "1px solid rgba(255,255,255,0.05)",
           paddingBottom: keyboardOpen
             ? "calc(8px + env(safe-area-inset-bottom, 0px))"
-            : "calc(32px + env(safe-area-inset-bottom, 16px))",
+            : "calc(28px + env(safe-area-inset-bottom, 16px))",
         }}
       >
+        {/* Contextual suggestion chips — vanish once the user types */}
+        {hydrated &&
+          !input.trim() &&
+          !typing &&
+          !sending &&
+          selectedImages.length === 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-2 maya-chat-msg">
+              {(messages.length === 0
+                ? [
+                    t("maya_sugg_financas"),
+                    t("maya_sugg_rotina"),
+                    t("maya_sugg_dia_dificil"),
+                  ]
+                : [
+                    t("maya_sugg_entender"),
+                    t("maya_sugg_agora"),
+                    t("maya_sugg_conversar"),
+                  ]
+              ).map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => {
+                    setInput(chip);
+                    textareaRef.current?.focus();
+                  }}
+                  className="shrink-0 px-3.5 py-1.5 rounded-full whitespace-nowrap border-0 cursor-pointer"
+                  style={{
+                    background: "rgba(124,92,255,0.12)",
+                    border: "1px solid rgba(167,139,250,0.25)",
+                    color: "#D8D2E7",
+                    fontSize: 13,
+                    fontWeight: 400,
+                  }}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          )}
+
         {/* Image previews */}
         {selectedImages.length > 0 && (
           <div className="flex gap-2 mb-2 overflow-x-auto">
@@ -825,41 +927,91 @@ export default function MayaChatPage() {
                 <button
                   type="button"
                   onClick={() => removeSelectedImage(i)}
-                  className="absolute -top-1.5 -right-1.5 size-5 rounded-full flex items-center justify-center text-[10px] text-white"
+                  className="absolute -top-1.5 -right-1.5 size-5 rounded-full flex items-center justify-center text-white border-0 cursor-pointer"
                   style={{ background: "rgba(0,0,0,0.6)" }}
                   aria-label="Remover foto"
                 >
-                  ✕
+                  <X className="size-3" />
                 </button>
               </div>
             ))}
           </div>
         )}
 
-        <div className="flex items-end gap-2">
-          {/* Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            style={{ display: "none" }}
-            onChange={handleFileSelect}
-          />
+        {/* Hidden inputs */}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: "none" }}
+          onChange={handleFileSelect}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: "none" }}
+          onChange={handleFileSelect}
+        />
+        <input
+          ref={documentInputRef}
+          type="file"
+          accept="image/*,.pdf,.txt,.doc,.docx"
+          style={{ display: "none" }}
+          onChange={handleFileSelect}
+        />
 
-          {/* Camera/gallery button */}
-          {selectedImages.length < 3 && (
-            <button
-              type="button"
-              className="rounded-full size-10 shrink-0 inline-flex items-center justify-center border-0 cursor-pointer disabled:opacity-50"
-              style={{ background: "var(--muted)" }}
-              onClick={() => fileInputRef.current?.click()}
-              disabled={busy}
-              aria-label="Anexar foto"
-            >
-              <ImageIcon className="size-5" style={{ color: "var(--muted-foreground)" }} />
-            </button>
-          )}
+        {/* Attach menu */}
+        {attachOpen && (
+          <div
+            className="mb-2 flex flex-col rounded-xl overflow-hidden"
+            style={{
+              background: "var(--card)",
+              border: "1px solid var(--border)",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+            }}
+          >
+            <AttachMenuItem
+              icon={<Camera className="size-4" />}
+              label={t("maya_attach_photo")}
+              onClick={() => {
+                setAttachOpen(false);
+                cameraInputRef.current?.click();
+              }}
+            />
+            <AttachMenuItem
+              icon={<ImageIcon className="size-4" />}
+              label={t("maya_attach_gallery")}
+              onClick={() => {
+                setAttachOpen(false);
+                fileInputRef.current?.click();
+              }}
+            />
+            <AttachMenuItem
+              icon={<FileText className="size-4" />}
+              label={t("maya_attach_file")}
+              onClick={() => {
+                setAttachOpen(false);
+                documentInputRef.current?.click();
+              }}
+            />
+          </div>
+        )}
+
+        <div className="flex items-end gap-2">
+          {/* Attach button */}
+          <button
+            type="button"
+            onClick={() => setAttachOpen((v) => !v)}
+            disabled={busy}
+            className="size-10 shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer transition-transform active:scale-90 disabled:opacity-40"
+            style={{ background: "rgba(124,92,255,0.14)", color: "#A78BFA" }}
+            aria-label="Anexar"
+          >
+            <Plus className="size-5" />
+          </button>
 
           <textarea
             ref={textareaRef}
@@ -869,28 +1021,48 @@ export default function MayaChatPage() {
             placeholder={t("maya_placeholder")}
             disabled={busy}
             rows={1}
-            className="maya-chat-input flex-1 resize-none rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 disabled:opacity-50"
+            className="maya-chat-input flex-1 resize-none rounded-[20px] border px-4 py-2.5 focus:outline-none disabled:opacity-50"
             style={{
-              background: "var(--background)",
-              borderColor: "var(--border)",
-              color: "var(--maya-text)",
+              background: "rgba(255,255,255,0.04)",
+              borderColor: "rgba(255,255,255,0.08)",
+              color: "#D8D2E7",
+              fontSize: 14,
+              fontWeight: 400,
             }}
           />
-          <button
-            type="button"
-            tabIndex={-1}
-            className="rounded-full size-10 shrink-0 inline-flex items-center justify-center border-0 cursor-pointer disabled:opacity-50 disabled:cursor-default"
-            style={{ background: "var(--maya-primary)" }}
-            onPointerDown={(e) => {
-              e.preventDefault();
-              // Synchronously refocus textarea — keyboard never leaves on iOS
-              textareaRef.current?.focus();
-              sendMessage();
-            }}
-            disabled={(!input.trim() && selectedImages.length === 0) || busy}
-          >
-            <Send className="size-4" color="#fff" />
-          </button>
+
+          {/* Mic (empty) or Send (has content) */}
+          {!input.trim() && selectedImages.length === 0 ? (
+            <button
+              type="button"
+              tabIndex={-1}
+              className="size-[42px] shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer transition-transform active:scale-90"
+              style={{ background: "rgba(124,92,255,0.14)", color: "#A78BFA" }}
+              aria-label="Microfone"
+            >
+              <Mic className="size-5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              tabIndex={-1}
+              className="size-[42px] shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer disabled:opacity-50 disabled:cursor-default"
+              style={{
+                background: "var(--maya-primary)",
+                boxShadow: "0 4px 14px rgba(124,92,255,0.35)",
+              }}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                // Synchronously refocus textarea — keyboard never leaves on iOS
+                textareaRef.current?.focus();
+                sendMessage();
+              }}
+              disabled={busy}
+              aria-label="Enviar"
+            >
+              <Send className="size-[18px]" color="#fff" />
+            </button>
+          )}
         </div>
       </div>
     </div>

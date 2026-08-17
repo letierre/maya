@@ -79,7 +79,7 @@ export function useChatScroll({
 
     if (messageCount > prevMessageCountRef.current) {
       if (isAtBottomRef.current) {
-        scrollToBottom("instant");
+        scrollToBottom("smooth");
       }
     }
     prevMessageCountRef.current = messageCount;

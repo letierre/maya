@@ -215,6 +215,16 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_welcome:
       "Oi! Eu sou a Maya. 💜\n\nEu conecto seu sono, humor, hábitos, metas e gastos para conversas que realmente fazem sentido.\n\nQuanto mais você registra, mais eu te conheço.\n\nComo você está agora?",
     maya_typing: "Maya está escrevendo...",
+    maya_pensando: "Maya está pensando",
+    maya_sugg_financas: "Organizar minhas finanças",
+    maya_sugg_rotina: "Melhorar minha rotina",
+    maya_sugg_dia_dificil: "Estou tendo um dia difícil",
+    maya_sugg_entender: "Me ajude a entender isso",
+    maya_sugg_agora: "O que devo fazer agora?",
+    maya_sugg_conversar: "Quero conversar sobre isso",
+    maya_attach_photo: "Foto",
+    maya_attach_gallery: "Galeria",
+    maya_attach_file: "Arquivo",
     maya_error:
       "Tive dificuldade de me conectar agora. Tente novamente em alguns instantes. 💛",
 
@@ -840,6 +850,16 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_welcome:
       "¡Hola! Soy Maya. 💜\n\nConecto tu sueño, estado de ánimo, hábitos, metas y gastos para conversaciones que realmente tienen sentido.\n\nMientras más registras, más te conozco.\n\n¿Cómo estás ahora?",
     maya_typing: "Maya está escribiendo...",
+    maya_pensando: "Maya está pensando",
+    maya_sugg_financas: "Organizar mis finanzas",
+    maya_sugg_rotina: "Mejorar mi rutina",
+    maya_sugg_dia_dificil: "Estoy teniendo un día difícil",
+    maya_sugg_entender: "Ayúdame a entender esto",
+    maya_sugg_agora: "¿Qué debo hacer ahora?",
+    maya_sugg_conversar: "Quiero hablar de esto",
+    maya_attach_photo: "Foto",
+    maya_attach_gallery: "Galería",
+    maya_attach_file: "Archivo",
     maya_error:
       "Tuve dificultad para conectarme ahora. Intenta de nuevo en unos instantes. 💛",
 
@@ -1463,6 +1483,16 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_welcome:
       "Hey! I'm Maya. 💜\n\nI connect your sleep, mood, habits, goals and spending for conversations that actually make sense.\n\nThe more you log, the more I get to know you.\n\nHow are you doing right now?",
     maya_typing: "Maya is typing...",
+    maya_pensando: "Maya is thinking",
+    maya_sugg_financas: "Organize my finances",
+    maya_sugg_rotina: "Improve my routine",
+    maya_sugg_dia_dificil: "I'm having a tough day",
+    maya_sugg_entender: "Help me understand this",
+    maya_sugg_agora: "What should I do now?",
+    maya_sugg_conversar: "I want to talk about this",
+    maya_attach_photo: "Photo",
+    maya_attach_gallery: "Gallery",
+    maya_attach_file: "File",
     maya_error:
       "I had trouble connecting right now. Please try again in a moment. 💛",
 
