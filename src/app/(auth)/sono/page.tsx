@@ -104,6 +104,26 @@ const timeInputStyle: React.CSSProperties = {
   outline: "none",
 };
 
+/** Altura do teclado virtual (px) — sobe o bottom sheet acima do teclado. */
+function useKeyboardOffset(): number {
+  const [offset, setOffset] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      setOffset(Math.max(0, window.innerHeight - vv.height));
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+  return offset;
+}
+
 // ── Manual log modal ──────────────────────────────────────────────────────────
 
 function ManualLogModal({ onClose, onSaved, lang }: { onClose: () => void; onSaved: () => void; lang: Lang }) {
@@ -114,6 +134,7 @@ function ManualLogModal({ onClose, onSaved, lang }: { onClose: () => void; onSav
   const [notes, setNotes] = useState("");
   const [showQualityGuide, setShowQualityGuide] = useState(false);
   const [saving, setSaving] = useState(false);
+  const kbOffset = useKeyboardOffset();
 
   const save = async () => {
     if (!quality) return;
@@ -181,6 +202,7 @@ function ManualLogModal({ onClose, onSaved, lang }: { onClose: () => void; onSav
         position: "fixed", inset: 0, zIndex: 100,
         background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)",
         display: "flex", alignItems: "flex-end",
+        paddingBottom: kbOffset,
       }}
     >
       <div onClick={(e) => e.stopPropagation()} style={{
@@ -345,6 +367,7 @@ function EditSleepModal({ log, onClose, onSaved, lang }: {
   const [notes, setNotes] = useState(log.notes ?? "");
   const [showQualityGuide, setShowQualityGuide] = useState(false);
   const [saving, setSaving] = useState(false);
+  const kbOffset = useKeyboardOffset();
 
   const save = async () => {
     setSaving(true);
@@ -412,6 +435,7 @@ function EditSleepModal({ log, onClose, onSaved, lang }: {
       position: "fixed", inset: 0, zIndex: 100,
       background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)",
       display: "flex", alignItems: "flex-end",
+      paddingBottom: kbOffset,
     }}>
       <div onClick={(e) => e.stopPropagation()} style={{
         width: "100%", boxSizing: "border-box",
@@ -961,7 +985,7 @@ function SleepTrendChart({ logs, lang }: { logs: SleepLog[]; lang: Lang }) {
 
   const W = 600;
   const H = 160;
-  const pad = { top: 18, right: 10, bottom: 26, left: 10 };
+  const pad = { top: 18, right: 10, bottom: 26, left: 38 };
   const pw = W - pad.left - pad.right;
   const ph = H - pad.top - pad.bottom;
 
@@ -1062,8 +1086,8 @@ function SleepTrendChart({ logs, lang }: { logs: SleepLog[]; lang: Lang }) {
           strokeWidth="1.5"
           strokeDasharray="3,6"
         />
-        <rect x={pad.left + pw - 18} y={refGoodY - 14} width="18" height="16" rx="4" fill="oklch(0.58 0.18 270 / 0.20)" />
-        <text x={pad.left + pw - 9} y={refGoodY - 1} textAnchor="middle" fontSize="12" fontWeight="700" fill="oklch(0.58 0.18 270 / 0.90)" fontFamily="inherit">70</text>
+        <rect x={4} y={refGoodY - 14} width="24" height="16" rx="4" fill="oklch(0.58 0.18 270 / 0.20)" />
+        <text x={16} y={refGoodY - 1} textAnchor="middle" fontSize="12" fontWeight="700" fill="oklch(0.58 0.18 270 / 0.90)" fontFamily="inherit">70</text>
 
         {/* Score threshold: 45 (warning) */}
         <line
@@ -1075,8 +1099,8 @@ function SleepTrendChart({ logs, lang }: { logs: SleepLog[]; lang: Lang }) {
           strokeWidth="1.5"
           strokeDasharray="3,6"
         />
-        <rect x={pad.left + pw - 18} y={refWarnY - 14} width="18" height="16" rx="4" fill="oklch(0.60 0.12 70 / 0.20)" />
-        <text x={pad.left + pw - 9} y={refWarnY - 1} textAnchor="middle" fontSize="12" fontWeight="700" fill="oklch(0.60 0.12 70 / 0.90)" fontFamily="inherit">45</text>
+        <rect x={4} y={refWarnY - 14} width="24" height="16" rx="4" fill="oklch(0.60 0.12 70 / 0.20)" />
+        <text x={16} y={refWarnY - 1} textAnchor="middle" fontSize="12" fontWeight="700" fill="oklch(0.60 0.12 70 / 0.90)" fontFamily="inherit">45</text>
 
         {/* Area fill */}
         <path d={areaD} fill="url(#sleeptrend-grad)" />
