@@ -2,41 +2,80 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "@/lib/useTranslation";
-import { getWeekMondayDate, getWeekSundayDate } from "@/lib/utils";
+import { getReflectionWeek } from "@/lib/utils";
 import { Loader2, Sparkles, ChevronDown } from "lucide-react";
-
-function getWeekLabel(): string {
-  const mon = getWeekMondayDate();
-  const sun = getWeekSundayDate();
-  const fmt = (d: string) => {
-    const [, m, day] = d.split("-");
-    return `${parseInt(day)}/${parseInt(m)}`;
-  };
-  return `${fmt(mon)} – ${fmt(sun)}`;
-}
 
 // ── Design tokens ──────────────────────────────────────────────
 const MUTED = "#9e96b5";
 const FOREGROUND = "#e0d6ff";
 
+interface MirrorData {
+  narrative: string;
+  weekStart: string;
+  weekEnd: string;
+  generatedAt: string;
+}
+
+function formatRange(weekStart: string, weekEnd: string): string {
+  const fmt = (d: string) => {
+    const [, m, day] = d.split("-");
+    return `${parseInt(day)}/${parseInt(m)}`;
+  };
+  return `${fmt(weekStart)} – ${fmt(weekEnd)}`;
+}
+
+// "gerado a X minutos (ou horas)" — relativo, no idioma do usuário.
+function timeAgoLabel(iso: string, lang: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) {
+    return lang === "pt" ? "agora mesmo" : lang === "es" ? "ahora mismo" : "just now";
+  }
+  if (mins < 60) return `${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) {
+    const u =
+      lang === "en"
+        ? hrs === 1 ? "hour" : "hours"
+        : hrs === 1 ? "hora" : "horas";
+    return `${hrs} ${u}`;
+  }
+  const days = Math.floor(hrs / 24);
+  const u =
+    lang === "pt" ? (days === 1 ? "dia" : "dias")
+    : lang === "es" ? (days === 1 ? "día" : "días")
+    : days === 1 ? "day" : "days";
+  return `${days} ${u}`;
+}
+
 export function WeeklyMirror() {
   const { t, lang } = useTranslation();
-  const [narrative, setNarrative] = useState<string | null>(null);
+  const [data, setData] = useState<MirrorData | null>(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const weekKey = getWeekMondayDate();
-    const cacheKey = `weekly_mirror_${weekKey}`;
+    const { monday, daysSinceSunday } = getReflectionWeek();
+
+    // Fora da janela (quinta a sábado) não existe espelho — some do feed.
+    if (daysSinceSunday > 3) {
+      setLoading(false);
+      return;
+    }
+
+    const cacheKey = `weekly_mirror_${monday}`;
 
     try {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
-        setNarrative(cached);
-        setLoading(false);
-        return;
+        const parsed = JSON.parse(cached) as MirrorData;
+        if (parsed?.narrative && parsed?.weekStart) {
+          setData(parsed);
+          setLoading(false);
+          return;
+        }
       }
-    } catch { /* localStorage unavailable */ }
+    } catch { /* cache vazio ou formato antigo — regenera abaixo */ }
 
     fetch("/api/reflect/weekly", {
       method: "POST",
@@ -44,10 +83,16 @@ export function WeeklyMirror() {
       body: JSON.stringify({ lang }),
     })
       .then((r) => r.json())
-      .then((data) => {
-        if (data.narrative) {
-          setNarrative(data.narrative);
-          try { localStorage.setItem(cacheKey, data.narrative); } catch { /* ignore */ }
+      .then((res) => {
+        if (res.narrative && res.weekStart) {
+          const next: MirrorData = {
+            narrative: res.narrative,
+            weekStart: res.weekStart,
+            weekEnd: res.weekEnd,
+            generatedAt: res.generatedAt ?? new Date().toISOString(),
+          };
+          setData(next);
+          try { localStorage.setItem(cacheKey, JSON.stringify(next)); } catch { /* ignore */ }
         }
         setLoading(false);
       })
@@ -69,9 +114,11 @@ export function WeeklyMirror() {
     );
   }
 
-  if (!narrative) return null;
+  if (!data) return null;
 
-  const firstPara = narrative.split(/\n+/).filter(Boolean)[0] ?? "";
+  const firstPara = data.narrative.split(/\n+/).filter(Boolean)[0] ?? "";
+  const range = formatRange(data.weekStart, data.weekEnd);
+  const ago = timeAgoLabel(data.generatedAt, lang);
 
   return (
     <div
@@ -98,7 +145,10 @@ export function WeeklyMirror() {
               {t("espelho_titulo")}
             </span>
             <span style={{ fontSize: 11, color: MUTED, fontVariantNumeric: "tabular-nums" }}>
-              {getWeekLabel()}
+              {t("espelho_semana_de", { range })}
+            </span>
+            <span style={{ fontSize: 10, color: MUTED, opacity: 0.85, fontVariantNumeric: "tabular-nums" }}>
+              {t("gerado_ha", { time: ago })}
             </span>
           </div>
         </div>
@@ -131,7 +181,7 @@ export function WeeklyMirror() {
       {open && (
         <div style={{ borderTop: "1px solid oklch(.58 .18 270 / .10)" }}>
           <div style={{ padding: "20px 20px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
-            {narrative.split(/\n+/).filter(Boolean).map((para, i) => (
+            {data.narrative.split(/\n+/).filter(Boolean).map((para, i) => (
               <p
                 key={i}
                 style={{

@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
-import { getWeekMondayDate, getWeekSundayDate } from "@/lib/utils";
+import { getReflectionWeek } from "@/lib/utils";
 import { sumMacros } from "@/lib/meal-utils";
 import { callLLM } from "@/lib/llm";
 
@@ -131,8 +131,15 @@ export async function POST(request: Request) {
     const lang: Lang = body.lang || "pt";
 
     const admin = getSupabaseAdmin();
-    const mondayDate = getWeekMondayDate(); // YYYY-MM-DD SP timezone
-    const sundayDate = getWeekSundayDate(); // YYYY-MM-DD SP timezone
+    // O espelho reflete a semana recém-encerrada (não a semana em andamento).
+    const { monday: mondayDate, sunday: sundayDate, daysSinceSunday } = getReflectionWeek();
+
+    // Só existe espelho de domingo até quarta-feira (inclusive). Fora disso,
+    // não há espelho para mostrar — retorna null e o cliente esconde o bloco.
+    if (daysSinceSunday > 3) {
+      return NextResponse.json({ narrative: null, weekStart: null, weekEnd: null, generatedAt: null });
+    }
+
     // Convert Mon 00:00 SP to UTC for timestamp queries (SP = UTC-3)
     const mondayUTC = new Date(mondayDate + "T03:00:00.000Z").toISOString();
     // Sunday 23:59 SP = Monday 02:59 UTC next day
@@ -160,7 +167,12 @@ export async function POST(request: Request) {
 
     const text = await callLLM(prompt, userMessage, { maxTokens: 600, temperature: 0.7 });
 
-    return NextResponse.json({ narrative: text });
+    return NextResponse.json({
+      narrative: text,
+      weekStart: mondayDate,
+      weekEnd: sundayDate,
+      generatedAt: new Date().toISOString(),
+    });
   } catch (error) {
     console.error("POST /api/reflect/weekly error:", error);
     return NextResponse.json({ error: "Erro ao gerar espelho" }, { status: 500 });

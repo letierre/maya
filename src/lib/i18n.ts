@@ -376,6 +376,8 @@ const translations: Record<Lang, Record<string, string>> = {
     espelho_titulo: "Seu espelho da semana",
     preparando_espelho: "Preparando seu espelho da semana...",
     espelho_disclaimer: "Gerado a partir dos seus dados. Não é um diagnóstico — é um reflexo.",
+    espelho_semana_de: "Semana de {{range}}",
+    gerado_ha: "Gerado há {{time}}",
 
     // Features — Progresso (tier ladder)
     progresso_titulo: "Progresso",
@@ -1021,6 +1023,8 @@ const translations: Record<Lang, Record<string, string>> = {
     espelho_titulo: "Tu espejo de la semana",
     preparando_espelho: "Preparando tu espejo de la semana...",
     espelho_disclaimer: "Generado a partir de tus datos. No es un diagnóstico — es un reflejo.",
+    espelho_semana_de: "Semana del {{range}}",
+    gerado_ha: "Generado hace {{time}}",
 
     // Sono quality labels
     sono_qualidade_1: "Terrible",
@@ -1642,6 +1646,8 @@ const translations: Record<Lang, Record<string, string>> = {
     espelho_titulo: "Your week's mirror",
     preparando_espelho: "Preparing your weekly mirror...",
     espelho_disclaimer: "Generated from your data. Not a diagnosis — a reflection.",
+    espelho_semana_de: "Week of {{range}}",
+    gerado_ha: "Generated {{time}} ago",
 
     // Sono quality labels
     sono_qualidade_1: "Terrible",

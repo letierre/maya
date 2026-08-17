@@ -155,6 +155,22 @@ export function getWeekSundayDate(tz?: string): string {
   return dateToYMD(d);
 }
 
+/** Returns the Mon–Sun range of the most recently *completed* week.
+ *  On Sunday the "most recent Sunday" is today → this week (ending today);
+ *  Mon–Sat it's the previous Sunday → last week. `daysSinceSunday` is 0 on
+ *  Sunday, 1 on Monday, … 6 on Saturday — used to decide the visibility
+ *  window (the weekly mirror is shown Sun→Wed, hidden Thu–Sat). */
+export function getReflectionWeek(tz?: string): { monday: string; sunday: string; daysSinceSunday: number } {
+  const today = getLocalDate(tz);
+  const d = new Date(today + "T12:00:00");
+  const daysSinceSunday = d.getDay(); // 0=Sun..6=Sat
+  const sunday = new Date(d);
+  sunday.setDate(d.getDate() - daysSinceSunday);
+  const monday = new Date(sunday);
+  monday.setDate(sunday.getDate() - 6);
+  return { monday: dateToYMD(monday), sunday: dateToYMD(sunday), daysSinceSunday };
+}
+
 // ── Legacy SP helpers (server-side only) ──────────────────────────────
 
 /** Converts UTC milliseconds to a YYYY-MM-DD string in São Paulo timezone (UTC-3). */
