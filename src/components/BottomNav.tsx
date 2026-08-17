@@ -39,6 +39,8 @@ export function BottomNav() {
 
   // Hide on full-screen experiences
   if (HIDE_ON.includes(pathname)) return null;
+  // Editor do check-in (histórico) também é fullscreen
+  if (pathname.startsWith("/check-in/")) return null;
   // Also hide on chat (it has its own input bar)
   if (pathname.startsWith("/insights")) return null;
   // Hide on reader page (fullscreen)

@@ -276,7 +276,7 @@ export function HabitChipSelector({ options, selected, onToggle }: {
 
 // ── EditCheckInView — editor do check-in (mesmo dia ou histórico) ─────────────
 
-export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gender, onSave, onClose, saving, todaySleep, eyebrow = "Editar check-in de hoje", title = "O que mudou?" }: {
+export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gender, onSave, onClose, saving, todaySleep, dirty, eyebrow = "Editar check-in de hoje", title = "O que mudou?" }: {
   answers: CheckInAnswers;
   setAnswers: React.Dispatch<React.SetStateAction<CheckInAnswers>>;
   enabledKeys: string[];
@@ -286,6 +286,8 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
   onClose: () => void;
   saving: boolean;
   todaySleep: { quality: number | null; duration_min: number | null } | null;
+  /** false = usuário ainda não alterou nada → botão esmaecido/desabilitado. */
+  dirty?: boolean;
   eyebrow?: string;
   title?: string;
 }) {
@@ -331,6 +333,8 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
         : { background: "#7C5CFF", color: "#fff" }
       : { background: "rgba(124,92,255,0.12)", color: "#7C5CFF" }),
   });
+
+  const isDirty = dirty !== false;
 
   return (
     <div style={{
@@ -661,13 +665,14 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
         padding: "12px 24px 32px",
         background: "linear-gradient(180deg, transparent 0%, oklch(0.12 0.012 270 / .92) 30%, oklch(0.12 0.012 270) 100%)",
       }}>
-        <button type="button" onClick={onSave} disabled={saving} style={{
+        <button type="button" onClick={onSave} disabled={saving || !isDirty} style={{
           width: "100%", height: 52, borderRadius: 16, border: 0,
-          cursor: saving ? "not-allowed" : "pointer",
-          background: "#7C5CFF", color: "#fff",
+          cursor: saving ? "not-allowed" : isDirty ? "pointer" : "not-allowed",
+          background: isDirty ? "#7C5CFF" : "oklch(0.5 0.12 270 / 0.20)",
+          color: isDirty ? "#fff" : "oklch(0.72 0.04 270 / 0.5)",
           fontFamily: "inherit", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em",
-          boxShadow: "0 4px 14px -4px oklch(0.5 0.12 270 / .45)",
-          opacity: saving ? 0.7 : 1, transition: "opacity .15s ease",
+          boxShadow: isDirty ? "0 4px 14px -4px oklch(0.5 0.12 270 / .45)" : "none",
+          opacity: saving ? 0.7 : 1, transition: "opacity .15s ease, background .15s ease, color .15s ease",
         }}>
           {saving ? "Salvando…" : "Salvar alterações"}
         </button>
