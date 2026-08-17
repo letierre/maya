@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         (body.walked ?? false) || (body.ran ?? false) || (body.strength_training ?? false) ||
         (body.exercise_walk ?? false),
       water_cups: body.water_cups ?? 0,
-      drank_water: body.water_cups !== undefined ? body.water_cups >= 6 : (body.drank_water ?? false),
+      drank_water: body.water_cups !== undefined ? body.water_cups >= 4 : (body.drank_water ?? false),
       slept_well: body.slept_well ?? false,
       suicidal_thoughts: body.suicidal_thoughts ?? false,
       did_something_enjoyable: body.did_something_enjoyable ?? false,
