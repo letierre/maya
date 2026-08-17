@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Play, Square, MapPin, Timer, Footprints, Zap, ChevronLeft } from "lucide-react";
+import { Play, Square, Timer, Footprints, Zap, ChevronLeft } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -232,36 +232,34 @@ export default function CorridaPage() {
         </div>
       )}
 
-      {/* Map */}
-      {!showHistory && (
-        <div style={{ position: "relative", flex: 1, minHeight: 300, display: "flex", flexDirection: "column" }}>
-          <div ref={mapContainer} style={{ flex: 1, minHeight: 300 }} />
-          {mapError && (
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "#0B0B10" }}>
-              <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center" }}>{mapError}</p>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Map (sempre montado — o histórico sobrepõe, para não recriar o mapa) */}
+      <div style={{ position: "relative", flex: 1, minHeight: 300 }}>
+        <div ref={mapContainer} style={{ position: "absolute", inset: 0 }} />
+        {mapError && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "#0B0B10", zIndex: 5 }}>
+            <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center" }}>{mapError}</p>
+          </div>
+        )}
 
-      {/* History */}
-      {showHistory && (
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 16px" }}>
-          {history.length === 0 ? (
-            <p style={{ textAlign: "center", color: "#9e96b5", padding: 40 }}>Nenhuma corrida ainda</p>
-          ) : history.map(s => (
-            <button key={s.id} type="button" onClick={() => { setSelectedSession(s); setConfirmDelete(false); }}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, border: "1px solid rgba(167,139,250,0.1)", background: "#1a1530", marginBottom: 8, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-              <span style={{ fontSize: 22 }}>🏃</span>
-              <div style={{ flex: 1 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#e0d6ff", display: "block" }}>{(s.distance_meters / 1000).toFixed(2)} km</span>
-                <span style={{ fontSize: 11, color: "#9e96b5" }}>{formatDuration(s.duration_seconds)} · {formatPace(s.avg_pace || 0)}</span>
-              </div>
-              <span style={{ fontSize: 10, color: "#5a5470" }}>{new Date(s.start_time).toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}</span>
-            </button>
-          ))}
-        </div>
-      )}
+        {/* History overlay */}
+        {showHistory && (
+          <div style={{ position: "absolute", inset: 0, overflowY: "auto", padding: "0 16px", background: "#0B0B10", zIndex: 5 }}>
+            {history.length === 0 ? (
+              <p style={{ textAlign: "center", color: "#9e96b5", padding: 40 }}>Nenhuma corrida ainda</p>
+            ) : history.map(s => (
+              <button key={s.id} type="button" onClick={() => { setSelectedSession(s); setConfirmDelete(false); }}
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, border: "1px solid rgba(167,139,250,0.1)", background: "#1a1530", marginBottom: 8, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                <span style={{ fontSize: 22 }}>🏃</span>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#e0d6ff", display: "block" }}>{(s.distance_meters / 1000).toFixed(2)} km</span>
+                  <span style={{ fontSize: 11, color: "#9e96b5" }}>{formatDuration(s.duration_seconds)} · {formatPace(s.avg_pace || 0)}</span>
+                </div>
+                <span style={{ fontSize: 10, color: "#5a5470" }}>{new Date(s.start_time).toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Action button — floating over map */}
       {!showHistory && (
