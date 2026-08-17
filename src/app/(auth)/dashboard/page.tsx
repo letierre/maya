@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { getLocalDate, getUserTimezone } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { cachedFetch, safeCachedFetch } from "@/lib/fetch-cache";
+import { habitProgress } from "@/lib/checkin-answered";
 import { useTranslation } from "@/lib/useTranslation";
 import { MayaHero } from "@/components/MayaHero";
 import { TodayStrip } from "@/components/TodayStrip";
@@ -202,15 +203,14 @@ export default function DashboardPage() {
       const ci = ciByDay.get(ds);
       const sl = sleepByDay.get(ds);
 
+      const progress = ci ? habitProgress(ci, habitKeys) : null;
       days.push({
         date: ds,
         label: d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", ""),
         sleepQuality: sl?.quality ?? null,
         sleepHrs: sl?.duration_min ? Math.floor((sl.duration_min / 60) * 10) / 10 : null,
-        cuidados: ci
-          ? habitKeys.filter((k) => (ci as unknown as Record<string, unknown>)[k] === true).length
-          : null,
-        cuidadosTotal: ci ? habitKeys.length : null,
+        cuidados: progress?.done ?? null,
+        cuidadosTotal: progress?.total ?? null,
         mood_tags: ci?.mood_tags ?? [],
         feeling: ci?.feeling ?? "",
         today: ds === today,
@@ -231,9 +231,7 @@ export default function DashboardPage() {
       d.setDate(d.getDate() - i);
       const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const ci = ciByDay.get(ds);
-      points.push(
-        ci ? scoreKeys.filter((k) => (ci as unknown as Record<string, unknown>)[k] === true).length : 0
-      );
+      points.push(ci ? habitProgress(ci, scoreKeys).done : 0);
     }
     return points;
   }, [checkIns, scoreKeys]);

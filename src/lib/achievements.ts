@@ -1,6 +1,6 @@
 import type { CheckIn } from "@/types";
 import { calculateStreak, formatLocalDate } from "@/lib/utils";
-import { answeredKeys } from "@/lib/checkin-answered";
+import { habitProgress } from "@/lib/checkin-answered";
 
 export interface AchievementDef {
   type: string;
@@ -101,12 +101,12 @@ export function detectNewAchievements(
     }
   }
 
-  // all habits day — só conta hábitos efetivamente respondidos (pulado ≠ não feito)
+  // all habits day — todos os hábitos habilitados cumpridos no dia
   const habitKeys = enabledKeys.filter((k) => k !== "suicidal_thoughts" && k !== "felt_judged");
   if (
     checkIns.some((ci) => {
-      const answered = answeredKeys(ci, habitKeys);
-      return answered.length > 0 && answered.every((k) => (ci as Record<string, unknown>)[k] === true);
+      const p = habitProgress(ci, habitKeys);
+      return p.total > 0 && p.done === p.total;
     })
   ) {
     add(ACHIEVEMENTS_BY_TYPE.all_habits, 1);

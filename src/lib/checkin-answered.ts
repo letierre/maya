@@ -77,3 +77,60 @@ export function isLegacyPause(ci: {
     ci.breathing !== true
   );
 }
+
+const EXERCISE_KEYS = ["walked", "ran", "strength_training"];
+const PAUSE_KEYS = ["meditation", "prayer", "breathing"];
+
+type HabitCheckIn = {
+  exercise_walk?: boolean;
+  meditation_prayer_breathing?: boolean;
+  walked?: boolean;
+  ran?: boolean;
+  strength_training?: boolean;
+  meditation?: boolean;
+  prayer?: boolean;
+  breathing?: boolean;
+};
+
+/** Feitos/total dos hábitos habilitados, tratando o legado: exercício/pausa
+ *  legados (só agregado) colapsam para 1 hábito, não 3. */
+export function habitProgress(
+  ci: HabitCheckIn,
+  habitKeys: string[]
+): { done: number; total: number } {
+  const legacyExercise = isLegacyExercise(ci);
+  const legacyPause = isLegacyPause(ci);
+  const record = ci as unknown as Record<string, unknown>;
+
+  let done = 0;
+  let total = 0;
+  let exerciseDone = false;
+  let pauseDone = false;
+
+  for (const k of habitKeys) {
+    const isExercise = EXERCISE_KEYS.includes(k);
+    const isPause = PAUSE_KEYS.includes(k);
+
+    if (legacyExercise && isExercise) {
+      if (!exerciseDone) {
+        done += 1;
+        total += 1;
+        exerciseDone = true;
+      }
+      continue;
+    }
+    if (legacyPause && isPause) {
+      if (!pauseDone) {
+        done += 1;
+        total += 1;
+        pauseDone = true;
+      }
+      continue;
+    }
+
+    total += 1;
+    if (record[k] === true) done += 1;
+  }
+
+  return { done, total };
+}
