@@ -34,13 +34,6 @@ function trendChartWidth(count: number): number {
   return Math.max(count * 16, 280);
 }
 
-/** X de um ponto do gráfico: espalha os dias igualmente por toda a largura do viewBox. */
-function trendChartX(i: number, count: number): number {
-  const w = trendChartWidth(count);
-  if (count <= 1) return w / 2;
-  return (i / (count - 1)) * w;
-}
-
 /** Filter array to entries within the last `days` (inclusive of today) */
 function filterPeriod<T extends { date: string }>(items: T[], days: number): T[] {
   const since = daysAgo(days - 1);
@@ -389,6 +382,30 @@ export default function AnalisePage() {
     return points;
   }, [checkIns, periodDays, habitKeys]);
 
+  // ── trend scale: X recorta dias vazios nas pontas; Y ajusta ao range real ──
+  // Assim a linha usa todo o espaço do gráfico, em vez de ficar espremida num
+  // canto quando o período tem dias sem check-in ou scores num range estreito.
+  const trendScale = useMemo(() => {
+    const withScore = trendData
+      .map((p, i) => ({ i, s: p.score }))
+      .filter((x): x is { i: number; s: number } => x.s != null);
+    const firstI = withScore.length ? withScore[0].i : 0;
+    const lastI = withScore.length ? withScore[withScore.length - 1].i : 0;
+    const scores = withScore.map((x) => x.s);
+    const min = scores.length ? Math.min(...scores) : 0;
+    const max = scores.length ? Math.max(...scores) : 100;
+    // Folga vertical (15%, mín. 8px) p/ a linha não encostar nas bordas.
+    const pad = max - min < 1 ? 12 : Math.max((max - min) * 0.15, 8);
+    const lo = min - pad;
+    const hi = max + pad;
+    const span = hi - lo || 1;
+    const w = trendChartWidth(trendData.length);
+
+    const xFor = (i: number) => (firstI === lastI ? w / 2 : ((i - firstI) / (lastI - firstI)) * w);
+    const yFor = (score: number) => 120 - ((score - lo) / span) * 120;
+    return { xFor, yFor, firstI, lastI, w };
+  }, [trendData]);
+
   // ── mood timeline ──────────────────────────────────────────────────────────
 
   const moodTimeline = useMemo(() => {
@@ -636,10 +653,10 @@ export default function AnalisePage() {
             borderRadius: 18, padding: "16px 8px 8px",
             overflow: "hidden",
           }}>
-            <svg viewBox={`0 0 ${trendChartWidth(trendData.length)} 120`} preserveAspectRatio="none" style={{ width: "100%", height: 120 }}>
+            <svg viewBox={`0 0 ${trendScale.w} 120`} preserveAspectRatio="none" style={{ width: "100%", height: 120 }}>
               {/* Grid lines */}
-              {[25, 50, 75].map((y) => (
-                <line key={y} x1={0} x2={trendChartWidth(trendData.length)} y1={120 - y * 1.2} y2={120 - y * 1.2}
+              {[30, 60, 90].map((y) => (
+                <line key={y} x1={0} x2={trendScale.w} y1={y} y2={y}
                   stroke="oklch(0.22 0.02 270)" strokeWidth={0.5} strokeDasharray="4 3" />
               ))}
               {/* Line */}
@@ -650,15 +667,15 @@ export default function AnalisePage() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 points={trendData
-                  .map((p, i) => p.score == null ? null : `${trendChartX(i, trendData.length)},${120 - p.score * 1.2}`)
+                  .map((p, i) => p.score == null ? null : `${trendScale.xFor(i)},${trendScale.yFor(p.score)}`)
                   .filter(Boolean)
                   .join(" ")}
               />
               {/* Dots */}
               {trendData.map((p, i) => {
                 if (p.score == null) return null;
-                const x = trendChartX(i, trendData.length);
-                const y = 120 - p.score * 1.2;
+                const x = trendScale.xFor(i);
+                const y = trendScale.yFor(p.score);
                 return (
                   <circle key={i} cx={x} cy={y} r={3} fill="#7C5CFF"
                     style={{ filter: "drop-shadow(0 0 3px rgba(124,92,255,0.5))" }} />
@@ -670,12 +687,10 @@ export default function AnalisePage() {
                 points={
                   (() => {
                     const pts = trendData
-                      .map((p, i) => p.score != null ? `${trendChartX(i, trendData.length)},${120 - p.score * 1.2}` : null)
+                      .map((p, i) => p.score != null ? `${trendScale.xFor(i)},${trendScale.yFor(p.score)}` : null)
                       .filter(Boolean);
                     if (pts.length === 0) return "";
-                    const firstI = trendData.findIndex((p) => p.score != null);
-                    const lastI = trendData.length - 1 - [...trendData].reverse().findIndex((p) => p.score != null);
-                    return `${trendChartX(firstI, trendData.length)},120 ${pts.join(" ")} ${trendChartX(lastI, trendData.length)},120`;
+                    return `${trendScale.xFor(trendScale.firstI)},120 ${pts.join(" ")} ${trendScale.xFor(trendScale.lastI)},120`;
                   })()
                 }
               />
@@ -689,11 +704,13 @@ export default function AnalisePage() {
             {/* X-axis labels */}
             {periodDays <= 14 && (
               <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 6px 0" }}>
-                {trendData.filter((_, i) => periodDays > 14 ? i % 3 === 0 : true).map((p, i) => (
-                  <span key={i} style={{ fontSize: 9, color: "oklch(0.5 0.02 270)", minWidth: 20, textAlign: "center" }}>
-                    {p.label}
-                  </span>
-                ))}
+                {trendData
+                  .filter((_, i) => i >= trendScale.firstI && i <= trendScale.lastI)
+                  .map((p) => (
+                    <span key={p.date} style={{ fontSize: 9, color: "oklch(0.5 0.02 270)", minWidth: 20, textAlign: "center" }}>
+                      {p.label}
+                    </span>
+                  ))}
               </div>
             )}
           </div>
