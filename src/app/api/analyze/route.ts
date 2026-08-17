@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { buildAnalysisPrompt, buildFactExtractionPrompt } from "@/lib/analyzer";
 import { calculateStreak } from "@/lib/utils";
-import { answeredKeys } from "@/lib/checkin-answered";
+import { habitProgress } from "@/lib/checkin-answered";
 import { NextResponse } from "next/server";
 import { callLLM } from "@/lib/llm";
 
@@ -30,18 +30,16 @@ export async function POST() {
     const diaryEntries = diaryRes.data || [];
     const memories = (memoriesRes.data || []).map((m: { fact: string }) => m.fact);
 
-    // Calculate positive rate (só hábitos respondidos entram; felt_judged não é hábito)
+    // Taxa de hábitos cumpridos (felt_judged não é hábito; exercício/pausa legados contam via agregado)
     const enabledKeys = prefsRes.data?.enabled_questions || [];
     const habitKeys = enabledKeys.filter((k: string) => k !== "suicidal_thoughts" && k !== "felt_judged");
 
     let totalPositive = 0;
     let totalOpportunities = 0;
     for (const ci of checkIns.slice(0, 14)) {
-      const answered = answeredKeys(ci, habitKeys);
-      for (const key of answered) {
-        totalOpportunities++;
-        if ((ci as Record<string, unknown>)[key] === true) totalPositive++;
-      }
+      const p = habitProgress(ci, habitKeys);
+      totalPositive += p.done;
+      totalOpportunities += p.total;
     }
     const positiveRate = totalOpportunities > 0 ? (totalPositive / totalOpportunities) * 100 : 0;
 

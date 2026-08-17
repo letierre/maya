@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { CheckIn } from "@/types";
-import { answeredKeys } from "@/lib/checkin-answered";
+import { effectiveHabitKeys } from "@/lib/checkin-answered";
 import { getMoodById, getMoodLabel } from "@/lib/checkin-moods";
 import { NEGATIVE_MOODS } from "@/lib/dashboard-constants";
 
@@ -200,7 +200,7 @@ export default function HistoricoPage() {
                 const day = d.getDate().toString().padStart(2, "0");
                 const wk = d.toLocaleDateString("pt-BR", { weekday: "short" }).toUpperCase().replace(".", "");
                 const isToday = ci.date === today;
-                const answered = answeredKeys(ci, scoreKeys);
+                const answered = effectiveHabitKeys(ci, scoreKeys);
                 const score = getScore(ci, answered);
                 const total = answered.length;
                 const ratio = total > 0 ? score / total : 0;

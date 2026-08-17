@@ -134,3 +134,36 @@ export function habitProgress(
 
   return { done, total };
 }
+
+/** Lista de hábitos para exibição por check-in, colapsando exercício/pausa
+ *  legados (só agregado) para 1 chave agregada — que tem emoji próprio — em vez
+ *  de mostrar 3 granulares falsos. Usado no histórico (score + faixa de emojis). */
+export function effectiveHabitKeys(ci: HabitCheckIn, habitKeys: string[]): string[] {
+  const legacyExercise = isLegacyExercise(ci);
+  const legacyPause = isLegacyPause(ci);
+  if (!legacyExercise && !legacyPause) return habitKeys;
+
+  const out: string[] = [];
+  let exerciseReplaced = false;
+  let pauseReplaced = false;
+
+  for (const k of habitKeys) {
+    if (legacyExercise && EXERCISE_KEYS.includes(k)) {
+      if (!exerciseReplaced) {
+        out.push("exercise_walk");
+        exerciseReplaced = true;
+      }
+      continue;
+    }
+    if (legacyPause && PAUSE_KEYS.includes(k)) {
+      if (!pauseReplaced) {
+        out.push("meditation_prayer_breathing");
+        pauseReplaced = true;
+      }
+      continue;
+    }
+    out.push(k);
+  }
+
+  return out;
+}
