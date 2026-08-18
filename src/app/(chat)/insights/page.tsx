@@ -558,7 +558,7 @@ export default function MayaChatPage() {
     });
 
     try {
-      const contextMsgs = updated.slice(-20).map(({ role, content, imageUrls, date, time }) => ({
+      const contextMsgs = updated.slice(-40).map(({ role, content, imageUrls, date, time }) => ({
         role,
         content,
         image_urls: imageUrls,

@@ -201,10 +201,23 @@ export async function POST(request: Request) {
 	    }
 
     // Send messages WITH image_urls for multimodal support.
-    // Prefix each message with [HH:MM] so Maya understands the rhythm and
-    // gaps between messages (crucial for reading intent).
+    // Prefix each message with [dia HH:MM] so Maya understands WHEN each
+    // message happened (hoje/ontem/há N dias) and the gaps between them —
+    // crucial for reading intent and temporal context like a human would.
+    const dayLabelFor = (dateStr: string): string => {
+      if (!dateStr) return "";
+      const d = new Date(dateStr + "T00:00:00");
+      const c = new Date(currentDate + "T00:00:00");
+      const diff = Math.round((c.getTime() - d.getTime()) / 86400000);
+      if (diff <= 0) return "hoje";
+      if (diff === 1) return "ontem";
+      if (diff === 2) return "anteontem";
+      return `há ${diff} dias`;
+    };
+
     const anthropicMessages = messages.map((m) => {
-      const timePrefix = m.time ? `[${m.time}] ` : "";
+      const day = dayLabelFor(m.date || "");
+      const timePrefix = m.time ? `[${day ? day + " " : ""}${m.time}] ` : "";
       return {
         role: m.role,
         content: timePrefix + m.content,
