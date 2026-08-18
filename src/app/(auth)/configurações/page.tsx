@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "@/lib/useTranslation";
 
 const CONTEXT_QUESTIONS = [
@@ -11,6 +12,14 @@ const CONTEXT_QUESTIONS = [
   { id: "has_creative_hobby",      qKey: "q_criatividade", dKey: "q_criatividade_desc" },
   { id: "track_suicidal_thoughts", qKey: "q_suicida",     dKey: "q_suicida_desc"     },
 ];
+
+const card: React.CSSProperties = {
+  background: "oklch(0.16 0.012 270 / 0.7)",
+  borderRadius: 20,
+  border: "1px solid rgba(167,139,250,0.25)",
+  padding: "20px 18px",
+  marginBottom: 12,
+};
 
 export default function ConfiguracoesPage() {
   const router = useRouter();
@@ -98,16 +107,14 @@ export default function ConfiguracoesPage() {
           <button
             type="button"
             onClick={() => router.back()}
+            aria-label="Voltar"
             style={{
               width: 36, height: 36, borderRadius: "50%",
-              border: "1px solid rgba(167,139,250,0.3)",
-              background: "rgba(124,92,255,0.12)",
-              cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 16, flexShrink: 0, color: "#A78BFA",
+              background: "transparent", border: 0, cursor: "pointer", color: "#e0d6ff",
             }}
           >
-            ←
+            <ArrowLeft style={{ width: 20, height: 20 }} />
           </button>
           <div style={{ flex: 1 }}>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em", color: "#e0d6ff" }}>
@@ -120,14 +127,9 @@ export default function ConfiguracoesPage() {
         </div>
 
         {/* Context questions */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div>
           {CONTEXT_QUESTIONS.map((q) => (
-            <div key={q.id} style={{
-              background: "oklch(0.16 0.012 270 / 0.7)",
-              borderRadius: 20,
-              border: "1px solid rgba(167,139,250,0.25)",
-              padding: "18px 18px 16px",
-            }}>
+            <div key={q.id} style={card}>
               <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>
                 {t(q.qKey)}
               </p>
