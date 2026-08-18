@@ -132,31 +132,37 @@ export default function NovoDiarioPage() {
       const query = before.slice(slashIdx + 1);
       if (!query.includes(" ") && !query.includes("\n")) {
         setSlashQuery(query);
-        setSlashOpen(true);
         slashSavedSel.current = { node, offset: slashIdx };
-        // Insert a temporary marker at cursor to get exact screen position
-        const marker = document.createElement("span");
-        marker.id = "__slash_marker";
-        marker.style.display = "inline-block";
-        marker.style.width = "1px";
-        marker.style.height = "1px";
-        marker.textContent = "​"; // zero-width space
-        const r2 = range.cloneRange();
-        r2.collapse(true);
-        r2.insertNode(marker);
-        const markerRect = marker.getBoundingClientRect();
-        marker.remove();
-        {
+        // Posiciona o menu junto ao cursor (coordenadas do viewport)
+        let top = 80;
+        let left = 16;
+        try {
+          let caret = range.getBoundingClientRect();
+          // Safari devolve retângulo zerado em range colapsado: usa marcador temporário
+          if (!caret.height && !caret.top && !caret.bottom) {
+            const marker = document.createElement("span");
+            marker.style.display = "inline-block";
+            marker.style.width = "1px";
+            marker.style.height = "1em";
+            marker.textContent = "​";
+            const clone = range.cloneRange();
+            clone.collapse(false);
+            clone.insertNode(marker);
+            const m = marker.getBoundingClientRect();
+            marker.remove();
+            caret = m;
+          }
           const menuH = 260;
           const menuW = 220;
           const screenH = window.innerHeight;
           const screenW = window.innerWidth;
-          const spaceBelow = screenH - markerRect.bottom;
-          let top = spaceBelow >= menuH + 16 ? markerRect.bottom + 6 : markerRect.top - menuH - 6;
+          const spaceBelow = screenH - caret.bottom;
+          top = spaceBelow >= menuH + 16 ? caret.bottom + 6 : caret.top - menuH - 6;
           top = Math.max(8, Math.min(top, screenH - menuH - 8));
-          const left = Math.max(8, Math.min(markerRect.left, screenW - menuW - 8));
-          setSlashPos({ x: left, y: top });
-        }
+          left = Math.max(8, Math.min(caret.left, screenW - menuW - 8));
+        } catch { /* mantém posição de fallback */ }
+        setSlashPos({ x: left, y: top });
+        setSlashOpen(true);
         return;
       }
     }
