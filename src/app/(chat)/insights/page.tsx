@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "@/lib/useTranslation";
-import { Send, ArrowLeft, Plus, Mic, Camera, FileText, X, Image as ImageIcon } from "lucide-react";
+import { Send, ArrowLeft, Plus, Camera, X, Image as ImageIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
@@ -230,7 +230,6 @@ export default function MayaChatPage() {
   const nudgeActionRef = useRef<{ label: string; href: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const documentInputRef = useRef<HTMLInputElement>(null);
 
   // ── Chat scroll management ──
   const { handleScroll } = useChatScroll({
@@ -955,14 +954,6 @@ export default function MayaChatPage() {
           style={{ display: "none" }}
           onChange={handleFileSelect}
         />
-        <input
-          ref={documentInputRef}
-          type="file"
-          accept="image/*,.pdf,.txt,.doc,.docx"
-          style={{ display: "none" }}
-          onChange={handleFileSelect}
-        />
-
         {/* Attach menu */}
         {attachOpen && (
           <div
@@ -987,14 +978,6 @@ export default function MayaChatPage() {
               onClick={() => {
                 setAttachOpen(false);
                 fileInputRef.current?.click();
-              }}
-            />
-            <AttachMenuItem
-              icon={<FileText className="size-4" />}
-              label={t("maya_attach_file")}
-              onClick={() => {
-                setAttachOpen(false);
-                documentInputRef.current?.click();
               }}
             />
           </div>
@@ -1031,38 +1014,26 @@ export default function MayaChatPage() {
             }}
           />
 
-          {/* Mic (empty) or Send (has content) */}
-          {!input.trim() && selectedImages.length === 0 ? (
-            <button
-              type="button"
-              tabIndex={-1}
-              className="size-[42px] shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer transition-transform active:scale-90"
-              style={{ background: "rgba(124,92,255,0.14)", color: "#A78BFA" }}
-              aria-label="Microfone"
-            >
-              <Mic className="size-5" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              tabIndex={-1}
-              className="size-[42px] shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer disabled:opacity-50 disabled:cursor-default"
-              style={{
-                background: "var(--maya-primary)",
-                boxShadow: "0 4px 14px rgba(124,92,255,0.35)",
-              }}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                // Synchronously refocus textarea — keyboard never leaves on iOS
-                textareaRef.current?.focus();
-                sendMessage();
-              }}
-              disabled={busy}
-              aria-label="Enviar"
-            >
-              <Send className="size-[18px]" color="#fff" />
-            </button>
-          )}
+          {/* Send */}
+          <button
+            type="button"
+            tabIndex={-1}
+            className="size-[42px] shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer disabled:opacity-50 disabled:cursor-default"
+            style={{
+              background: "var(--maya-primary)",
+              boxShadow: "0 4px 14px rgba(124,92,255,0.35)",
+            }}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              // Synchronously refocus textarea — keyboard never leaves on iOS
+              textareaRef.current?.focus();
+              sendMessage();
+            }}
+            disabled={busy}
+            aria-label="Enviar"
+          >
+            <Send className="size-[18px]" color="#fff" />
+          </button>
         </div>
       </div>
     </div>
