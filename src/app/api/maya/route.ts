@@ -272,7 +272,10 @@ export async function POST(request: Request) {
         .filter(v => v.statement.trim()),
     });
 
-    const reply = await chatLLM(systemPrompt, anthropicMessages, 400);
+    const rawReply = await chatLLM(systemPrompt, anthropicMessages, 400);
+    // Belt-and-suspenders: strip any [HH:MM] timestamp tokens Maya may echo.
+    // These are internal rhythm context only — never shown to the user.
+    const reply = rawReply.replace(/\[\d{1,2}:\d{2}\]\s*/g, "").trim();
 
     // Extract new facts from the conversation (fire and forget)
     const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
