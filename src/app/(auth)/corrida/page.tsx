@@ -25,6 +25,8 @@ function formatDuration(sec: number): string {
   return `${m}min ${s}s`;
 }
 
+const RUN_KEY = "maya_running_session";
+
 export default function CorridaPage() {
   const router = useRouter();
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -32,13 +34,14 @@ export default function CorridaPage() {
   const watchId = useRef<number | null>(null);
   const routeLineRef = useRef<mapboxgl.GeoJSONSource | null>(null);
   const runStats = useRef<{ totalDist: number; maxSpeed: number; startedAt: number } | null>(null);
+  const pointsRef = useRef<Coord[]>([]);
+  const lastPointRef = useRef<Coord | null>(null);
 
   const [running, setRunning] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
   const [pace, setPace] = useState(0);
-  const [coords, setCoords] = useState<Coord[]>([]);
   const [speed, setSpeed] = useState(0);
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState<Session[]>([]);
@@ -85,6 +88,13 @@ export default function CorridaPage() {
       map.addSource("route", { type: "geojson", data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [] } } });
       map.addLayer({ id: "route-line", type: "line", source: "route", paint: { "line-color": "#7C5CFF", "line-width": 4, "line-opacity": 0.8 } });
       routeLineRef.current = map.getSource("route") as mapboxgl.GeoJSONSource;
+      // Redesenha uma corrida em andamento que foi restaurada de localStorage
+      if (pointsRef.current.length >= 2) {
+        routeLineRef.current.setData({
+          type: "Feature", properties: {},
+          geometry: { type: "LineString", coordinates: pointsRef.current.map(p => [p.lng, p.lat]) },
+        });
+      }
       // Track map load
       fetch("/api/running/mapbox-usage", { method: "POST" }).catch(() => {});
     });
@@ -105,15 +115,28 @@ export default function CorridaPage() {
   }, []);
 
   // GPS tracking
-  const startRun = () => {
-    if (!navigator.geolocation) { toast.error("GPS não disponível"); return; }
-    setRunning(true); setStartTime(new Date()); setDistance(0); setElapsed(0); setPace(0); setCoords([]);
-    const startedAt = Date.now();
-    const points: Coord[] = [];
-    let lastPoint: Coord | null = null;
-    runStats.current = { totalDist: 0, maxSpeed: 0, startedAt };
+  const persistSnapshot = () => {
+    const stats = runStats.current;
+    if (!stats) return;
+    try {
+      localStorage.setItem(RUN_KEY, JSON.stringify({
+        startedAt: stats.startedAt,
+        totalDist: stats.totalDist,
+        maxSpeed: stats.maxSpeed,
+        coords: pointsRef.current,
+      }));
+    } catch { /* storage indisponível/cheio — ignora */ }
+  };
 
-    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+  const beginTracking = () => {
+    const stats = runStats.current;
+    if (!stats) return;
+    const startedAt = stats.startedAt;
+
+    const timer = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+      persistSnapshot();
+    }, 1000);
 
     const id = navigator.geolocation.watchPosition(
       (pos) => {
@@ -123,26 +146,25 @@ export default function CorridaPage() {
         const pt: Coord = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
         if (pos.coords.speed != null) {
           const kmh = pos.coords.speed * 3.6;
-          if (kmh > runStats.current!.maxSpeed) runStats.current!.maxSpeed = kmh;
+          if (kmh > stats.maxSpeed) stats.maxSpeed = kmh;
           setSpeed(kmh);
         }
-        if (lastPoint) {
-          const d = haversine(lastPoint.lat, lastPoint.lng, pt.lat, pt.lng);
+        if (lastPointRef.current) {
+          const d = haversine(lastPointRef.current.lat, lastPointRef.current.lng, pt.lat, pt.lng);
           // Ignora micro-jitter (< 1 m) que o GPS gera mesmo parado
           if (d < 1) return;
-          runStats.current!.totalDist += d;
-          setDistance(Math.round(runStats.current!.totalDist));
+          stats.totalDist += d;
+          setDistance(Math.round(stats.totalDist));
           const elapsedSec = (Date.now() - startedAt) / 1000;
-          if (runStats.current!.totalDist > 10) setPace(elapsedSec / (runStats.current!.totalDist / 1000));
+          if (stats.totalDist > 10) setPace(elapsedSec / (stats.totalDist / 1000));
         }
-        lastPoint = pt;
-        points.push(pt);
-        setCoords([...points]);
+        lastPointRef.current = pt;
+        pointsRef.current = [...pointsRef.current, pt];
         // Update route line
-        if (routeLineRef.current && points.length >= 2) {
+        if (routeLineRef.current && pointsRef.current.length >= 2) {
           routeLineRef.current.setData({
             type: "Feature", properties: {},
-            geometry: { type: "LineString", coordinates: points.map(p => [p.lng, p.lat]) },
+            geometry: { type: "LineString", coordinates: pointsRef.current.map(p => [p.lng, p.lat]) },
           });
         }
       },
@@ -153,9 +175,42 @@ export default function CorridaPage() {
     (watchId as any).timer = timer;
   };
 
+  const startRun = () => {
+    if (!navigator.geolocation) { toast.error("GPS não disponível"); return; }
+    setRunning(true); setStartTime(new Date()); setDistance(0); setElapsed(0); setPace(0); setSpeed(0);
+    runStats.current = { totalDist: 0, maxSpeed: 0, startedAt: Date.now() };
+    pointsRef.current = [];
+    lastPointRef.current = null;
+    persistSnapshot();
+    beginTracking();
+  };
+
+  // Restaura uma corrida ativa se a página foi recarregada/fechada em segundo plano
+  useEffect(() => {
+    let raw: string | null = null;
+    try { raw = localStorage.getItem(RUN_KEY); } catch { return; }
+    if (!raw) return;
+    try {
+      const snap = JSON.parse(raw) as { startedAt: number; totalDist: number; maxSpeed: number; coords: Coord[] };
+      if (!snap || !snap.startedAt) return;
+      runStats.current = { totalDist: snap.totalDist || 0, maxSpeed: snap.maxSpeed || 0, startedAt: snap.startedAt };
+      pointsRef.current = Array.isArray(snap.coords) ? snap.coords : [];
+      lastPointRef.current = pointsRef.current.length ? pointsRef.current[pointsRef.current.length - 1] : null;
+      setRunning(true);
+      setStartTime(new Date(snap.startedAt));
+      setDistance(Math.round(snap.totalDist || 0));
+      setElapsed(Math.floor((Date.now() - snap.startedAt) / 1000));
+      beginTracking();
+    } catch {
+      try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const stopRun = async () => {
     if (watchId.current) { navigator.geolocation.clearWatch(watchId.current); clearInterval((watchId as any).timer); watchId.current = null; }
     setRunning(false);
+    try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ }
 
     const stats = runStats.current;
     const dist = stats ? Math.round(stats.totalDist) : distance;
@@ -173,7 +228,7 @@ export default function CorridaPage() {
           end_time: new Date().toISOString(),
           distance_meters: dist, duration_seconds: duration,
           avg_pace: Math.round(avgPace), max_speed: maxSpeed,
-          route_coordinates: coords,
+          route_coordinates: pointsRef.current,
         }),
       });
       if (res.ok) {
