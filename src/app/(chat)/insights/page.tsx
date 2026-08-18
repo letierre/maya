@@ -227,8 +227,6 @@ export default function MayaChatPage() {
   const textareaRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
   const nudgeActionRef = useRef<{ label: string; href: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // ── Chat scroll management ──
   const { handleScroll } = useChatScroll({
@@ -472,8 +470,8 @@ export default function MayaChatPage() {
   }, [hydrated, messages.length]);
 
   // ── Image picker handlers ──
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const handleFileSelect = async (inputEl: HTMLInputElement) => {
+    const files = inputEl.files;
     if (!files) return;
 
     const remaining = 3 - selectedImages.length;
@@ -488,7 +486,26 @@ export default function MayaChatPage() {
       }
     }
     // Reset input so the same file can be selected again
-    e.target.value = "";
+    inputEl.value = "";
+  };
+
+  // Create the file picker on demand (NOT a persistent hidden <input>) so the
+  // iOS keyboard accessory bar (prev/next form navigation) never appears.
+  const openFilePicker = (opts: { capture?: boolean; multiple?: boolean }) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    if (opts.capture) input.setAttribute("capture", "environment");
+    if (opts.multiple) input.multiple = true;
+    input.style.position = "fixed";
+    input.style.left = "-9999px";
+    input.style.top = "0";
+    input.onchange = () => {
+      handleFileSelect(input);
+      input.remove();
+    };
+    document.body.appendChild(input);
+    input.click();
   };
 
   const removeSelectedImage = (index: number) => {
@@ -950,23 +967,6 @@ export default function MayaChatPage() {
           </div>
         )}
 
-        {/* Hidden inputs */}
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style={{ display: "none" }}
-          onChange={handleFileSelect}
-        />
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: "none" }}
-          onChange={handleFileSelect}
-        />
         {/* Attach menu */}
         {attachOpen && (
           <div
@@ -982,7 +982,7 @@ export default function MayaChatPage() {
               label={t("maya_attach_photo")}
               onClick={() => {
                 setAttachOpen(false);
-                cameraInputRef.current?.click();
+                openFilePicker({ capture: true });
               }}
             />
             <AttachMenuItem
@@ -990,7 +990,7 @@ export default function MayaChatPage() {
               label={t("maya_attach_gallery")}
               onClick={() => {
                 setAttachOpen(false);
-                fileInputRef.current?.click();
+                openFilePicker({ multiple: true });
               }}
             />
           </div>
