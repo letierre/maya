@@ -1002,9 +1002,8 @@ export default function MayaChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t("maya_placeholder")}
-            disabled={busy}
             rows={1}
-            className="maya-chat-input flex-1 resize-none rounded-[20px] border px-4 py-2.5 focus:outline-none disabled:opacity-50"
+            className="maya-chat-input flex-1 resize-none rounded-[20px] border px-4 py-2.5 focus:outline-none"
             style={{
               background: "rgba(255,255,255,0.04)",
               borderColor: "rgba(255,255,255,0.08)",
