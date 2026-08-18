@@ -286,9 +286,12 @@ export async function POST(request: Request) {
     });
 
     const rawReply = await chatLLM(systemPrompt, anthropicMessages, 400);
-    // Belt-and-suspenders: strip any [HH:MM] timestamp tokens Maya may echo.
+    // Belt-and-suspenders: strip any "[dia HH:MM]" timestamp tokens Maya may echo
+    // (e.g. "[21:06]", "[hoje 23:07]", "[ontem 14:30]", "[há 3 dias 09:10]").
     // These are internal rhythm context only — never shown to the user.
-    const reply = rawReply.replace(/\[\d{1,2}:\d{2}\]\s*/g, "").trim();
+    const reply = rawReply
+      .replace(/\[\s*(?:hoje|ontem|anteontem|há\s*\d+\s*dias)?\s*\d{1,2}:\d{2}\s*\]\s*/gi, "")
+      .trim();
 
     // Extract new facts from the conversation (fire and forget)
     const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
