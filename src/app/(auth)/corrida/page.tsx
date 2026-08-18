@@ -36,6 +36,8 @@ export default function CorridaPage() {
   const runStats = useRef<{ totalDist: number; maxSpeed: number; startedAt: number } | null>(null);
   const pointsRef = useRef<Coord[]>([]);
   const lastPointRef = useRef<Coord | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
+  const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [running, setRunning] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
@@ -112,6 +114,7 @@ export default function CorridaPage() {
       clearInterval((watchId as any).timer);
       watchId.current = null;
     }
+    if (syncTimerRef.current) { clearInterval(syncTimerRef.current); syncTimerRef.current = null; }
   }, []);
 
   // GPS tracking
@@ -120,12 +123,40 @@ export default function CorridaPage() {
     if (!stats) return;
     try {
       localStorage.setItem(RUN_KEY, JSON.stringify({
+        sessionId: sessionIdRef.current,
         startedAt: stats.startedAt,
         totalDist: stats.totalDist,
         maxSpeed: stats.maxSpeed,
         coords: pointsRef.current,
       }));
     } catch { /* storage indisponível/cheio — ignora */ }
+  };
+
+  // Sincroniza o estado atual da corrida com o servidor (PATCH na sessão ativa)
+  const syncToServer = () => {
+    const stats = runStats.current;
+    const id = sessionIdRef.current;
+    if (!stats || !id) return;
+    const duration = Math.floor((Date.now() - stats.startedAt) / 1000);
+    const dist = Math.round(stats.totalDist);
+    const avgPace = dist > 10 ? duration / (dist / 1000) : null;
+    fetch("/api/running", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id,
+        distance_meters: dist,
+        duration_seconds: duration,
+        avg_pace: avgPace ? Math.round(avgPace) : null,
+        max_speed: Math.round(stats.maxSpeed * 10) / 10,
+        route_coordinates: pointsRef.current,
+      }),
+    }).catch(() => { /* rede falhou — localStorage ainda segura */ });
+  };
+
+  const startSyncInterval = () => {
+    if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+    syncTimerRef.current = setInterval(syncToServer, 5000);
   };
 
   const beginTracking = () => {
@@ -175,24 +206,38 @@ export default function CorridaPage() {
     (watchId as any).timer = timer;
   };
 
-  const startRun = () => {
+  const startRun = async () => {
     if (!navigator.geolocation) { toast.error("GPS não disponível"); return; }
+
+    // Cria a sessão no servidor (end_time NULL) — o banco vira a fonte da verdade
+    let id: string | null = null;
+    try {
+      const res = await fetch("/api/running", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ start_time: new Date().toISOString() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      id = data.id || null;
+    } catch { id = null; }
+    sessionIdRef.current = id;
+
     setRunning(true); setStartTime(new Date()); setDistance(0); setElapsed(0); setPace(0); setSpeed(0);
     runStats.current = { totalDist: 0, maxSpeed: 0, startedAt: Date.now() };
     pointsRef.current = [];
     lastPointRef.current = null;
     persistSnapshot();
     beginTracking();
+    startSyncInterval();
   };
 
-  // Restaura uma corrida ativa se a página foi recarregada/fechada em segundo plano
+  // Restaura uma corrida ativa: 1) servidor (fonte da verdade) → 2) localStorage (cache)
   useEffect(() => {
-    let raw: string | null = null;
-    try { raw = localStorage.getItem(RUN_KEY); } catch { return; }
-    if (!raw) return;
-    try {
-      const snap = JSON.parse(raw) as { startedAt: number; totalDist: number; maxSpeed: number; coords: Coord[] };
-      if (!snap || !snap.startedAt) return;
+    let cancelled = false;
+    const MAX_AGE = 24 * 60 * 60 * 1000; // 24h — acima disso é corrida abandonada
+
+    const resume = (snap: { sessionId: string | null; startedAt: number; totalDist: number; maxSpeed: number; coords: Coord[] }) => {
+      sessionIdRef.current = snap.sessionId || null;
       runStats.current = { totalDist: snap.totalDist || 0, maxSpeed: snap.maxSpeed || 0, startedAt: snap.startedAt };
       pointsRef.current = Array.isArray(snap.coords) ? snap.coords : [];
       lastPointRef.current = pointsRef.current.length ? pointsRef.current[pointsRef.current.length - 1] : null;
@@ -201,14 +246,74 @@ export default function CorridaPage() {
       setDistance(Math.round(snap.totalDist || 0));
       setElapsed(Math.floor((Date.now() - snap.startedAt) / 1000));
       beginTracking();
-    } catch {
-      try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ }
-    }
+      startSyncInterval();
+    };
+
+    fetch("/api/running?active=1")
+      .then((r) => r.json())
+      .then((list) => {
+        if (cancelled) return;
+        const active = Array.isArray(list) ? list[0] : null;
+        if (active?.start_time) {
+          const age = Date.now() - new Date(active.start_time).getTime();
+          if (age > MAX_AGE) {
+            // abandonada — descarta
+            fetch(`/api/running?id=${active.id}`, { method: "DELETE" }).catch(() => {});
+            try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ }
+            return;
+          }
+          resume({
+            sessionId: active.id,
+            startedAt: new Date(active.start_time).getTime(),
+            totalDist: active.distance_meters || 0,
+            maxSpeed: active.max_speed || 0,
+            coords: Array.isArray(active.route_coordinates) ? active.route_coordinates : [],
+          });
+          return;
+        }
+        // Fallback: sem sessão ativa no servidor — tenta o cache local
+        let raw: string | null = null;
+        try { raw = localStorage.getItem(RUN_KEY); } catch { return; }
+        if (!raw) return;
+        try {
+          const snap = JSON.parse(raw) as { sessionId?: string | null; startedAt: number; totalDist: number; maxSpeed: number; coords: Coord[] };
+          if (!snap?.startedAt) return;
+          if (Date.now() - snap.startedAt > MAX_AGE) { try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ } return; }
+          resume({ sessionId: snap.sessionId || null, startedAt: snap.startedAt, totalDist: snap.totalDist || 0, maxSpeed: snap.maxSpeed || 0, coords: snap.coords || [] });
+          // Se o id se perdeu, recria a sessão no servidor
+          if (!snap.sessionId) {
+            fetch("/api/running", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ start_time: new Date(snap.startedAt).toISOString() }),
+            }).then((r) => r.json()).then((d) => { if (d?.id) sessionIdRef.current = d.id; }).catch(() => {});
+          }
+        } catch {
+          try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ }
+        }
+      })
+      .catch(() => {});
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Flush no servidor no exato momento em que o app vai pro segundo plano (trocar pra WhatsApp/câmera)
+  useEffect(() => {
+    const flush = () => { if (sessionIdRef.current) syncToServer(); };
+    const onVis = () => { if (document.visibilityState === "hidden") flush(); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pagehide", flush);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const stopRun = async () => {
     if (watchId.current) { navigator.geolocation.clearWatch(watchId.current); clearInterval((watchId as any).timer); watchId.current = null; }
+    if (syncTimerRef.current) { clearInterval(syncTimerRef.current); syncTimerRef.current = null; }
     setRunning(false);
     try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ }
 
@@ -217,24 +322,47 @@ export default function CorridaPage() {
     const maxSpeed = stats ? Math.round(stats.maxSpeed * 10) / 10 : Math.round(speed * 10) / 10;
     const duration = stats ? Math.max(1, Math.floor((Date.now() - stats.startedAt) / 1000)) : elapsed;
 
-    if (dist < 10) { toast.error("Corrida muito curta para salvar"); runStats.current = null; return; }
+    if (dist < 10) {
+      // corrida curta demais — descarta (remove a sessão ativa do servidor)
+      if (sessionIdRef.current) {
+        fetch(`/api/running?id=${sessionIdRef.current}`, { method: "DELETE" }).catch(() => {});
+      }
+      toast.error("Corrida muito curta para salvar");
+      runStats.current = null;
+      sessionIdRef.current = null;
+      return;
+    }
     setSaving(true);
     const avgPace = dist > 10 ? duration / (dist / 1000) : 0;
     try {
-      const res = await fetch("/api/running", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          start_time: startTime ? startTime.toISOString() : new Date().toISOString(),
-          end_time: new Date().toISOString(),
-          distance_meters: dist, duration_seconds: duration,
-          avg_pace: Math.round(avgPace), max_speed: maxSpeed,
-          route_coordinates: pointsRef.current,
-        }),
-      });
+      const payload = {
+        end_time: new Date().toISOString(),
+        distance_meters: dist,
+        duration_seconds: duration,
+        avg_pace: Math.round(avgPace),
+        max_speed: maxSpeed,
+        route_coordinates: pointsRef.current,
+      };
+      let res: Response;
+      if (sessionIdRef.current) {
+        // finaliza a sessão ativa
+        res = await fetch("/api/running", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: sessionIdRef.current, ...payload }),
+        });
+      } else {
+        // fallback: não havia sessão no servidor (ex.: start falhou) — insere direto
+        res = await fetch("/api/running", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ start_time: startTime ? startTime.toISOString() : new Date().toISOString(), ...payload }),
+        });
+      }
       if (res.ok) {
         toast.success("Corrida salva!");
-        const saved = await res.json();
-        setHistory(prev => [saved, ...prev]);
+        const fresh = await fetch("/api/running?limit=20").then((r) => r.json()).catch(() => []);
+        if (Array.isArray(fresh)) setHistory(fresh);
       } else {
         const err = await res.json().catch(() => ({}));
         toast.error(err.error || "Erro ao salvar");
@@ -242,6 +370,7 @@ export default function CorridaPage() {
     } catch { toast.error("Erro ao salvar"); }
     setSaving(false);
     runStats.current = null;
+    sessionIdRef.current = null;
   };
 
   const deleteSession = async () => {
