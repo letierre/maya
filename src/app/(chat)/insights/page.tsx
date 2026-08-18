@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
 import { useChatScroll } from "@/hooks/useChatScroll";
-import { useAutoResizeTextarea } from "@/hooks/useAutoResizeTextarea";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
 
 interface Message {
@@ -225,7 +224,7 @@ export default function MayaChatPage() {
 
   // ── Refs ──
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
   const nudgeActionRef = useRef<{ label: string; href: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -240,9 +239,6 @@ export default function MayaChatPage() {
     hydrated,
   });
 
-  // ── Textarea auto-resize (also scrolls messages on growth) ──
-  useAutoResizeTextarea(textareaRef, input, messagesRef);
-
   // ── Keep messages visible when typing or keyboard changes viewport ──
   // Direct scrollTop — no ResizeObserver, no rAF timing issues.
   // Fires on every keystroke AND viewport change (keyboard open/close).
@@ -252,9 +248,11 @@ export default function MayaChatPage() {
     mc.scrollTop = mc.scrollHeight;
   }, [input, viewportH]);
 
-  // ── Focus textarea if draft param ──
+  // ── Populate + focus contentEditable if draft param ──
   useEffect(() => {
-    if (searchParams.get("draft")) {
+    const draft = searchParams.get("draft");
+    if (draft && textareaRef.current) {
+      textareaRef.current.textContent = draft;
       setTimeout(() => textareaRef.current?.focus(), 300);
     }
   }, [searchParams]);
@@ -531,6 +529,7 @@ export default function MayaChatPage() {
     const updated = [...messages, userMsg];
     setMessages(updated);
     setInput("");
+    if (textareaRef.current) textareaRef.current.textContent = "";
     setSelectedImages([]);
     setUploadingImages(false);
     setSending(true);
@@ -598,9 +597,13 @@ export default function MayaChatPage() {
     }
   }, [input, sending, messages, selectedImages, t, deliverParts]);
 
-  // ── Keyboard handler ──
+  // ── Composer input + keyboard handler ──
+  const handleComposerInput = (e: React.FormEvent<HTMLDivElement>) => {
+    setInput((e.target as HTMLElement).innerText);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       sendMessage();
     }
@@ -896,6 +899,16 @@ export default function MayaChatPage() {
                   type="button"
                   onClick={() => {
                     setInput(chip);
+                    const el = textareaRef.current;
+                    if (el) {
+                      el.textContent = chip;
+                      const range = document.createRange();
+                      const sel = window.getSelection();
+                      range.selectNodeContents(el);
+                      range.collapse(false);
+                      sel?.removeAllRanges();
+                      sel?.addRange(range);
+                    }
                     textareaRef.current?.focus();
                   }}
                   className="shrink-0 px-3.5 py-1.5 rounded-full whitespace-nowrap border-0 cursor-pointer"
@@ -996,20 +1009,30 @@ export default function MayaChatPage() {
             <Plus className="size-5" />
           </button>
 
-          <textarea
+          <div
             ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            contentEditable
+            suppressContentEditableWarning
+            role="textbox"
+            aria-multiline="true"
+            aria-label={t("maya_placeholder")}
+            data-placeholder={t("maya_placeholder")}
+            enterKeyHint="send"
+            onInput={handleComposerInput}
             onKeyDown={handleKeyDown}
-            placeholder={t("maya_placeholder")}
-            rows={1}
-            className="maya-chat-input flex-1 resize-none rounded-[20px] border px-4 py-2.5 focus:outline-none"
+            className="maya-chat-input flex-1 rounded-[20px] border px-4 py-2.5 focus:outline-none"
             style={{
               background: "rgba(255,255,255,0.04)",
               borderColor: "rgba(255,255,255,0.08)",
               color: "#D8D2E7",
               fontSize: 14,
               fontWeight: 400,
+              lineHeight: 1.4,
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              minHeight: 40,
+              maxHeight: 120,
+              overflowY: "auto",
             }}
           />
 
