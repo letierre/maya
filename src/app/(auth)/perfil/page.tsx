@@ -111,7 +111,7 @@ export default function PerfilPage() {
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isFirstRender = useRef(true);
+  const userEdited = useRef(false);
   const autoSaveRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -141,7 +141,7 @@ export default function PerfilPage() {
   useEffect(() => { fetch("/api/admin").then(r => { if (r.ok) setIsAdmin(true); }).catch(() => {}); }, []);
 
   useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (!userEdited.current) return;
     clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(async () => {
       try {
@@ -285,7 +285,7 @@ export default function PerfilPage() {
           {/* Name */}
           <div style={{ marginBottom: 14 }}>
             {label11("Nome")}
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" style={inputStyle} />
+            <input value={name} onChange={(e) => { userEdited.current = true; setName(e.target.value); }} placeholder="Seu nome" style={inputStyle} />
           </div>
 
           {/* Gender */}
@@ -293,7 +293,7 @@ export default function PerfilPage() {
             {label11(t("pergunta_genero"))}
             <div style={{ display: "flex", gap: 8 }}>
               {GENDER_OPTIONS.map((opt) => (
-                <button key={opt.id} type="button" onClick={() => setGender(opt.id)}
+                <button key={opt.id} type="button" onClick={() => { userEdited.current = true; setGender(opt.id); }}
                   style={{
                     flex: 1, height: 40, borderRadius: 11, border: 0,
                     padding: "0 6px",
@@ -314,7 +314,7 @@ export default function PerfilPage() {
             {label11("Idioma")}
             <div style={{ display: "flex", gap: 8 }}>
               {LANG_OPTIONS.map((opt) => (
-                <button key={opt.id} type="button" onClick={() => setLanguage(opt.id)}
+                <button key={opt.id} type="button" onClick={() => { userEdited.current = true; setLanguage(opt.id); }}
                   style={{
                     flex: 1, height: 40, borderRadius: 11, border: 0,
                     cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700,

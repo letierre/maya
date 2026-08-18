@@ -30,7 +30,7 @@ export default function ConfiguracoesPage() {
   const [currency, setCurrencyState] = useState("BRL");
   const [loading,  setLoading]  = useState(true);
 
-  const isFirstRender = useRef(true);
+  const userEdited = useRef(false);
   const autoSaveRef   = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
@@ -51,10 +51,13 @@ export default function ConfiguracoesPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const toggle = (id: string) => setAnswers((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggle = (id: string) => {
+    userEdited.current = true;
+    setAnswers((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (!userEdited.current) return;
     clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(async () => {
       const enabled = [
@@ -196,7 +199,7 @@ export default function ConfiguracoesPage() {
                 <button
                   key={c.code}
                   type="button"
-                  onClick={() => setCurrencyState(c.code)}
+                  onClick={() => { userEdited.current = true; setCurrencyState(c.code); }}
                   style={{
                     padding: "8px 14px", borderRadius: 10, border: 0, cursor: "pointer",
                     fontFamily: "inherit", fontSize: 13, fontWeight: 700,
