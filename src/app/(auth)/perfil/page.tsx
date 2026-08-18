@@ -56,7 +56,6 @@ export default function PerfilPage() {
   const { t } = useTranslation();
 
   const [loading, setLoading] = useState(true);
-  const [saved, setSaved] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -143,7 +142,6 @@ export default function PerfilPage() {
 
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return; }
-    setSaved(false);
     clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(async () => {
       try {
@@ -152,7 +150,7 @@ export default function PerfilPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, gender, language }),
         });
-        if (res.ok) setSaved(true);
+        if (res.ok) toast.success("Alterações salvas");
       } catch { /* silent */ }
     }, 900);
     return () => clearTimeout(autoSaveRef.current);
@@ -227,9 +225,6 @@ export default function PerfilPage() {
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em", color: "#e0d6ff" }}>
             Perfil
           </h1>
-          {saved && (
-            <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "#7C5CFF", fontWeight: 600 }}>Salvo ✓</p>
-          )}
         </div>
 
         {/* Avatar + Name + Email */}
