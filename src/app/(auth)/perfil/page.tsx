@@ -6,19 +6,10 @@ import { toast } from "sonner";
 import { BellRing, BellOff, Shield } from "lucide-react";
 import { useTranslation } from "@/lib/useTranslation";
 import { LANG_OPTIONS } from "@/lib/i18n";
-import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { requestPushSubscription, hasPushPermission } from "@/lib/push-utils";
 import { LogoutButton } from "@/components/LogoutButton";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
 import { APP_VERSION } from "@/lib/version";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface Porque {
-  id: string;
-  text: string;
-  photoPath: string | null;
-}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -28,20 +19,10 @@ const GENDER_OPTIONS = [
   { id: "nao_dizer",  label: "Prefiro não dizer"},
 ] as const;
 
-const NAV_LINKS = [
-  { href: "/agenda",       label: "Agenda",         emoji: "📅" },
-  { href: "/diario",       label: "Diário",          emoji: "📖" },
-  { href: "/sono",         label: "Sono",            emoji: "😴" },
-  { href: "/nutricao",     label: "Nutrição",        emoji: "🥗" },
-  { href: "/financas",     label: "Finanças",        emoji: "💰" },
-  { href: "/historico",    label: "Histórico",       emoji: "📊" },
-  { href: "/configurações", label: "Configurações",  emoji: "⚙️" },
-];
-
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const card: React.CSSProperties = {
-  background: "#1a1530",
+  background: "oklch(0.16 0.012 270 / 0.7)",
   borderRadius: 20,
   border: "1px solid rgba(167,139,250,0.25)",
   padding: "20px 18px",
@@ -52,7 +33,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%", boxSizing: "border-box" as const,
   height: 44, borderRadius: 12,
   border: "1px solid rgba(167,139,250,0.25)",
-  background: "#0F0F14",
+  background: "oklch(.20 .015 270 / .5)",
   padding: "0 14px", fontFamily: "inherit",
   fontSize: 14, fontWeight: 500,
   color: "#e0d6ff", outline: "none",
@@ -68,74 +49,6 @@ const label11 = (text: string) => (
   </p>
 );
 
-// ── Porque Editor ──────────────────────────────────────────────────────────────
-
-function PorqueEditor({
-  pq, index, onUpdate, onRemove, uploading, onPhotoPick,
-}: {
-  pq: Porque; index: number;
-  onUpdate: (index: number, field: string, value: string | null) => void;
-  onRemove: (index: number) => void;
-  uploading: boolean;
-  onPhotoPick: (index: number, file: File) => void;
-}) {
-  const photoSrc = pq.photoPath ? photoUrl(pq.photoPath) : null;
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  return (
-    <div style={{
-      background: "#0F0F14", borderRadius: 14,
-      border: "1px solid rgba(167,139,250,0.15)",
-      padding: 14, marginBottom: 10,
-      display: "flex", gap: 14, alignItems: "flex-start",
-    }}>
-      <div
-        onClick={() => !uploading && fileRef.current?.click()}
-        style={{
-          width: 56, height: 56, borderRadius: 14,
-          background: "rgba(124,92,255,0.1)",
-          border: "1px solid rgba(167,139,250,0.2)",
-          overflow: "hidden", cursor: "pointer", flexShrink: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}
-      >
-        {photoSrc ? (
-          <img src={photoSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <span style={{ fontSize: 20 }}>📷</span>
-        )}
-        <input
-          ref={fileRef}
-          type="file" accept="image/*"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            if (e.target.files?.[0]) onPhotoPick(index, e.target.files[0]);
-            e.target.value = "";
-          }}
-        />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <input
-          value={pq.text}
-          onChange={(e) => onUpdate(index, "text", e.target.value)}
-          placeholder="Seu porquê..."
-          style={{ ...inputStyle, marginBottom: 8 }}
-        />
-        <button
-          type="button"
-          onClick={() => onRemove(index)}
-          style={{
-            border: 0, background: "none", cursor: "pointer",
-            fontSize: 12, color: "#FF5C5C", padding: 0, fontWeight: 600,
-          }}
-        >
-          Remover
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PerfilPage() {
@@ -150,8 +63,6 @@ export default function PerfilPage() {
   const [gender, setGender] = useState("nao_dizer");
   const [language, setLanguage] = useState("pt");
   const [uploading, setUploading] = useState(false);
-  const [porques, setPorques] = useState<Porque[]>([]);
-  const [savingPorques, setSavingPorques] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -208,14 +119,12 @@ export default function PerfilPage() {
     fetch("/api/profile")
       .then((r) => r.json())
       .then((data) => {
-        console.log("[PERFIL] Dados recebidos:", { avatar_url: data.avatar_url, created_at: data.created_at });
         if (data.name) setName(data.name);
         if (data.email) setEmail(data.email);
         // Store raw path for upload, compute display URL separately
         if (data.avatar_url) setAvatarUrl(data.avatar_url);
         if (data.gender) setGender(data.gender);
         if (data.language) setLanguage(data.language);
-        if (data.porques?.length > 0) setPorques(data.porques);
         if (data.created_at) {
           const d = new Date(data.created_at);
           if (!isNaN(d.getTime())) {
@@ -274,46 +183,6 @@ export default function PerfilPage() {
     setUploading(false);
   };
 
-  const handlePorquePhoto = async (index: number, file: File) => {
-    setUploading(true);
-    try {
-      const compressed = await compressImage(file);
-      const path = await uploadToCloud(compressed, "porques");
-      setPorques((prev) => prev.map((p, i) => i === index ? { ...p, photoPath: path } : p));
-      setSavingPorques(true);
-    } catch { toast.error("Erro ao enviar foto"); }
-    setUploading(false);
-  };
-
-  useEffect(() => {
-    if (!savingPorques) return;
-    const timer = setTimeout(async () => {
-      await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ porques }),
-      });
-      setSavingPorques(false);
-      toast.success("Porquê salvo!");
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [porques, savingPorques]);
-
-  const updatePorque = (index: number, field: string, value: string | null) => {
-    setPorques((prev) => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
-    setSavingPorques(true);
-  };
-
-  const addPorque = () => {
-    if (porques.length >= 5) return;
-    setPorques((prev) => [...prev, { id: crypto.randomUUID(), text: "", photoPath: null }]);
-  };
-
-  const removePorque = (index: number) => {
-    setPorques((prev) => prev.filter((_, i) => i !== index));
-    setSavingPorques(true);
-  };
-
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) { toast.error("Senhas não conferem"); return; }
     setChangingPassword(true);
@@ -333,7 +202,7 @@ export default function PerfilPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0F0F14" }}>
+      <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "oklch(0.12 0.012 270)" }}>
         <p style={{ color: "#A78BFA", fontSize: 13 }}>Carregando…</p>
       </div>
     );
@@ -346,8 +215,8 @@ export default function PerfilPage() {
   return (
     <div style={{
       minHeight: "100dvh",
-      background: "#0F0F14",
-      fontFamily: "Inter, system-ui, sans-serif",
+      background: "oklch(0.12 0.012 270)",
+      fontFamily: "var(--font-sans)",
       color: "#e0d6ff",
       paddingBottom: 100,
     }}>
@@ -465,30 +334,6 @@ export default function PerfilPage() {
           </div>
         </div>
 
-        {/* Navegar — access to all sections */}
-        <div style={card}>
-          {label11("Navegar")}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-            {NAV_LINKS.map((link) => (
-              <button
-                key={link.href}
-                type="button"
-                onClick={() => router.push(link.href)}
-                style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-                  padding: "12px 4px", borderRadius: 14,
-                  border: "1px solid rgba(167,139,250,0.15)",
-                  background: "#0F0F14",
-                  cursor: "pointer",
-                }}
-              >
-                <span style={{ fontSize: 20 }}>{link.emoji}</span>
-                <span style={{ fontSize: 10, fontWeight: 600, color: "#9e96b5" }}>{link.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Notificações Push */}
         <div style={card}>
           {label11("Notificações")}
@@ -553,26 +398,17 @@ export default function PerfilPage() {
           {pushState === "unsupported" && null}
         </div>
 
-        {/* Porquês */}
+        {/* Configurações */}
         <div style={card}>
-          {label11("Meus Porquês")}
-          {porques.map((pq, i) => (
-            <PorqueEditor key={pq.id} pq={pq} index={i}
-              onUpdate={updatePorque} onRemove={removePorque}
-              uploading={uploading} onPhotoPick={handlePorquePhoto}
-            />
-          ))}
-          {porques.length < 5 && (
-            <button type="button" onClick={addPorque}
-              style={{
-                width: "100%", padding: "12px", borderRadius: 12,
-                border: "1px dashed rgba(167,139,250,0.35)", background: "transparent",
-                cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600,
-                color: "#A78BFA",
-              }}>
-              + Adicionar porquê
-            </button>
-          )}
+          <button type="button" onClick={() => router.push("/configurações")}
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: "transparent", border: 0, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+            <span style={{ fontSize: 20 }}>⚙️</span>
+            <div style={{ flex: 1, textAlign: "left" }}>
+              <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#e0d6ff" }}>Configurações</span>
+              <span style={{ display: "block", fontSize: 11, color: "#9e96b5", marginTop: 1 }}>Moeda e perguntas do check-in</span>
+            </div>
+            <span style={{ color: "#9e96b5", fontSize: 18 }}>›</span>
+          </button>
         </div>
 
         {/* Password */}
@@ -604,15 +440,6 @@ export default function PerfilPage() {
               {changingPassword ? "Alterando…" : "Alterar senha"}
             </button>
           </div>
-        </div>
-
-        {/* Corrida */}
-        <div style={{ marginTop: 16 }}>
-          <button type="button" onClick={() => router.push("/corrida")}
-            style={{ width: "100%", padding: "14px 16px", borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "#1a1530", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, fontFamily: "inherit" }}>
-            <span style={{ fontSize: 18 }}>🏃</span>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#e0d6ff" }}>Corrida</span>
-          </button>
         </div>
 
         {/* Admin */}

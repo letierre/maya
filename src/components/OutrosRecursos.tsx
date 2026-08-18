@@ -120,6 +120,14 @@ export function OutrosRecursos() {
   const [readSub, setReadSub] = useState("");
   const [readReady, setReadReady] = useState(false);
 
+  const [porquePreview, setPorquePreview] = useState<string | null>(null);
+  const [porqueSub, setPorqueSub] = useState("");
+  const [porqueReady, setPorqueReady] = useState(false);
+
+  const [histPreview, setHistPreview] = useState<string | null>(null);
+  const [histSub, setHistSub] = useState("");
+  const [histReady, setHistReady] = useState(false);
+
   useEffect(() => {
     // Corrida — última sessão
     safeCachedFetch<RunningSession[]>("/api/running?limit=1")
@@ -156,6 +164,32 @@ export function OutrosRecursos() {
       })
       .catch(() => {})
       .finally(() => setReadReady(true));
+
+    // Porquês — contagem de "porquês" escritos
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((data) => {
+        const count = (data.porques ?? []).length;
+        if (count > 0) {
+          setPorquePreview(`${count} porquê${count !== 1 ? "s" : ""} escritos`);
+          setPorqueSub("O que te move");
+        } else {
+          setPorquePreview("Descubra seus porquês");
+          setPorqueSub("O que te move");
+        }
+      })
+      .catch(() => {})
+      .finally(() => setPorqueReady(true));
+
+    // Histórico — total de check-ins registrados
+    safeCachedFetch<{ date: string }[]>("/api/check-ins")
+      .then((list) => {
+        const count = (list ?? []).length;
+        setHistPreview(count > 0 ? `${count} check-in${count !== 1 ? "s" : ""}` : "Revise sua jornada");
+        setHistSub(count > 0 ? "Seu histórico completo" : "Comece hoje");
+      })
+      .catch(() => {})
+      .finally(() => setHistReady(true));
   }, []);
 
   return (
@@ -185,6 +219,24 @@ export function OutrosRecursos() {
           href="/leitura"
           accent="#A78BFA"
           ready={readReady}
+        />
+        <ResourceCard
+          emoji="💗"
+          label="Porquês"
+          preview={porquePreview}
+          sub={porqueSub}
+          href="/porques"
+          accent="#f472b6"
+          ready={porqueReady}
+        />
+        <ResourceCard
+          emoji="📊"
+          label="Histórico"
+          preview={histPreview}
+          sub={histSub}
+          href="/historico"
+          accent="#38bdf8"
+          ready={histReady}
         />
       </div>
     </div>

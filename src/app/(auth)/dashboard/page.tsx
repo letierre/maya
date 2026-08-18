@@ -279,9 +279,11 @@ export default function DashboardPage() {
         </p>
         <div className="grid grid-cols-2 gap-2">
           <DiarioPreview loading={loading} />
+          <SonoPreview loading={loading} recentSleep={recentSleep} />
+          <NutricaoPreview loading={loading} />
+          <FinancasPreview loading={loading} todaySpending={todaySpending} currency={currency} />
           <MetasPreview loading={loading} />
           <PlanejamentoPreview loading={loading} todayTasks={todayTasks} />
-          <NutricaoPreview loading={loading} />
         </div>
       </div>
 
@@ -367,6 +369,55 @@ function DiarioPreview({ loading }: { loading: boolean }) {
       href="/diario"
       accent="#5EEAD4"
       loading={loading || !ready}
+    />
+  );
+}
+
+function SonoPreview({ loading, recentSleep }: { loading: boolean; recentSleep: SleepLog | null }) {
+  const hrs = recentSleep?.duration_min
+    ? Math.floor((recentSleep.duration_min / 60) * 10) / 10
+    : null;
+  const q = recentSleep?.quality ?? null;
+  const qualityLabel =
+    q == null ? null
+    : q >= 5 ? "Ótimo"
+    : q >= 4 ? "Bom"
+    : q >= 3 ? "Ok"
+    : q >= 2 ? "Ruim"
+    : "Péssimo";
+
+  return (
+    <ModuloPreviewCard
+      emoji="😴"
+      label="Sono"
+      preview={hrs ? `${hrs}h dormidas` : "Registre seu sono"}
+      sub={qualityLabel ? `Qualidade: ${qualityLabel}` : "Como dormiu ontem?"}
+      href="/sono"
+      accent="#8b5cf6"
+      loading={loading}
+    />
+  );
+}
+
+const CURRENCY_SYMBOL: Record<string, string> = {
+  BRL: "R$", USD: "$", EUR: "€", GBP: "£", ARS: "$", CLP: "$", MXN: "$",
+};
+
+function FinancasPreview({ loading, todaySpending, currency }: {
+  loading: boolean;
+  todaySpending: number | null;
+  currency: string;
+}) {
+  const sym = CURRENCY_SYMBOL[currency] ?? "R$";
+  return (
+    <ModuloPreviewCard
+      emoji="💰"
+      label="Finanças"
+      preview={todaySpending != null ? `${sym} ${todaySpending.toFixed(2)} hoje` : "Sem gastos hoje"}
+      sub={todaySpending != null ? "Gastos de hoje" : "Registre suas despesas"}
+      href="/financas"
+      accent="#fbbf24"
+      loading={loading}
     />
   );
 }
