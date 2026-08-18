@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useTranslation } from "@/lib/useTranslation";
 
 const CURRENCIES = [
@@ -28,7 +29,6 @@ export default function ConfiguracoesPage() {
   const [answers,  setAnswers]  = useState<Record<string, boolean>>({});
   const [currency, setCurrencyState] = useState("BRL");
   const [loading,  setLoading]  = useState(true);
-  const [saved,    setSaved]    = useState(false);
 
   const isFirstRender = useRef(true);
   const autoSaveRef   = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -55,7 +55,6 @@ export default function ConfiguracoesPage() {
 
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return; }
-    setSaved(false);
     clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(async () => {
       const enabled = [
@@ -73,7 +72,7 @@ export default function ConfiguracoesPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ enabled_questions: enabled, context: { ...answers, currency } }),
         });
-        if (res.ok) setSaved(true);
+        if (res.ok) toast.success("Alterações salvas");
       } catch { /* silent */ }
     }, 900);
     return () => clearTimeout(autoSaveRef.current);
@@ -83,7 +82,7 @@ export default function ConfiguracoesPage() {
     return (
       <div style={{
         minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "#0F0F14",
+        background: "oklch(0.12 0.012 270)",
       }}>
         <p style={{ color: "#A78BFA", fontSize: 13 }}>Carregando…</p>
       </div>
@@ -93,8 +92,8 @@ export default function ConfiguracoesPage() {
   return (
     <div style={{
       minHeight: "100dvh",
-      background: "#0F0F14",
-      fontFamily: "Inter, system-ui, sans-serif",
+      background: "oklch(0.12 0.012 270)",
+      fontFamily: "var(--font-sans)",
       color: "#e0d6ff",
       paddingBottom: 100,
     }}>
@@ -127,18 +126,13 @@ export default function ConfiguracoesPage() {
               {t("config_subtitle")}
             </p>
           </div>
-          {saved && (
-            <span style={{ fontSize: 11.5, color: "#7C5CFF", fontWeight: 600, flexShrink: 0 }}>
-              Salvo ✓
-            </span>
-          )}
         </div>
 
         {/* Context questions */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {CONTEXT_QUESTIONS.map((q) => (
             <div key={q.id} style={{
-              background: "#1a1530",
+              background: "oklch(0.16 0.012 270 / 0.7)",
               borderRadius: 20,
               border: "1px solid rgba(167,139,250,0.25)",
               padding: "18px 18px 16px",
