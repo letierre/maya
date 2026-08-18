@@ -169,8 +169,8 @@ export default function ConfiguracoesPage() {
                     cursor: "pointer", fontFamily: "inherit",
                     fontSize: 13, fontWeight: 700,
                     transition: "all .15s ease",
-                    background: !answers[q.id] ? "rgba(255,92,92,0.15)" : "#1e1840",
-                    color: !answers[q.id] ? "#FF5C5C" : "#7C5CFF",
+                    background: !answers[q.id] ? "#FF5C5C" : "#1e1840",
+                    color: !answers[q.id] ? "#fff" : "#7C5CFF",
                   }}
                 >
                   {t("nao")}
