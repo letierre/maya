@@ -5,16 +5,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/useTranslation";
 
-const CURRENCIES = [
-  { code: "BRL", label: "Real (R$)" },
-  { code: "USD", label: "Dollar ($)" },
-  { code: "EUR", label: "Euro (€)" },
-  { code: "GBP", label: "Pound (£)" },
-  { code: "ARS", label: "Peso AR" },
-  { code: "CLP", label: "Peso CL" },
-  { code: "MXN", label: "Peso MX" },
-];
-
 const CONTEXT_QUESTIONS = [
   { id: "has_medication",          qKey: "q_medicacao",   dKey: "q_medicacao_desc"   },
   { id: "has_faith",               qKey: "q_fe",          dKey: "q_fe_desc"          },
@@ -27,7 +17,6 @@ export default function ConfiguracoesPage() {
   const { t }  = useTranslation();
 
   const [answers,  setAnswers]  = useState<Record<string, boolean>>({});
-  const [currency, setCurrencyState] = useState("BRL");
   const [loading,  setLoading]  = useState(true);
 
   const userEdited = useRef(false);
@@ -45,7 +34,6 @@ export default function ConfiguracoesPage() {
           track_suicidal_thoughts: true,
           ...ctx,
         });
-        if (ctx.currency) setCurrencyState(ctx.currency);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -73,13 +61,13 @@ export default function ConfiguracoesPage() {
         const res = await fetch("/api/preferences", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ enabled_questions: enabled, context: { ...answers, currency } }),
+          body: JSON.stringify({ enabled_questions: enabled, context: { ...answers } }),
         });
         if (res.ok) toast.success("Alterações salvas");
       } catch { /* silent */ }
     }, 900);
     return () => clearTimeout(autoSaveRef.current);
-  }, [answers, currency]);
+  }, [answers]);
 
   if (loading) {
     return (
@@ -178,41 +166,6 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Currency */}
-        <div style={{ marginTop: 10 }}>
-          <div style={{
-            background: "#1a1530",
-            borderRadius: 20,
-            border: "1px solid rgba(167,139,250,0.25)",
-            padding: "18px 18px 16px",
-          }}>
-            <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>
-              {t("fin_moeda")}
-            </p>
-            <p style={{ margin: "0 0 14px", fontSize: 13, color: "#9e96b5", lineHeight: 1.5 }}>
-              {t("fin_moeda_desc")}
-            </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {CURRENCIES.map((c) => (
-                <button
-                  key={c.code}
-                  type="button"
-                  onClick={() => { userEdited.current = true; setCurrencyState(c.code); }}
-                  style={{
-                    padding: "8px 14px", borderRadius: 10, border: 0, cursor: "pointer",
-                    fontFamily: "inherit", fontSize: 13, fontWeight: 700,
-                    transition: "all .15s ease",
-                    background: currency === c.code ? "#7C5CFF" : "#1e1840",
-                    color: currency === c.code ? "#fff" : "#7C5CFF",
-                  }}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
       </div>

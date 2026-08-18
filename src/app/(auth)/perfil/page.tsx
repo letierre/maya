@@ -401,7 +401,7 @@ export default function PerfilPage() {
             <span style={{ fontSize: 20 }}>⚙️</span>
             <div style={{ flex: 1, textAlign: "left" }}>
               <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#e0d6ff" }}>Configurações</span>
-              <span style={{ display: "block", fontSize: 11, color: "#9e96b5", marginTop: 1 }}>Moeda e perguntas do check-in</span>
+              <span style={{ display: "block", fontSize: 11, color: "#9e96b5", marginTop: 1 }}>Perguntas do check-in</span>
             </div>
             <span style={{ color: "#9e96b5", fontSize: 18 }}>›</span>
           </button>

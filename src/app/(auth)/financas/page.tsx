@@ -13,6 +13,7 @@ import { TransactionModal } from "@/components/financas/TransactionModal";
 import { BudgetModal } from "@/components/financas/BudgetModal";
 import { AddTypeSheet } from "@/components/financas/AddTypeSheet";
 import { CategoryManager } from "@/components/financas/CategoryManager";
+import { FinanceSettingsSheet } from "@/components/financas/FinanceSettingsSheet";
 
 // ── Currency ──────────────────────────────────────────────────────────────────
 
@@ -169,6 +170,7 @@ export default function FinancasPage() {
   const [userCategories, setUserCategories] = useState<UserCategory[]>([]);
   const [hiddenCatIds, setHiddenCatIds] = useState<string[]>([]);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [monthOffset, setMonthOffset] = useState(0);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [budgets, setBudgets] = useState<FinancialBudget[]>([]);
@@ -224,6 +226,22 @@ export default function FinancasPage() {
       toast.error("Erro ao excluir transação");
     }
     setDeleteId(null);
+  };
+
+  const selectCurrency = async (code: string) => {
+    setCurrency(code);
+    try {
+      const prefsRes = await fetch("/api/preferences").then((r) => r.json());
+      const ctx = prefsRes.context ?? {};
+      await fetch("/api/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ context: { ...ctx, currency: code } }),
+      });
+      toast.success("Moeda atualizada");
+    } catch {
+      toast.error("Erro ao salvar moeda");
+    }
   };
 
   // ── Computed ──────────────────────────────────────────────────────────────
@@ -293,11 +311,11 @@ export default function FinancasPage() {
             }}>
               <ChevronRight size={17} color="#fff" />
             </button>
-            <button type="button" onClick={() => setShowCategoryManager(true)} style={{
+            <button type="button" onClick={() => setShowSettings(true)} style={{
               width: 36, height: 36, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer",
               background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center",
               backdropFilter: "blur(10px)",
-            }} title="Gerenciar categorias">
+            }} title="Configurações">
               <Settings size={16} color="#fff" />
             </button>
           </div>
@@ -806,6 +824,15 @@ export default function FinancasPage() {
             setEditTx(null);
             setShowCategoryManager(true);
           }}
+        />
+      )}
+
+      {showSettings && (
+        <FinanceSettingsSheet
+          currency={currency}
+          onSelectCurrency={selectCurrency}
+          onOpenCategories={() => { setShowSettings(false); setShowCategoryManager(true); }}
+          onClose={() => setShowSettings(false)}
         />
       )}
 
