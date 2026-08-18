@@ -1022,9 +1022,11 @@ export default function MayaChatPage() {
               background: "var(--maya-primary)",
               boxShadow: "0 4px 14px rgba(124,92,255,0.35)",
             }}
-            onPointerDown={(e) => {
-              e.preventDefault();
-              // Synchronously refocus textarea — keyboard never leaves on iOS
+            onClick={() => {
+              // Refocus synchronously inside the tap/click gesture — this is the
+              // only timing iOS Safari accepts to (re)open the keyboard. No
+              // preventDefault: on Safari 17+ canceling pointer/mouse down can
+              // itself dismiss the keyboard.
               textareaRef.current?.focus();
               sendMessage();
             }}
