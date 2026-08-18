@@ -295,13 +295,14 @@ export default function PerfilPage() {
               {GENDER_OPTIONS.map((opt) => (
                 <button key={opt.id} type="button" onClick={() => { userEdited.current = true; setGender(opt.id); }}
                   style={{
-                    flex: 1, height: 40, borderRadius: 11, border: 0,
-                    padding: "0 6px",
+                    flex: 1, minHeight: 40, borderRadius: 11, border: 0,
+                    padding: "4px 6px",
                     cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700,
                     transition: "all .15s ease",
                     background: gender === opt.id ? "#7C5CFF" : "#1e1840",
                     color: gender === opt.id ? "#fff" : "#7C5CFF",
-                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    textAlign: "center", lineHeight: 1.2,
                   }}>
                   {opt.label}
                 </button>

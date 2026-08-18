@@ -105,7 +105,7 @@ export default function ConfiguracoesPage() {
         {/* Header */}
         <div style={{
           display: "flex", alignItems: "center", gap: 12,
-          padding: "56px 0 28px",
+          padding: "32px 0 24px",
         }}>
           <button
             type="button"
