@@ -146,29 +146,16 @@ export default function NovoDiarioPage() {
         r2.insertNode(marker);
         const markerRect = marker.getBoundingClientRect();
         marker.remove();
-        if (markerRect.top > 0) {
-          requestAnimationFrame(() => {
-            const menuH = 260;
-            const menuW = 220;
-            const screenH = window.innerHeight;
-            const screenW = window.innerWidth;
-            // Calculate best position: prefer below, flip above if needed
-            const spaceBelow = screenH - markerRect.bottom;
-            const spaceAbove = markerRect.top;
-            let top: number;
-            if (spaceBelow >= menuH + 16) {
-              top = markerRect.bottom + 6; // fits below
-            } else {
-              top = markerRect.top - menuH - 6; // flip above
-            }
-            // Clamp within safe area
-            if (top < 70) top = 70;
-            if (top + menuH > screenH - 20) top = screenH - menuH - 20;
-            let left = markerRect.left;
-            if (left + menuW > screenW - 12) left = screenW - menuW - 12;
-            if (left < 8) left = 8;
-            setSlashPos({ x: left, y: top });
-          });
+        {
+          const menuH = 260;
+          const menuW = 220;
+          const screenH = window.innerHeight;
+          const screenW = window.innerWidth;
+          const spaceBelow = screenH - markerRect.bottom;
+          let top = spaceBelow >= menuH + 16 ? markerRect.bottom + 6 : markerRect.top - menuH - 6;
+          top = Math.max(8, Math.min(top, screenH - menuH - 8));
+          const left = Math.max(8, Math.min(markerRect.left, screenW - menuW - 8));
+          setSlashPos({ x: left, y: top });
         }
         return;
       }
