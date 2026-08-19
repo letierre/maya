@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/useTranslation";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
-import { ChevronLeft, ChevronDown, Plus, X, ArrowRight, Camera } from "lucide-react";
+import { ChevronLeft, ChevronDown, Plus, X, ArrowRight, Camera, Download } from "lucide-react";
 
 const MOODS = [1, 2, 3, 4, 5] as const;
 const MOOD_EMOJI: Record<number, string> = { 1: "😔", 2: "😕", 3: "😐", 4: "🙂", 5: "😊" };
@@ -285,8 +285,8 @@ export default function NovoDiarioPage() {
       if (url) {
         // Volta ao ponto onde o "/foto" estava (o file picker desfoca o editor)
         restoreSelection(photoInsertPos.current);
-        // Foto quadrada, inline (mesma linha do texto), clicável para ampliar
-        insertHtmlAtCursor(`<span contenteditable="false" style="display:inline-block;vertical-align:middle;margin:0 2px"><img src="${url}" data-photo-url="${url}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:10px;display:block;cursor:pointer" /></span>&#8203;`);
+        // Foto pequena, inline (mesma linha do texto), alinhada pelo topo — como um anexo discreto
+        insertHtmlAtCursor(`<span contenteditable="false" style="display:inline-block;vertical-align:text-top;margin:0 2px"><img src="${url}" data-photo-url="${url}" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:8px;display:block;cursor:pointer" /></span>&#8203;`);
       }
     } catch { toast.error("Erro ao inserir foto"); }
   }, []);
@@ -435,6 +435,19 @@ export default function NovoDiarioPage() {
       const url = img.getAttribute("data-photo-url");
       if (url) setLightboxUrl(url);
     }
+  };
+
+  const handleDownloadPhoto = async (url: string) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `foto-diario-${entryDate}.jpg`;
+      a.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch { toast.error("Erro ao baixar imagem"); }
   };
 
   return (
@@ -708,6 +721,22 @@ export default function NovoDiarioPage() {
             padding: 24, cursor: "zoom-out",
           }}>
           <img src={lightboxUrl} alt="" style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 12, objectFit: "contain" }} />
+          <div style={{ position: "fixed", top: 16, right: 16, display: "flex", gap: 8 }}>
+            <button type="button" onClick={(e) => { e.stopPropagation(); handleDownloadPhoto(lightboxUrl); }}
+              style={{
+                width: 40, height: 40, borderRadius: "50%", background: "rgba(255,255,255,0.12)", border: 0,
+                color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+              }}>
+              <Download size={18} />
+            </button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); setLightboxUrl(null); }}
+              style={{
+                width: 40, height: 40, borderRadius: "50%", background: "rgba(255,255,255,0.12)", border: 0,
+                color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+              }}>
+              <X size={18} />
+            </button>
+          </div>
         </div>
       )}
     </div>
