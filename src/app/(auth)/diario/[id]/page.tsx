@@ -42,6 +42,8 @@ export default function DiarioEntryPage() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [pinVerified, setPinVerified] = useState(false);
   const [pinInput, setPinInput] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const dateInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const contentEditRef = useRef<HTMLDivElement>(null);
@@ -85,9 +87,9 @@ export default function DiarioEntryPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm(t("confirmar_deletar"))) return;
+    setDeleting(true);
     const res = await fetch(`/api/diary/${id}`, { method: "DELETE" });
-    if (!res.ok) { toast.error(t("erro_deletar")); return; }
+    if (!res.ok) { toast.error(t("erro_deletar")); setDeleting(false); return; }
     toast.success(t("entrada_deletada"));
     router.push("/diario"); router.refresh();
   };
@@ -171,11 +173,11 @@ export default function DiarioEntryPage() {
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 20px" }}>
 
         {/* Top bar */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0 20px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0 20px", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
             <button type="button" onClick={() => router.push("/diario")}
               style={{
-                width: 36, height: 36, borderRadius: "50%",
+                width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
                 background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 cursor: "pointer", color: "#A78BFA",
@@ -183,35 +185,37 @@ export default function DiarioEntryPage() {
               <ArrowLeft size={18} />
             </button>
             {editing ? (
-              <button type="button" onClick={openDatePicker}
-                style={{ background: "none", border: 0, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
-                <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>{formatDisplayDate(entryDate)}</h1>
-              </button>
+              <div style={{ position: "relative", minWidth: 0 }}>
+                <button type="button" onClick={openDatePicker}
+                  style={{ background: "none", border: 0, cursor: "pointer", padding: 0, fontFamily: "inherit", display: "block", maxWidth: "100%" }}>
+                  <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#e0d6ff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{formatDisplayDate(entryDate)}</h1>
+                </button>
+                <input type="date" ref={dateInputRef} value={entryDate}
+                  onChange={(e) => setEntryDate(e.target.value)}
+                  style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }} />
+              </div>
             ) : (
-              <div>
-                <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>
+              <div style={{ minWidth: 0 }}>
+                <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#e0d6ff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {entry.title || t("diario_title")}
                 </h1>
                 <p style={{ margin: "2px 0 0", fontSize: 13, color: "#9e96b5" }}>{formatDisplayDate(entry.date)}</p>
               </div>
             )}
           </div>
-          <input type="date" ref={dateInputRef} value={entryDate}
-            onChange={(e) => setEntryDate(e.target.value)}
-            style={{ position: "absolute", top: 0, left: 0, opacity: 0, width: 180, height: 28, cursor: "pointer" }} />
 
           {editing ? (
             <Button onClick={handleSave} disabled={saving}
-              style={{ height: 38, paddingInline: 18, borderRadius: 12, background: "#7C5CFF", border: 0, color: "#fff", fontSize: 13, fontWeight: 600 }}>
+              style={{ height: 38, paddingInline: 18, borderRadius: 12, background: "#7C5CFF", border: 0, color: "#fff", fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
               {saving ? t("salvando") : t("salvar")}
             </Button>
           ) : (
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
               <Button onClick={() => setEditing(true)}
                 style={{ height: 34, paddingInline: 14, borderRadius: 10, background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", color: "#e0d6ff", fontSize: 12, fontWeight: 600 }}>
                 {t("editar")}
               </Button>
-              <Button onClick={handleDelete}
+              <Button onClick={() => setDeleteConfirmOpen(true)}
                 style={{ height: 34, paddingInline: 14, borderRadius: 10, background: "rgba(255,92,92,0.15)", border: 0, color: "#FF5C5C", fontSize: 12, fontWeight: 600 }}>
                 {t("deletar")}
               </Button>
@@ -397,6 +401,29 @@ export default function DiarioEntryPage() {
             style={{ position: "absolute", top: 16, right: 16, width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.15)", border: 0, color: "#fff", fontSize: 18, cursor: "pointer" }}>
             ✕
           </button>
+        </div>
+      )}
+
+      {/* Confirmação de exclusão */}
+      {deleteConfirmOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ width: "100%", maxWidth: 300, background: "#1a1530", borderRadius: 24, padding: 28, border: "1px solid rgba(255,92,92,0.25)", textAlign: "center" }}>
+            <span style={{ fontSize: 40 }}>🗑️</span>
+            <h3 style={{ margin: "12px 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>Excluir registro?</h3>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: "#9e96b5", lineHeight: 1.5 }}>
+              {entry.title || formatDisplayDate(entry.date)} será apagado permanentemente. Essa ação não pode ser desfeita.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="button" onClick={() => setDeleteConfirmOpen(false)} disabled={deleting}
+                style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                Cancelar
+              </button>
+              <button type="button" onClick={handleDelete} disabled={deleting}
+                style={{ flex: 1, padding: 12, borderRadius: 12, border: 0, background: "#FF5C5C", color: "#fff", fontSize: 14, fontWeight: 700, cursor: deleting ? "default" : "pointer", fontFamily: "inherit", opacity: deleting ? 0.6 : 1 }}>
+                {deleting ? "Excluindo…" : "Excluir"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       </div>
