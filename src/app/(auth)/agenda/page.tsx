@@ -109,9 +109,10 @@ function AgendaPage() {
     if (mode === "dia") url.searchParams.delete("tab");
     else url.searchParams.set("tab", mode);
     window.history.replaceState({}, "", url.toString());
-    // Refresh data when switching views
+    // Refresh data when switching views (garante que criações em qualquer aba apareçam sem F5)
     if (mode === "dia" || mode === "semana" || mode === "lista") {
       fetchItems(selectedDate);
+      refreshWeekData(selectedDate);
     }
   };
   const [items, setItems] = useState<AgendaItem[]>([]);
@@ -341,37 +342,40 @@ function AgendaPage() {
   useEffect(() => { fetchItems(selectedDate); }, [selectedDate, fetchItems]);
 
   // Fetch weekly plan tasks + goals + pedras for the current week
-  useEffect(() => {
+  const refreshWeekData = useCallback(async (date: string) => {
     setWeekLoading(true);
-    Promise.all([
-      // Fetch current + 3 past weeks for overdue/open detection
-      (async () => {
-        const allTasks: any[] = [];
-        for (let offset = 0; offset <= 3; offset++) {
-          const mon = new Date(selectedDate + "T12:00:00");
-          mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7) - (offset * 7));
-          const ws = `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
-          try {
-            const res = await fetch(`/api/weekly-plans?week=${ws}`);
-            if (res.ok) {
-              const data = await res.json();
-              if (data.current?.weekly_tasks) {
-                allTasks.push(...data.current.weekly_tasks.map((t: any) => ({ ...t, _weekStart: ws })));
+    try {
+      const [, goalsData] = await Promise.all([
+        // Fetch current + 3 past weeks for overdue/open detection
+        (async () => {
+          const allTasks: any[] = [];
+          for (let offset = 0; offset <= 3; offset++) {
+            const mon = new Date(date + "T12:00:00");
+            mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7) - (offset * 7));
+            const ws = `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
+            try {
+              const res = await fetch(`/api/weekly-plans?week=${ws}`);
+              if (res.ok) {
+                const data = await res.json();
+                if (data.current?.weekly_tasks) {
+                  allTasks.push(...data.current.weekly_tasks.map((t: any) => ({ ...t, _weekStart: ws })));
+                }
               }
-            }
-          } catch {}
-        }
-        setAllWeekTasks(allTasks);
-        return allTasks;
-      })(),
-      fetch("/api/goals").then(r => r.json()).catch(() => []),
-    ]).then(([planData, goalsData]) => {
-      // Active goals
+            } catch {}
+          }
+          setAllWeekTasks(allTasks);
+          return allTasks;
+        })(),
+        fetch("/api/goals").then(r => r.json()).catch(() => []),
+      ]);
       if (Array.isArray(goalsData)) {
         setActiveGoals(goalsData.filter((g: any) => g.status === "ativa"));
       }
-    }).catch(() => {}).finally(() => setWeekLoading(false));
-  }, [selectedDate]);
+    } catch { /* silent */ }
+    setWeekLoading(false);
+  }, []);
+
+  useEffect(() => { refreshWeekData(selectedDate); }, [selectedDate, refreshWeekData]);
 
   // Weekly plan tasks filtered for the selected day
   const selectedDayOfWeek = useMemo(() => {
