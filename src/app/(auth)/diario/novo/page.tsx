@@ -25,6 +25,56 @@ function formatLongDate(dateStr: string): string {
   return `${wk.charAt(0).toUpperCase() + wk.slice(1)}, ${day} de ${month}`;
 }
 
+/**
+ * Captura o retângulo do cursor (posição na tela) usando um marcador temporário.
+ *
+ * `Range.getBoundingClientRect()` é não-confiável para range colapsado (caret)
+ * no Safari iOS — retorna zeros. Medir um ELEMENTO `<span>` inserido no cursor é
+ * confiável em todos os navegadores. Retorna o `DOMRect` do cursor, ou `null`
+ * quando não é possível medir.
+ */
+function getCaretRect(): DOMRect | null {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  const range = sel.getRangeAt(0);
+
+  // Principal: mede um marcador (elemento) — Range.getBoundingClientRect()
+  // é não-confiável em range colapsado no iOS (retorna zeros).
+  try {
+    const marker = document.createElement("span");
+    marker.setAttribute("aria-hidden", "true");
+    marker.style.display = "inline-block";
+    marker.style.width = "1px";
+    marker.style.height = "16px";
+    marker.style.visibility = "hidden";
+    marker.textContent = "​";
+
+    const clone = range.cloneRange();
+    clone.collapse(false);
+    clone.insertNode(marker);
+
+    // Força o reflow antes de medir (algumas versões do iOS precisam disso).
+    void marker.offsetHeight;
+    const rect = marker.getBoundingClientRect();
+
+    // Remove o marcador e junta de volta nós de texto que tenham sido divididos.
+    const parent = marker.parentNode;
+    marker.remove();
+    if (parent) parent.normalize();
+
+    if (rect && (rect.top || rect.bottom)) {
+      return rect;
+    }
+  } catch {
+    /* segue para o fallback */
+  }
+
+  // Último recurso: rect nativo do range (desktop/Chrome/Android).
+  const native = range.getBoundingClientRect();
+  if (native && (native.top || native.bottom || native.height)) return native;
+  return null;
+}
+
 export default function NovoDiarioPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -39,6 +89,7 @@ export default function NovoDiarioPage() {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
+  const contentWrapperRef = useRef<HTMLDivElement>(null);
 
   // ── Slash commands ──────────────────────────────────────────
   const [slashOpen, setSlashOpen] = useState(false);
@@ -133,34 +184,27 @@ export default function NovoDiarioPage() {
       if (!query.includes(" ") && !query.includes("\n")) {
         setSlashQuery(query);
         slashSavedSel.current = { node, offset: slashIdx };
-        // Posiciona o menu junto ao cursor (coordenadas do viewport)
+        // Posiciona o menu junto à linha que está sendo editada.
+        // Usa coordenadas RELATIVAS ao wrapper (posição absoluta), o que é imune
+        // a bugs de coordenadas de viewport/scroll aninhado no iOS.
+        const caret = getCaretRect();
+        const wrapper = contentWrapperRef.current;
+        const menuH = 260;
+        const menuW = 220;
         let top = 80;
         let left = 16;
-        try {
-          let caret = range.getBoundingClientRect();
-          // Safari devolve retângulo zerado em range colapsado: usa marcador temporário
-          if (!caret.height && !caret.top && !caret.bottom) {
-            const marker = document.createElement("span");
-            marker.style.display = "inline-block";
-            marker.style.width = "1px";
-            marker.style.height = "1em";
-            marker.textContent = "​";
-            const clone = range.cloneRange();
-            clone.collapse(false);
-            clone.insertNode(marker);
-            const m = marker.getBoundingClientRect();
-            marker.remove();
-            caret = m;
-          }
-          const menuH = 260;
-          const menuW = 220;
-          const screenH = window.innerHeight;
-          const screenW = window.innerWidth;
-          const spaceBelow = screenH - caret.bottom;
-          top = spaceBelow >= menuH + 16 ? caret.bottom + 6 : caret.top - menuH - 6;
-          top = Math.max(8, Math.min(top, screenH - menuH - 8));
-          left = Math.max(8, Math.min(caret.left, screenW - menuW - 8));
-        } catch { /* mantém posição de fallback */ }
+        if (caret && wrapper) {
+          const wrapperRect = wrapper.getBoundingClientRect();
+          // Diferença de dois rects de ELEMENTO cancela qualquer offset de scroll.
+          const caretLeft = caret.left - wrapperRect.left;
+          const belowTop = caret.bottom - wrapperRect.top + 6; // logo abaixo da linha
+          const viewH = window.visualViewport?.height ?? window.innerHeight;
+          const spaceBelow = viewH - caret.bottom;
+          // Vira para cima quando o teclado não deixa espaço abaixo da linha.
+          top = spaceBelow >= menuH + 12 ? belowTop : caret.top - wrapperRect.top - menuH - 6;
+          top = Math.max(8, top);
+          left = Math.max(8, Math.min(caretLeft, wrapperRect.width - menuW - 8));
+        }
         setSlashPos({ x: left, y: top });
         setSlashOpen(true);
         return;
@@ -398,7 +442,7 @@ export default function NovoDiarioPage() {
       </div>
 
       {/* Content */}
-      <div style={{ padding: "0 24px" }}>
+      <div ref={contentWrapperRef} style={{ padding: "0 24px", position: "relative" }}>
         <div
           ref={contentRef}
           contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true"
@@ -413,7 +457,7 @@ export default function NovoDiarioPage() {
         {/* Slash command menu */}
         {slashOpen && (
           <div style={{
-            position: "fixed", left: Math.min(slashPos.x, typeof window !== "undefined" ? window.innerWidth - 220 : 200), top: slashPos.y, zIndex: 50,
+            position: "absolute", left: slashPos.x, top: slashPos.y, zIndex: 50,
             background: "#1a1530", border: "1px solid rgba(167,139,250,0.25)", borderRadius: 14,
             padding: 4, boxShadow: "0 8px 24px rgba(0,0,0,0.5)", minWidth: 200, maxHeight: 260, overflowY: "auto",
           }}>
