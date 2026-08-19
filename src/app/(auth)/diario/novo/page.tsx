@@ -98,6 +98,31 @@ function computeMenuPos(wrapper: HTMLElement | null, menuH: number, menuW: numbe
   return { x, y };
 }
 
+/**
+ * Mantém o cursor visível acima do teclado. Se a linha atual cair atrás do
+ * teclado (abaixo do fim da área visível), rola o mínimo necessário para
+ * trazê-la de volta. Não interfere quando o usuário já rolou o cursor à vista.
+ */
+let keepCaretRaf = 0;
+function keepCaretAboveKeyboard() {
+  keepCaretRaf = 0;
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const caret = getCaretRect();
+  if (!caret) return;
+  const viewH = vv.height;
+  // 80px cobre a barra inferior fixa (~65px) + folga, para a linha não ficar
+  // escondida atrás dela (que fica logo acima do teclado).
+  const MARGIN = 80;
+  if (caret.bottom > viewH - MARGIN) {
+    window.scrollBy(0, caret.bottom - (viewH - MARGIN));
+  }
+}
+function scheduleKeepCaretAboveKeyboard() {
+  if (keepCaretRaf) return; // já agendado para este frame
+  keepCaretRaf = requestAnimationFrame(keepCaretAboveKeyboard);
+}
+
 export default function NovoDiarioPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -187,6 +212,7 @@ export default function NovoDiarioPage() {
   const handleContentInput = (e: React.FormEvent<HTMLDivElement>) => {
     const el = e.target as HTMLElement;
     setContent(el.innerText);
+    scheduleKeepCaretAboveKeyboard();
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount) { setSlashOpen(false); return; }
     const range = sel.getRangeAt(0);
@@ -211,6 +237,9 @@ export default function NovoDiarioPage() {
       if (!query.includes(" ") && !query.includes("\n")) {
         setSlashQuery(query);
         slashSavedSel.current = { node, offset: slashIdx };
+        // Fecha outros menus flutuantes antes de abrir o de recursos (nunca dois ao mesmo tempo)
+        setEmojiPickerOpen(false);
+        setLinkSearchOpen(false);
         // Posiciona o menu junto à linha que está sendo editada.
         const { x: left, y: top } = computeMenuPos(contentWrapperRef.current, 260, 220);
         setSlashPos({ x: left, y: top });
