@@ -134,7 +134,8 @@ export default function NovoDiarioPage() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const dateInputRef = useRef<HTMLInputElement>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  const stripPhotoInputRef = useRef<HTMLInputElement>(null);
+  const slashPhotoInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const contentWrapperRef = useRef<HTMLDivElement>(null);
@@ -148,6 +149,8 @@ export default function NovoDiarioPage() {
   const linkInputRef = useRef<HTMLInputElement>(null);
   const slashSavedSel = useRef<{ node: Node | null; offset: number }>({ node: null, offset: 0 });
   const linkInsertPos = useRef<{ node: Node; offset: number } | null>(null);
+  const photoInsertPos = useRef<{ node: Node; offset: number } | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const [linkSearchOpen, setLinkSearchOpen] = useState(false);
   const [linkQuery, setLinkQuery] = useState("");
@@ -173,7 +176,15 @@ export default function NovoDiarioPage() {
   };
 
   const SLASH_COMMANDS = [
-    { id: "foto", label: "Inserir foto", emoji: "📷", action: () => photoInputRef.current?.click() },
+    { id: "foto", label: "Inserir foto", emoji: "📷", action: () => {
+      // Salva o ponto do cursor (após remover "/foto") para inserir aqui depois
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const r = sel.getRangeAt(0);
+        photoInsertPos.current = { node: r.startContainer, offset: r.startOffset };
+      }
+      slashPhotoInputRef.current?.click();
+    } },
     { id: "hora", label: "Inserir horário", emoji: "🕐", action: () => insertHtmlAtCursor(`<span contenteditable="false" style="color:#A78BFA;font-weight:700;font-size:13px;background:rgba(167,139,250,0.12);padding:1px 6px;border-radius:6px;white-space:nowrap;user-select:none">🕐 ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>&#8203;`) },
     { id: "emoji", label: "Inserir emoji", emoji: "😊", action: () => { setEmojiPos(computeMenuPos(contentWrapperRef.current, 190, 320)); setEmojiPickerOpen(true); } },
     { id: "link", label: "Vincular registro", emoji: "🔗", action: () => {
@@ -191,6 +202,21 @@ export default function NovoDiarioPage() {
 
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const EMOJI_LIST = ["😊","😂","❤️","🙏","😢","😡","😴","🥰","😰","🤔","💪","🔥","✨","🌟","🎉","💀","👍","👎","🤝","📝"];
+
+  // Restaura a seleção para um ponto salvo (usado por inserções assíncronas)
+  const restoreSelection = (pos: { node: Node; offset: number } | null) => {
+    if (!pos) return;
+    const el = contentRef.current;
+    if (!el) return;
+    el.focus();
+    const sel = window.getSelection();
+    if (!sel) return;
+    const range = document.createRange();
+    range.setStart(pos.node, pos.offset);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
 
   const insertHtmlAtCursor = (html: string) => {
     const el = contentRef.current;
@@ -250,14 +276,17 @@ export default function NovoDiarioPage() {
     setSlashOpen(false);
   };
 
-  // Handle inline photo insertion
+  // Handle inline photo insertion (via slash /foto)
   const handlePhotoForSlash = useCallback(async (file: File) => {
     try {
       const compressed = await compressImage(file);
       const path = await uploadToCloud(compressed, "diary");
       const url = photoUrl(path);
       if (url) {
-        insertHtmlAtCursor(`<div contenteditable="false" style="margin:8px 0"><img src="${url}" alt="" style="max-width:100%;max-height:180px;border-radius:10px;display:block;object-fit:cover" /></div><div><br/></div>`);
+        // Volta ao ponto onde o "/foto" estava (o file picker desfoca o editor)
+        restoreSelection(photoInsertPos.current);
+        // Foto quadrada, inline (mesma linha do texto), clicável para ampliar
+        insertHtmlAtCursor(`<span contenteditable="false" style="display:inline-block;vertical-align:middle;margin:0 2px"><img src="${url}" data-photo-url="${url}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:10px;display:block;cursor:pointer" /></span>&#8203;`);
       }
     } catch { toast.error("Erro ao inserir foto"); }
   }, []);
@@ -399,6 +428,15 @@ export default function NovoDiarioPage() {
     (e.target as HTMLElement).dispatchEvent(new Event("input", { bubbles: true }));
   };
 
+  // Amplia fotos inline ao clicar (delegação de evento no editor)
+  const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const img = (e.target as HTMLElement).closest?.("[data-photo-url]");
+    if (img) {
+      const url = img.getAttribute("data-photo-url");
+      if (url) setLightboxUrl(url);
+    }
+  };
+
   return (
     <div style={{ minHeight: "100dvh", background: "#0F0F14", paddingBottom: 100 }}>
       {/* Floating back */}
@@ -491,6 +529,7 @@ export default function NovoDiarioPage() {
           aria-label="Conteúdo do diário" data-placeholder="Escreva o que estiver passando... (digite / para ações rápidas)"
           onInput={handleContentInput}
           onPaste={handlePaste}
+          onClick={handleContentClick}
           style={{
             outline: "none", fontSize: 15, lineHeight: 1.7, letterSpacing: "-0.005em",
             minHeight: "40vh", color: "#e0d6ff", position: "relative",
@@ -579,18 +618,7 @@ export default function NovoDiarioPage() {
                       setLinkSearchOpen(false);
                       const title = entry.title || dateStr;
                       // Restore cursor to where /link was typed
-                      const el = contentRef.current;
-                      if (el && linkInsertPos.current) {
-                        el.focus();
-                        const sel = window.getSelection();
-                        if (sel) {
-                          const range = document.createRange();
-                          range.setStart(linkInsertPos.current.node, linkInsertPos.current.offset);
-                          range.collapse(true);
-                          sel.removeAllRanges();
-                          sel.addRange(range);
-                        }
-                      }
+                      restoreSelection(linkInsertPos.current);
                       insertHtmlAtCursor(`<a href="/diario/${entry.id}" contenteditable="false" style="color:#A78BFA;font-weight:600;text-decoration:underline;cursor:pointer" onclick="event.preventDefault();window.location.href='/diario/${entry.id}'">📔 ${title}</a>&nbsp;`);
                     }}
                     style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%", color: "#e0d6ff" }}>
@@ -622,7 +650,7 @@ export default function NovoDiarioPage() {
               width: 72, height: 72, borderRadius: 14, overflow: "hidden",
               border: "2px solid rgba(167,139,250,0.3)", flexShrink: 0, position: "relative",
             }}>
-              <img src={photoUrl(p)!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={photoUrl(p)!} alt="" onClick={() => setLightboxUrl(photoUrl(p)!)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }} />
               <button type="button" onClick={() => removePhoto(p)}
                 style={{
                   position: "absolute", top: 4, right: 4, width: 22, height: 22,
@@ -634,7 +662,7 @@ export default function NovoDiarioPage() {
               </button>
             </div>
           ))}
-          <button type="button" onClick={() => photoInputRef.current?.click()}
+          <button type="button" onClick={() => stripPhotoInputRef.current?.click()}
             style={{
               width: 72, height: 72, borderRadius: 14,
               border: "1.5px dashed rgba(167,139,250,0.3)",
@@ -644,7 +672,9 @@ export default function NovoDiarioPage() {
             }}>
             <Plus size={22} />
           </button>
-          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }}
+          <input ref={stripPhotoInputRef} type="file" accept="image/*" style={{ display: "none" }}
+            onChange={(e) => { if (e.target.files?.[0]) handlePhotoAdd(e.target.files[0]); e.target.value = ""; }} />
+          <input ref={slashPhotoInputRef} type="file" accept="image/*" style={{ display: "none" }}
             onChange={(e) => { if (e.target.files?.[0]) handlePhotoForSlash(e.target.files[0]); e.target.value = ""; }} />
         </div>
       </div>
@@ -668,6 +698,18 @@ export default function NovoDiarioPage() {
           {saving ? "Salvando…" : "Concluir"}
         </Button>
       </div>
+
+      {/* Lightbox de foto */}
+      {lightboxUrl && (
+        <div onClick={() => setLightboxUrl(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.88)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 24, cursor: "zoom-out",
+          }}>
+          <img src={lightboxUrl} alt="" style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 12, objectFit: "contain" }} />
+        </div>
+      )}
     </div>
   );
 }
