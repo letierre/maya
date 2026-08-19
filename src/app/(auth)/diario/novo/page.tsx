@@ -119,6 +119,8 @@ export default function NovoDiarioPage() {
   const [slashQuery, setSlashQuery] = useState("");
   const [slashPos, setSlashPos] = useState({ x: 0, y: 0 });
   const [emojiPos, setEmojiPos] = useState({ x: 0, y: 0 });
+  const [linkPos, setLinkPos] = useState({ x: 0, y: 0 });
+  const linkInputRef = useRef<HTMLInputElement>(null);
   const slashSavedSel = useRef<{ node: Node | null; offset: number }>({ node: null, offset: 0 });
   const linkInsertPos = useRef<{ node: Node; offset: number } | null>(null);
 
@@ -157,6 +159,7 @@ export default function NovoDiarioPage() {
         const r = sel.getRangeAt(0);
         linkInsertPos.current = { node: r.startContainer, offset: r.startOffset };
       }
+      setLinkPos(computeMenuPos(contentWrapperRef.current, 340, 380));
       setLinkSearchOpen(true); setLinkQuery(""); searchLinks("");
     } },
   ];
@@ -306,6 +309,11 @@ export default function NovoDiarioPage() {
       toast("Rascunho restaurado", { duration: 2000 });
     }
   }, []);
+
+  // Foca a busca do "vincular" sem rolar a página (evita salto pro topo no iOS)
+  useEffect(() => {
+    if (linkSearchOpen) linkInputRef.current?.focus({ preventScroll: true });
+  }, [linkSearchOpen]);
 
   const handleSave = async () => {
     const htmlContent = contentRef.current?.innerHTML || "";
@@ -522,59 +530,56 @@ export default function NovoDiarioPage() {
             </button>
           </div>
         )}
-        {/* Link search popup */}
+        {/* Link search popup — ancorado ao cursor, sem overlay fixo (evita salto de scroll no iOS) */}
         {linkSearchOpen && (
-          <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 120 }}>
-            <div style={{ width: "100%", maxWidth: 380, background: "#1a1530", borderRadius: 20, padding: 20, border: "1px solid rgba(167,139,250,0.2)", boxShadow: "0 12px 40px rgba(0,0,0,0.5)" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>🔗 Vincular registro</h3>
-                <button type="button" onClick={() => setLinkSearchOpen(false)} style={{ background: "none", border: 0, color: "#9e96b5", fontSize: 18, cursor: "pointer" }}>✕</button>
-              </div>
-              <input value={linkQuery} onChange={e => { setLinkQuery(e.target.value); searchLinks(e.target.value); }}
-                placeholder="Buscar por título ou conteúdo..."
-                autoFocus
-                style={{ width: "100%", boxSizing: "border-box" as any, padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none", marginBottom: 10 }} />
-              <div style={{ maxHeight: 240, overflowY: "auto" }}>
-                {linkResults.map((entry: any) => {
-                  const d = new Date(entry.date + "T12:00:00");
-                  const dateStr = d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
-                  return (
-                    <button key={entry.id} type="button"
-                      onClick={() => {
-                        setLinkSearchOpen(false);
-                        const title = entry.title || dateStr;
-                        // Restore cursor to where /link was typed
-                        const el = contentRef.current;
-                        if (el && linkInsertPos.current) {
-                          el.focus();
-                          const sel = window.getSelection();
-                          if (sel) {
-                            const range = document.createRange();
-                            range.setStart(linkInsertPos.current.node, linkInsertPos.current.offset);
-                            range.collapse(true);
-                            sel.removeAllRanges();
-                            sel.addRange(range);
-                          }
+          <div style={{ position: "absolute", left: 8, right: 8, top: linkPos.y, zIndex: 70, background: "#1a1530", borderRadius: 20, padding: 16, border: "1px solid rgba(167,139,250,0.2)", boxShadow: "0 12px 40px rgba(0,0,0,0.5)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>🔗 Vincular registro</h3>
+              <button type="button" onClick={() => setLinkSearchOpen(false)} style={{ background: "none", border: 0, color: "#9e96b5", fontSize: 18, cursor: "pointer" }}>✕</button>
+            </div>
+            <input ref={linkInputRef} value={linkQuery} onChange={e => { setLinkQuery(e.target.value); searchLinks(e.target.value); }}
+              placeholder="Buscar por título ou conteúdo..."
+              style={{ width: "100%", boxSizing: "border-box" as any, padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none", marginBottom: 10 }} />
+            <div style={{ maxHeight: 240, overflowY: "auto" }}>
+              {linkResults.map((entry: any) => {
+                const d = new Date(entry.date + "T12:00:00");
+                const dateStr = d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+                return (
+                  <button key={entry.id} type="button"
+                    onClick={() => {
+                      setLinkSearchOpen(false);
+                      const title = entry.title || dateStr;
+                      // Restore cursor to where /link was typed
+                      const el = contentRef.current;
+                      if (el && linkInsertPos.current) {
+                        el.focus();
+                        const sel = window.getSelection();
+                        if (sel) {
+                          const range = document.createRange();
+                          range.setStart(linkInsertPos.current.node, linkInsertPos.current.offset);
+                          range.collapse(true);
+                          sel.removeAllRanges();
+                          sel.addRange(range);
                         }
-                        insertHtmlAtCursor(`<a href="/diario/${entry.id}" contenteditable="false" style="color:#A78BFA;font-weight:600;text-decoration:underline;cursor:pointer" onclick="event.preventDefault();window.location.href='/diario/${entry.id}'">📔 ${title}</a>&nbsp;`);
-                      }}
-                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%", color: "#e0d6ff" }}>
-                      <span style={{ fontSize: 14, flexShrink: 0 }}>📔</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {entry.title || "Sem título"}
-                        </span>
-                        <span style={{ fontSize: 10, color: "#9e96b5" }}>{dateStr}{entry.mood ? ` · ${["😔","😕","😐","🙂","😊"][entry.mood - 1] || ""}` : ""}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-                {linkResults.length === 0 && (
-                  <p style={{ textAlign: "center", color: "#9e96b5", fontSize: 12, padding: 16 }}>
-                    {linkQuery ? "Nenhum registro encontrado" : allEntries.length === 0 ? "Carregando..." : "Nenhum registro"}
-                  </p>
-                )}
-              </div>
+                      }
+                      insertHtmlAtCursor(`<a href="/diario/${entry.id}" contenteditable="false" style="color:#A78BFA;font-weight:600;text-decoration:underline;cursor:pointer" onclick="event.preventDefault();window.location.href='/diario/${entry.id}'">📔 ${title}</a>&nbsp;`);
+                    }}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left", width: "100%", color: "#e0d6ff" }}>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>📔</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {entry.title || "Sem título"}
+                      </span>
+                      <span style={{ fontSize: 10, color: "#9e96b5" }}>{dateStr}{entry.mood ? ` · ${["😔","😕","😐","🙂","😊"][entry.mood - 1] || ""}` : ""}</span>
+                    </div>
+                  </button>
+                );
+              })}
+              {linkResults.length === 0 && (
+                <p style={{ textAlign: "center", color: "#9e96b5", fontSize: 12, padding: 16 }}>
+                  {linkQuery ? "Nenhum registro encontrado" : allEntries.length === 0 ? "Carregando..." : "Nenhum registro"}
+                </p>
+              )}
             </div>
           </div>
         )}
