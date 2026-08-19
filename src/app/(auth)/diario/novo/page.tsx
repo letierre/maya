@@ -75,6 +75,29 @@ function getCaretRect(): DOMRect | null {
   return null;
 }
 
+/**
+ * Calcula a posição (top/left) de um menu ancorado ao cursor, relativa ao
+ * wrapper. Usa coordenadas de ELEMENTO (diferença de rects) — imune a scroll —
+ * e abre para cima quando o teclado do iOS não deixa espaço abaixo da linha.
+ */
+function computeMenuPos(wrapper: HTMLElement | null, menuH: number, menuW: number): { x: number; y: number } {
+  const caret = getCaretRect();
+  let x = 8;
+  let y = 8;
+  if (caret && wrapper) {
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const caretLeft = caret.left - wrapperRect.left;
+    const belowTop = caret.bottom - wrapperRect.top + 6; // logo abaixo da linha
+    const viewH = window.visualViewport?.height ?? window.innerHeight;
+    const spaceBelow = viewH - caret.bottom;
+    // Vira para cima quando não há espaço abaixo (teclado aberto, fim da tela).
+    y = spaceBelow >= menuH + 12 ? belowTop : caret.top - wrapperRect.top - menuH - 6;
+    y = Math.max(8, y);
+    x = Math.max(8, Math.min(caretLeft, wrapperRect.width - menuW - 8));
+  }
+  return { x, y };
+}
+
 export default function NovoDiarioPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -95,6 +118,7 @@ export default function NovoDiarioPage() {
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState("");
   const [slashPos, setSlashPos] = useState({ x: 0, y: 0 });
+  const [emojiPos, setEmojiPos] = useState({ x: 0, y: 0 });
   const slashSavedSel = useRef<{ node: Node | null; offset: number }>({ node: null, offset: 0 });
   const linkInsertPos = useRef<{ node: Node; offset: number } | null>(null);
 
@@ -124,7 +148,7 @@ export default function NovoDiarioPage() {
   const SLASH_COMMANDS = [
     { id: "foto", label: "Inserir foto", emoji: "📷", action: () => photoInputRef.current?.click() },
     { id: "hora", label: "Inserir horário", emoji: "🕐", action: () => insertHtmlAtCursor(`<span contenteditable="false" style="color:#A78BFA;font-weight:700;font-size:13px;background:rgba(167,139,250,0.12);padding:1px 6px;border-radius:6px;white-space:nowrap;user-select:none">🕐 ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>&#8203;`) },
-    { id: "emoji", label: "Inserir emoji", emoji: "😊", action: () => { setEmojiPickerOpen(true); } },
+    { id: "emoji", label: "Inserir emoji", emoji: "😊", action: () => { setEmojiPos(computeMenuPos(contentWrapperRef.current, 190, 320)); setEmojiPickerOpen(true); } },
     { id: "link", label: "Vincular registro", emoji: "🔗", action: () => {
       setSlashOpen(false);
       // Save cursor position before opening search popup
@@ -185,26 +209,7 @@ export default function NovoDiarioPage() {
         setSlashQuery(query);
         slashSavedSel.current = { node, offset: slashIdx };
         // Posiciona o menu junto à linha que está sendo editada.
-        // Usa coordenadas RELATIVAS ao wrapper (posição absoluta), o que é imune
-        // a bugs de coordenadas de viewport/scroll aninhado no iOS.
-        const caret = getCaretRect();
-        const wrapper = contentWrapperRef.current;
-        const menuH = 260;
-        const menuW = 220;
-        let top = 80;
-        let left = 16;
-        if (caret && wrapper) {
-          const wrapperRect = wrapper.getBoundingClientRect();
-          // Diferença de dois rects de ELEMENTO cancela qualquer offset de scroll.
-          const caretLeft = caret.left - wrapperRect.left;
-          const belowTop = caret.bottom - wrapperRect.top + 6; // logo abaixo da linha
-          const viewH = window.visualViewport?.height ?? window.innerHeight;
-          const spaceBelow = viewH - caret.bottom;
-          // Vira para cima quando o teclado não deixa espaço abaixo da linha.
-          top = spaceBelow >= menuH + 12 ? belowTop : caret.top - wrapperRect.top - menuH - 6;
-          top = Math.max(8, top);
-          left = Math.max(8, Math.min(caretLeft, wrapperRect.width - menuW - 8));
-        }
+        const { x: left, y: top } = computeMenuPos(contentWrapperRef.current, 260, 220);
         setSlashPos({ x: left, y: top });
         setSlashOpen(true);
         return;
@@ -497,7 +502,7 @@ export default function NovoDiarioPage() {
         {/* Emoji picker */}
         {emojiPickerOpen && (
           <div style={{
-            position: "fixed", bottom: 300, left: "50%", transform: "translateX(-50%)", zIndex: 50,
+            position: "absolute", left: emojiPos.x, top: emojiPos.y, zIndex: 50,
             background: "#1a1530", border: "1px solid rgba(167,139,250,0.25)", borderRadius: 14,
             padding: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.5)", display: "flex", flexWrap: "wrap", gap: 4,
             maxWidth: 320,
