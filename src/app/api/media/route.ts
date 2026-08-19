@@ -23,7 +23,8 @@ export async function GET(request: Request) {
                  path.startsWith("diary/") ? "diary" :
                  path.startsWith("avatars/") ? "avatars" :
                  path.startsWith("porques/") ? "porques" :
-                 path.startsWith("chat/") ? "chat" : null;
+                 path.startsWith("chat/") ? "chat" :
+                 path.startsWith("running/") ? "running" : null;
   if (!bucket) {
     return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
   }

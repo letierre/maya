@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
       max_speed: body.max_speed || null,
       calories_estimate: body.calories_estimate || null,
       route_coordinates: body.route_coordinates || [],
+      map_snapshot: body.map_snapshot || null,
       notes: body.notes || null,
     }).select().single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

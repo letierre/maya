@@ -3,12 +3,13 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Play, Square, Timer, Footprints, Zap, ChevronLeft } from "lucide-react";
+import { Play, Square, Timer, Footprints, Zap, ChevronLeft, Download } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { uploadToCloud, photoUrl } from "@/lib/photo-storage";
 
 interface Coord { lat: number; lng: number; timestamp: number; }
-interface Session { id: string; start_time: string; end_time: string | null; distance_meters: number; duration_seconds: number; avg_pace: number | null; max_speed: number | null; calories_estimate: number | null; notes: string | null; route_coordinates: Coord[]; }
+interface Session { id: string; start_time: string; end_time: string | null; distance_meters: number; duration_seconds: number; avg_pace: number | null; max_speed: number | null; calories_estimate: number | null; notes: string | null; route_coordinates: Coord[]; map_snapshot: string | null; }
 
 function formatPace(secPerKm: number): string {
   if (!secPerKm || secPerKm <= 0) return "--";
@@ -38,6 +39,7 @@ export default function CorridaPage() {
   const lastPointRef = useRef<Coord | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const gpsErrorShownRef = useRef(false);
 
   const [running, setRunning] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
@@ -67,6 +69,7 @@ export default function CorridaPage() {
         style: "mapbox://styles/mapbox/dark-v11",
         center: [-46.6333, -23.5505], // fallback: São Paulo (recentraliza abaixo)
         zoom: 13,
+        preserveDrawingBuffer: true, // necessário para capturar o mapa em imagem ao finalizar a corrida
       });
     } catch {
       setMapError("Não foi possível carregar o mapa");
@@ -199,7 +202,13 @@ export default function CorridaPage() {
           });
         }
       },
-      (err) => { console.warn("GPS error:", err); },
+      (err) => {
+        console.warn("GPS error:", err);
+        if (!gpsErrorShownRef.current) {
+          gpsErrorShownRef.current = true;
+          toast.error(err.code === err.PERMISSION_DENIED ? "Permissão de localização negada — ative o GPS para registrar a corrida" : "Sinal de GPS instável");
+        }
+      },
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
     );
     watchId.current = id as unknown as number;
@@ -226,6 +235,7 @@ export default function CorridaPage() {
     runStats.current = { totalDist: 0, maxSpeed: 0, startedAt: Date.now() };
     pointsRef.current = [];
     lastPointRef.current = null;
+    gpsErrorShownRef.current = false;
     persistSnapshot();
     beginTracking();
     startSyncInterval();
@@ -311,6 +321,28 @@ export default function CorridaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Enquadra a rota inteira e captura o mapa como imagem, para salvar junto da corrida
+  const captureMapSnapshot = (): Promise<string | null> => {
+    return new Promise((resolve) => {
+      const map = mapRef.current;
+      const points = pointsRef.current;
+      if (!map || points.length < 2) { resolve(null); return; }
+      try {
+        const bounds = points.reduce(
+          (b, p) => b.extend([p.lng, p.lat]),
+          new mapboxgl.LngLatBounds([points[0].lng, points[0].lat], [points[0].lng, points[0].lat])
+        );
+        const capture = () => {
+          try { resolve(map.getCanvas().toDataURL("image/jpeg", 0.9)); }
+          catch { resolve(null); }
+        };
+        const fallback = setTimeout(capture, 2500);
+        map.once("idle", () => { clearTimeout(fallback); capture(); });
+        map.fitBounds(bounds, { padding: 56, animate: false });
+      } catch { resolve(null); }
+    });
+  };
+
   const stopRun = async () => {
     if (watchId.current) { navigator.geolocation.clearWatch(watchId.current); clearInterval((watchId as any).timer); watchId.current = null; }
     if (syncTimerRef.current) { clearInterval(syncTimerRef.current); syncTimerRef.current = null; }
@@ -334,6 +366,15 @@ export default function CorridaPage() {
     }
     setSaving(true);
     const avgPace = dist > 10 ? duration / (dist / 1000) : 0;
+    const startedIso = startTime ? startTime.toISOString() : new Date().toISOString();
+
+    // Melhor esforço: captura uma foto do mapa com o trajeto para o usuário compartilhar (ex.: Stories)
+    let mapSnapshotPath: string | null = null;
+    try {
+      const snapshot = await captureMapSnapshot();
+      if (snapshot) mapSnapshotPath = await uploadToCloud(snapshot, "running");
+    } catch { /* falha na captura/upload não deve impedir salvar a corrida */ }
+
     try {
       const payload = {
         end_time: new Date().toISOString(),
@@ -342,6 +383,7 @@ export default function CorridaPage() {
         avg_pace: Math.round(avgPace),
         max_speed: maxSpeed,
         route_coordinates: pointsRef.current,
+        map_snapshot: mapSnapshotPath,
       };
       let res: Response;
       if (sessionIdRef.current) {
@@ -356,13 +398,29 @@ export default function CorridaPage() {
         res = await fetch("/api/running", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ start_time: startTime ? startTime.toISOString() : new Date().toISOString(), ...payload }),
+          body: JSON.stringify({ start_time: startedIso, ...payload }),
         });
       }
       if (res.ok) {
         toast.success("Corrida salva!");
         const fresh = await fetch("/api/running?limit=20").then((r) => r.json()).catch(() => []);
         if (Array.isArray(fresh)) setHistory(fresh);
+        const savedId = sessionIdRef.current || (await res.json().catch(() => null))?.id;
+        const saved: Session = {
+          id: savedId,
+          start_time: startedIso,
+          end_time: payload.end_time,
+          distance_meters: dist,
+          duration_seconds: duration,
+          avg_pace: Math.round(avgPace),
+          max_speed: maxSpeed,
+          calories_estimate: null,
+          notes: null,
+          route_coordinates: pointsRef.current,
+          map_snapshot: mapSnapshotPath,
+        };
+        setShowHistory(true);
+        setSelectedSession(saved);
       } else {
         const err = await res.json().catch(() => ({}));
         toast.error(err.error || "Erro ao salvar");
@@ -465,7 +523,16 @@ export default function CorridaPage() {
       {/* Detalhes da corrida selecionada */}
       {selectedSession && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => { if (!deleting) setSelectedSession(null); }}>
-          <div style={{ background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 20, width: "100%", maxWidth: 400, padding: 20 }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 20, width: "100%", maxWidth: 400, maxHeight: "90vh", overflowY: "auto", padding: 20 }} onClick={(e) => e.stopPropagation()}>
+            {selectedSession.map_snapshot && (
+              <div style={{ margin: "-20px -20px 16px", position: "relative" }}>
+                <img src={photoUrl(selectedSession.map_snapshot) || ""} alt="Trajeto da corrida" style={{ width: "100%", display: "block", maxHeight: 220, objectFit: "cover", borderRadius: "20px 20px 0 0" }} />
+                <a href={photoUrl(selectedSession.map_snapshot) || ""} download
+                  style={{ position: "absolute", top: 10, right: 10, width: 32, height: 32, borderRadius: "50%", background: "rgba(11,11,16,0.7)", border: "1px solid rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+                  <Download size={15} />
+                </a>
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>Corrida</h2>

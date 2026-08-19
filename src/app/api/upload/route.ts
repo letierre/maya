@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       const file = form.get("file") as File | null;
       const folder = form.get("folder") as string;
       if (!file || !folder) return NextResponse.json({ error: "file e folder obrigatórios" }, { status: 400 });
-      if (!["meals", "diary", "avatars", "porques", "chat"].includes(folder)) return NextResponse.json({ error: "folder inválido" }, { status: 400 });
+      if (!["meals", "diary", "avatars", "porques", "chat", "running"].includes(folder)) return NextResponse.json({ error: "folder inválido" }, { status: 400 });
 
       const buf = Buffer.from(await file.arrayBuffer());
       const originalName = file.name || "file";
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const { base64, folder } = await request.json();
 
     if (!base64 || !folder) return NextResponse.json({ error: "base64 e folder obrigatórios" }, { status: 400 });
-    if (!["meals", "diary", "avatars", "porques", "chat"].includes(folder)) return NextResponse.json({ error: "folder inválido" }, { status: 400 });
+    if (!["meals", "diary", "avatars", "porques", "chat", "running"].includes(folder)) return NextResponse.json({ error: "folder inválido" }, { status: 400 });
 
     const matches = base64.match(/^data:([^;]+);base64,(.+)$/);
     let buffer: Buffer;

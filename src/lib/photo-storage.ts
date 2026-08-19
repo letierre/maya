@@ -113,7 +113,7 @@ export function photoHash(base64: string): string {
 }
 
 /** Upload a base64 image to Supabase Storage. Returns the cloud path. */
-export async function uploadToCloud(base64: string, folder: "meals" | "diary" | "avatars" | "porques" | "chat"): Promise<string> {
+export async function uploadToCloud(base64: string, folder: "meals" | "diary" | "avatars" | "porques" | "chat" | "running"): Promise<string> {
   // Warn about large uploads
   if (base64.length > 5_000_000) {
     console.warn(`[upload] Large file: ${(base64.length / 1_000_000).toFixed(1)}MB base64`);
@@ -135,7 +135,7 @@ export async function uploadToCloud(base64: string, folder: "meals" | "diary" | 
 }
 
 /** Upload a file via FormData (for large files: video, etc.) */
-export async function uploadFile(file: File, folder: "meals" | "diary" | "avatars" | "porques" | "chat"): Promise<string> {
+export async function uploadFile(file: File, folder: "meals" | "diary" | "avatars" | "porques" | "chat" | "running"): Promise<string> {
   const form = new FormData();
   form.append("file", file);
   form.append("folder", folder);
