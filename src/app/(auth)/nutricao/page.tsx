@@ -285,7 +285,7 @@ function NutricaoPage() {
   // ── Render ──────────────────────────────────────────────────
 
   return (
-    <div style={{ position: "relative", minHeight: "100dvh", overflowX: "hidden", paddingBottom: 128, ...BG_GRADIENT }}>
+    <div style={{ position: "relative", minHeight: "100dvh", overflowX: "hidden", paddingBottom: 224, ...BG_GRADIENT }}>
 
       {/* FABs */}
       <button type="button" onClick={() => setShowChat(true)}
