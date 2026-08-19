@@ -67,14 +67,17 @@ export async function removePhoto(path: string): Promise<void> {
   }
 }
 
-// Comprime imagem redimensionando para max 512px (menor lado) e qualidade 0.6
-export function compressImage(file: File): Promise<string> {
+// Comprime imagem redimensionando (padrão: max 512px no maior lado, qualidade 0.6).
+// Fotos com texto (prints de conversa, recibos) precisam de mais resolução para
+// permanecerem legíveis — passe maxDim/quality maiores nesses casos.
+export function compressImage(file: File, opts?: { maxDim?: number; quality?: number }): Promise<string> {
+  const maxDim = opts?.maxDim ?? 512;
+  const quality = opts?.quality ?? 0.6;
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        const maxDim = 512;
         let { width, height } = img;
         if (width > maxDim || height > maxDim) {
           const ratio = Math.min(maxDim / width, maxDim / height);
@@ -86,7 +89,7 @@ export function compressImage(file: File): Promise<string> {
         canvas.height = height;
         const ctx = canvas.getContext("2d")!;
         ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.6));
+        resolve(canvas.toDataURL("image/jpeg", quality));
       };
       img.onerror = () => reject(new Error("Falha ao carregar imagem"));
       img.src = reader.result as string;

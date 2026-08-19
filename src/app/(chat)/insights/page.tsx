@@ -220,6 +220,7 @@ export default function MayaChatPage() {
   const [userName, setUserName] = useState("");
   const [selectedImages, setSelectedImages] = useState<string[]>([]); // base64 previews
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [viewerImage, setViewerImage] = useState<string | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
 
   // ── Refs ──
@@ -479,7 +480,9 @@ export default function MayaChatPage() {
 
     for (const file of toProcess) {
       try {
-        const base64 = await compressImage(file);
+        // Fotos no chat costumam ser prints de conversa/recibos — precisam de
+        // mais resolução que os 512px padrão para o texto continuar legível.
+        const base64 = await compressImage(file, { maxDim: 1568, quality: 0.85 });
         setSelectedImages((prev) => [...prev, base64]);
       } catch {
         // skip corrupted files
@@ -818,7 +821,7 @@ export default function MayaChatPage() {
                           style={{
                             maxHeight: msg.imageUrls!.length === 1 ? 200 : 120,
                           }}
-                          onClick={() => window.open(photoUrl(path)!, "_blank")}
+                          onClick={() => setViewerImage(photoUrl(path)!)}
                         />
                       ))}
                     </div>
@@ -1060,6 +1063,52 @@ export default function MayaChatPage() {
           </button>
         </div>
       </div>
+
+      {/* Lightbox — visualização em tela cheia das fotos enviadas no chat */}
+      {viewerImage && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100,
+            background: "rgba(0,0,0,0.92)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          onClick={() => setViewerImage(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setViewerImage(null)}
+            aria-label="Fechar"
+            style={{
+              position: "fixed",
+              top: "calc(env(safe-area-inset-top) + 12px)",
+              right: 16,
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              background: "rgba(255,255,255,0.12)",
+              border: 0,
+              color: "#fff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              zIndex: 101,
+            }}
+          >
+            <X className="size-5" />
+          </button>
+          <img
+            src={viewerImage}
+            alt="Foto ampliada"
+            style={{ maxWidth: "92vw", maxHeight: "88vh", objectFit: "contain", borderRadius: 8 }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
