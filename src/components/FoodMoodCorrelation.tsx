@@ -173,7 +173,7 @@ export function FoodMoodCorrelation({ meals }: Props) {
       </p>
       <div className="space-y-2">
         {correlations.map((c, i) => (
-          <Card key={i} className="rounded-xl bg-gradient-to-r from-blue-50/50 to-transparent dark:from-blue-950/10 border-blue-200/50 dark:border-blue-800/30">
+          <Card key={i} style={{ borderRadius: 12, background: "linear-gradient(90deg, oklch(.58 .18 270 / .06), transparent)", border: "1px solid oklch(.58 .18 270 / .12)" }}>
             <CardContent className="p-3.5">
               <div className="flex gap-3">
                 <span className="text-xl shrink-0">{c.emoji}</span>
