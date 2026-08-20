@@ -129,6 +129,9 @@ export default function NovoDiarioPage() {
   const [entryDate, setEntryDate] = useState(() => getBrowserDate());
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  // HTML completo do editor (inclui fotos inline) — o `content` acima guarda só o
+  // texto (innerText) para contagem de palavras, que ignora <img>.
+  const [contentHtml, setContentHtml] = useState("");
   const [mood, setMood] = useState<number | null>(null);
   const [moodOpen, setMoodOpen] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -205,15 +208,23 @@ export default function NovoDiarioPage() {
 
   // Restaura a seleção para um ponto salvo (usado por inserções assíncronas)
   const restoreSelection = (pos: { node: Node; offset: number } | null) => {
-    if (!pos) return;
     const el = contentRef.current;
     if (!el) return;
     el.focus();
     const sel = window.getSelection();
     if (!sel) return;
-    const range = document.createRange();
-    range.setStart(pos.node, pos.offset);
-    range.collapse(true);
+    let range: Range;
+    if (pos && pos.node && el.contains(pos.node)) {
+      range = document.createRange();
+      range.setStart(pos.node, pos.offset);
+      range.collapse(true);
+    } else {
+      // O nó salvo não está mais conectado ao editor (normalize do getCaretRect
+      // ou perda de seleção no iOS após o file picker) — cai para o fim do texto.
+      range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+    }
     sel.removeAllRanges();
     sel.addRange(range);
   };
@@ -223,21 +234,32 @@ export default function NovoDiarioPage() {
     if (!el) return;
     el.focus();
     const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) {
-      const range = sel.getRangeAt(0);
-      range.deleteContents();
-      const frag = range.createContextualFragment(html);
-      range.insertNode(frag);
-      range.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(range);
+    if (!sel || sel.rangeCount === 0) {
+      // Sem seleção — insere no fim em vez de perder a foto
+      el.insertAdjacentHTML("beforeend", html);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
     }
+    const range = sel.getRangeAt(0);
+    // Seleção fora do editor (ex.: perdida no iOS após o file picker) — insere no fim
+    if (!el.contains(range.startContainer)) {
+      el.insertAdjacentHTML("beforeend", html);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+    range.deleteContents();
+    const frag = range.createContextualFragment(html);
+    range.insertNode(frag);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
     el.dispatchEvent(new Event("input", { bubbles: true }));
   };
 
   const handleContentInput = (e: React.FormEvent<HTMLDivElement>) => {
     const el = e.target as HTMLElement;
     setContent(el.innerText);
+    setContentHtml(el.innerHTML);
     scheduleKeepCaretAboveKeyboard();
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount) { setSlashOpen(false); return; }
@@ -363,6 +385,8 @@ export default function NovoDiarioPage() {
       setTimeout(() => {
         if (titleRef.current) titleRef.current.innerText = draft.title || "";
         if (contentRef.current) contentRef.current.innerHTML = draft.content || "";
+        setContentHtml(draft.content || "");
+        setContent((draft.content || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim());
       }, 100);
       toast("Rascunho restaurado", { duration: 2000 });
     }
@@ -701,12 +725,12 @@ export default function NovoDiarioPage() {
         <span style={{ fontSize: 11, color: "#9e96b5", fontFamily: "monospace" }}>
           {wordCount > 0 ? `${wordCount} ${wordCount === 1 ? "palavra" : "palavras"}` : "Comece a escrever"}
         </span>
-        <Button onClick={handleSave} disabled={saving || !content.trim()}
+        <Button onClick={handleSave} disabled={saving || (!content.trim() && !contentHtml.trim())}
           style={{
             height: 40, paddingInline: 20, borderRadius: 12,
             background: "#7C5CFF", border: 0, color: "#fff",
             fontSize: 13, fontWeight: 700, cursor: "pointer",
-            opacity: (saving || !content.trim()) ? 0.5 : 1,
+            opacity: (saving || (!content.trim() && !contentHtml.trim())) ? 0.5 : 1,
           }}>
           {saving ? "Salvando…" : "Concluir"}
         </Button>
