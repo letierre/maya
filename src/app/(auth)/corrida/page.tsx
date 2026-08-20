@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Play, Square, Timer, Footprints, Zap, ChevronLeft, Download } from "lucide-react";
+import { Play, Square, Timer, Footprints, Zap, ChevronLeft, Share2 } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { uploadToCloud, photoUrl } from "@/lib/photo-storage";
@@ -27,6 +27,35 @@ function formatDuration(sec: number): string {
 }
 
 const RUN_KEY = "maya_running_session";
+
+// ── Helpers de canvas para o compartilhamento (PNG estilo Roda da Vida) ──
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function drawRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+}
+
+function drawImageCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, r: number) {
+  ctx.save();
+  drawRoundRect(ctx, x, y, w, h, r);
+  ctx.clip();
+  const scale = Math.max(w / img.width, h / img.height);
+  const dw = img.width * scale, dh = img.height * scale;
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+  ctx.restore();
+}
 
 export default function CorridaPage() {
   const router = useRouter();
@@ -54,6 +83,7 @@ export default function CorridaPage() {
   const [mapError, setMapError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   // Init map — cria imediatamente (sem aguardar geolocalização) e recentraliza depois
   useEffect(() => {
@@ -449,6 +479,111 @@ export default function CorridaPage() {
     setDeleting(false);
   };
 
+  // Monta uma imagem de compartilhamento (mapa completo + estatísticas) no estilo Roda da Vida
+  const shareRun = async () => {
+    const s = selectedSession;
+    if (!s) return;
+    setSharing(true);
+    try {
+      const W = 1080, H = 1920, SCALE = 2;
+      const canvas = document.createElement("canvas");
+      canvas.width = W * SCALE; canvas.height = H * SCALE;
+      const ctx = canvas.getContext("2d")!;
+      ctx.scale(SCALE, SCALE);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      // 1. Fundo escuro + vinheta
+      ctx.fillStyle = "#0F0F14"; ctx.fillRect(0, 0, W, H);
+      const vg = ctx.createRadialGradient(W / 2, H * 0.35, W * 0.3, W / 2, H * 0.55, W * 0.95);
+      vg.addColorStop(0, "transparent"); vg.addColorStop(1, "rgba(0,0,0,0.5)");
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+      // 2. Header — avatar Maya + MAYA APP
+      let avatar: HTMLImageElement | null = null;
+      try { avatar = await loadImage("/maya-avatar.webp"); } catch { /* segue sem avatar */ }
+      const headerY = 130;
+      if (avatar) ctx.drawImage(avatar, W / 2 - 82 - 22, headerY - 66, 44, 44);
+      ctx.fillStyle = "#FFFFFF"; ctx.font = "600 24px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("MAYA APP", W / 2 + 12, headerY - 56);
+
+      // 3. Título
+      const titleY = headerY + 60;
+      const titulo = "Corrida";
+      ctx.font = "700 84px Inter, system-ui, sans-serif";
+      const tw = ctx.measureText(titulo).width;
+      const tg = ctx.createLinearGradient(W / 2 - tw / 2, titleY, W / 2 + tw / 2, titleY);
+      tg.addColorStop(0, "#7C5CFF"); tg.addColorStop(1, "#A78BFA");
+      ctx.fillStyle = tg;
+      ctx.fillText(titulo, W / 2, titleY);
+
+      // 4. Data da corrida
+      const dateStr = new Date(s.start_time).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      ctx.fillStyle = "#A0A0B3"; ctx.font = "400 28px Inter, system-ui, sans-serif";
+      ctx.fillText(dateStr, W / 2, titleY + 50);
+
+      // 5. Mapa (trajeto completo)
+      const mapX = 90, mapY = titleY + 110, mapW = W - 180, mapH = 700;
+      const mapUrl = photoUrl(s.map_snapshot);
+      if (mapUrl) {
+        try {
+          const mapImg = await loadImage(mapUrl);
+          drawImageCover(ctx, mapImg, mapX, mapY, mapW, mapH, 32);
+          ctx.strokeStyle = "rgba(167,139,250,0.25)"; ctx.lineWidth = 2;
+          drawRoundRect(ctx, mapX, mapY, mapW, mapH, 32); ctx.stroke();
+        } catch { /* sem mapa */ }
+      }
+
+      // 6. Card de estatísticas
+      const statsY = mapY + mapH + 70;
+      const statsH = 400;
+      ctx.fillStyle = "rgba(26,26,36,0.85)"; ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
+      drawRoundRect(ctx, mapX, statsY, mapW, statsH, 28); ctx.fill(); ctx.stroke();
+
+      ctx.fillStyle = "#FFFFFF"; ctx.font = "600 28px Inter, system-ui, sans-serif"; ctx.textAlign = "left";
+      ctx.fillText("Estatísticas", mapX + 40, statsY + 64);
+
+      const stats = [
+        { label: "Distância", value: `${(s.distance_meters / 1000).toFixed(2)} km` },
+        { label: "Tempo", value: formatDuration(s.duration_seconds) },
+        { label: "Ritmo médio", value: formatPace(s.avg_pace || 0) },
+        { label: "Velocidade máx", value: s.max_speed ? `${s.max_speed.toFixed(1)} km/h` : "--" },
+      ];
+      const gap = 20, cellW = (mapW - 80 - gap) / 2, cellH = 120, gridTop = statsY + 104;
+      stats.forEach((st, i) => {
+        const col = i % 2, row = Math.floor(i / 2);
+        const cx = mapX + 40 + col * (cellW + gap);
+        const cy = gridTop + row * (cellH + gap);
+        ctx.fillStyle = "rgba(15,15,20,0.7)"; ctx.strokeStyle = "rgba(167,139,250,0.15)"; ctx.lineWidth = 1;
+        drawRoundRect(ctx, cx, cy, cellW, cellH, 18); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#e0d6ff"; ctx.font = "700 38px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(st.value, cx + cellW / 2, cy + 50);
+        ctx.fillStyle = "#A0A0B3"; ctx.font = "600 20px Inter, system-ui, sans-serif";
+        ctx.fillText(st.label.toUpperCase(), cx + cellW / 2, cy + 88);
+      });
+
+      // 7. Rodapé
+      const footerY = H - 130;
+      ctx.fillStyle = "#A0A0B3"; ctx.font = "500 20px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("MAYA APP · SUA MELHOR VERSÃO, TODOS OS DIAS.", W / 2, footerY);
+
+      // 8. Exporta e compartilha (mantém dentro do app)
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
+      if (!blob) return;
+      const file = new File([blob], "corrida.png", { type: "image/png" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: "Minha corrida" });
+      } else {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "corrida.png";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+    } catch { /* usuário cancelou o share */ }
+    setSharing(false);
+  };
+
   return (
     <div style={{ height: "100dvh", background: "#0B0B10", display: "flex", flexDirection: "column" }}>
       {/* Header */}
@@ -525,12 +660,8 @@ export default function CorridaPage() {
         <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => { if (!deleting) setSelectedSession(null); }}>
           <div style={{ background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 20, width: "100%", maxWidth: 400, maxHeight: "90vh", overflowY: "auto", padding: 20 }} onClick={(e) => e.stopPropagation()}>
             {selectedSession.map_snapshot && (
-              <div style={{ margin: "-20px -20px 16px", position: "relative" }}>
+              <div style={{ margin: "-20px -20px 16px" }}>
                 <img src={photoUrl(selectedSession.map_snapshot) || ""} alt="Trajeto da corrida" style={{ width: "100%", display: "block", maxHeight: 220, objectFit: "cover", borderRadius: "20px 20px 0 0" }} />
-                <a href={photoUrl(selectedSession.map_snapshot) || ""} download
-                  style={{ position: "absolute", top: 10, right: 10, width: 32, height: 32, borderRadius: "50%", background: "rgba(11,11,16,0.7)", border: "1px solid rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
-                  <Download size={15} />
-                </a>
               </div>
             )}
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
@@ -549,6 +680,12 @@ export default function CorridaPage() {
               <StatBox label="Ritmo médio" value={formatPace(selectedSession.avg_pace || 0)} />
               <StatBox label="Velocidade máx" value={selectedSession.max_speed ? `${selectedSession.max_speed.toFixed(1)} km/h` : "--"} />
             </div>
+
+            <button type="button" onClick={shareRun} disabled={sharing}
+              style={{ width: "100%", padding: "12px", borderRadius: 12, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10, opacity: sharing ? 0.5 : 1 }}>
+              <Share2 size={16} />
+              {sharing ? "Preparando…" : "Compartilhar resultado"}
+            </button>
 
             {!confirmDelete ? (
               <button type="button" onClick={() => setConfirmDelete(true)} disabled={deleting}
