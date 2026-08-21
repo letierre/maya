@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Camera, ImageIcon, X, ArrowLeft } from "lucide-react";
 import { compressImage } from "@/lib/photo-storage";
 import { useTranslation } from "@/lib/useTranslation";
@@ -89,23 +90,32 @@ export default function FinancasRegistrarPage() {
     setStage("analyzing");
     try {
       const cleanBase64 = photo.replace(/^data:image\/\w+;base64,/, "");
+      const mime = photo.match(/^data:(image\/\w+);base64,/)?.[1] ?? "image/jpeg";
       const res = await fetch("/api/financas/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ photoBase64: cleanBase64, mediaType: "image/jpeg" }),
+        body: JSON.stringify({ photoBase64: cleanBase64, mediaType: mime }),
       });
       if (res.ok) {
         const data = await res.json();
-        setDraft({
-          type: data.type ?? "despesa",
-          amount: data.amount ? String(data.amount) : "",
-          category: data.category ?? "",
-          subcategory: data.subcategory ?? "",
-          description: data.description ?? "",
-          date: data.date ?? new Date().toISOString().slice(0, 10),
-        });
+        if (data.amount) {
+          setDraft({
+            type: data.type ?? "despesa",
+            amount: String(data.amount),
+            category: data.category ?? "",
+            subcategory: data.subcategory ?? "",
+            description: data.description ?? "",
+            date: data.date ?? new Date().toISOString().slice(0, 10),
+          });
+        } else {
+          toast.error("Não consegui ler os dados da foto. Preencha manualmente abaixo.");
+        }
+      } else {
+        toast.error("Não consegui analisar a foto. Tente outra imagem ou preencha manualmente.");
       }
-    } catch { /* keep default draft */ }
+    } catch {
+      toast.error("Erro ao analisar a foto. Preencha manualmente abaixo.");
+    }
     setStage("review");
   };
 

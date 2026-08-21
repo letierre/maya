@@ -67,15 +67,21 @@ export async function POST(req: NextRequest) {
   const safeMediaType = (mediaType as string) || "image/jpeg";
   const cleanBase64 = (photoBase64 as string).replace(/^data:image\/\w+;base64,/, "");
 
-  const systemPrompt = `Você analisa recibos, notas fiscais e fotos de compras. Retorne APENAS um JSON válido, sem texto adicional.
+  const systemPrompt = `Você extrai transações financeiras de fotos. A imagem pode ser:
+- um recibo ou nota fiscal;
+- um print de extrato bancário ou fatura de cartão, com VÁRIAS transações listadas.
 
-Formato exato:
+Se houver várias transações, extraia a MAIS RECENTE (a do topo) ou a mais destacada.
+
+Retorne APENAS um JSON válido, sem texto, sem markdown, sem comentários.
+
+Formato exato (um único objeto):
 {
   "type": "despesa",
-  "amount": 0.00,
-  "category": "categoria",
-  "subcategory": "subcategoria",
-  "description": "descrição curta",
+  "amount": 4000,
+  "category": "alimentacao",
+  "subcategory": "Supermercado",
+  "description": "Supermercado X",
   "date": "YYYY-MM-DD"
 }
 
@@ -87,23 +93,25 @@ Regras:
 - amount: o valor total como NÚMERO PURO, sem símbolo de moeda e SEM separador de milhar.
   Escreva 4000 (quatro mil), NUNCA "4.000" nem "4,000" nem "4.000,00".
   Para centavos, use ponto decimal: 1250.50
-- category: escolha a categoria mais adequada das listas acima
-- subcategory: texto curto descrevendo a subcategoria específica (ex: "Supermercado", "Uber", "Plano de Saúde")
-- description: máximo 60 caracteres, texto simples
-- date: data do recibo no formato YYYY-MM-DD; se não encontrar, use hoje: ${today}
+- category: escolha a mais adequada das listas acima, exatamente como escrita (minúscula)
+- subcategory: nome curto do estabelecimento ou tipo de gasto
+- description: nome do estabelecimento (máximo 60 caracteres)
+- date: data da transação em YYYY-MM-DD; se não encontrar, use hoje: ${today}
 
-NUNCA use markdown, apenas o JSON puro.`;
+IMPORTANTE: responda SEMPRE com o JSON válido, mesmo que precise estimar a categoria. Nunca responda com texto dizendo que não conseguiu.`;
 
   try {
     const imageDataUrl = `data:${safeMediaType};base64,${cleanBase64}`;
 
     const text = await callLLM(systemPrompt, [
-      { type: "text", text: "Analise este recibo e retorne o JSON." },
+      { type: "text", text: "Extraia a transação desta imagem e retorne o JSON." },
       toImageBlock(imageDataUrl),
     ], { maxTokens: 256, temperature: 0.1 });
 
     try {
-      const parsed = JSON.parse(extractJson(text));
+      let parsed = JSON.parse(extractJson(text));
+      // Se a IA devolveu um array, usa o primeiro item
+      if (Array.isArray(parsed)) parsed = parsed[0] ?? {};
       const amount = normalizeAmount(parsed.amount);
       return NextResponse.json({
         type: parsed.type ?? "despesa",
@@ -114,6 +122,7 @@ NUNCA use markdown, apenas o JSON puro.`;
         date: parsed.date ?? today,
       });
     } catch {
+      console.error("[financas/analyze] JSON inválido retornado pela IA:", text?.slice(0, 400));
       return NextResponse.json({ error: "Não foi possível interpretar a foto" }, { status: 422 });
     }
   } catch (error) {
