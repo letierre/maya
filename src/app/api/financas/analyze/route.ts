@@ -12,6 +12,49 @@ function extractJson(text: string): string {
   return text;
 }
 
+/**
+ * Normaliza o valor do recibo que a IA retorna. LLMs costumam escrever
+ * "4.000" (milhar) ou "4.000,50" (latino) e isso vira 4 em `Number()`.
+ * Aqui tratamos separador de milhar vs decimal para não "comer" zeros.
+ */
+function normalizeAmount(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+
+  let s = String(v).trim().replace(/[^0-9.,\-]/g, "");
+  if (!s) return null;
+
+  const commaCount = (s.match(/,/g) || []).length;
+  const dotCount = (s.match(/\./g) || []).length;
+
+  if (commaCount > 1 || dotCount > 1) {
+    // Múltiplos separadores = agrupamento de milhar → remove todos
+    s = s.replace(/[.,]/g, "");
+  } else if (commaCount === 1 && dotCount === 1) {
+    // "1.234,56" ou "1,234.56" — o último separador é o decimal
+    if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+      s = s.replace(/\./g, "").replace(",", "."); // ponto=milhar, vírgula=decimal
+    } else {
+      s = s.replace(/,/g, ""); // vírgula=milhar, ponto=decimal
+    }
+  } else if (commaCount === 1) {
+    // "4,000" (milhar) vs "4,5" (decimal)
+    if (s.length - s.lastIndexOf(",") - 1 === 3) {
+      s = s.replace(",", "");
+    } else {
+      s = s.replace(",", ".");
+    }
+  } else if (dotCount === 1) {
+    // "4.000" (milhar) vs "4000.50" (decimal)
+    if (s.length - s.lastIndexOf(".") - 1 === 3) {
+      s = s.replace(".", "");
+    }
+  }
+
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
   const { data: { session } } = await supabase.auth.getSession();
@@ -41,7 +84,9 @@ Categorias de receita: ${INCOME_IDS.join(", ")}
 
 Regras:
 - type: "despesa" para compras/pagamentos, "receita" para recebimentos
-- amount: valor total em número (sem símbolo de moeda)
+- amount: o valor total como NÚMERO PURO, sem símbolo de moeda e SEM separador de milhar.
+  Escreva 4000 (quatro mil), NUNCA "4.000" nem "4,000" nem "4.000,00".
+  Para centavos, use ponto decimal: 1250.50
 - category: escolha a categoria mais adequada das listas acima
 - subcategory: texto curto descrevendo a subcategoria específica (ex: "Supermercado", "Uber", "Plano de Saúde")
 - description: máximo 60 caracteres, texto simples
@@ -59,9 +104,10 @@ NUNCA use markdown, apenas o JSON puro.`;
 
     try {
       const parsed = JSON.parse(extractJson(text));
+      const amount = normalizeAmount(parsed.amount);
       return NextResponse.json({
         type: parsed.type ?? "despesa",
-        amount: parsed.amount ?? "",
+        amount: amount ?? "",
         category: parsed.category ?? "outros",
         subcategory: parsed.subcategory ?? "",
         description: parsed.description ?? "",
