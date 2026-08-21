@@ -52,14 +52,7 @@ export default function FinancasRegistrarPage() {
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>("capture");
-  const [draft, setDraft] = useState<Draft>({
-    type: "despesa",
-    amount: "",
-    category: "",
-    subcategory: "",
-    description: "",
-    date: new Date().toISOString().slice(0, 10),
-  });
+  const [drafts, setDrafts] = useState<Draft[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -98,15 +91,16 @@ export default function FinancasRegistrarPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.amount) {
-          setDraft({
-            type: data.type ?? "despesa",
-            amount: String(data.amount),
-            category: data.category ?? "",
-            subcategory: data.subcategory ?? "",
-            description: data.description ?? "",
-            date: data.date ?? new Date().toISOString().slice(0, 10),
-          });
+        const txs = Array.isArray(data.transactions) ? data.transactions : [];
+        if (txs.length > 0) {
+          setDrafts(txs.map((t: Partial<Draft>) => ({
+            type: t.type ?? "despesa",
+            amount: t.amount ? String(t.amount) : "",
+            category: t.category ?? "",
+            subcategory: t.subcategory ?? "",
+            description: t.description ?? "",
+            date: t.date ?? new Date().toISOString().slice(0, 10),
+          })));
         } else {
           toast.error("Não consegui ler os dados da foto. Preencha manualmente abaixo.");
         }
@@ -119,32 +113,49 @@ export default function FinancasRegistrarPage() {
     setStage("review");
   };
 
+  const isDraftValid = (d: Draft) => {
+    if (d.amount === "" || Number(d.amount) <= 0 || d.category.length === 0) return false;
+    const cats = d.type === "despesa" ? EXPENSE_CATS : INCOME_CATS;
+    const subcats = d.category ? getSubcats(d.category, cats, customCat) : [];
+    return subcats.length === 0 || d.subcategory.length > 0;
+  };
+
   const save = async () => {
-    if (!draft.amount || !draft.category) return;
+    const valid = drafts.filter(isDraftValid);
+    if (valid.length === 0) return;
     setSaving(true);
     try {
-      await fetch("/api/financas/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: draft.type,
-          amount: Number(draft.amount),
-          category: draft.category,
-          subcategory: draft.subcategory || null,
-          description: draft.description || null,
-          date: draft.date,
-        }),
-      });
+      await Promise.all(valid.map((d) =>
+        fetch("/api/financas/transactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: d.type,
+            amount: Number(d.amount),
+            category: d.category,
+            subcategory: d.subcategory || null,
+            description: d.description || null,
+            date: d.date,
+          }),
+        })
+      ));
       router.push("/financas");
     } catch {
       setSaving(false);
+      toast.error("Erro ao salvar transações");
     }
   };
 
-  const cats = draft.type === "despesa" ? EXPENSE_CATS : INCOME_CATS;
-  const subcatsForCat = draft.category ? getSubcats(draft.category, cats, customCat) : [];
-  const canSave = draft.amount !== "" && Number(draft.amount) > 0 && draft.category.length > 0
-    && (subcatsForCat.length === 0 || draft.subcategory.length > 0);
+  const canSave = drafts.some(isDraftValid);
+
+  const updateDraft = (i: number, patch: Partial<Draft>) =>
+    setDrafts((prev) => prev.map((d, idx) => (idx === i ? { ...d, ...patch } : d)));
+  const removeDraft = (i: number) => setDrafts((prev) => prev.filter((_, idx) => idx !== i));
+  const addDraft = () =>
+    setDrafts((prev) => [...prev, {
+      type: "despesa", amount: "", category: "", subcategory: "",
+      description: "", date: new Date().toISOString().slice(0, 10),
+    }]);
 
   const inputS: React.CSSProperties = {
     width: "100%", boxSizing: "border-box", padding: "12px 14px",
@@ -196,21 +207,24 @@ export default function FinancasRegistrarPage() {
     );
   }
 
-  // ── Review (pre-filled editable form) ────────────────────────────────────
+  // ── Review (pre-filled editable list) ────────────────────────────────────
   if (stage === "review") {
+    const validCount = drafts.filter(isDraftValid).length;
     return (
       <div style={{ minHeight: "100dvh", background: BG, paddingBottom: 110, overflowX: "hidden" }}>
         <Header onBack={() => setStage("capture")} title={tFn(lang, "fin_nova_tx")} />
 
-        <div style={{ padding: "20px 20px", display: "flex", flexDirection: "column", gap: 18 }}>
+        <div style={{ padding: "20px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* Photo thumbnail */}
           {photo && (
             <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", borderRadius: 16, background: SURFACE, border: `1px solid ${BORDER}` }}>
               <img src={photo} alt="Recibo" style={{ width: 68, height: 52, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: TEXT }}>Recibo analisado pela IA</p>
-                <p style={{ margin: "2px 0 0", fontSize: 11, color: TEXT_SEC }}>Confira e edite os campos abaixo</p>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: TEXT }}>
+                  {drafts.length === 0 ? "Nada encontrado" : `${drafts.length} ${drafts.length === 1 ? "transação" : "transações"} encontradas`}
+                </p>
+                <p style={{ margin: "2px 0 0", fontSize: 11, color: TEXT_SEC }}>Confira e edite antes de salvar</p>
               </div>
               <button type="button" onClick={() => setStage("capture")} style={{
                 border: 0, background: "rgba(124,92,255,0.1)", borderRadius: 8, padding: "5px 9px", cursor: "pointer",
@@ -221,89 +235,118 @@ export default function FinancasRegistrarPage() {
             </div>
           )}
 
-          {/* Type toggle */}
-          <div style={{ display: "flex", gap: 8 }}>
-            {(["despesa", "receita"] as const).map((tp) => (
-              <button key={tp} type="button"
-                onClick={() => setDraft((p) => ({ ...p, type: tp, category: "", subcategory: "" }))}
-                style={{
-                  flex: 1, padding: "13px 10px", borderRadius: 14, border: 0, cursor: "pointer",
-                  fontFamily: "inherit", fontSize: 14, fontWeight: 700,
-                  background: draft.type === tp ? (tp === "despesa" ? RED : GREEN) : "#0B0B10",
-                  color: draft.type === tp ? "#fff" : TEXT_SEC,
-                  transition: "all .15s ease",
+          {/* Transaction cards */}
+          {drafts.map((d, i) => (
+            <div key={i} style={{
+              background: CARD, borderRadius: 18, border: `1px solid ${BORDER}`,
+              padding: 16, display: "flex", flexDirection: "column", gap: 14,
+            }}>
+              {/* Header: index + type toggle + remove */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: ACCENT, flexShrink: 0 }}>#{i + 1}</span>
+                <div style={{ display: "flex", gap: 6, flex: 1 }}>
+                  {(["despesa", "receita"] as const).map((tp) => (
+                    <button key={tp} type="button"
+                      onClick={() => updateDraft(i, { type: tp, category: "", subcategory: "" })}
+                      style={{
+                        flex: 1, padding: "9px 8px", borderRadius: 12, border: 0, cursor: "pointer",
+                        fontFamily: "inherit", fontSize: 12, fontWeight: 700,
+                        background: d.type === tp ? (tp === "despesa" ? RED : GREEN) : "#0B0B10",
+                        color: d.type === tp ? "#fff" : TEXT_SEC,
+                        transition: "all .15s ease",
+                      }}>
+                      {tp === "despesa" ? `↓ ${tFn(lang, "fin_despesa_label")}` : `↑ ${tFn(lang, "fin_receita_label")}`}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => removeDraft(i)} style={{
+                  border: 0, background: "#0B0B10", borderRadius: 10, padding: 8, cursor: "pointer", flexShrink: 0,
                 }}>
-                {tp === "despesa" ? `↓ ${tFn(lang, "fin_despesa_label")}` : `↑ ${tFn(lang, "fin_receita_label")}`}
-              </button>
-            ))}
-          </div>
+                  <X size={16} style={{ color: TEXT_SEC }} />
+                </button>
+              </div>
 
-          {/* Amount */}
-          <div>
-            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: TEXT_SEC }}>
-              {tFn(lang, "fin_valor")}
-            </p>
-            <input
-              autoFocus
-              type="number"
-              inputMode="decimal"
-              min="0.01"
-              step="0.01"
-              value={draft.amount}
-              onChange={(e) => setDraft((p) => ({ ...p, amount: e.target.value }))}
-              placeholder="0,00"
-              style={{ ...inputS, fontSize: 28, fontWeight: 800 }}
-            />
-          </div>
+              {/* Amount */}
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: TEXT_SEC }}>
+                  {tFn(lang, "fin_valor")}
+                </p>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0.01"
+                  step="0.01"
+                  value={d.amount}
+                  onChange={(e) => updateDraft(i, { amount: e.target.value })}
+                  placeholder="0,00"
+                  style={{ ...inputS, fontSize: 26, fontWeight: 800 }}
+                />
+              </div>
 
-          {/* Category + subcategory picker (shared component) */}
-          <CategoryPicker
-            type={draft.type}
-            category={draft.category}
-            subcategory={draft.subcategory}
-            lang={lang}
-            customCat={customCat}
-            userCategories={userCategories}
-            hiddenCatIds={hiddenCatIds}
-            onSelect={(cat, sub) => setDraft((p) => ({ ...p, category: cat, subcategory: sub }))}
-            onManage={() => setShowCategoryManager(true)}
-          />
+              {/* Category + subcategory picker */}
+              <CategoryPicker
+                type={d.type}
+                category={d.category}
+                subcategory={d.subcategory}
+                lang={lang}
+                customCat={customCat}
+                userCategories={userCategories}
+                hiddenCatIds={hiddenCatIds}
+                onSelect={(cat, sub) => updateDraft(i, { category: cat, subcategory: sub })}
+                onManage={() => setShowCategoryManager(true)}
+              />
 
-          {/* Description */}
-          <div>
-            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: TEXT_SEC }}>
-              {tFn(lang, "fin_descricao")}
-            </p>
-            <input
-              value={draft.description}
-              onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))}
-              placeholder={tFn(lang, draft.type === "despesa" ? "fin_descricao_ph" : "fin_descricao_ph_receita")}
-              style={inputS}
-            />
-          </div>
+              {/* Description */}
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: TEXT_SEC }}>
+                  {tFn(lang, "fin_descricao")}
+                </p>
+                <input
+                  value={d.description}
+                  onChange={(e) => updateDraft(i, { description: e.target.value })}
+                  placeholder={tFn(lang, d.type === "despesa" ? "fin_descricao_ph" : "fin_descricao_ph_receita")}
+                  style={inputS}
+                />
+              </div>
 
-          {/* Date */}
-          <div>
-            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: TEXT_SEC }}>
-              {tFn(lang, "fin_data")}
-            </p>
-            <input
-              type="date"
-              value={draft.date}
-              onChange={(e) => setDraft((p) => ({ ...p, date: e.target.value }))}
-              style={inputS}
-            />
-          </div>
+              {/* Date */}
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: TEXT_SEC }}>
+                  {tFn(lang, "fin_data")}
+                </p>
+                <input
+                  type="date"
+                  value={d.date}
+                  onChange={(e) => updateDraft(i, { date: e.target.value })}
+                  style={inputS}
+                />
+              </div>
+            </div>
+          ))}
 
+          {/* Add another */}
+          <button type="button" onClick={addDraft} style={{
+            width: "100%", padding: "13px", borderRadius: 14, border: `1px dashed ${BORDER}`,
+            background: "transparent", cursor: "pointer", fontFamily: "inherit",
+            fontSize: 13, fontWeight: 700, color: ACCENT,
+          }}>
+            + Adicionar transação
+          </button>
+
+          {/* Save */}
           <button type="button" onClick={save} disabled={!canSave || saving} style={{
-            marginTop: 8, width: "100%", padding: "16px 20px", borderRadius: 16, border: 0,
+            width: "100%", padding: "16px 20px", borderRadius: 16, border: 0,
             cursor: (!canSave || saving) ? "not-allowed" : "pointer",
             background: (!canSave || saving) ? "rgba(124,92,255,0.2)" : ACCENT,
             fontFamily: "inherit", fontSize: 16, fontWeight: 700,
             color: (!canSave || saving) ? "rgba(167,139,250,0.5)" : "#fff",
             transition: "all .15s ease",
           }}>
-            {saving ? tFn(lang, "salvando") : tFn(lang, "salvar")}
+            {saving
+              ? tFn(lang, "salvando")
+              : validCount === 0
+                ? "Salvar"
+                : `Salvar ${validCount} ${validCount === 1 ? "transação" : "transações"}`}
           </button>
         </div>
 
@@ -318,7 +361,7 @@ export default function FinancasRegistrarPage() {
 
         {showCategoryManager && (
           <CategoryManager
-            type={draft.type}
+            type={drafts[0]?.type ?? "despesa"}
             hiddenIds={hiddenCatIds}
             userCategories={userCategories}
             customCat={customCat}

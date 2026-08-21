@@ -68,22 +68,28 @@ export async function POST(req: NextRequest) {
   const cleanBase64 = (photoBase64 as string).replace(/^data:image\/\w+;base64,/, "");
 
   const systemPrompt = `Você extrai transações financeiras de fotos. A imagem pode ser:
-- um recibo ou nota fiscal;
+- um recibo ou nota fiscal (uma transação);
 - um print de extrato bancário ou fatura de cartão, com VÁRIAS transações listadas.
 
-Se houver várias transações, extraia a MAIS RECENTE (a do topo) ou a mais destacada.
+Extraia TODAS as transações que conseguir identificar na imagem.
 
 Retorne APENAS um JSON válido, sem texto, sem markdown, sem comentários.
 
-Formato exato (um único objeto):
+Formato exato:
 {
-  "type": "despesa",
-  "amount": 4000,
-  "category": "alimentacao",
-  "subcategory": "Supermercado",
-  "description": "Supermercado X",
-  "date": "YYYY-MM-DD"
+  "transactions": [
+    {
+      "type": "despesa",
+      "amount": 4000,
+      "category": "alimentacao",
+      "subcategory": "Supermercado",
+      "description": "Supermercado X",
+      "date": "YYYY-MM-DD"
+    }
+  ]
 }
+
+Se a imagem tiver apenas UMA transação, retorne uma lista com um único item.
 
 Categorias de despesa: ${EXPENSE_IDS.join(", ")}
 Categorias de receita: ${INCOME_IDS.join(", ")}
@@ -104,23 +110,34 @@ IMPORTANTE: responda SEMPRE com o JSON válido, mesmo que precise estimar a cate
     const imageDataUrl = `data:${safeMediaType};base64,${cleanBase64}`;
 
     const text = await callLLM(systemPrompt, [
-      { type: "text", text: "Extraia a transação desta imagem e retorne o JSON." },
+      { type: "text", text: "Extraia todas as transações desta imagem e retorne o JSON." },
       toImageBlock(imageDataUrl),
-    ], { maxTokens: 256, temperature: 0.1 });
+    ], { maxTokens: 1200, temperature: 0.1 });
 
     try {
-      let parsed = JSON.parse(extractJson(text));
-      // Se a IA devolveu um array, usa o primeiro item
-      if (Array.isArray(parsed)) parsed = parsed[0] ?? {};
-      const amount = normalizeAmount(parsed.amount);
-      return NextResponse.json({
-        type: parsed.type ?? "despesa",
-        amount: amount ?? "",
-        category: parsed.category ?? "outros",
-        subcategory: parsed.subcategory ?? "",
-        description: parsed.description ?? "",
-        date: parsed.date ?? today,
-      });
+      const parsed = JSON.parse(extractJson(text));
+      // Aceita: { transactions: [...] }, um array direto, ou um objeto único (compat)
+      let list: unknown[] = [];
+      if (Array.isArray(parsed)) list = parsed;
+      else if (Array.isArray(parsed?.transactions)) list = parsed.transactions;
+      else if (parsed && typeof parsed === "object") list = [parsed];
+
+      const transactions = list
+        .map((raw) => {
+          const t = (raw ?? {}) as Record<string, unknown>;
+          const amount = normalizeAmount(t.amount);
+          return {
+            type: t.type === "receita" ? "receita" : "despesa",
+            amount: amount ?? "",
+            category: (t.category as string) || "outros",
+            subcategory: (t.subcategory as string) || "",
+            description: (t.description as string) || "",
+            date: (t.date as string) || today,
+          };
+        })
+        .filter((t) => t.amount !== "");
+
+      return NextResponse.json({ transactions });
     } catch {
       console.error("[financas/analyze] JSON inválido retornado pela IA:", text?.slice(0, 400));
       return NextResponse.json({ error: "Não foi possível interpretar a foto" }, { status: 422 });
