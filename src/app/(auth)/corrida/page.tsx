@@ -499,13 +499,14 @@ export default function CorridaPage() {
       vg.addColorStop(0, "transparent"); vg.addColorStop(1, "rgba(0,0,0,0.5)");
       ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
 
-      // 2. Header — avatar Maya + MAYA APP
+      // 2. Header — avatar Maya + MAYA APP (alinhados verticalmente, mesmo offset da Roda da Vida)
       let avatar: HTMLImageElement | null = null;
       try { avatar = await loadImage("/maya-avatar.webp"); } catch { /* segue sem avatar */ }
       const headerY = 130;
-      if (avatar) ctx.drawImage(avatar, W / 2 - 82 - 22, headerY - 66, 44, 44);
+      const avatarSize = 44, avatarCx = W / 2 - 82, avatarCy = headerY - 58;
+      if (avatar) ctx.drawImage(avatar, avatarCx - avatarSize / 2, avatarCy - avatarSize / 2, avatarSize, avatarSize);
       ctx.fillStyle = "#FFFFFF"; ctx.font = "600 24px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
-      ctx.fillText("MAYA APP", W / 2 + 12, headerY - 56);
+      ctx.fillText("MAYA APP", W / 2 + 12, headerY - 48);
 
       // 3. Título
       const titleY = headerY + 60;
