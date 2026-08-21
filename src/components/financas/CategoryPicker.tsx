@@ -69,7 +69,7 @@ export function CategoryPicker({
                 type="button"
                 onClick={() => onSelect(c.id, "")}
                 style={{
-                  width: "100%", padding: "10px 4px", borderRadius: 12,
+                  width: "100%", boxSizing: "border-box", padding: "10px 4px", borderRadius: 12,
                   border: sel ? "2px solid #7C5CFF" : `1px solid ${borderDefault}`,
                   background: sel ? "rgba(124,92,255,0.08)" : "#0B0B10",
                   cursor: "pointer", display: "flex", flexDirection: "column",

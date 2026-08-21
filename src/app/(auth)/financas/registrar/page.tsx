@@ -74,7 +74,8 @@ export default function FinancasRegistrarPage() {
 
   const handleFile = async (file: File) => {
     try {
-      const compressed = await compressImage(file);
+      // Recibos têm números pequenos — mantém resolução alta p/ a IA ler os valores
+      const compressed = await compressImage(file, { maxDim: 1568, quality: 0.85 });
       setPhoto(compressed);
     } catch {
       const reader = new FileReader();
@@ -164,7 +165,7 @@ export default function FinancasRegistrarPage() {
   if (stage === "analyzing") {
     return (
       <div style={{
-        minHeight: "100dvh", background: BG,
+        minHeight: "100dvh", background: BG, overflowX: "hidden",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24,
       }}>
         {photo && (
@@ -188,7 +189,7 @@ export default function FinancasRegistrarPage() {
   // ── Review (pre-filled editable form) ────────────────────────────────────
   if (stage === "review") {
     return (
-      <div style={{ minHeight: "100dvh", background: BG, paddingBottom: 110 }}>
+      <div style={{ minHeight: "100dvh", background: BG, paddingBottom: 110, overflowX: "hidden" }}>
         <Header onBack={() => setStage("capture")} title={tFn(lang, "fin_nova_tx")} />
 
         <div style={{ padding: "20px 20px", display: "flex", flexDirection: "column", gap: 18 }}>
@@ -329,7 +330,7 @@ export default function FinancasRegistrarPage() {
 
   // ── Capture ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100dvh", background: BG, paddingBottom: 40 }}>
+    <div style={{ minHeight: "100dvh", background: BG, paddingBottom: 40, overflowX: "hidden" }}>
       <Header onBack={() => router.back()} title="Registrar por foto" />
 
       <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20 }}>
