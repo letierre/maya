@@ -64,7 +64,7 @@ export function BudgetModal({
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", animation: "overlayIn .2s ease" }} />
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90,
         borderRadius: "24px 24px 0 0", background: "#151520",
@@ -72,6 +72,7 @@ export function BudgetModal({
         boxShadow: "0 -8px 40px rgba(0,0,0,0.3)",
         maxHeight: "90dvh", overflowY: "auto",
         border: "1px solid rgba(167,139,250,0.15)",
+        animation: "sheetUp .32s cubic-bezier(.16,1,.3,1)",
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 9999, background: "rgba(167,139,250,0.2)", margin: "0 auto 20px" }} />
         <h2 style={{ margin: "0 0 4px", fontSize: 19, fontWeight: 800, color: "#e0d6ff" }}>

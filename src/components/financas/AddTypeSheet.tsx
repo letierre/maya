@@ -38,7 +38,7 @@ export function AddTypeSheet({
     <>
       <div
         onClick={onClose}
-        style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+        style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", animation: "overlayIn .2s ease" }}
       />
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 80,
@@ -46,6 +46,7 @@ export function AddTypeSheet({
         padding: "20px 20px calc(env(safe-area-inset-bottom) + 28px)",
         boxShadow: "0 -8px 40px rgba(0,0,0,0.3)",
         border: "1px solid rgba(167,139,250,0.15)",
+        animation: "sheetUp .32s cubic-bezier(.16,1,.3,1)",
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 9999, background: "rgba(167,139,250,0.2)", margin: "0 auto 22px" }} />
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

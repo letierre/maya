@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X, TrendingDown, TrendingUp } from "lucide-react";
 import type { FinancialTransaction } from "@/types";
 import type { Lang } from "@/lib/i18n";
 import { t as tFn } from "@/lib/i18n";
@@ -57,6 +57,9 @@ export function TransactionModal({
   const canSave = amount.trim() !== "" && Number(amount) > 0 && category.length > 0
     && (subcatsForCat.length === 0 || subcategory.length > 0);
 
+  const typeColor = type === "despesa" ? "#FF5C5C" : "#22c55e";
+  const typeSoft = type === "despesa" ? "rgba(255,92,92,0.12)" : "rgba(34,197,94,0.12)";
+
   const save = async () => {
     if (!canSave) return;
     setSaving(true);
@@ -81,7 +84,7 @@ export function TransactionModal({
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", animation: "overlayIn .2s ease" }} />
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90,
         borderRadius: "24px 24px 0 0", background: "#151520",
@@ -89,6 +92,7 @@ export function TransactionModal({
         boxShadow: "0 -8px 40px rgba(0,0,0,0.3)",
         maxHeight: "92dvh", overflowY: "auto", overflowX: "hidden",
         border: "1px solid rgba(167,139,250,0.15)",
+        animation: "sheetUp .32s cubic-bezier(.16,1,.3,1)",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
@@ -104,18 +108,25 @@ export function TransactionModal({
 
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           {/* Type toggle */}
-          <div style={{ display: "flex", gap: 8 }}>
-            {(["despesa", "receita"] as const).map((t) => (
-              <button key={t} type="button" onClick={() => { setType(t); setCat(""); setSubcat(""); }} style={{
-                flex: 1, padding: "13px 10px", borderRadius: 14, border: 0, cursor: "pointer",
-                fontFamily: "inherit", fontSize: 14, fontWeight: 700,
-                background: type === t ? (t === "despesa" ? "#FF5C5C" : "#22c55e") : "#0B0B10",
-                color: type === t ? "#fff" : "#9e96b5",
-                transition: "all .15s ease",
-              }}>
-                {t === "despesa" ? `↓ ${tFn(lang, "fin_despesa_label")}` : `↑ ${tFn(lang, "fin_receita_label")}`}
-              </button>
-            ))}
+          <div style={{ display: "flex", gap: 8, padding: 4, background: "#0B0B10", borderRadius: 16 }}>
+            {(["despesa", "receita"] as const).map((t) => {
+              const active = type === t;
+              const c = t === "despesa" ? "#FF5C5C" : "#22c55e";
+              return (
+                <button key={t} type="button" onClick={() => { setType(t); setCat(""); setSubcat(""); }} style={{
+                  flex: 1, padding: "12px 10px", borderRadius: 12, border: 0, cursor: "pointer",
+                  fontFamily: "inherit", fontSize: 14, fontWeight: 700,
+                  background: active ? c : "transparent",
+                  color: active ? "#fff" : "#9e96b5",
+                  boxShadow: active ? `0 4px 14px ${c}55` : "none",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                  transition: "all .2s cubic-bezier(.16,1,.3,1)",
+                }}>
+                  {t === "despesa" ? <TrendingDown size={16} /> : <TrendingUp size={16} />}
+                  {tFn(lang, t === "despesa" ? "fin_despesa_label" : "fin_receita_label")}
+                </button>
+              );
+            })}
           </div>
 
           {/* Amount */}
@@ -125,14 +136,15 @@ export function TransactionModal({
             </p>
             <div style={{
               display: "flex", alignItems: "center", gap: 0,
-              borderRadius: 12, border: `1px solid ${amountFocused ? "#7C5CFF" : "rgba(167,139,250,0.2)"}`,
+              borderRadius: 12, border: `1px solid ${amountFocused ? typeColor : "rgba(167,139,250,0.2)"}`,
               background: "#0B0B10", paddingRight: 14,
-              transition: "border-color .15s ease",
+              boxShadow: amountFocused ? `0 0 0 3px ${typeSoft}` : "none",
+              transition: "border-color .15s ease, box-shadow .15s ease",
             }}>
               <span style={{
                 padding: "12px 0 12px 14px", fontSize: 22, fontWeight: 700,
-                color: amount ? "#e0d6ff" : "#9e96b5", fontFamily: "inherit",
-                whiteSpace: "nowrap",
+                color: amount ? typeColor : "#9e96b5", fontFamily: "inherit",
+                whiteSpace: "nowrap", transition: "color .15s ease",
               }}>
                 {(() => {
                   // Show currency symbol based on locale
@@ -204,9 +216,10 @@ export function TransactionModal({
         </div>
 
         <button type="button" onClick={save} disabled={!canSave || saving} style={{
-          marginTop: 24, width: "100%", padding: "15px 20px", borderRadius: 14, border: 0,
+          marginTop: 24, width: "100%", padding: "16px 20px", borderRadius: 14, border: 0,
           cursor: (!canSave || saving) ? "not-allowed" : "pointer",
-          background: (!canSave || saving) ? "rgba(124,92,255,0.2)" : "#7C5CFF",
+          background: (!canSave || saving) ? "rgba(124,92,255,0.2)" : "linear-gradient(135deg, #7C5CFF, #A78BFA)",
+          boxShadow: (!canSave || saving) ? "none" : "0 6px 20px rgba(124,92,255,0.35)",
           fontFamily: "inherit", fontSize: 15, fontWeight: 700,
           color: (!canSave || saving) ? "rgba(167,139,250,0.5)" : "#fff",
           transition: "all .15s ease",
