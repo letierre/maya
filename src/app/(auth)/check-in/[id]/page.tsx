@@ -44,6 +44,7 @@ function checkInToAnswers(ci: CheckIn): CheckInAnswers {
     walked: ci.walked ?? false,
     ran: ci.ran ?? false,
     strength_training: ci.strength_training ?? false,
+    read: ci.read ?? false,
     did_something_enjoyable: ci.did_something_enjoyable ?? false,
     worked_on_goals: ci.worked_on_goals ?? false,
     bowel_movement: ci.bowel_movement ?? false,
@@ -64,7 +65,7 @@ function answersEqual(a: CheckInAnswers, b: CheckInAnswers): boolean {
   const keys: (keyof CheckInAnswers)[] = [
     "date", "feeling", "gratitude", "suicidal_thoughts", "drank_water", "water_cups",
     "took_medication", "talked_to_someone", "meditation", "prayer", "breathing",
-    "creative_activity", "walked", "ran", "strength_training",
+    "creative_activity", "walked", "ran", "strength_training", "read",
     "did_something_enjoyable", "worked_on_goals", "bowel_movement", "felt_judged", "ate_well",
     "sleep_quality", "sleep_start_time", "sleep_end_time",
   ];

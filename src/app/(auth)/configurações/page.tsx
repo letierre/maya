@@ -60,7 +60,7 @@ export default function ConfiguracoesPage() {
       const enabled = [
         "felt_judged", "talked_to_someone", "meditation", "breathing",
         "creative_activity", "ate_well", "bowel_movement",
-        "walked", "ran", "strength_training",
+        "walked", "ran", "strength_training", "read",
         "drank_water", "slept_well", "did_something_enjoyable", "worked_on_goals",
       ];
       if (answers.has_medication)          enabled.push("took_medication");

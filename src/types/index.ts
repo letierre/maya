@@ -16,6 +16,7 @@ export interface CheckIn {
   walked: boolean;
   ran: boolean;
   strength_training: boolean;
+  read: boolean;
   drank_water: boolean;
   water_cups: number;
   slept_well: boolean;

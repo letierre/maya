@@ -21,6 +21,7 @@ export const HABIT_ORDER = [
   "walked",
   "ran",
   "strength_training",
+  "read",
   "did_something_enjoyable",
   "worked_on_goals",
   "bowel_movement",
@@ -47,6 +48,7 @@ export const HABIT_COPY: Record<string, HabitCopy> = {
   walked:                      { emoji: "🚶", label: "Caminhou",                      a: "Sim", b: "Não"       },
   ran:                         { emoji: "🏃", label: "Correu",                        a: "Sim", b: "Não"       },
   strength_training:           { emoji: "🏋️", label: "Musculação",                    a: "Sim", b: "Não"       },
+  read:                        { emoji: "📖", label: "Leu hoje?",                      a: "Sim", b: "Não"       },
   did_something_enjoyable:     { emoji: "😊", label: "Fez algo que gosta?",           a: "Sim", b: "Não"       },
   worked_on_goals:             { emoji: "🎯", label: "Avançou nas suas metas hoje?",  a: "Sim", b: "Não"       },
   bowel_movement:              { emoji: "🚽", label: "Funcionamento intestinal OK?",  a: "Sim", b: "Não"       },
@@ -77,6 +79,7 @@ export interface CheckInAnswers {
   walked: boolean;
   ran: boolean;
   strength_training: boolean;
+  read: boolean;
   did_something_enjoyable: boolean;
   worked_on_goals: boolean;
   bowel_movement: boolean;
@@ -107,6 +110,7 @@ export function defaultAnswers(): CheckInAnswers {
     walked: false,
     ran: false,
     strength_training: false,
+    read: false,
     did_something_enjoyable: false,
     worked_on_goals: false,
     bowel_movement: false,

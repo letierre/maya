@@ -18,6 +18,7 @@ const HABIT_CHIP: Record<string, [string, (ci: CheckIn) => string]> = {
   walked: ["🚶", () => "Caminhou"],
   ran: ["🏃", () => "Correu"],
   strength_training: ["🏋️", () => "Musculação"],
+  read: ["📖", () => "Leu"],
   slept_well: ["😴", () => "Sono"],
   did_something_enjoyable: ["😊", () => "Gostou"],
   worked_on_goals: ["🎯", () => "Metas"],

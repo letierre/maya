@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
       walked: body.walked ?? false,
       ran: body.ran ?? false,
       strength_training: body.strength_training ?? false,
+      read: body.read ?? false,
       // Legado: agregado "fez qualquer um" derivado dos campos granulares
       exercise_walk:
         (body.walked ?? false) || (body.ran ?? false) || (body.strength_training ?? false) ||
@@ -107,7 +108,7 @@ export async function POST(req: NextRequest) {
     const todayDow = new Date(checkDate + "T12:00:00").getDay();
     const monDow = todayDow === 0 ? 6 : todayDow - 1; // 0=Mon..6=Sun
 
-    const [planRes, agendaRes, actionsRes, runningRes, mealsRes, sleepRes] = await Promise.all([
+    const [planRes, agendaRes, actionsRes, runningRes, readingRes, mealsRes, sleepRes] = await Promise.all([
       // Weekly plan tasks completed today
       admin.from("weekly_tasks")
         .select("id")
@@ -138,6 +139,12 @@ export async function POST(req: NextRequest) {
         .gte("start_time", `${checkDate}T00:00:00${getTimezoneOffset("America/Sao_Paulo", checkDate)}`)
         .lte("start_time", `${checkDate}T23:59:59${getTimezoneOffset("America/Sao_Paulo", checkDate)}`)
         .limit(1),
+      // Leitura registrada hoje (auto-marca "leu")
+      admin.from("reading_sessions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("date", checkDate)
+        .limit(1),
       // Refeições do dia (auto-detecta "comeu bem")
       admin.from("meals")
         .select("macros, status_analise, classificacao")
@@ -166,6 +173,11 @@ export async function POST(req: NextRequest) {
     if ((runningRes.data?.length ?? 0) > 0) {
       row.ran = true;
       row.exercise_walk = true;
+    }
+
+    // Auto-marca "leu" quando há sessão de leitura no dia
+    if ((readingRes.data?.length ?? 0) > 0) {
+      row.read = true;
     }
 
     // Auto-detecta "comeu bem" a partir das refeições do dia (fonte de verdade)

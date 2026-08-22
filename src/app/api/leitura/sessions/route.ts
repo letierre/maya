@@ -2,6 +2,22 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 
+// Marca "leu" no check-in do dia (só se a linha já existir — igual à corrida)
+async function markReadCheckIn(admin: any, userId: string, date: string) {
+  const { data: existingCi } = await admin
+    .from("check_ins")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("date", date)
+    .maybeSingle();
+  if (existingCi) {
+    await admin
+      .from("check_ins")
+      .update({ read: true, updated_at: new Date().toISOString() })
+      .eq("id", existingCi.id);
+  }
+}
+
 // GET /api/leitura/sessions — listar sessões (opcional ?from=YYYY-MM-DD&to=YYYY-MM-DD)
 export async function GET(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
@@ -121,6 +137,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Marca "leu" no check-in do dia (só se a linha já existir)
+    await markReadCheckIn(admin, user.id, body.date);
+
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error("POST /api/leitura/sessions error:", error);
@@ -149,6 +168,15 @@ export async function DELETE(req: NextRequest) {
     }
 
     const admin = getSupabaseAdmin();
+
+    // Busca a data antes de excluir, para desmarcar o check-in do dia
+    const { data: existing } = await admin
+      .from("reading_sessions")
+      .select("date")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single();
+
     const { error } = await admin
       .from("reading_sessions")
       .delete()
@@ -156,6 +184,32 @@ export async function DELETE(req: NextRequest) {
       .eq("user_id", user.id);
 
     if (error) throw error;
+
+    // Se era a última leitura do dia, desmarca "leu" do check-in
+    if (existing?.date) {
+      const { data: remaining } = await admin
+        .from("reading_sessions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("date", existing.date);
+
+      if (remaining && remaining.length === 0) {
+        const { data: ci } = await admin
+          .from("check_ins")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("date", existing.date)
+          .maybeSingle();
+
+        if (ci) {
+          await admin
+            .from("check_ins")
+            .update({ read: false, updated_at: new Date().toISOString() })
+            .eq("id", ci.id);
+        }
+      }
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/leitura/sessions error:", error);

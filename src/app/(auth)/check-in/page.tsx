@@ -52,6 +52,7 @@ function buildSteps(enabledKeys: string[], hasSuicidal: boolean, hasSleepLog: bo
   pushHabit("talked_to_someone");
   if (MEDITATION_KEYS.some(has)) steps.push({ kind: "meditation" });
   pushHabit("creative_activity");
+  pushHabit("read");
   if (EXERCISE_KEYS.some(has)) steps.push({ kind: "exercise" });
   pushHabit("did_something_enjoyable");
   // worked_on_goals é auto-calculado (nunca vira passo)
