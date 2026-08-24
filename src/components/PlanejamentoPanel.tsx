@@ -282,6 +282,17 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
     try {
       const areasWithTasks = LIFE_AREAS.filter(a => (taskTotalByArea[a] || 0) > 0);
       const emptyAreas = LIFE_AREAS.filter(a => (taskTotalByArea[a] || 0) === 0);
+      const areaTasks = LIFE_AREAS
+        .map(a => {
+          const list = tasks.filter((t: any) => t.area === a);
+          return {
+            area: a,
+            total: list.length,
+            done: list.filter((t: any) => t.status === "concluida").length,
+            titles: list.map((t: any) => t.title),
+          };
+        })
+        .filter(x => x.total > 0);
       const res = await fetch("/api/maya/planning-companion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -294,6 +305,7 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
             totalTasks: tasks.length,
             doneTasks: tasks.filter((t: any) => t.status === "concluida").length,
             linkedGoalIds: activeGoals.map((g: any) => g.id),
+            areaTasks,
           },
         }),
       });

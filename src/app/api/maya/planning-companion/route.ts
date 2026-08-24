@@ -16,6 +16,16 @@ interface PlanState {
   totalTasks: number;
   doneTasks: number;
   linkedGoalIds: string[];
+  areaTasks?: { area: string; total: number; done: number; titles: string[] }[];
+}
+
+interface PrevWeekSummary {
+  weekStart: string;
+  mainFocus: string | null;
+  totalTasks: number;
+  doneTasks: number;
+  perArea: { area: string; total: number; done: number }[];
+  reviewScore: number | null;
 }
 
 interface ActiveKR {
@@ -66,7 +76,7 @@ const AREA_EMOJIS: Record<string, string> = {
 
 // ── Planning-specific system prompt ────────────────────────────────
 
-function buildPlanningPrompt(planState: PlanState, quarterlyData?: ActiveQuarterlyCycle | null, areaVisions?: { area: string; statement: string }[]): string {
+function buildPlanningPrompt(planState: PlanState, quarterlyData?: ActiveQuarterlyCycle | null, areaVisions?: { area: string; statement: string }[], previousWeek?: PrevWeekSummary | null): string {
   const stonesList = planState.stones.filter(Boolean).map((s, i) => `  Pedra ${i + 1}: "${s}"`).join("\n") || "  (nenhuma pedra definida ainda)";
   const areasWithList = planState.areasWithTasks.length > 0
     ? planState.areasWithTasks.map(a => `  ${AREA_EMOJIS[a] || "•"} ${AREA_LABELS[a] || a}`).join("\n")
@@ -74,6 +84,34 @@ function buildPlanningPrompt(planState: PlanState, quarterlyData?: ActiveQuarter
   const emptyList = planState.emptyAreas.length > 0
     ? planState.emptyAreas.map(a => `  ${AREA_EMOJIS[a] || "•"} ${AREA_LABELS[a] || a}`).join("\n")
     : "  (todas as áreas têm tarefas — muito bom!)";
+
+  // Per-area detail of the current week (titles + done/total)
+  let areaDetailSection = "";
+  if (planState.areaTasks && planState.areaTasks.length > 0) {
+    const detailLines = planState.areaTasks.map(at =>
+      `  ${AREA_EMOJIS[at.area] || "•"} ${AREA_LABELS[at.area] || at.area} (${at.done}/${at.total}): ${at.titles.join(" · ") || "—"}`
+    ).join("\n");
+    areaDetailSection = `
+### DETALHE DAS TAREFAS DESTA SEMANA
+${detailLines}
+`;
+  }
+
+  // Previous week comparison
+  let previousWeekSection = "";
+  if (previousWeek) {
+    const prevPerArea = previousWeek.perArea.length > 0
+      ? previousWeek.perArea.map(pa => `  ${AREA_EMOJIS[pa.area] || "•"} ${AREA_LABELS[pa.area] || pa.area}: ${pa.done}/${pa.total}`).join("\n")
+      : "  (sem registro de áreas)";
+    previousWeekSection = `
+### SEMANA PASSADA (${previousWeek.weekStart})
+${previousWeek.mainFocus ? `Foco principal: "${previousWeek.mainFocus}"` : "Sem foco definido"}
+Tarefas: ${previousWeek.totalTasks} planejadas, ${previousWeek.doneTasks} concluídas.
+${previousWeek.reviewScore != null ? `Autoavaliação: ${previousWeek.reviewScore}/5` : "Sem autoavaliação registrada."}
+Por área:
+${prevPerArea}
+`;
+  }
 
   // Build quarterly OKR section if available
   let quarterlySection = "";
@@ -125,16 +163,18 @@ ${areasWithList}
 ${emptyList}
 
 **Total:** ${planState.totalTasks} tarefas planejadas, ${planState.doneTasks} concluídas.
-${quarterlySection}${visionSection}
+${areaDetailSection}${previousWeekSection}${quarterlySection}${visionSection}
 ### SUA MISSÃO NESTE MODO
 
-Você é uma estrategista. Os dados acima são o MAPA. Seu conhecimento do usuário (diário, check-ins, metas, memórias, especialistas) é a INTELIGÊNCIA. Combine os dois para ajudar a pessoa a tomar melhores decisões.
+Você é uma estrategista. Os dados acima são o MAPA. Seu conhecimento do usuário (diário, check-ins, metas, memórias, especialistas) é a INTELIGÊNCIA. Combine os dois para ajudar a pessoa a tomar melhores decisões. NÃO seja passiva: o usuário espera que você OPINE, SUGIRA e aponte o que ela não está vendo.
 
 **Como pensar:**
 1. Olhe para as áreas vazias. Por que estão vazias? Isso é intencional ou descuido?
-2. Cruze com o que você sabe: se o diário menciona algo, se o check-in mostra um padrão, se uma meta ativa está parada
-3. Conecte as pedras com as áreas: as pedras cobrem as áreas certas?
-4. Pergunte-se: "Se eu fosse essa pessoa, o que eu gostaria que alguém me lembrasse agora?"
+2. COMPARE com a semana passada: o que mudou? Uma área que estava forte agora sumiu? Você está repetindo sempre o mesmo padrão? Diga explicitamente o que fazer de diferente.
+3. Cruze com o que você sabe: se o diário menciona algo, se o check-in mostra um padrão, se uma meta ativa está parada, se um especialista já deu uma recomendação que você ainda não seguiu.
+4. Conecte as pedras com as áreas: as pedras cobrem as áreas certas? Há desequilíbrio (muita tarefa em uma área, zero em outra)?
+5. Traga ESTRATÉGIAS VALIDADAS: se os especialistas (sono, psicologia, nutrição, atividade física, finanças, espiritualidade) já apontaram algo, transforme isso em sugestão concreta desta semana.
+6. Pergunte-se: "Se eu fosse essa pessoa, o que eu gostaria que alguém me lembrasse agora — e o que eu não percebo sozinha?"
 
 **Como responder (formato JSON obrigatório):**
 
@@ -142,7 +182,7 @@ Você DEVE responder EXATAMENTE neste formato JSON (sem texto antes ou depois):
 
 {
   "greeting": "Uma saudação curta e pessoal (1 frase). Use o nome da pessoa se souber. Ex: 'Boa tarde, Leticia! Pronta para planejar a semana?'",
-  "strategicFeedback": "1-3 frases de observação estratégica. Seja específica: mencione áreas vazias, padrões que notou, conexões com metas ou com a semana passada. Se a pessoa tem diário recente, use isso naturalmente. Ex: 'Notei que você escreveu no diário que quer cuidar mais das amizades, mas relacionamentos está sem tarefas. Suas pedras estão fortes em carreira — talvez seja a hora de equilibrar com lazer?'",
+  "strategicFeedback": "2-4 frases de observação estratégica e OPINIÃO. Aponte o que a pessoa não está vendo: compare com a semana passada, note desequilíbrios, conecte com metas/OKRs/diário/especialistas. Ex: 'Semana passada você concluiu 5 tarefas em carreira, mas lazer ficou zerado de novo — e a especialista de sono já avisou que você precisa desacelerar à noite. Que tal uma pedra de descanso esta semana?'",
   "suggestedStones": [
     {
       "rank": 1,
@@ -176,6 +216,8 @@ Você DEVE responder EXATAMENTE neste formato JSON (sem texto antes ou depois):
 - Se houver áreas vazias, dê sugestões para CADA uma delas
 - Se o diário mencionou algo relevante, conecte ("Você escreveu 'me sinto sobrecarregada' e carreira tem 7 tarefas...")
 - Se metas ativas estão paradas, lembre com leveza
+- Se houver dados da SEMANA PASSADA, USE-OS: compare por área e diga o que fazer de diferente — o que repetir, o que parar, o que começar
+- Se especialistas já deram recomendações, traga como ESTRATÉGIA VALIDADA (ex: "a especialista de sono sugeriu X — quer colocar como tarefa esta semana?")
 - Sugira tarefas CONCRETAS e PESSOAIS, baseadas no que você sabe da pessoa
 - NUNCA sugira tarefas genéricas ("Fazer exercício") — sempre contextualize ("Caminhar no parque que você gosta" se isso estiver nas memórias)
 - Se não há informação suficiente para personalizar, seja honesta e encorajadora
@@ -204,10 +246,17 @@ export async function POST(request: Request) {
       stones: [], areasWithTasks: [], emptyAreas: [], totalTasks: 0, doneTasks: 0, linkedGoalIds: [],
     };
 
+    // Monday of the previous week (relative to the week being planned, not "today")
+    const prevWeekStart = (() => {
+      const d = new Date(weekStart + "T12:00:00");
+      d.setDate(d.getDate() - 7);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    })();
+
     const admin = getSupabaseAdmin();
 
     // ── Fetch user context (same pattern as POST /api/maya) ──
-    const [prefsRes, checkInsRes, diaryRes, memoriesRes, goalsRes, weekPlanRes, specialistRes, quarterlyRes, visionsRes] = await Promise.all([
+    const [prefsRes, checkInsRes, diaryRes, memoriesRes, goalsRes, weekPlanRes, prevWeekRes, specialistRes, quarterlyRes, visionsRes] = await Promise.all([
       admin.from("user_preferences").select("context").eq("user_id", user.id).single(),
       admin.from("check_ins").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(7),
       admin.from("diary_entries").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(10),
@@ -218,6 +267,8 @@ export async function POST(request: Request) {
         .order("position", { foreignTable: "goal_stages", ascending: true }),
       admin.from("weekly_plans").select(`*, weekly_reviews(*), weekly_focus_goals(goal_id)`)
         .eq("user_id", user.id).eq("week_start", weekStart).maybeSingle(),
+      admin.from("weekly_plans").select(`*, weekly_tasks(*), weekly_reviews(*)`)
+        .eq("user_id", user.id).eq("week_start", prevWeekStart).maybeSingle(),
       getLatestInsights(user.id).catch(() => null),
       admin.from("quarterly_cycles")
         .select(`*, key_results(*), quarterly_reviews(*)`)
@@ -292,6 +343,30 @@ export async function POST(request: Request) {
         focusGoalCount: ((weekPlanRaw.weekly_focus_goals as unknown[]) || []).length,
         hasReview: !!review,
         reviewScore: review ? (review.week_score as number) : null,
+      };
+    }
+
+    // ── Build previous week summary (for week-over-week comparison) ──
+    let previousWeek: PrevWeekSummary | null = null;
+    const prevWeekRaw = prevWeekRes.data as Record<string, unknown> | null;
+    if (prevWeekRaw) {
+      const prevTasks = (prevWeekRaw.weekly_tasks as Record<string, unknown>[]) || [];
+      const prevReviews = (prevWeekRaw.weekly_reviews as Record<string, unknown>[]) || [];
+      const prevReview = prevReviews[0] ?? null;
+      const perAreaMap: Record<string, { total: number; done: number }> = {};
+      for (const t of prevTasks) {
+        const area = (t.area as string) || "outros";
+        if (!perAreaMap[area]) perAreaMap[area] = { total: 0, done: 0 };
+        perAreaMap[area].total += 1;
+        if (t.status === "concluida") perAreaMap[area].done += 1;
+      }
+      previousWeek = {
+        weekStart: prevWeekStart,
+        mainFocus: (prevWeekRaw.main_focus as string) || null,
+        totalTasks: prevTasks.length,
+        doneTasks: prevTasks.filter(t => t.status === "concluida").length,
+        perArea: Object.entries(perAreaMap).map(([area, v]) => ({ area, total: v.total, done: v.done })),
+        reviewScore: prevReview ? (prevReview.week_score as number) : null,
       };
     }
 
@@ -424,7 +499,7 @@ export async function POST(request: Request) {
     });
 
     // ── Append planning-specific prompt ──
-    const fullPrompt = systemPrompt + buildPlanningPrompt(planState, quarterlyData, areaVisions);
+    const fullPrompt = systemPrompt + buildPlanningPrompt(planState, quarterlyData, areaVisions, previousWeek);
 
     // ── Call LLM ──
     const userMessage = `Analise o plano da semana e me ajude como conselheira estratégica. Responda APENAS o JSON no formato especificado, sem texto antes ou depois.`;
