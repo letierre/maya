@@ -37,6 +37,7 @@ interface PlanningCompanionProps {
   areasWithTasks: string[];
   tasksByArea: (area: string) => any[];
   onRequestCompanion: () => void;
+  onSuggestArea: (area: string) => Promise<AreaSuggestion | null>;
   onAddTask: (title: string, area: string, dayOfWeek?: number) => Promise<boolean>;
   onSetStone: (rank: number, text: string) => Promise<void>;
   planMetrics: { strongest: string; weakest: string; balance: number; variation: number };
@@ -55,6 +56,7 @@ export function PlanningCompanion({
   areasWithTasks,
   tasksByArea,
   onRequestCompanion,
+  onSuggestArea,
   onAddTask,
   onSetStone,
   planMetrics,
@@ -63,6 +65,8 @@ export function PlanningCompanion({
   const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set());
   const [addingTask, setAddingTask] = useState<string | null>(null);
   const [settingStone, setSettingStone] = useState<number | null>(null);
+  const [focusSuggestions, setFocusSuggestions] = useState<Record<string, AreaSuggestion>>({});
+  const [suggestingArea, setSuggestingArea] = useState<string | null>(null);
 
   // Identify empty areas
   const emptyAreas = useMemo(
@@ -95,6 +99,19 @@ export function PlanningCompanion({
       setSettingStone(null);
     },
     [onSetStone],
+  );
+
+  const handleSuggestArea = useCallback(
+    async (area: string) => {
+      if (suggestingArea) return;
+      setSuggestingArea(area);
+      const suggestion = await onSuggestArea(area);
+      if (suggestion && suggestion.suggestedTasks?.length) {
+        setFocusSuggestions((prev) => ({ ...prev, [area]: suggestion }));
+      }
+      setSuggestingArea(null);
+    },
+    [onSuggestArea, suggestingArea],
   );
 
   // ── Render: Initial call-to-action ─────────────────────────────
@@ -293,6 +310,9 @@ export function PlanningCompanion({
           addedTasks={addedTasks}
           addingTask={addingTask}
           onAddTask={handleAddTask}
+          focusSuggestions={focusSuggestions}
+          suggestingArea={suggestingArea}
+          onSuggestArea={handleSuggestArea}
         />
       )}
 
@@ -709,6 +729,9 @@ function AreasTab({
   addedTasks,
   addingTask,
   onAddTask,
+  focusSuggestions,
+  suggestingArea,
+  onSuggestArea,
 }: {
   companionData: PlanningCompanionResponse | null;
   stones: (string | null | undefined)[];
@@ -718,6 +741,9 @@ function AreasTab({
   addedTasks: Set<string>;
   addingTask: string | null;
   onAddTask: (title: string, area: string) => void;
+  focusSuggestions: Record<string, AreaSuggestion>;
+  suggestingArea: string | null;
+  onSuggestArea: (area: string) => void;
 }) {
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(() => {
     // Auto-expand empty areas and areas with Maya suggestions
@@ -763,6 +789,9 @@ function AreasTab({
         const tasks = tasksByArea(area);
         const doneTasks = tasks.filter((t: any) => t.status === "concluida").length;
         const suggestion = suggestionByArea[area];
+        const focused = focusSuggestions[area];
+        const effectiveSuggestion = focused ?? suggestion;
+        const isSuggesting = suggestingArea === area;
         const isEmpty = tasks.length === 0;
         const isExpanded = expandedAreas.has(area);
         const hue = AREA_CONFIG[area as keyof typeof AREA_CONFIG]?.hue || 200;
@@ -841,7 +870,7 @@ function AreasTab({
             {isExpanded && (
               <div style={{ padding: "8px 14px 14px", borderTop: "1px solid rgba(167,139,250,0.04)" }}>
                 {/* Maya's message for this area */}
-                {suggestion && (
+                {effectiveSuggestion?.message && (
                   <div
                     style={{
                       background: "rgba(124,92,255,0.06)",
@@ -864,14 +893,14 @@ function AreasTab({
                       <span>🧠</span> Maya observou
                     </p>
                     <p style={{ margin: 0, fontSize: 12, color: "#d0c8e8", lineHeight: 1.5 }}>
-                      {suggestion.message}
+                      {effectiveSuggestion.message}
                     </p>
                   </div>
                 )}
 
                 {/* Current tasks */}
                 {tasks.length > 0 && (
-                  <div style={{ marginBottom: suggestion ? 10 : 0 }}>
+                  <div style={{ marginBottom: effectiveSuggestion ? 10 : 0 }}>
                     <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 600, color: "#6a657a" }}>
                       Tarefas atuais
                     </p>
@@ -913,12 +942,12 @@ function AreasTab({
                 )}
 
                 {/* Maya's suggested tasks */}
-                {suggestion?.suggestedTasks && suggestion.suggestedTasks.length > 0 && (
+                {effectiveSuggestion?.suggestedTasks && effectiveSuggestion.suggestedTasks.length > 0 && (
                   <div>
                     <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 600, color: "#A78BFA" }}>
                       Sugestões da Maya
                     </p>
-                    {suggestion.suggestedTasks.map((st: SuggestedTask, i: number) => {
+                    {effectiveSuggestion.suggestedTasks.map((st: SuggestedTask, i: number) => {
                       const key = `${area}:${st.title}`;
                       const alreadyAdded = addedTasks.has(key);
                       const isAdding = addingTask === key;
@@ -996,11 +1025,38 @@ function AreasTab({
                   </div>
                 )}
 
-                {/* Empty state — no tasks and no Maya suggestion */}
-                {isEmpty && !suggestion && (
-                  <p style={{ margin: 0, fontSize: 12, color: "#5a5470", textAlign: "center", padding: "8px 0" }}>
-                    Peça para a Maya analisar esta área no botão abaixo ↓
-                  </p>
+                {/* Suggest button — empty area without suggestions yet */}
+                {isEmpty && !effectiveSuggestion?.suggestedTasks?.length && (
+                  <button
+                    type="button"
+                    onClick={() => onSuggestArea(area)}
+                    disabled={isSuggesting}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: 12,
+                      border: "1px dashed rgba(124,92,255,0.35)",
+                      background: "rgba(124,92,255,0.04)",
+                      color: "#A78BFA",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: isSuggesting ? "not-allowed" : "pointer",
+                      fontFamily: "inherit",
+                      opacity: isSuggesting ? 0.6 : 1,
+                      transition: "all .15s ease",
+                    }}
+                  >
+                    {isSuggesting ? (
+                      <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+                    ) : (
+                      <Sparkles size={14} />
+                    )}
+                    {isSuggesting ? "Maya pensando..." : "Maya, sugira tarefas para esta área"}
+                  </button>
                 )}
               </div>
             )}

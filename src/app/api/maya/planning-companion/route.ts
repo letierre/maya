@@ -7,6 +7,7 @@ import { computeCareSignals } from "@/lib/care-signals";
 import { callLLM } from "@/lib/llm";
 import { habitAnswered } from "@/lib/checkin-answered";
 import { NextResponse } from "next/server";
+import type { SuggestedTask } from "@/types";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -264,6 +265,35 @@ Você DEVE responder EXATAMENTE neste formato JSON (sem texto antes ou depois):
 - TEXTO PLANO, sem markdown.`;
 }
 
+// ── Focused area suggestion prompt (per-area "sugerir" button) ─────
+
+function buildAreaFocusPrompt(focusArea: string): string {
+  const label = AREA_LABELS[focusArea] || focusArea;
+  const emoji = AREA_EMOJIS[focusArea] || "•";
+  return `
+## MODO PLANEJAMENTO — SUGESTÃO FOCADA EM UMA ÁREA
+
+O usuário quer ideias de tarefas para a área ${emoji} ${label} (que está sem tarefas ou com poucas esta semana).
+
+Você conhece o usuário: diário, check-ins, metas, memórias, especialistas e visão de 5 anos. Use isso para gerar sugestões CONCRETAS e PESSOAIS para ESTA área específica.
+
+Responda APENAS o JSON (sem texto antes ou depois):
+{
+  "message": "1-2 frases de observação sobre esta área, conectando com o que você sabe da pessoa",
+  "suggestedTasks": [
+    { "title": "Tarefa concreta e pessoal", "taskType": "manutencao" }
+  ]
+}
+
+REGRAS:
+- Sugira de 3 a 5 tarefas
+- NUNCA genéricas ("Fazer exercício") — sempre contextualize com o que você sabe da pessoa
+- Se esta área tem uma visão de 5 anos, conecte as tarefas com ela
+- Se um especialista já deu recomendação relacionada, transforme em tarefa concreta
+- taskType: "manutencao" para hábitos/rotina, "crescimento" para coisas novas/expansão
+- TEXTO PLANO, sem markdown.`;
+}
+
 // ── POST ───────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
@@ -281,6 +311,8 @@ export async function POST(request: Request) {
     const planState: PlanState = body.planState || {
       stones: [], areasWithTasks: [], emptyAreas: [], totalTasks: 0, doneTasks: 0, linkedGoalIds: [],
     };
+    // When set, Maya focuses suggestions on a single area (per-area "sugerir" button)
+    const focusArea: string | null = typeof body.focusArea === "string" ? body.focusArea : null;
 
     // Monday of the previous week (relative to the week being planned, not "today")
     const prevWeekStart = (() => {
@@ -546,39 +578,79 @@ export async function POST(request: Request) {
     });
 
     // ── Append planning-specific prompt ──
-    const fullPrompt = systemPrompt + buildPlanningPrompt(planState, quarterlyData, areaVisions, previousWeek, recentChatTopics, careSignals);
+    const fullPrompt = focusArea
+      ? systemPrompt + buildAreaFocusPrompt(focusArea)
+      : systemPrompt + buildPlanningPrompt(planState, quarterlyData, areaVisions, previousWeek, recentChatTopics, careSignals);
 
     // ── Call LLM ──
-    const userMessage = `Analise o plano da semana e me ajude como conselheira estratégica. Responda APENAS o JSON no formato especificado, sem texto antes ou depois.`;
+    const userMessage = focusArea
+      ? `Sugira tarefas concretas para a área ${AREA_LABELS[focusArea] || focusArea}. Responda APENAS o JSON no formato especificado, sem texto antes ou depois.`
+      : `Analise o plano da semana e me ajude como conselheira estratégica. Responda APENAS o JSON no formato especificado, sem texto antes ou depois.`;
 
-    const llmResponse = await callLLM(fullPrompt, userMessage, { maxTokens: 800 });
+    const llmResponse = await callLLM(fullPrompt, userMessage, { maxTokens: focusArea ? 500 : 800 });
 
     // ── Parse JSON response ──
     let parsed: PlanningCompanionResponse;
     try {
       // Extract JSON from response (may have markdown fences or extra text)
       const jsonMatch = llmResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
+      if (!jsonMatch) throw new Error("No JSON found in response");
+      const raw = JSON.parse(jsonMatch[0]);
+
+      if (focusArea) {
+        // Focused shape: { message, suggestedTasks } → wrap as a single area suggestion
+        const focusTasks: SuggestedTask[] = Array.isArray(raw.suggestedTasks)
+          ? (raw.suggestedTasks as Record<string, unknown>[])
+              .map((t) => ({
+                title: String(t.title || ""),
+                taskType: (t.taskType === "crescimento" ? "crescimento" : "manutencao") as "manutencao" | "crescimento",
+              }))
+              .filter((t) => t.title)
+          : [];
+        parsed = {
+          greeting: "",
+          strategicFeedback: "",
+          suggestedStones: [],
+          areaSuggestions: [{
+            area: focusArea,
+            areaLabel: AREA_LABELS[focusArea] || focusArea,
+            message: typeof raw.message === "string" ? raw.message : "",
+            suggestedTasks: focusTasks,
+          }],
+        };
       } else {
-        throw new Error("No JSON found in response");
+        parsed = raw as PlanningCompanionResponse;
       }
     } catch {
       // Fallback: return a friendly but empty response
       const firstName = (user.user_metadata?.name as string || "").split(" ")[0];
-      parsed = {
-        greeting: firstName ? `Olá, ${firstName}! Vamos planejar sua semana?` : "Vamos planejar sua semana?",
-        strategicFeedback: planState.emptyAreas.length > 0
-          ? `Notei que ${planState.emptyAreas.map(a => AREA_LABELS[a] || a).join(", ")} ${planState.emptyAreas.length === 1 ? "está" : "estão"} sem tarefas. Que tal pensarmos juntos no que colocar lá?`
-          : "Seu plano está tomando forma! Quer que eu revise algo específico?",
-        suggestedStones: [],
-        areaSuggestions: planState.emptyAreas.map(area => ({
-          area,
-          areaLabel: AREA_LABELS[area] || area,
-          message: `Esta área está vazia. Que tal adicionar pelo menos uma tarefa?`,
-          suggestedTasks: [],
-        })),
-      };
+      if (focusArea) {
+        parsed = {
+          greeting: "",
+          strategicFeedback: "",
+          suggestedStones: [],
+          areaSuggestions: [{
+            area: focusArea,
+            areaLabel: AREA_LABELS[focusArea] || focusArea,
+            message: "",
+            suggestedTasks: [],
+          }],
+        };
+      } else {
+        parsed = {
+          greeting: firstName ? `Olá, ${firstName}! Vamos planejar sua semana?` : "Vamos planejar sua semana?",
+          strategicFeedback: planState.emptyAreas.length > 0
+            ? `Notei que ${planState.emptyAreas.map(a => AREA_LABELS[a] || a).join(", ")} ${planState.emptyAreas.length === 1 ? "está" : "estão"} sem tarefas. Que tal pensarmos juntos no que colocar lá?`
+            : "Seu plano está tomando forma! Quer que eu revise algo específico?",
+          suggestedStones: [],
+          areaSuggestions: planState.emptyAreas.map(area => ({
+            area,
+            areaLabel: AREA_LABELS[area] || area,
+            message: `Esta área está vazia. Que tal adicionar pelo menos uma tarefa?`,
+            suggestedTasks: [],
+          })),
+        };
+      }
     }
 
     return NextResponse.json(parsed);

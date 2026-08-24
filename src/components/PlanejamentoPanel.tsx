@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Plus, Star, ChevronDown, Clock, X, Check } from "lucide-react";
 import { toast } from "sonner";
-import type { TaskArea } from "@/types";
+import type { TaskArea, AreaSuggestion } from "@/types";
 import {
   AREA_CONFIG, ALL_AREAS, LIFE_AREAS, AREA_LABELS, DAY_NAMES, DAY_FULL,
   weekRangeFromDate as weekRange,
@@ -277,37 +277,38 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
 
   // ── Planning Companion callbacks ──
 
+  const buildPlanState = useCallback(() => {
+    const areasWithTasks = LIFE_AREAS.filter(a => (taskTotalByArea[a] || 0) > 0);
+    const emptyAreas = LIFE_AREAS.filter(a => (taskTotalByArea[a] || 0) === 0);
+    const areaTasks = LIFE_AREAS
+      .map(a => {
+        const list = tasks.filter((t: any) => t.area === a);
+        return {
+          area: a,
+          total: list.length,
+          done: list.filter((t: any) => t.status === "concluida").length,
+          titles: list.map((t: any) => t.title),
+        };
+      })
+      .filter(x => x.total > 0);
+    return {
+      stones: [currentPlan?.main_focus, currentPlan?.main_focus_2, currentPlan?.main_focus_3],
+      areasWithTasks,
+      emptyAreas,
+      totalTasks: tasks.length,
+      doneTasks: tasks.filter((t: any) => t.status === "concluida").length,
+      linkedGoalIds: activeGoals.map((g: any) => g.id),
+      areaTasks,
+    };
+  }, [taskTotalByArea, tasks, currentPlan, activeGoals]);
+
   const requestCompanion = async () => {
     setCompanionLoading(true);
     try {
-      const areasWithTasks = LIFE_AREAS.filter(a => (taskTotalByArea[a] || 0) > 0);
-      const emptyAreas = LIFE_AREAS.filter(a => (taskTotalByArea[a] || 0) === 0);
-      const areaTasks = LIFE_AREAS
-        .map(a => {
-          const list = tasks.filter((t: any) => t.area === a);
-          return {
-            area: a,
-            total: list.length,
-            done: list.filter((t: any) => t.status === "concluida").length,
-            titles: list.map((t: any) => t.title),
-          };
-        })
-        .filter(x => x.total > 0);
       const res = await fetch("/api/maya/planning-companion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          weekStart: currentWeekStart,
-          planState: {
-            stones: [currentPlan?.main_focus, currentPlan?.main_focus_2, currentPlan?.main_focus_3],
-            areasWithTasks,
-            emptyAreas,
-            totalTasks: tasks.length,
-            doneTasks: tasks.filter((t: any) => t.status === "concluida").length,
-            linkedGoalIds: activeGoals.map((g: any) => g.id),
-            areaTasks,
-          },
-        }),
+        body: JSON.stringify({ weekStart: currentWeekStart, planState: buildPlanState() }),
       });
       const data = await res.json();
       setCompanionData(data);
@@ -315,6 +316,20 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
       setCompanionData(null);
     } finally {
       setCompanionLoading(false);
+    }
+  };
+
+  const requestAreaSuggestion = async (area: string): Promise<AreaSuggestion | null> => {
+    try {
+      const res = await fetch("/api/maya/planning-companion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weekStart: currentWeekStart, focusArea: area, planState: buildPlanState() }),
+      });
+      const data = await res.json();
+      return (data?.areaSuggestions?.[0] ?? null) as AreaSuggestion | null;
+    } catch {
+      return null;
     }
   };
 
@@ -411,6 +426,7 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
           areasWithTasks={LIFE_AREAS.filter(a => (taskTotalByArea[a] || 0) > 0)}
           tasksByArea={(area: string) => tasks.filter((t: any) => t.area === area)}
           onRequestCompanion={requestCompanion}
+          onSuggestArea={requestAreaSuggestion}
           onAddTask={addTaskFromSuggestion}
           onSetStone={setStoneFromSuggestion}
           planMetrics={planMetrics}
