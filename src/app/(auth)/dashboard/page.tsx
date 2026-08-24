@@ -14,6 +14,7 @@ import { OutrosRecursos } from "@/components/OutrosRecursos";
 import { CheckinProgress } from "@/components/CheckinProgress";
 import { InsightsCarousel } from "@/components/InsightsCarousel";
 import { EvolucaoSpark } from "@/components/EvolucaoSpark";
+import { CareList } from "@/components/CareList";
 import type { CheckIn, SleepLog, WeeklyTask } from "@/types";
 
 // ── Page ────────────────────────────────────────────────────────
@@ -268,6 +269,9 @@ export default function DashboardPage() {
         loading={loading}
         currency={currency}
       />
+
+      {/* ═══ O QUE CUIDAR NOS PRÓXIMOS DIAS ═══ */}
+      <CareList />
 
       {/* ═══ SEUS ESPAÇOS ═══ */}
       <div className="px-3.5 pt-4">

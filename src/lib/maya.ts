@@ -57,6 +57,7 @@ interface MayaInput {
   language?: string;
   specialistSummaries?: SpecialistSummaries;
   areaVisions?: { area: string; statement: string }[];
+  careSignals?: { title: string; description: string; emoji: string }[];
 }
 
 function timeAwarenessBlock(hour: number, currentDate?: string): string {
@@ -425,6 +426,16 @@ export function buildHomeMessagePrompt(
     ? `\n\n## CONVERSA RECENTE NO CHAT (fonte da verdade)\nVocê conversou com a pessoa recentemente. Esta é a MESMA conversa — você é a mesma Maya, não existem duas Mayas.\n${input.recentChatTopics}\n\nREGRAS DE CONTINUIDADE (críticas):\n- Tudo o que foi decidido, adiado ou corrigido nessa conversa vale também aqui: se a pessoa disse que algo NÃO vai acontecer hoje, mudou de dia ou cancelou, NÃO fale como se fosse acontecer.\n- NUNCA contradiga o que a pessoa acabou de te dizer. Honre a mudança.\n- NÃO repita perguntas já respondidas. Referencie o que já foi conversado com naturalidade.`
     : "";
 
+  const careBlock = input.careSignals && input.careSignals.length > 0
+    ? `\n\n## O QUE CUIDAR NOS PRÓXIMOS DIAS (detectado pelos dados)
+O cuidado mais urgente detectado é: ${input.careSignals[0].emoji} ${input.careSignals[0].title} — ${input.careSignals[0].description}
+
+REGRAS:
+- Mencione esse cuidado com naturalidade e carinho, se couber na mensagem — sem relatório, sem números de diagnóstico.
+- NÃO force: se a conversa recente trouxer algo mais importante, priorize isso.
+- Máximo uma menção curta.`
+    : "";
+
   const user = `## SUA TAREFA AGORA
 Gere uma mensagem CURTA (1 a 3 frases) para a tela inicial do app.
 É a primeira coisa que ${input.profile.name?.split(" ")[0] || "a pessoa"} vai ver hoje.
@@ -437,7 +448,7 @@ Regras:
 - Inclua no MÁXIMO um emoji
 - NÃO faça perguntas genéricas como "como você está?" — seja específica
 - Retorne APENAS a mensagem final, sem aspas, sem markdown, sem "Bom dia, [nome]!" como prefixo fixo
-${chatContext}`;
+${chatContext}${careBlock}`;
 
   return { system, user };
 }

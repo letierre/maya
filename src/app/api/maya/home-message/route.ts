@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { buildHomeMessagePrompt, type GoalSummary, type WeekPlanSummary, type SpecialistSummaries } from "@/lib/maya";
+import { computeCareSignals } from "@/lib/care-signals";
 import { callLLM } from "@/lib/llm";
 import { getLocalDate, getUserTimezone } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
@@ -83,7 +84,7 @@ export async function GET(req: NextRequest) {
     const userName = (user.user_metadata?.name as string) || "";
     const firstName = userName.split(" ")[0];
     const gender = (context.gender as string) || "nao_dizer";
-    const hasMedication = (context.took_medication as boolean) || false;
+    const hasMedication = (context.has_medication as boolean) || false;
     const hasFaith = !!(context.faith_practice as string);
     const hasCreativeHobby = !!(context.creative_hobby as string);
     const porques = (context.porques as any[]) || [];
@@ -98,6 +99,7 @@ export async function GET(req: NextRequest) {
       { data: recentSleep },
       { data: specialistInsights },
       { data: recentChatMessages },
+      careSignals,
     ] = await Promise.all([
       admin.from("check_ins").select("*").eq("user_id", user.id)
         .order("date", { ascending: false }).limit(3),
@@ -117,6 +119,7 @@ export async function GET(req: NextRequest) {
         .gte("created_at", `${today}T00:00:00Z`).limit(1),
       admin.from("chat_messages").select("role, content").eq("user_id", user.id)
         .order("created_at", { ascending: false }).limit(8),
+      computeCareSignals(user.id),
     ]);
 
     const checks = (recentCheckIns || []) as any[];
@@ -249,6 +252,11 @@ export async function GET(req: NextRequest) {
       specialistSummaries,
       recentChatTopics: recentChatTopics || undefined,
       greetingLabel: greetingLabels[state] || undefined,
+      careSignals: (careSignals ?? []).slice(0, 3).map((s) => ({
+        title: s.title,
+        description: s.description,
+        emoji: s.emoji,
+      })),
     };
 
     // ── Generate message via LLM ──
