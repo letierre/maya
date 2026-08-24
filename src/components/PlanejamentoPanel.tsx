@@ -698,119 +698,6 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
         )}
       </div>
 
-      {/* FAB */}
-      <button type="button" onClick={() => { setNewTaskDay(selectedDay); setShowAddTask(true); }}
-        style={{ position: "fixed", bottom: 84, right: 20, zIndex: 40, width: 56, height: 56, borderRadius: "50%", background: "#7C5CFF", border: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(124,92,255,0.4)" }}>
-        <Plus size={24} color="#fff" />
-      </button>
-
-      {/* Add Task Sheet */}
-      {showAddTask && (
-        <div onTouchMove={(e) => e.stopPropagation()}
-          style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "60px 20px 20px", overflow: "hidden" }}>
-          <div style={{ width: "100%", maxWidth: 400, maxHeight: "70dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#151520", borderRadius: 24, padding: 24, border: "1px solid rgba(167,139,250,0.15)" }}>
-            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>Nova atividade</h3>
-            <input value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="Título" autoFocus style={inputS} />
-            <p style={{ fontSize: 10, color: "#A78BFA", margin: "12px 0 6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em" }}>Área</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 4 }}>
-              {ALL_AREAS.filter(a => a !== "outros").map(a => {
-                const area = AREA_CONFIG[a];
-                return (
-                <button key={a} type="button" onClick={() => setNewTaskArea(a)}
-                  style={{ padding: "8px 4px", borderRadius: 10, border: newTaskArea === a ? "2px solid #7C5CFF" : "1px solid rgba(167,139,250,0.15)", background: newTaskArea === a ? "rgba(124,92,255,0.1)" : "#0B0B10", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <span style={{ fontSize: 16 }}>{area?.emoji}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: newTaskArea === a ? "#A78BFA" : "#9e96b5" }}>{
-                    (AREA_LABELS as Record<string, string>)[a] || a
-                  }</span>
-                </button>
-                );
-              })}
-            </div>
-            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4 }}>Dia {newTaskDay === -1 && <span style={{ color: "#A78BFA" }}>· Em aberto</span>}</p>
-                <div style={{ display: "flex", gap: 2 }}>
-                  {DAY_NAMES.map((d, i) => (
-                    <button key={i} type="button" onClick={() => setNewTaskDay(newTaskDay === i ? -1 : i)}
-                      style={{ flex: 1, padding: "6px 2px", borderRadius: 8, border: 0, cursor: "pointer", background: newTaskDay === i ? "#7C5CFF" : "rgba(167,139,250,0.08)", color: newTaskDay === i ? "#fff" : "#9e96b5", fontSize: 9, fontWeight: 600, fontFamily: "inherit" }}>{d}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <button type="button" onClick={() => setNewTaskType("manutencao")}
-                style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: newTaskType === "manutencao" ? "2px solid #7C5CFF" : "1px solid rgba(167,139,250,0.15)", background: newTaskType === "manutencao" ? "rgba(124,92,255,0.1)" : "transparent", cursor: "pointer", color: newTaskType === "manutencao" ? "#A78BFA" : "#9e96b5", fontSize: 11, fontWeight: 600, fontFamily: "inherit" }}>↻ Hábito</button>
-              <button type="button" onClick={() => setNewTaskType("crescimento")}
-                style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: newTaskType === "crescimento" ? "2px solid #7C5CFF" : "1px solid rgba(167,139,250,0.15)", background: newTaskType === "crescimento" ? "rgba(124,92,255,0.1)" : "transparent", cursor: "pointer", color: newTaskType === "crescimento" ? "#A78BFA" : "#9e96b5", fontSize: 11, fontWeight: 600, fontFamily: "inherit" }}>↑ Crescer</button>
-            </div>
-            {/* Pedra da semana */}
-            <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 14, background: "#0B0B10", border: newIsStone ? "1px solid rgba(124,92,255,0.3)" : "1px solid rgba(167,139,250,0.1)" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                <input type="checkbox" checked={newIsStone} onChange={e => setNewIsStone(e.target.checked)}
-                  style={{ accentColor: "#7C5CFF", width: 18, height: 18 }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>Definir como pedra da semana</span>
-              </label>
-              {newIsStone && (
-                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  {([1,2,3] as const).map(n => {
-                    const occupied = n === 1 ? currentPlan?.main_focus : n === 2 ? currentPlan?.main_focus_2 : currentPlan?.main_focus_3;
-                    const isOccupied = !!occupied;
-                    return (
-                      <button key={n} type="button" onClick={() => setNewStoneRank(n)}
-                        style={{
-                          flex: 1, padding: "8px 0", borderRadius: 10, border: 0, cursor: "pointer",
-                          fontFamily: "inherit", fontSize: 12, fontWeight: 700,
-                          background: newStoneRank === n ? "#7C5CFF" : "rgba(167,139,250,0.08)",
-                          color: newStoneRank === n ? "#fff" : "#9e96b5",
-                          opacity: isOccupied && newStoneRank !== n ? 0.5 : 1,
-                        }}>
-                        {["I", "II", "III"][n-1]}
-                        {isOccupied && <div style={{ fontSize: 8, opacity: .7 }}>em uso</div>}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              {newIsStone && (() => {
-                const occupied = newStoneRank === 1 ? currentPlan?.main_focus : newStoneRank === 2 ? currentPlan?.main_focus_2 : currentPlan?.main_focus_3;
-                if (!occupied) return null;
-                return (
-                  <p style={{ margin: "8px 0 0", fontSize: 10, color: "#FF9F43", textAlign: "center" }}>
-                    ⚠️ Já existe uma pedra {["I","II","III"][newStoneRank-1]}: "{String(occupied).slice(0, 40)}" — será substituída
-                  </p>
-                );
-              })()}
-            </div>
-
-            {/* Time — toggle on/off */}
-            <div style={{ marginTop: 12 }}>
-              {newTaskTime ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 10, background: "#0B0B10", border: "1px solid rgba(167,139,250,0.2)" }}>
-                    <span style={{ fontSize: 12, flexShrink: 0 }}>🕐</span>
-                    <input type="time" value={newTaskTime} onChange={e => setNewTaskTime(e.target.value)}
-                      style={{ flex: 1, background: "transparent", border: 0, color: "#A78BFA", fontSize: 13, fontWeight: 600, fontFamily: "inherit", outline: "none", minWidth: 0 }} />
-                  </div>
-                  <button type="button" onClick={() => setNewTaskTime("")}
-                    style={{ padding: "8px", borderRadius: 9999, border: 0, background: "rgba(167,139,250,0.1)", color: "#9e96b5", fontSize: 12, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>✕</button>
-                </div>
-              ) : (
-                <button type="button" onClick={() => setNewTaskTime("09:00")}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 14px", borderRadius: 10, border: "1px dashed rgba(167,139,250,0.25)", background: "transparent", color: "#9e96b5", fontSize: 12, cursor: "pointer", fontFamily: "inherit", width: "100%", justifyContent: "center" }}>
-                  🕐 Adicionar horário
-                </button>
-              )}
-            </div>
-            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-              <button type="button" onClick={() => setShowAddTask(false)}
-                style={{ flex: 1, padding: 14, borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
-              <button type="button" onClick={addTask} disabled={!newTaskTitle.trim()}
-                style={{ flex: 2, padding: 14, borderRadius: 14, border: 0, background: newTaskTitle.trim() ? "#7C5CFF" : "#1e1840", color: newTaskTitle.trim() ? "#fff" : "#9e96b5", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Adicionar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Review Sheet */}
       {showReview && (
         <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
@@ -1119,6 +1006,119 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
       )}
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
         </>
+      )}
+
+      {/* FAB */}
+      <button type="button" onClick={() => { setNewTaskDay(selectedDay); setShowAddTask(true); }}
+        style={{ position: "fixed", bottom: 84, right: 20, zIndex: 40, width: 56, height: 56, borderRadius: "50%", background: "#7C5CFF", border: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(124,92,255,0.4)" }}>
+        <Plus size={24} color="#fff" />
+      </button>
+
+      {/* Add Task Sheet */}
+      {showAddTask && (
+        <div onTouchMove={(e) => e.stopPropagation()}
+          style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "60px 20px 20px", overflow: "hidden" }}>
+          <div style={{ width: "100%", maxWidth: 400, maxHeight: "70dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#151520", borderRadius: 24, padding: 24, border: "1px solid rgba(167,139,250,0.15)" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>Nova atividade</h3>
+            <input value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="Título" autoFocus style={inputS} />
+            <p style={{ fontSize: 10, color: "#A78BFA", margin: "12px 0 6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em" }}>Área</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 4 }}>
+              {ALL_AREAS.filter(a => a !== "outros").map(a => {
+                const area = AREA_CONFIG[a];
+                return (
+                <button key={a} type="button" onClick={() => setNewTaskArea(a)}
+                  style={{ padding: "8px 4px", borderRadius: 10, border: newTaskArea === a ? "2px solid #7C5CFF" : "1px solid rgba(167,139,250,0.15)", background: newTaskArea === a ? "rgba(124,92,255,0.1)" : "#0B0B10", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <span style={{ fontSize: 16 }}>{area?.emoji}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: newTaskArea === a ? "#A78BFA" : "#9e96b5" }}>{
+                    (AREA_LABELS as Record<string, string>)[a] || a
+                  }</span>
+                </button>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4 }}>Dia {newTaskDay === -1 && <span style={{ color: "#A78BFA" }}>· Em aberto</span>}</p>
+                <div style={{ display: "flex", gap: 2 }}>
+                  {DAY_NAMES.map((d, i) => (
+                    <button key={i} type="button" onClick={() => setNewTaskDay(newTaskDay === i ? -1 : i)}
+                      style={{ flex: 1, padding: "6px 2px", borderRadius: 8, border: 0, cursor: "pointer", background: newTaskDay === i ? "#7C5CFF" : "rgba(167,139,250,0.08)", color: newTaskDay === i ? "#fff" : "#9e96b5", fontSize: 9, fontWeight: 600, fontFamily: "inherit" }}>{d}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <button type="button" onClick={() => setNewTaskType("manutencao")}
+                style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: newTaskType === "manutencao" ? "2px solid #7C5CFF" : "1px solid rgba(167,139,250,0.15)", background: newTaskType === "manutencao" ? "rgba(124,92,255,0.1)" : "transparent", cursor: "pointer", color: newTaskType === "manutencao" ? "#A78BFA" : "#9e96b5", fontSize: 11, fontWeight: 600, fontFamily: "inherit" }}>↻ Hábito</button>
+              <button type="button" onClick={() => setNewTaskType("crescimento")}
+                style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: newTaskType === "crescimento" ? "2px solid #7C5CFF" : "1px solid rgba(167,139,250,0.15)", background: newTaskType === "crescimento" ? "rgba(124,92,255,0.1)" : "transparent", cursor: "pointer", color: newTaskType === "crescimento" ? "#A78BFA" : "#9e96b5", fontSize: 11, fontWeight: 600, fontFamily: "inherit" }}>↑ Crescer</button>
+            </div>
+            {/* Pedra da semana */}
+            <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 14, background: "#0B0B10", border: newIsStone ? "1px solid rgba(124,92,255,0.3)" : "1px solid rgba(167,139,250,0.1)" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                <input type="checkbox" checked={newIsStone} onChange={e => setNewIsStone(e.target.checked)}
+                  style={{ accentColor: "#7C5CFF", width: 18, height: 18 }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>Definir como pedra da semana</span>
+              </label>
+              {newIsStone && (
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  {([1,2,3] as const).map(n => {
+                    const occupied = n === 1 ? currentPlan?.main_focus : n === 2 ? currentPlan?.main_focus_2 : currentPlan?.main_focus_3;
+                    const isOccupied = !!occupied;
+                    return (
+                      <button key={n} type="button" onClick={() => setNewStoneRank(n)}
+                        style={{
+                          flex: 1, padding: "8px 0", borderRadius: 10, border: 0, cursor: "pointer",
+                          fontFamily: "inherit", fontSize: 12, fontWeight: 700,
+                          background: newStoneRank === n ? "#7C5CFF" : "rgba(167,139,250,0.08)",
+                          color: newStoneRank === n ? "#fff" : "#9e96b5",
+                          opacity: isOccupied && newStoneRank !== n ? 0.5 : 1,
+                        }}>
+                        {["I", "II", "III"][n-1]}
+                        {isOccupied && <div style={{ fontSize: 8, opacity: .7 }}>em uso</div>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {newIsStone && (() => {
+                const occupied = newStoneRank === 1 ? currentPlan?.main_focus : newStoneRank === 2 ? currentPlan?.main_focus_2 : currentPlan?.main_focus_3;
+                if (!occupied) return null;
+                return (
+                  <p style={{ margin: "8px 0 0", fontSize: 10, color: "#FF9F43", textAlign: "center" }}>
+                    ⚠️ Já existe uma pedra {["I","II","III"][newStoneRank-1]}: "{String(occupied).slice(0, 40)}" — será substituída
+                  </p>
+                );
+              })()}
+            </div>
+
+            {/* Time — toggle on/off */}
+            <div style={{ marginTop: 12 }}>
+              {newTaskTime ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 10, background: "#0B0B10", border: "1px solid rgba(167,139,250,0.2)" }}>
+                    <span style={{ fontSize: 12, flexShrink: 0 }}>🕐</span>
+                    <input type="time" value={newTaskTime} onChange={e => setNewTaskTime(e.target.value)}
+                      style={{ flex: 1, background: "transparent", border: 0, color: "#A78BFA", fontSize: 13, fontWeight: 600, fontFamily: "inherit", outline: "none", minWidth: 0 }} />
+                  </div>
+                  <button type="button" onClick={() => setNewTaskTime("")}
+                    style={{ padding: "8px", borderRadius: 9999, border: 0, background: "rgba(167,139,250,0.1)", color: "#9e96b5", fontSize: 12, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>✕</button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setNewTaskTime("09:00")}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 14px", borderRadius: 10, border: "1px dashed rgba(167,139,250,0.25)", background: "transparent", color: "#9e96b5", fontSize: 12, cursor: "pointer", fontFamily: "inherit", width: "100%", justifyContent: "center" }}>
+                  🕐 Adicionar horário
+                </button>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button type="button" onClick={() => setShowAddTask(false)}
+                style={{ flex: 1, padding: 14, borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
+              <button type="button" onClick={addTask} disabled={!newTaskTitle.trim()}
+                style={{ flex: 2, padding: 14, borderRadius: 14, border: 0, background: newTaskTitle.trim() ? "#7C5CFF" : "#1e1840", color: newTaskTitle.trim() ? "#fff" : "#9e96b5", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Adicionar</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

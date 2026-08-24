@@ -307,9 +307,6 @@ export function PlanningCompanion({
         </div>
       </div>
 
-      {/* Adicionar tarefa manualmente */}
-      <QuickAddTask onAddTask={onAddTask} />
-
       {/* Tabs */}
       <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
         {([
@@ -437,77 +434,6 @@ export function PlanningCompanion({
 }
 
 // ── Sub-components ──────────────────────────────────────────────────────
-
-// ── Quick Add Task (manual input, always available in plan mode) ────────
-
-function QuickAddTask({ onAddTask }: { onAddTask: (title: string, area: string, dayOfWeek?: number) => Promise<boolean> }) {
-  const [title, setTitle] = useState("");
-  const [area, setArea] = useState("saude");
-  const [adding, setAdding] = useState(false);
-
-  const submit = async () => {
-    const t = title.trim();
-    if (!t || adding) return;
-    setAdding(true);
-    const ok = await onAddTask(t, area);
-    setAdding(false);
-    if (ok) setTitle("");
-  };
-
-  return (
-    <div
-      style={{
-        background: "#151520",
-        borderRadius: 16,
-        border: "1px solid rgba(167,139,250,0.1)",
-        padding: 14,
-        marginBottom: 16,
-      }}
-    >
-      <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: "#A78BFA", letterSpacing: ".06em", textTransform: "uppercase" }}>
-        ➕ Adicionar tarefa
-      </p>
-      <div style={{ display: "flex", gap: 8 }}>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-          placeholder="Nova tarefa..."
-          style={{
-            flex: 1, minWidth: 0, padding: "10px 12px", borderRadius: 10,
-            border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10",
-            color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none",
-          }}
-        />
-        <select
-          value={area}
-          onChange={(e) => setArea(e.target.value)}
-          style={{
-            padding: "10px 8px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
-            background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit",
-            outline: "none", maxWidth: 130,
-          }}
-        >
-          {LIFE_AREAS.map((a) => (
-            <option key={a} value={a}>{AREA_EMOJIS[a] || ""} {AREA_LABELS_LONG[a] || a}</option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={submit}
-          disabled={adding || !title.trim()}
-          style={{
-            padding: "10px 14px", borderRadius: 10, border: 0, background: "#7C5CFF",
-            color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
-            whiteSpace: "nowrap", opacity: !title.trim() || adding ? 0.5 : 1,
-          }}
-        >
-          {adding ? "..." : "Adicionar"}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ── Quick Stats (shown before first AI response) ────────────────────────
 
