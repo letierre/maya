@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { buildMayaSystemPrompt, GoalSummary, WeekPlanSummary } from "@/lib/maya";
 import { getLatestInsights } from "@/lib/specialists";
 import { calculateStreak, getWeekMondayDate } from "@/lib/utils";
+import { computeCareSignals } from "@/lib/care-signals";
 import { callLLM } from "@/lib/llm";
 import { habitAnswered } from "@/lib/checkin-answered";
 import { NextResponse } from "next/server";
@@ -76,7 +77,14 @@ const AREA_EMOJIS: Record<string, string> = {
 
 // ── Planning-specific system prompt ────────────────────────────────
 
-function buildPlanningPrompt(planState: PlanState, quarterlyData?: ActiveQuarterlyCycle | null, areaVisions?: { area: string; statement: string }[], previousWeek?: PrevWeekSummary | null): string {
+function buildPlanningPrompt(
+  planState: PlanState,
+  quarterlyData?: ActiveQuarterlyCycle | null,
+  areaVisions?: { area: string; statement: string }[],
+  previousWeek?: PrevWeekSummary | null,
+  recentChatTopics?: string,
+  careSignals?: { title: string; description: string; emoji: string }[],
+): string {
   const stonesList = planState.stones.filter(Boolean).map((s, i) => `  Pedra ${i + 1}: "${s}"`).join("\n") || "  (nenhuma pedra definida ainda)";
   const areasWithList = planState.areasWithTasks.length > 0
     ? planState.areasWithTasks.map(a => `  ${AREA_EMOJIS[a] || "•"} ${AREA_LABELS[a] || a}`).join("\n")
@@ -110,6 +118,34 @@ Tarefas: ${previousWeek.totalTasks} planejadas, ${previousWeek.doneTasks} conclu
 ${previousWeek.reviewScore != null ? `Autoavaliação: ${previousWeek.reviewScore}/5` : "Sem autoavaliação registrada."}
 Por área:
 ${prevPerArea}
+`;
+  }
+
+  // Recent chat continuity (same Maya as the Home/chat)
+  let chatSection = "";
+  if (recentChatTopics) {
+    chatSection = `
+### CONVERSA RECENTE NO CHAT (você é a MESMA Maya do chat)
+${recentChatTopics}
+
+REGRAS DE CONTINUIDADE:
+- Tudo que foi decidido, adiado ou corrigido nessa conversa vale também aqui. Se a pessoa mudou de ideia sobre algo, honre a mudança.
+- NUNCA contradiga o que a pessoa acabou de te dizer.
+- NÃO repita perguntas já respondidas. Referencie o que já foi conversado com naturalidade.
+`;
+  }
+
+  // Care signals (what the data says to watch for)
+  let careSection = "";
+  if (careSignals && careSignals.length > 0) {
+    careSection = `
+### O QUE CUIDAR NOS PRÓXIMOS DIAS (detectado pelos dados)
+${careSignals.slice(0, 3).map(s => `  ${s.emoji} ${s.title}: ${s.description}`).join("\n")}
+
+REGRAS:
+- Se um cuidado detectado combina com uma área do plano, sugira uma tarefa concreta para ele (ex: sono caindo → priorizar descanso/rotina noturna).
+- Fale com naturalidade, sem relatório e sem números de diagnóstico.
+- NÃO force: se o plano já trata disso, reconheça em vez de empilhar.
 `;
   }
 
@@ -163,7 +199,7 @@ ${areasWithList}
 ${emptyList}
 
 **Total:** ${planState.totalTasks} tarefas planejadas, ${planState.doneTasks} concluídas.
-${areaDetailSection}${previousWeekSection}${quarterlySection}${visionSection}
+${areaDetailSection}${previousWeekSection}${quarterlySection}${visionSection}${chatSection}${careSection}
 ### SUA MISSÃO NESTE MODO
 
 Você é uma estrategista. Os dados acima são o MAPA. Seu conhecimento do usuário (diário, check-ins, metas, memórias, especialistas) é a INTELIGÊNCIA. Combine os dois para ajudar a pessoa a tomar melhores decisões. NÃO seja passiva: o usuário espera que você OPINE, SUGIRA e aponte o que ela não está vendo.
@@ -256,7 +292,7 @@ export async function POST(request: Request) {
     const admin = getSupabaseAdmin();
 
     // ── Fetch user context (same pattern as POST /api/maya) ──
-    const [prefsRes, checkInsRes, diaryRes, memoriesRes, goalsRes, weekPlanRes, prevWeekRes, specialistRes, quarterlyRes, visionsRes] = await Promise.all([
+    const [prefsRes, checkInsRes, diaryRes, memoriesRes, goalsRes, weekPlanRes, prevWeekRes, specialistRes, quarterlyRes, visionsRes, chatRes, careSignals] = await Promise.all([
       admin.from("user_preferences").select("context").eq("user_id", user.id).single(),
       admin.from("check_ins").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(7),
       admin.from("diary_entries").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(10),
@@ -276,6 +312,10 @@ export async function POST(request: Request) {
         .order("position", { foreignTable: "key_results", ascending: true })
         .maybeSingle(),
       admin.from("area_visions").select("*").eq("user_id", user.id).order("area", { ascending: true }),
+      admin.from("chat_messages").select("role, content").eq("user_id", user.id)
+        .or("chat_type.is.null,chat_type.eq.maya")
+        .order("created_at", { ascending: false }).limit(8),
+      computeCareSignals(user.id),
     ]);
 
     const context = (prefsRes.data?.context || {}) as Record<string, unknown>;
@@ -429,6 +469,13 @@ export async function POST(request: Request) {
 
     const streak = calculateStreak(checkIns.map((c: Record<string, unknown>) => c.date as string));
 
+    // ── Recent chat topics (continuity: same Maya as the Home/chat) ──
+    const recentChatTopics = ((chatRes.data || []) as Record<string, unknown>[])
+      .filter((m) => m.role === "assistant" || m.role === "user")
+      .reverse()
+      .map((m) => `${m.role === "assistant" ? "Maya" : "Usuário"}: ${(m.content as string)?.slice(0, 200)}`)
+      .join("\n");
+
     // ── Build specialist summaries ──
     let specialistSummaries = undefined;
     if (latestInsights && typeof latestInsights === "object") {
@@ -499,7 +546,7 @@ export async function POST(request: Request) {
     });
 
     // ── Append planning-specific prompt ──
-    const fullPrompt = systemPrompt + buildPlanningPrompt(planState, quarterlyData, areaVisions, previousWeek);
+    const fullPrompt = systemPrompt + buildPlanningPrompt(planState, quarterlyData, areaVisions, previousWeek, recentChatTopics, careSignals);
 
     // ── Call LLM ──
     const userMessage = `Analise o plano da semana e me ajude como conselheira estratégica. Responda APENAS o JSON no formato especificado, sem texto antes ou depois.`;
