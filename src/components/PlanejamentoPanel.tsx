@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Plus, Star, ChevronDown, Clock, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import type { TaskArea } from "@/types";
@@ -111,15 +111,8 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
     setLoading(false);
   };
 
-  useEffect(() => {
-    setLoading(true);
-    fetchPlan();
-    // Fetch agenda items (compromissos/tarefas criados direto na agenda) for the week
-    fetch(`/api/agenda?from=${currentWeekStart}&to=${currentWeekEnd}`)
-      .then(r => r.json())
-      .then(d => { if (Array.isArray(d)) setAgendaItems(d); })
-      .catch(() => {});
-    // Fetch Maya's plan insight
+  // Fetch Maya's plan insight (insights + métricas dos indicadores)
+  const fetchInsight = useCallback(() => {
     setInsightLoading(true);
     fetch(`/api/maya/plan-insight?week=${currentWeekStart}`)
       .then(r => r.json())
@@ -129,6 +122,16 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
       })
       .catch(() => {})
       .finally(() => setInsightLoading(false));
+  }, [currentWeekStart]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchPlan();
+    // Fetch agenda items (compromissos/tarefas criados direto na agenda) for the week
+    fetch(`/api/agenda?from=${currentWeekStart}&to=${currentWeekEnd}`)
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setAgendaItems(d); })
+      .catch(() => {});
     // Fetch user profile for planning mode
     fetch("/api/preferences")
       .then(r => r.json())
@@ -156,6 +159,11 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
       .catch(() => {})
       .finally(() => setOkrLoading(false));
   }, [selectedDate]);
+
+  // Recalcula insight/métricas sempre que o plano muda (novas tarefas, conclusões, etc.)
+  useEffect(() => {
+    fetchInsight();
+  }, [fetchInsight, tasks, agendaItems]);
 
   // Lock body scroll when editor is open
   useEffect(() => {
@@ -368,12 +376,18 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
     .filter(Boolean)
     .map((text, i) => ({ rank: i + 1, text: text!, area: undefined as string | undefined }));
 
+  // Ao entrar no modo planejar, zera a análise anterior para refletir o plano atual
+  const handleModeChange = (mode: "view" | "plan") => {
+    setPlanningMode(mode);
+    if (mode === "plan") setCompanionData(null);
+  };
+
   if (loading) return <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center", padding: 20 }}>Carregando...</p>;
 
   return (
     <div style={{ marginBottom: 20 }}>
       {/* ── Mode Toggle ── */}
-      <PlanningModeToggle mode={planningMode} onChange={setPlanningMode} />
+      <PlanningModeToggle mode={planningMode} onChange={handleModeChange} />
 
       {/* ── Modo Planejar ── */}
       {planningMode === "plan" && (
