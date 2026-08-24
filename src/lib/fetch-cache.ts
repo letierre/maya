@@ -4,6 +4,8 @@
  * TTL curto (30s) para manter dados frescos.
  */
 
+import { emitCareDataChanged } from "./care-events";
+
 interface CacheEntry {
   data: unknown;
   timestamp: number;
@@ -17,9 +19,16 @@ export function clearFetchCache() {
 }
 
 export function invalidateFetchCache(pattern: string) {
+  let changed = false;
   for (const key of cache.keys()) {
-    if (key.includes(pattern)) cache.delete(key);
+    if (key.includes(pattern)) {
+      cache.delete(key);
+      changed = true;
+    }
   }
+  // Avisa componentes (ex.: CareList) que dados podem ter mudado,
+  // para que re-busquem em tempo real.
+  if (changed) emitCareDataChanged();
 }
 
 export async function cachedFetch<T = unknown>(

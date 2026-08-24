@@ -15,6 +15,7 @@ import { getLocalDate } from "@/lib/utils";
 import { hasPushPermission } from "@/lib/push-utils";
 import { useTranslation } from "@/lib/useTranslation";
 import { t as tFn, type Lang } from "@/lib/i18n";
+import { emitCareDataChanged } from "@/lib/care-events";
 
 interface SleepConfig {
   bedtime: string;
@@ -171,6 +172,7 @@ function ManualLogModal({ onClose, onSaved, lang }: { onClose: () => void; onSav
         source: "checkin",
       }),
     });
+    emitCareDataChanged();
     // Fire-and-forget: trigger specialist re-analysis in background
     fetch("/api/specialists/analyze", { method: "POST" }).catch(() => {});
     setSaving(false);
@@ -402,6 +404,7 @@ function EditSleepModal({ log, onClose, onSaved, lang }: {
         notes: interruptions > 0 && notes.trim() ? notes.trim() : null,
       }),
     });
+    emitCareDataChanged();
     // Fire-and-forget: trigger specialist re-analysis in background
     fetch("/api/specialists/analyze", { method: "POST" }).catch(() => {});
     setSaving(false);

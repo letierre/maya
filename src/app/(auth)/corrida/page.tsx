@@ -7,6 +7,7 @@ import { Play, Square, Timer, Footprints, Zap, ChevronLeft, Share2 } from "lucid
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { uploadToCloud, photoUrl } from "@/lib/photo-storage";
+import { emitCareDataChanged } from "@/lib/care-events";
 
 interface Coord { lat: number; lng: number; timestamp: number; }
 interface Session { id: string; start_time: string; end_time: string | null; distance_meters: number; duration_seconds: number; avg_pace: number | null; max_speed: number | null; calories_estimate: number | null; notes: string | null; route_coordinates: Coord[]; map_snapshot: string | null; }
@@ -432,6 +433,7 @@ export default function CorridaPage() {
         });
       }
       if (res.ok) {
+        emitCareDataChanged();
         toast.success("Corrida salva!");
         const fresh = await fetch("/api/running?limit=20").then((r) => r.json()).catch(() => []);
         if (Array.isArray(fresh)) setHistory(fresh);
@@ -467,6 +469,7 @@ export default function CorridaPage() {
     try {
       const res = await fetch(`/api/running?id=${selectedSession.id}`, { method: "DELETE" });
       if (res.ok) {
+        emitCareDataChanged();
         toast.success("Corrida excluída");
         setHistory(prev => prev.filter(s => s.id !== selectedSession.id));
         setSelectedSession(null);

@@ -1,15 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, X } from "lucide-react";
 import type { CareSignal } from "@/lib/care-signals";
 import { getLocalDate } from "@/lib/utils";
+import { onCareDataChanged } from "@/lib/care-events";
 
 export function CareList() {
   const router = useRouter();
   const [items, setItems] = useState<CareSignal[]>([]);
   const [dismissed, setDismissed] = useState(false);
+
+  const loadItems = useCallback(() => {
+    fetch("/api/maya/care-list")
+      .then((r) => r.json())
+      .then((data) => setItems(data.items?.length ? data.items : []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -17,13 +25,17 @@ export function CareList() {
       setDismissed(true);
       return;
     }
-    fetch("/api/maya/care-list")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.items?.length) setItems(data.items);
-      })
-      .catch(() => {});
-  }, []);
+    loadItems();
+  }, [loadItems]);
+
+  // Atualiza em tempo real quando um dado que alimenta os sinais muda
+  // (check-in salvo, corrida, sono, refeições…).
+  useEffect(() => {
+    return onCareDataChanged(() => {
+      if (localStorage.getItem(`care_list_dismissed_${getLocalDate()}`)) return;
+      loadItems();
+    });
+  }, [loadItems]);
 
   if (dismissed || items.length === 0) return null;
 
