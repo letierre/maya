@@ -3,6 +3,9 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { getLocalDate } from "@/lib/utils";
 import { callLLM } from "@/lib/llm";
+import { buildMayaSystemPrompt, type MayaInput } from "@/lib/maya";
+import { fetchMayaContext, toMayaInput } from "@/lib/maya-context";
+import { NEGATIVE_MOODS } from "@/lib/maya-constants";
 
 // ── Trigger detection ──────────────────────────────────────────────────────────
 
@@ -115,9 +118,7 @@ async function detectAllTriggers(
   if (checks.length >= 3) {
     const last3 = checks.slice(0, 3);
     const moods = last3.filter((c: any) => c.mood_tags?.length > 0).map((c: any) => c.mood_tags[0]);
-    const negativeMoods = moods.filter((m: string) =>
-      ["ansiosa", "triste", "cansada", "sobrecarregada", "irritada"].includes(m)
-    );
+    const negativeMoods = moods.filter((m: string) => NEGATIVE_MOODS.has(m));
     if (negativeMoods.length >= 2 && moods.length >= 2) {
       results.push({
         id: "mood_drop",
@@ -325,56 +326,39 @@ async function detectAllTriggers(
 
 // ── LLM nudge message generation ────────────────────────────────────────────
 
-const MAYA_NUDGE_SYSTEM = `Você é Maya, uma companheira virtual calorosa, curiosa e inteligente.
-Você fala português brasileiro com naturalidade e afeto. Trata a pessoa por "você".
-Seu tom é de amiga próxima — natural, sem termos técnicos, sem parecer robô.
-Você nunca julga. Você é genuína, sem malícia, sem ironia.
-
-REGRAS:
-- Você é a MESMA Maya do chat — não existem duas Mayas. Tudo o que foi conversado lá vale aqui.
-- NUNCA repita uma pergunta que a pessoa já respondeu (veja memórias e chat)
-- NUNCA contradiga o que a pessoa acabou de te dizer: se ela disse que algo NÃO vai acontecer hoje, mudou de dia ou cancelou, honre essa mudança e não fale como se fosse acontecer.
-- Se a pessoa já te contou algo importante, faça referência natural
-- NUNCA recite dados como relatório
-- NUNCA force positividade
-- Mensagens curtas: 1 a 2 frases
-- Máximo 1 emoji`;
-
 async function generateNudgeViaLLM(
-  triggerId: string,
+  mayaInput: MayaInput,
   triggerDescription: string,
   templateMessage: string,
-  firstName: string,
-  gender: string,
-  memFacts: string[],
   recentChatTopics: string,
 ): Promise<string> {
-  const memoriesBlock = memFacts.length > 0
-    ? `\n\nO QUE VOCÊ JÁ SABE SOBRE A PESSOA:\n${memFacts.map((m) => `- ${m}`).join("\n")}`
-    : "";
+  // Persona única — a MESMA Maya do chat/home/planejamento (buildMayaSystemPrompt),
+  // com memórias, metas, check-ins e especialistas já embutidos no prompt.
+  const system = buildMayaSystemPrompt(mayaInput);
 
   const chatBlock = recentChatTopics
     ? `\n\n## CONVERSA RECENTE NO CHAT (fonte da verdade)\nVocê conversou com a pessoa recentemente. Esta é a MESMA conversa — você é a mesma Maya.\n${recentChatTopics}\n\nREGRAS DE CONTINUIDADE (críticas):\n- Tudo o que foi decidido, adiado ou corrigido nessa conversa vale também aqui: se a pessoa disse que algo NÃO vai acontecer hoje, mudou de dia ou cancelou, NÃO fale como se fosse acontecer.\n- NUNCA contradiga o que a pessoa acabou de te dizer. Honre a mudança.\n- NÃO repita perguntas já respondidas.`
     : "";
 
-  const userPrompt = `Gere uma mensagem curta de nudge para ${firstName || "a pessoa"}.
+  const userPrompt = `## SUA TAREFA AGORA
+Você detectou algo e quer enviar um toque rápido (nudge) para a pessoa.
 
 Contexto do que você detectou: ${triggerDescription}
 
-A mensagem deve:
-- Ser calorosa mas direta — a pessoa está na home do app
-- Mencionar o que você notou de forma natural
+Gere UMA mensagem curta (1-2 frases) que:
+- Seja calorosa mas direta — a pessoa está na home do app
+- Mencione o que você notou de forma natural, não como um diagnóstico
 - Se houver memórias sobre esse tema, faça referência: "Sei que me contou sobre..."
 - NUNCA repita uma pergunta que já foi respondida
 - Termine com uma pergunta ou convite aberto
 - Máximo 2 frases, 1 emoji no máximo
 - Retorne APENAS a mensagem, sem aspas, sem markdown
-${memoriesBlock}${chatBlock}
+${chatBlock}
 
 Mensagem template (use como inspiração, melhore-a): "${templateMessage}"`;
 
   try {
-    const result = await callLLM(MAYA_NUDGE_SYSTEM, userPrompt, { maxTokens: 120, temperature: 0.75 });
+    const result = await callLLM(system, userPrompt, { maxTokens: 120, temperature: 0.75 });
     const cleaned = result.replace(/^["']|["']$/g, "").trim();
     if (cleaned && cleaned.length >= 10) return cleaned;
   } catch (err) {
@@ -445,7 +429,7 @@ export async function GET() {
     }
 
     // Detect ALL triggers, pick highest priority
-    const { results: nudges, memFacts, recentChatTopics } = await detectAllTriggers(user.id, today, firstName, gender);
+    const { results: nudges, recentChatTopics } = await detectAllTriggers(user.id, today, firstName, gender);
     // Transcrição das últimas trocas em ordem cronológica, com papéis explícitos,
     // para o nudge não contradizer o que foi conversado no chat.
     const chatSummary = (recentChatTopics || [])
@@ -473,13 +457,20 @@ export async function GET() {
       };
 
       const triggerDesc = triggerDescriptions[bestNudge.id] || bestNudge.id;
+
+      // Persona única — mesma fonte do chat/home/planejamento.
+      const ctx = await fetchMayaContext(user.id);
+      const mayaInput = toMayaInput(ctx, {
+        name: firstName,
+        gender,
+        currentHour: new Date().getHours(),
+        currentDate: today,
+      });
+
       const enhancedMessage = await generateNudgeViaLLM(
-        bestNudge.id,
+        mayaInput,
         triggerDesc,
         bestNudge.message,
-        firstName,
-        gender,
-        memFacts || [],
         chatSummary || "",
       );
 

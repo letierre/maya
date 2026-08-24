@@ -258,7 +258,7 @@ export async function analyzeAllSpecialists(userId: string): Promise<SpecialistI
     admin.from("financial_transactions").select("*").eq("user_id", userId).gte("date", since30).order("date", { ascending: false }),
     admin.from("financial_budgets").select("*").eq("user_id", userId),
     admin.from("diary_entries").select("date,content,mood").eq("user_id", userId).order("date", { ascending: false }).limit(10),
-    admin.from("user_memories").select("content").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
+    admin.from("user_memories").select("fact").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
   ]);
 
   // Attach stages to goals
@@ -273,7 +273,7 @@ export async function analyzeAllSpecialists(userId: string): Promise<SpecialistI
   const tx = (transactions ?? []) as Record<string, unknown>[];
   const bu = (budgets ?? []) as Record<string, unknown>[];
   const di = (diaryEntries ?? []) as Record<string, unknown>[];
-  const mem = (memories ?? []).map((m: Record<string, unknown>) => String(m.content));
+  const mem = (memories ?? []).map((m: Record<string, unknown>) => String(m.fact));
   const wp = (weeklyPlans ?? [])[0] as Record<string, unknown> | null ?? null;
 
   // Run all 8 specialists in parallel
@@ -354,65 +354,3 @@ export async function getLatestInsights(userId: string): Promise<SpecialistInsig
   return Object.keys(insights).length > 0 ? insights : null;
 }
 
-// ── Build Maya nudge from insights ────────────────────────────────────────────
-
-const SPECIALIST_LABELS: Record<SpecialistName, string> = {
-  psychology:   "Psicólogo",
-  sleep:        "Especialista em sono",
-  nutrition:    "Nutricionista",
-  physical:     "Saúde física",
-  goals:        "Coach de metas",
-  finance:      "Finanças",
-  spirituality: "Espiritualidade e conexão",
-  philosophy:   "Filósofo de vida",
-};
-
-export async function generateMayaNudge(
-  insights: SpecialistInsights,
-  userName: string,
-  gender: string
-): Promise<string> {
-  const names = Object.keys(insights) as SpecialistName[];
-  const summaryLines = names
-    .filter((n) => insights[n]?.summary)
-    .map((n) => `${SPECIALIST_LABELS[n]}: ${insights[n]!.summary}`)
-    .join("\n");
-
-  const genderNote = gender === "feminino"
-    ? "Trate-a no feminino."
-    : gender === "masculino"
-      ? "Trate-o no masculino."
-      : "";
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY!,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 120,
-      temperature: 0.75,
-      system: `Você é Maya, companheira de transformação pessoal. Escreva UMA mensagem curta e calorosa para ${userName || "a pessoa"}. ${genderNote}
-Regras:
-- Máximo 2-3 frases curtas
-- Escolha o tema mais relevante ou urgente das análises abaixo
-- Seja humana e pessoal — como uma amiga querida, não um relatório
-- Pode terminar com uma pergunta suave ou convite à reflexão
-- Texto plano, sem markdown, sem listas
-- Português brasileiro natural`,
-      messages: [
-        {
-          role: "user",
-          content: `Análise do dia de ${userName || "hoje"} pelos especialistas:\n${summaryLines}\n\nEscreva a mensagem da Maya agora.`,
-        },
-      ],
-    }),
-  });
-
-  if (!res.ok) throw new Error(`Anthropic nudge ${res.status}`);
-  const body = await res.json();
-  return String(body.content[0].text).trim();
-}

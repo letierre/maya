@@ -1,11 +1,10 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { buildMayaSystemPrompt, GoalSummary, WeekPlanSummary } from "@/lib/maya";
-import { getLatestInsights } from "@/lib/specialists";
-import { calculateStreak, getWeekMondayDate } from "@/lib/utils";
+import { buildMayaSystemPrompt } from "@/lib/maya";
+import { fetchMayaContext, toMayaInput, buildRecentChatTopics } from "@/lib/maya-context";
+import { getWeekMondayDate } from "@/lib/utils";
 import { computeCareSignals } from "@/lib/care-signals";
 import { callLLM } from "@/lib/llm";
-import { habitAnswered } from "@/lib/checkin-answered";
 import { NextResponse } from "next/server";
 import type { SuggestedTask } from "@/types";
 
@@ -357,100 +356,21 @@ export async function POST(request: Request) {
 
     const admin = getSupabaseAdmin();
 
-    // ── Fetch user context (same pattern as POST /api/maya) ──
-    const [prefsRes, checkInsRes, diaryRes, memoriesRes, goalsRes, weekPlanRes, prevWeekRes, specialistRes, quarterlyRes, visionsRes, chatRes, careSignals] = await Promise.all([
-      admin.from("user_preferences").select("context").eq("user_id", user.id).single(),
-      admin.from("check_ins").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(7),
-      admin.from("diary_entries").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(10),
-      admin.from("user_memories").select("fact").eq("user_id", user.id).order("created_at", { ascending: false }),
-      admin.from("goals").select(`*, goal_stages(*, goal_actions(*))`)
-        .eq("user_id", user.id).eq("status", "ativa")
-        .order("created_at", { ascending: true })
-        .order("position", { foreignTable: "goal_stages", ascending: true }),
-      admin.from("weekly_plans").select(`*, weekly_reviews(*), weekly_focus_goals(goal_id)`)
-        .eq("user_id", user.id).eq("week_start", weekStart).maybeSingle(),
+    // ── Contexto único (mesma fonte do chat/home/nudge) + semana anterior + sinais ──
+    const [ctx, prevWeekRes, careSignals] = await Promise.all([
+      fetchMayaContext(user.id, {
+        weekStart,
+        includeAreaVisions: true,
+        includeQuarterly: true,
+        chatLimit: 8,
+      }),
       admin.from("weekly_plans").select(`*, weekly_tasks(*), weekly_reviews(*)`)
         .eq("user_id", user.id).eq("week_start", prevWeekStart).maybeSingle(),
-      getLatestInsights(user.id).catch(() => null),
-      admin.from("quarterly_cycles")
-        .select(`*, key_results(*), quarterly_reviews(*)`)
-        .eq("user_id", user.id).eq("status", "active")
-        .order("position", { foreignTable: "key_results", ascending: true })
-        .maybeSingle(),
-      admin.from("area_visions").select("*").eq("user_id", user.id).order("area", { ascending: true }),
-      admin.from("chat_messages").select("role, content").eq("user_id", user.id)
-        .or("chat_type.is.null,chat_type.eq.maya")
-        .order("created_at", { ascending: false }).limit(8),
       computeCareSignals(user.id),
     ]);
 
-    const context = (prefsRes.data?.context || {}) as Record<string, unknown>;
-    const checkIns = checkInsRes.data || [];
-    const diaryEntries = diaryRes.data || [];
-    const memories = (memoriesRes.data || []).map((m: { fact: string }) => m.fact);
-    const rawGoals = goalsRes.data || [];
-    const weekPlanRaw = weekPlanRes.data;
-    const latestInsights = specialistRes ?? null;
-
-    // ── Build GoalSummary[] ──
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const activeGoals: GoalSummary[] = rawGoals.map((g: Record<string, unknown>) => {
-      const stages = (g.goal_stages as Record<string, unknown>[]) || [];
-      const totalStages = stages.length;
-      const doneStages = stages.filter((s) => s.status === "concluida").length;
-      const pct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
-
-      const timestamps: number[] = [new Date(g.updated_at as string).getTime()];
-      for (const s of stages) {
-        timestamps.push(new Date(s.updated_at as string).getTime());
-        for (const a of (s.goal_actions as Record<string, unknown>[]) || []) {
-          timestamps.push(new Date(a.updated_at as string).getTime());
-        }
-      }
-      const lastActive = new Date(Math.max(...timestamps));
-      lastActive.setHours(0, 0, 0, 0);
-      const daysInactive = Math.floor((today.getTime() - lastActive.getTime()) / 86_400_000);
-
-      let nextAction: string | null = null;
-      for (const s of stages) {
-        if (s.status !== "concluida") {
-          const pendingAction = ((s.goal_actions as Record<string, unknown>[]) || []).find((a) => a.status === "pendente");
-          if (pendingAction) { nextAction = pendingAction.title as string; break; }
-          break;
-        }
-      }
-
-      const daysUntilDeadline = g.target_date
-        ? Math.floor((new Date(g.target_date as string).getTime() - today.getTime()) / 86_400_000)
-        : null;
-
-      return {
-        title: g.title as string,
-        area: g.area as string,
-        pct,
-        daysInactive,
-        nextAction,
-        daysUntilDeadline,
-        guardianName: (g.guardian_name as string) || null,
-        reward: (g.reward as string) || null,
-        punishment: (g.punishment as string) || null,
-      };
-    });
-
-    // ── Build WeekPlanSummary ──
-    let weekPlan: WeekPlanSummary | null = null;
-    if (weekPlanRaw) {
-      const reviews = (weekPlanRaw.weekly_reviews as Record<string, unknown>[]) || [];
-      const review = reviews[0] ?? null;
-      weekPlan = {
-        mainFocus: weekPlanRaw.main_focus as string,
-        focusGoalCount: ((weekPlanRaw.weekly_focus_goals as unknown[]) || []).length,
-        hasReview: !!review,
-        reviewScore: review ? (review.week_score as number) : null,
-      };
-    }
+    const context = (ctx.prefs?.context ?? {}) as Record<string, unknown>;
+    const rawGoals = ctx.rawGoals;
 
     // ── Build previous week summary (for week-over-week comparison) ──
     let previousWeek: PrevWeekSummary | null = null;
@@ -478,7 +398,7 @@ export async function POST(request: Request) {
 
     // ── Build active quarterly cycle data ──
     let quarterlyData: ActiveQuarterlyCycle | null = null;
-    const quarterlyCycle = quarterlyRes.data as Record<string, unknown> | null;
+    const quarterlyCycle = ctx.quarterlyCycle;
     if (quarterlyCycle) {
       const krs = (quarterlyCycle.key_results as Record<string, unknown>[]) || [];
       const activeKRs: ActiveKR[] = [];
@@ -488,14 +408,8 @@ export async function POST(request: Request) {
         const target = kr.target as number;
         const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
 
-        // Look up linked goal title
         let linkedGoalTitle: string | null = null;
         if (kr.linked_goal_id) {
-          const linkedGoal = activeGoals.find(g => {
-            const rawGoal = rawGoals.find((rg: Record<string, unknown>) => rg.id === kr.linked_goal_id);
-            return rawGoal && rawGoal.title === g.title;
-          });
-          // simpler: find from rawGoals directly
           const rg = rawGoals.find((rg: Record<string, unknown>) => rg.id === kr.linked_goal_id);
           if (rg) linkedGoalTitle = rg.title as string;
         }
@@ -528,88 +442,25 @@ export async function POST(request: Request) {
     }
 
     // ── Build area visions ──
-    const areaVisions = ((visionsRes.data || []) as Record<string, unknown>[]).map((v) => ({
+    const areaVisions = (ctx.areaVisions || []).map((v) => ({
       area: v.area as string,
       statement: (v.statement as string) || "",
     }));
 
-    const streak = calculateStreak(checkIns.map((c: Record<string, unknown>) => c.date as string));
-
     // ── Recent chat topics (continuity: same Maya as the Home/chat) ──
-    const recentChatTopics = ((chatRes.data || []) as Record<string, unknown>[])
-      .filter((m) => m.role === "assistant" || m.role === "user")
-      .reverse()
-      .map((m) => `${m.role === "assistant" ? "Maya" : "Usuário"}: ${(m.content as string)?.slice(0, 200)}`)
-      .join("\n");
+    const recentChatTopics = buildRecentChatTopics(ctx.chatMessages);
 
-    // ── Build specialist summaries ──
-    let specialistSummaries = undefined;
-    if (latestInsights && typeof latestInsights === "object") {
-      const insights = latestInsights as Record<string, unknown>;
-      specialistSummaries = {
-        psychology: (insights.psychology as string) || undefined,
-        sleep: (insights.sleep as string) || undefined,
-        nutrition: (insights.nutrition as string) || undefined,
-        physical: (insights.physical as string) || undefined,
-        goals: (insights.goals as string) || undefined,
-        finance: (insights.finance as string) || undefined,
-        spirituality: (insights.spirituality as string) || undefined,
-        philosophy: (insights.philosophy as string) || undefined,
-      };
-    }
-
-    // ── Build system prompt ──
+    // ── Build system prompt (persona única) ──
     const currentHour = new Date().getHours();
     const currentDate = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 
-    const systemPrompt = buildMayaSystemPrompt({
+    const systemPrompt = buildMayaSystemPrompt(toMayaInput(ctx, {
+      name: (user.user_metadata?.name as string) || "",
+      gender: (context.gender as string) || "nao_dizer",
+      language: (context.language as string) || "pt",
       currentHour,
       currentDate,
-      language: (context.language as string) || "pt",
-      profile: {
-        name: (user.user_metadata?.name as string) || "",
-        gender: (context.gender as string) || "nao_dizer",
-        has_medication: context.has_medication === true,
-        has_faith: context.has_faith === true,
-        has_creative_hobby: context.has_creative_hobby === true,
-      },
-      recentCheckIns: checkIns.map((c: Record<string, unknown>) => ({
-        date: c.date as string,
-        feeling: (c.feeling as string) || "",
-        positives: [
-          c.exercise_walk && "exercício",
-          c.ate_well && "comeu bem",
-          c.drank_water && "água",
-          c.slept_well && "dormiu bem",
-          c.meditation_prayer_breathing && "meditou/orou",
-          c.creative_activity && "criatividade",
-          c.did_something_enjoyable && "algo que gostou",
-          c.worked_on_goals && "metas",
-        ].filter(Boolean) as string[],
-        negatives: [
-          !c.exercise_walk && habitAnswered(c, "exercise_walk") && "sem exercício",
-          !c.ate_well && habitAnswered(c, "ate_well") && "comeu mal",
-          !c.drank_water && habitAnswered(c, "drank_water") && "pouca água",
-          !c.slept_well && habitAnswered(c, "slept_well") && "dormiu mal",
-        ].filter(Boolean) as string[],
-      })),
-      recentDiary: diaryEntries.map((d: Record<string, unknown>) => ({
-        date: d.date as string,
-        content: (d.content as string) || "",
-        mood: (d.mood as number) ?? null,
-      })),
-      memories,
-      porques: ((context.porques as any[]) || []).map((p: any) => ({
-        id: p.id || "",
-        text: p.text || "",
-        photoPath: p.photo_path || p.photoPath || null,
-      })),
-      streak,
-      activeGoals,
-      weekPlan,
-      specialistSummaries,
-      areaVisions: areaVisions.filter(v => v.statement.trim()),
-    });
+    }));
 
     // ── Conversational follow-up (responder à Maya) ──
     if (followUp) {

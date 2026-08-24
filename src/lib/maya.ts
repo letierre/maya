@@ -1,4 +1,4 @@
-interface UserContext {
+export interface UserContext {
   name: string;
   gender: string;
   has_medication: boolean;
@@ -6,7 +6,7 @@ interface UserContext {
   has_creative_hobby: boolean;
 }
 
-interface Porque {
+export interface Porque {
   id: string;
   text: string;
   photoPath: string | null;
@@ -43,7 +43,7 @@ export interface SpecialistSummaries {
   philosophy?:   string;
 }
 
-interface MayaInput {
+export interface MayaInput {
   profile: UserContext;
   recentCheckIns: { date: string; positives: string[]; negatives: string[]; feeling: string; moodTags?: string[] }[];
   recentDiary: { date: string; content: string; mood: number | null }[];
@@ -449,38 +449,6 @@ Regras:
 - NÃO faça perguntas genéricas como "como você está?" — seja específica
 - Retorne APENAS a mensagem final, sem aspas, sem markdown, sem "Bom dia, [nome]!" como prefixo fixo
 ${chatContext}${careBlock}`;
-
-  return { system, user };
-}
-
-/**
- * Builds the LLM prompt for a nudge message.
- * Same personality as chat, but focused on a specific trigger context.
- */
-export function buildNudgePrompt(
-  input: MayaInput & { triggerDescription: string; triggerId: string; recentChatTopics?: string }
-): { system: string; user: string } {
-  const system = buildMayaSystemPrompt(input);
-
-  const chatContext = input.recentChatTopics
-    ? `\n\nA pessoa já conversou com você sobre: ${input.recentChatTopics}. REGRAS DE CONTINUIDADE: você é a mesma Maya do chat — NÃO contradiga o que a pessoa acabou de decidir ou corrigir, e NÃO repita perguntas já respondidas.`
-    : "";
-
-  const user = `## SUA TAREFA AGORA
-Você detectou algo e quer enviar um toque rápido (nudge) para a pessoa.
-
-Contexto do que você detectou: ${input.triggerDescription}
-
-Gere UMA mensagem curta (1-2 frases) que:
-- Seja calorosa mas direta — a pessoa está na home do app, não no chat
-- Mencione o que você notou de forma natural, não como um diagnóstico
-- Se houver memórias sobre esse tema, faça referência (ex: "Sei que me contou sobre...")
-- NUNCA repita uma pergunta que já foi respondida antes
-- Termine com uma pergunta ou convite aberto, não um comando
-- Inclua no MÁXIMO um emoji
-- NÃO use "Oi", "Olá" — a saudação já foi feita na home
-- Retorne APENAS a mensagem, sem aspas, sem markdown
-${chatContext}`;
 
   return { system, user };
 }

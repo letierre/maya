@@ -1,4 +1,11 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import {
+  NEGATIVE_MOODS,
+  SLEEP_QUALITY_MIN,
+  SLEEP_MIN_MINUTES,
+  WATER_GOAL_CUPS,
+  BAD_MEAL_CLASSIFICATIONS,
+} from "@/lib/maya-constants";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
@@ -22,16 +29,6 @@ export interface CareSignal {
 
 const STREAK_CAP = 5;      // saturação do peso por negligência
 const LOOKBACK_ROWS = 16;  // nº de registros recentes analisados por sinal
-
-const WATER_GOAL_CUPS = 4;       // 4 copos = 1L
-const SLEEP_MIN_MINUTES = 360;   // 6h
-const SLEEP_QUALITY_MIN = 3;     // qualidade < 3 = dormiu mal
-
-const NEGATIVE_MOODS = new Set([
-  "ansiosa", "triste", "cansada", "sobrecarregada", "irritada", "frustrada",
-]);
-
-const BAD_MEAL_CLASSIFICATIONS = new Set(["alta_acucar", "alta_gordura", "alta_sal"]);
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 

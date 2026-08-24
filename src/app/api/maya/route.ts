@@ -1,11 +1,8 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { buildMayaSystemPrompt, GoalSummary, WeekPlanSummary, SpecialistSummaries } from "@/lib/maya";
-import { getLatestInsights } from "@/lib/specialists";
-import { calculateStreak, getWeekMondayDate } from "@/lib/utils";
+import { buildMayaSystemPrompt } from "@/lib/maya";
+import { fetchMayaContext, toMayaInput } from "@/lib/maya-context";
 import { toImageBlock } from "@/lib/llm";
-import { habitAnswered } from "@/lib/checkin-answered";
-import { getMoodById, getMoodLabel } from "@/lib/checkin-moods";
 import { NextResponse } from "next/server";
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -98,107 +95,22 @@ export async function POST(request: Request) {
 
     const admin = getSupabaseAdmin();
 
-    const weekStart = getWeekMondayDate();
+    // ── Contexto único (mesma fonte que home/planejamento/nudge) ──
+    const ctx = await fetchMayaContext(user.id, { includeAreaVisions: true });
+    const context = (ctx.prefs?.context ?? {}) as Record<string, unknown>;
 
-    const [prefsRes, checkInsRes, diaryRes, memoriesRes, goalsRes, weekPlanRes, specialistRes, visionsRes] = await Promise.all([
-      admin.from("user_preferences").select("context").eq("user_id", user.id).single(),
-      admin.from("check_ins").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(7),
-      admin.from("diary_entries").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(10),
-      admin.from("user_memories").select("fact").eq("user_id", user.id).order("created_at", { ascending: false }),
-      admin.from("goals").select(`*, goal_stages(*, goal_actions(*))`)
-        .eq("user_id", user.id).eq("status", "ativa")
-        .order("created_at", { ascending: true })
-        .order("position", { foreignTable: "goal_stages", ascending: true }),
-      admin.from("weekly_plans").select(`*, weekly_reviews(*), weekly_focus_goals(goal_id)`)
-        .eq("user_id", user.id).eq("week_start", weekStart).maybeSingle(),
-      getLatestInsights(user.id).catch(() => null),
-      admin.from("area_visions").select("*").eq("user_id", user.id).order("area", { ascending: true }),
-    ]);
-
-    const context = (prefsRes.data?.context || {}) as Record<string, unknown>;
-    const checkIns = checkInsRes.data || [];
-    const diaryEntries = diaryRes.data || [];
-    const memories = (memoriesRes.data || []).map((m: { fact: string }) => m.fact);
-    const rawGoals = goalsRes.data || [];
-    const weekPlanRaw = weekPlanRes.data;
-    const latestInsights = specialistRes ?? null;
-
-    // Build GoalSummary[]
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const activeGoals: GoalSummary[] = rawGoals.map((g: Record<string, unknown>) => {
-      const stages = (g.goal_stages as Record<string, unknown>[]) || [];
-      const totalStages = stages.length;
-      const doneStages = stages.filter((s) => s.status === "concluida").length;
-      const pct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
-
-      // Most recent update across goal, stages, actions
-      const timestamps: number[] = [new Date(g.updated_at as string).getTime()];
-      for (const s of stages) {
-        timestamps.push(new Date(s.updated_at as string).getTime());
-        for (const a of (s.goal_actions as Record<string, unknown>[]) || []) {
-          timestamps.push(new Date(a.updated_at as string).getTime());
-        }
-      }
-      const lastActive = new Date(Math.max(...timestamps));
-      lastActive.setHours(0, 0, 0, 0);
-      const daysInactive = Math.floor((today.getTime() - lastActive.getTime()) / 86_400_000);
-
-      // Next pending action from first non-concluded stage
-      let nextAction: string | null = null;
-      for (const s of stages) {
-        if (s.status !== "concluida") {
-          const pendingAction = ((s.goal_actions as Record<string, unknown>[]) || []).find((a) => a.status === "pendente");
-          if (pendingAction) { nextAction = pendingAction.title as string; break; }
-          break;
-        }
-      }
-
-      const daysUntilDeadline = g.target_date
-        ? Math.floor((new Date(g.target_date as string).getTime() - today.getTime()) / 86_400_000)
-        : null;
-
-      return {
-        title: g.title as string,
-        area: g.area as string,
-        pct,
-        daysInactive,
-        nextAction,
-        daysUntilDeadline,
-        guardianName: (g.guardian_name as string) || null,
-        reward: (g.reward as string) || null,
-        punishment: (g.punishment as string) || null,
-      };
-    });
-
-    // Build WeekPlanSummary
-    let weekPlan: WeekPlanSummary | null = null;
-    if (weekPlanRaw) {
-      const reviews = (weekPlanRaw.weekly_reviews as Record<string, unknown>[]) || [];
-      const review = reviews[0] ?? null;
-      weekPlan = {
-        mainFocus: weekPlanRaw.main_focus as string,
-        focusGoalCount: ((weekPlanRaw.weekly_focus_goals as unknown[]) || []).length,
-        hasReview: !!review,
-        reviewScore: review ? (review.week_score as number) : null,
-      };
+    // Hora e data no fuso do usuario (do browser, fallback SP)
+    let currentHour: number;
+    let currentDate: string;
+    if (clientHour !== undefined && clientDate) {
+      currentHour = clientHour;
+      currentDate = clientDate;
+    } else {
+      const now = new Date();
+      const h = now.toLocaleString("en-US", { timeZone: clientTz, hour: "numeric", hour12: false });
+      currentHour = parseInt(h, 10);
+      currentDate = now.toLocaleDateString("en-CA", { timeZone: clientTz });
     }
-
-    const streak = calculateStreak(checkIns.map((c: Record<string, unknown>) => c.date as string));
-
-	    // Hora e data no fuso do usuario (do browser, fallback SP)
-	    let currentHour: number;
-	    let currentDate: string;
-	    if (clientHour !== undefined && clientDate) {
-	      currentHour = clientHour;
-	      currentDate = clientDate;
-	    } else {
-	      const now = new Date();
-	      const h = now.toLocaleString("en-US", { timeZone: clientTz, hour: "numeric", hour12: false });
-	      currentHour = parseInt(h, 10);
-	      currentDate = now.toLocaleDateString("en-CA", { timeZone: clientTz });
-	    }
 
     // Send messages WITH image_urls for multimodal support.
     // Prefix each message with [dia HH:MM] so Maya understands WHEN each
@@ -227,63 +139,13 @@ export async function POST(request: Request) {
 
     const userGender = (context.gender as string) || "nao_dizer";
 
-    const systemPrompt = buildMayaSystemPrompt({
+    const systemPrompt = buildMayaSystemPrompt(toMayaInput(ctx, {
+      name: (user.user_metadata?.name as string) || "",
+      gender: userGender,
+      language: (context.language as string) || "pt",
       currentHour,
       currentDate,
-      language: (context.language as string) || "pt",
-      profile: {
-        name: (user.user_metadata?.name as string) || "",
-        gender: userGender,
-        has_medication: context.has_medication === true,
-        has_faith: context.has_faith === true,
-        has_creative_hobby: context.has_creative_hobby === true,
-      },
-      recentCheckIns: checkIns.map((c: Record<string, unknown>) => ({
-        date: c.date as string,
-        feeling: (c.feeling as string) || "",
-        moodTags: ((c.mood_tags as string[]) || []).map((id) => {
-          const chip = getMoodById(id);
-          return chip ? getMoodLabel(chip, userGender) : id;
-        }),
-        positives: [
-          c.exercise_walk && "exercício",
-          c.ate_well && "comeu bem",
-          c.drank_water && "água",
-          c.slept_well && "dormiu bem",
-          c.meditation_prayer_breathing && "meditou/orou",
-          c.creative_activity && "criatividade",
-          c.did_something_enjoyable && "algo que gostou",
-          c.worked_on_goals && "metas",
-          c.talked_to_someone && "conversou",
-        ].filter(Boolean) as string[],
-        negatives: [
-          !c.exercise_walk && habitAnswered(c, "exercise_walk") && "exercício",
-          !c.ate_well && habitAnswered(c, "ate_well") && "comeu bem",
-          !c.drank_water && habitAnswered(c, "drank_water") && "água",
-          !c.slept_well && habitAnswered(c, "slept_well") && "dormiu bem",
-          !c.did_something_enjoyable && habitAnswered(c, "did_something_enjoyable") && "algo que gostou",
-          !c.worked_on_goals && habitAnswered(c, "worked_on_goals") && "metas",
-        ].filter(Boolean) as string[],
-      })),
-      recentDiary: diaryEntries.map((d: Record<string, unknown>) => ({
-        date: d.date as string,
-        content: (d.content as string) || "",
-        mood: d.mood as number | null,
-      })),
-      memories,
-      porques: (context.porques as Array<{ id: string; text: string; photoPath: string | null }>) || [],
-      streak,
-      activeGoals,
-      weekPlan,
-      specialistSummaries: latestInsights
-        ? Object.fromEntries(
-            Object.entries(latestInsights).map(([k, v]) => [k, v?.summary || ""])
-          ) as SpecialistSummaries
-        : undefined,
-      areaVisions: ((visionsRes.data || []) as Record<string, unknown>[])
-        .map(v => ({ area: v.area as string, statement: (v.statement as string) || "" }))
-        .filter(v => v.statement.trim()),
-    });
+    }));
 
     const rawReply = await chatLLM(systemPrompt, anthropicMessages, 400);
     // Belt-and-suspenders: strip any "[dia HH:MM]" timestamp tokens Maya may echo

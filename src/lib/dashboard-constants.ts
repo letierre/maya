@@ -1,4 +1,5 @@
 import type { CheckIn } from "@/types";
+import { NEGATIVE_MOODS } from "@/lib/maya-constants";
 
 export const HABIT_CHIP: Record<string, [string, (ci: CheckIn) => string]> = {
   took_medication:             ["💊", () => "Remédios"],
@@ -20,6 +21,6 @@ export const HABIT_CHIP: Record<string, [string, (ci: CheckIn) => string]> = {
   worked_on_goals:             ["🎯", () => "Metas"],
 };
 
-export const NEGATIVE_MOODS = new Set([
-  "ansiosa", "triste", "cansada", "sobrecarregada", "irritada", "frustrada",
-]);
+// Re-export da fonte única (src/lib/maya-constants.ts) — mantido para
+// não quebrar os imports existentes (RecentThread, historico…).
+export { NEGATIVE_MOODS };
