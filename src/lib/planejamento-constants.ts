@@ -16,6 +16,9 @@ export const AREA_CONFIG: Record<TaskArea, { emoji: string; hue: number; labelKe
 
 export const ALL_AREAS = Object.keys(AREA_CONFIG) as TaskArea[];
 
+// As 8 áreas da vida (exclui "outros", removida da Roda da Vida)
+export const LIFE_AREAS = ALL_AREAS.filter((a) => a !== "outros");
+
 export const AREA_LABELS: Record<TaskArea, string> = {
   saude: "Saúde", carreira: "Carreira", financas: "Finanças",
   relacionamentos: "Relac.", desenvolvimento: "Mente", familia: "Família",

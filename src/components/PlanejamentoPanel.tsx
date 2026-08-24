@@ -5,7 +5,7 @@ import { Plus, Star, ChevronDown, Clock, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import type { TaskArea } from "@/types";
 import {
-  AREA_CONFIG, ALL_AREAS, AREA_LABELS, DAY_NAMES, DAY_FULL,
+  AREA_CONFIG, ALL_AREAS, LIFE_AREAS, AREA_LABELS, DAY_NAMES, DAY_FULL,
   weekRangeFromDate as weekRange,
 } from "@/lib/planejamento-constants";
 import { LifeWheel } from "@/components/planejamento/LifeWheel";
@@ -280,8 +280,8 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
   const requestCompanion = async () => {
     setCompanionLoading(true);
     try {
-      const areasWithTasks = ALL_AREAS.filter(a => (taskCountsByArea[a] || 0) > 0);
-      const emptyAreas = ALL_AREAS.filter(a => (taskCountsByArea[a] || 0) === 0);
+      const areasWithTasks = LIFE_AREAS.filter(a => (taskTotalByArea[a] || 0) > 0);
+      const emptyAreas = LIFE_AREAS.filter(a => (taskTotalByArea[a] || 0) === 0);
       const res = await fetch("/api/maya/planning-companion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -396,7 +396,7 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
           loading={companionLoading}
           firstName={firstName}
           stones={[currentPlan?.main_focus, currentPlan?.main_focus_2, currentPlan?.main_focus_3]}
-          areasWithTasks={ALL_AREAS.filter(a => (taskTotalByArea[a] || 0) > 0)}
+          areasWithTasks={LIFE_AREAS.filter(a => (taskTotalByArea[a] || 0) > 0)}
           tasksByArea={(area: string) => tasks.filter((t: any) => t.area === area)}
           onRequestCompanion={requestCompanion}
           onAddTask={addTaskFromSuggestion}

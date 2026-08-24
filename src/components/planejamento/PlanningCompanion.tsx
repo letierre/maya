@@ -6,7 +6,7 @@ import {
   ChevronDown, ChevronRight, Compass,
 } from "lucide-react";
 import { MayaAvatar } from "@/components/MayaAvatar";
-import { AREA_CONFIG, ALL_AREAS, DAY_NAMES } from "@/lib/planejamento-constants";
+import { AREA_CONFIG, LIFE_AREAS, DAY_NAMES } from "@/lib/planejamento-constants";
 import type { PlanningCompanionResponse, SuggestedTask, AreaSuggestion, PlanningStoneSuggestion } from "@/types";
 
 // ── Labels & emojis (same as API route) ──────────────────────────────
@@ -66,7 +66,7 @@ export function PlanningCompanion({
 
   // Identify empty areas
   const emptyAreas = useMemo(
-    () => ALL_AREAS.filter((a) => !areasWithTasks.includes(a)),
+    () => LIFE_AREAS.filter((a) => !areasWithTasks.includes(a)),
     [areasWithTasks],
   );
 
@@ -394,7 +394,7 @@ function QuickAddTask({ onAddTask }: { onAddTask: (title: string, area: string, 
             outline: "none", maxWidth: 130,
           }}
         >
-          {ALL_AREAS.map((a) => (
+          {LIFE_AREAS.map((a) => (
             <option key={a} value={a}>{AREA_EMOJIS[a] || ""} {AREA_LABELS_LONG[a] || a}</option>
           ))}
         </select>
@@ -428,7 +428,7 @@ function QuickStats({
   emptyAreas: string[];
   tasksByArea: (area: string) => any[];
 }) {
-  const totalTasks = ALL_AREAS.reduce((sum, a) => sum + tasksByArea(a).length, 0);
+  const totalTasks = LIFE_AREAS.reduce((sum, a) => sum + tasksByArea(a).length, 0);
   const definedStones = stones.filter(Boolean).length;
 
   return (
@@ -526,7 +526,7 @@ function OverviewTab({
   tasksByArea: (area: string) => any[];
 }) {
   const definedStones = stones.filter(Boolean);
-  const totalTasks = ALL_AREAS.reduce((sum, a) => sum + tasksByArea(a).length, 0);
+  const totalTasks = LIFE_AREAS.reduce((sum, a) => sum + tasksByArea(a).length, 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -746,7 +746,7 @@ function AreasTab({
 
   // Sort areas: empty first, then by task count, then alphabetically
   const sortedAreas = useMemo(() => {
-    return [...ALL_AREAS].sort((a, b) => {
+    return [...LIFE_AREAS].sort((a, b) => {
       const aEmpty = emptyAreas.includes(a) ? 0 : 1;
       const bEmpty = emptyAreas.includes(b) ? 0 : 1;
       if (aEmpty !== bEmpty) return aEmpty - bEmpty;
