@@ -14,6 +14,7 @@ import { ReadingLogSessionModal, type SessionFormValues } from "@/components/Rea
 import {
   getLocalDate, getWeekMondayDate, getWeekSundayDate, calculateStreak,
 } from "@/lib/utils";
+import { emitCareDataChanged } from "@/lib/care-events";
 
 // ── Design tokens ──────────────────────────────────────────────
 const BG_GRADIENT: React.CSSProperties = {
@@ -233,6 +234,7 @@ export default function LeituraPage() {
         }),
       });
       if (res.ok) {
+        emitCareDataChanged();
         toast.success("Leitura registrada! 🔥");
         setLogModal(false);
         await loadAll();
@@ -247,7 +249,10 @@ export default function LeituraPage() {
   const deleteSession = async (session: ReadingSession) => {
     try {
       const res = await fetch(`/api/leitura/sessions?id=${session.id}`, { method: "DELETE" });
-      if (res.ok) await loadAll();
+      if (res.ok) {
+        emitCareDataChanged();
+        await loadAll();
+      }
     } catch {
       /* silent */
     }

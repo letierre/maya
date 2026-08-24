@@ -6,6 +6,7 @@ import { Play, Square, X, Timer } from "lucide-react";
 import { toast } from "sonner";
 import type { ReadingBook } from "@/types";
 import { getLocalDate } from "@/lib/utils";
+import { emitCareDataChanged } from "@/lib/care-events";
 
 // ── Design tokens ──────────────────────────────────────────────
 const MUTED = "#9e96b5";
@@ -171,6 +172,7 @@ export default function LeituraTimerPage() {
         }),
       });
       if (res.ok) {
+        emitCareDataChanged();
         localStorage.removeItem(STORAGE_KEY);
         closeTimerNotification();
         toast.success(`Leitura registrada: ${minutes} min 🔥`);
