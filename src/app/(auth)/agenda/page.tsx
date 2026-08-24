@@ -383,9 +383,21 @@ function AgendaPage() {
     return d.getDay() === 0 ? 6 : d.getDay() - 1; // 0=Mon ... 6=Sun
   }, [selectedDate]);
 
+  // Monday (YYYY-MM-DD) of the week containing selectedDate
+  const selectedWeekMonday = useMemo(() => {
+    const d = new Date(selectedDate + "T12:00:00");
+    const mon = new Date(d);
+    mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
+  }, [selectedDate]);
+
   const dayPlanTasks = useMemo(() =>
-    allWeekTasks.filter((t: any) => t.day_of_week === selectedDayOfWeek && t.status !== "pulada"),
-  [allWeekTasks, selectedDayOfWeek]);
+    allWeekTasks.filter((t: any) =>
+      t.day_of_week === selectedDayOfWeek &&
+      t._weekStart === selectedWeekMonday &&
+      t.status !== "pulada"
+    ),
+  [allWeekTasks, selectedDayOfWeek, selectedWeekMonday]);
 
   // Lock body scroll when popup is open
   useEffect(() => {
@@ -1637,7 +1649,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   const selDow = selD.getDay() === 0 ? 6 : selD.getDay() - 1;
   const todayDow = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
   const currentWeekMonday = getCurrentWeekMonday();
-  const dayPlanTasks = allWeekTasks.filter((t: any) => t.day_of_week === selDow && t.status !== "pulada");
+  const dayPlanTasks = allWeekTasks.filter((t: any) => t.day_of_week === selDow && t._weekStart === weekStartOf(selectedDate) && t.status !== "pulada");
   // Tasks without a specific day (Em aberto) — from all loaded weeks
   const openWeekTasks = allWeekTasks.filter((t: any) => t.day_of_week == null && t.status !== "pulada");
   // Overdue tasks: from previous days this week OR past weeks, not completed/skipped
