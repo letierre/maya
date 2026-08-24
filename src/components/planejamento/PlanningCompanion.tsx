@@ -38,6 +38,7 @@ interface PlanningCompanionProps {
   tasksByArea: (area: string) => any[];
   onRequestCompanion: () => void;
   onSuggestArea: (area: string) => Promise<AreaSuggestion | null>;
+  onSendMessage: (text: string, history: { role: "user" | "assistant"; content: string }[]) => Promise<string>;
   onAddTask: (title: string, area: string, dayOfWeek?: number) => Promise<boolean>;
   onSetStone: (rank: number, text: string) => Promise<void>;
   planMetrics: { strongest: string; weakest: string; balance: number; variation: number };
@@ -57,6 +58,7 @@ export function PlanningCompanion({
   tasksByArea,
   onRequestCompanion,
   onSuggestArea,
+  onSendMessage,
   onAddTask,
   onSetStone,
   planMetrics,
@@ -67,6 +69,9 @@ export function PlanningCompanion({
   const [settingStone, setSettingStone] = useState<number | null>(null);
   const [focusSuggestions, setFocusSuggestions] = useState<Record<string, AreaSuggestion>>({});
   const [suggestingArea, setSuggestingArea] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<{ role: "user" | "maya"; text: string }[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
 
   // Identify empty areas
   const emptyAreas = useMemo(
@@ -113,6 +118,18 @@ export function PlanningCompanion({
     },
     [onSuggestArea, suggestingArea],
   );
+
+  const handleSendChat = useCallback(async () => {
+    const text = chatInput.trim();
+    if (!text || chatSending) return;
+    const history = chatMessages.map((m) => ({ role: m.role === "user" ? "user" as const : "assistant" as const, content: m.text }));
+    setChatInput("");
+    setChatMessages((prev) => [...prev, { role: "user", text }]);
+    setChatSending(true);
+    const reply = await onSendMessage(text, history);
+    setChatMessages((prev) => [...prev, { role: "maya", text: reply || "Hmm, não consegui responder agora. Tenta de novo?" }]);
+    setChatSending(false);
+  }, [chatInput, chatSending, chatMessages, onSendMessage]);
 
   // ── Render: Initial call-to-action ─────────────────────────────
 
@@ -355,6 +372,67 @@ export function PlanningCompanion({
           )}
           Maya, revise meu plano
         </button>
+      </div>
+
+      {/* Conversa com a Maya */}
+      <div style={{ marginTop: 8, borderTop: "1px solid rgba(167,139,250,0.08)", paddingTop: 14 }}>
+        <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#6a657a" }}>
+          💬 Conversar com a Maya
+        </p>
+
+        {chatMessages.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+            {chatMessages.map((m, i) => (
+              <div
+                key={i}
+                style={{
+                  alignSelf: m.role === "user" ? "flex-end" : "flex-start",
+                  maxWidth: "85%",
+                  background: m.role === "user" ? "rgba(124,92,255,0.16)" : "#151520",
+                  border: m.role === "user" ? "1px solid rgba(124,92,255,0.25)" : "1px solid rgba(167,139,250,0.1)",
+                  borderRadius: 14,
+                  padding: "10px 12px",
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 12.5, color: m.role === "user" ? "#e0d6ff" : "#d0c8e8", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+                  {m.text}
+                </p>
+              </div>
+            ))}
+            {chatSending && (
+              <div style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, color: "#6a657a", fontSize: 12 }}>
+                <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
+                Maya está escrevendo...
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
+            placeholder="Responda à Maya..."
+            style={{
+              flex: 1, minWidth: 0, padding: "11px 14px", borderRadius: 12,
+              border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10",
+              color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none",
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleSendChat}
+            disabled={chatSending || !chatInput.trim()}
+            style={{
+              padding: "10px 14px", borderRadius: 12, border: 0, background: "#7C5CFF",
+              color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+              whiteSpace: "nowrap", opacity: chatSending || !chatInput.trim() ? 0.5 : 1,
+            }}
+          >
+            <Send size={15} />
+          </button>
+        </div>
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -1025,8 +1103,8 @@ function AreasTab({
                   </div>
                 )}
 
-                {/* Suggest button — empty area without suggestions yet */}
-                {isEmpty && !effectiveSuggestion?.suggestedTasks?.length && (
+                {/* Suggest button — any area without suggestions yet */}
+                {!effectiveSuggestion?.suggestedTasks?.length && (
                   <button
                     type="button"
                     onClick={() => onSuggestArea(area)}

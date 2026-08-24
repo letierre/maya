@@ -294,6 +294,33 @@ REGRAS:
 - TEXTO PLANO, sem markdown.`;
 }
 
+// ── Conversational follow-up prompt (responder à Maya) ─────────────
+
+function buildPlanningChatPrompt(userMessage: string, history: { role: "user" | "assistant"; content: string }[]): string {
+  const historyBlock = history.length > 0
+    ? history.map((h) => `${h.role === "user" ? "Usuário" : "Maya"}: ${h.content.slice(0, 300)}`).join("\n")
+    : "";
+  return `
+## MODO PLANEJAMENTO — CONVERSA
+
+O usuário está conversando com você sobre o planejamento da semana. Responda como a Maya, de forma natural e pessoal, usando tudo o que você sabe dele (diário, check-ins, metas, especialistas, o plano atual desta semana).
+
+${historyBlock ? `Histórico da conversa no planejamento:\n${historyBlock}\n` : ""}
+
+Última mensagem do usuário: "${userMessage}"
+
+Responda APENAS o JSON (sem texto antes ou depois):
+{
+  "reply": "Sua resposta conversacional (2-4 frases). Se for útil, inclua sugestões concretas de tarefas ou um próximo passo."
+}
+
+REGRAS:
+- Seja a Maya: calorosa, perspicaz, direta
+- Se ele pedir sugestões para uma área, dê tarefas concretas e pessoais
+- Se ele perguntar sobre o plano, opine e aponte o que ele não está vendo
+- TEXTO PLANO, sem markdown.`;
+}
+
 // ── POST ───────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
@@ -313,6 +340,13 @@ export async function POST(request: Request) {
     };
     // When set, Maya focuses suggestions on a single area (per-area "sugerir" button)
     const focusArea: string | null = typeof body.focusArea === "string" ? body.focusArea : null;
+    // Conversational follow-up (responder à Maya no planejamento)
+    const followUp: string | null = typeof body.userMessage === "string" && body.userMessage.trim() ? body.userMessage.trim() : null;
+    const history: { role: "user" | "assistant"; content: string }[] = Array.isArray(body.history)
+      ? body.history
+          .filter((h: Record<string, unknown>) => (h.role === "user" || h.role === "assistant") && typeof h.content === "string")
+          .map((h: Record<string, unknown>) => ({ role: h.role as "user" | "assistant", content: h.content as string }))
+      : [];
 
     // Monday of the previous week (relative to the week being planned, not "today")
     const prevWeekStart = (() => {
@@ -576,6 +610,19 @@ export async function POST(request: Request) {
       specialistSummaries,
       areaVisions: areaVisions.filter(v => v.statement.trim()),
     });
+
+    // ── Conversational follow-up (responder à Maya) ──
+    if (followUp) {
+      const chatPrompt = systemPrompt + buildPlanningChatPrompt(followUp, history);
+      const chatResponse = await callLLM(chatPrompt, `Responda ao usuário. Responda APENAS o JSON no formato especificado, sem texto antes ou depois.`, { maxTokens: 400 });
+      let reply = "";
+      try {
+        const jsonMatch = chatResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) reply = (JSON.parse(jsonMatch[0]).reply as string) || "";
+      } catch {}
+      if (!reply) reply = "Entendi! Quer que eu detalhe alguma área ou já posso te ajudar a montar as tarefas?";
+      return NextResponse.json({ reply });
+    }
 
     // ── Append planning-specific prompt ──
     const fullPrompt = focusArea

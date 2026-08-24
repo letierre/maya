@@ -333,6 +333,20 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
     }
   };
 
+  const sendPlanningMessage = async (text: string, history: { role: "user" | "assistant"; content: string }[]): Promise<string> => {
+    try {
+      const res = await fetch("/api/maya/planning-companion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weekStart: currentWeekStart, userMessage: text, history, planState: buildPlanState() }),
+      });
+      const data = await res.json();
+      return typeof data?.reply === "string" ? data.reply : "";
+    } catch {
+      return "";
+    }
+  };
+
   const addTaskFromSuggestion = async (title: string, area: string, dayOfWeek?: number) => {
     const res = await fetch("/api/weekly-plans/tasks", {
       method: "POST",
@@ -427,6 +441,7 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
           tasksByArea={(area: string) => tasks.filter((t: any) => t.area === area)}
           onRequestCompanion={requestCompanion}
           onSuggestArea={requestAreaSuggestion}
+          onSendMessage={sendPlanningMessage}
           onAddTask={addTaskFromSuggestion}
           onSetStone={setStoneFromSuggestion}
           planMetrics={planMetrics}
