@@ -944,7 +944,7 @@ function AgendaPage() {
                         borderTop: "1px solid rgba(167,139,250,0.08)",
                         borderRight: "1px solid rgba(167,139,250,0.08)",
                         borderBottom: crossesMidnight ? "2px dashed rgba(167,139,250,0.4)" : "1px solid rgba(167,139,250,0.08)",
-                        borderRadius: 4, padding: short ? "2px 6px" : "4px 8px",
+                        borderRadius: 4, padding: short ? "2px 8px" : "4px 8px",
                         display: "flex", flexDirection: short ? "row" : "column",
                         alignItems: short ? "center" : "stretch",
                         gap: short ? 4 : 1,
