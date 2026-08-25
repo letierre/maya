@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Plus, Star, ChevronDown, Clock, X, Check } from "lucide-react";
 import { toast } from "sonner";
+import { celebrate } from "@/lib/celebrate";
 import type { TaskArea, AreaSuggestion } from "@/types";
 import {
   AREA_CONFIG, ALL_AREAS, LIFE_AREAS, AREA_LABELS, DAY_NAMES, DAY_FULL,
@@ -183,8 +184,9 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
     };
   }, [editingPlanTask]);
 
-  const toggleTask = async (taskId: string, current: string) => {
+  const toggleTask = async (taskId: string, current: string, coords?: { x: number; y: number }) => {
     const next = current === "concluida" ? "pendente" : "concluida";
+    if (next === "concluida") celebrate(coords?.x, coords?.y);
     setTasks((prev: any[]) => prev.map(t => t.id === taskId ? { ...t, status: next } : t));
     await fetch(`/api/weekly-plans/tasks/${taskId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -565,8 +567,8 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
                       setPlanShowMore(false);
                     }}
                     style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid rgba(167,139,250,0.04)", cursor: "pointer" }}>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); toggleTask(task.id, task.status); }}
-                      style={{ width: 18, height: 18, borderRadius: task.task_type === "manutencao" ? "50%" : 4, flexShrink: 0, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); toggleTask(task.id, task.status, { x: e.clientX, y: e.clientY }); }}
+                      style={{ width: 18, height: 18, borderRadius: task.task_type === "manutencao" ? "50%" : 4, flexShrink: 0, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}>
                       {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10" /></svg>}
                     </button>
                     <span style={{ fontSize: 11 }}>{area.emoji}</span>
@@ -610,8 +612,8 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
                   setPlanShowMore(false);
                 }}
                 style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: "1px solid rgba(167,139,250,0.04)", cursor: "pointer" }}>
-                <button type="button" onClick={(e) => { e.stopPropagation(); toggleTask(task.id, task.status); }}
-                  style={{ width: 18, height: 18, borderRadius: task.task_type === "manutencao" ? "50%" : 4, flexShrink: 0, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <button type="button" onClick={(e) => { e.stopPropagation(); toggleTask(task.id, task.status, { x: e.clientX, y: e.clientY }); }}
+                  style={{ width: 18, height: 18, borderRadius: task.task_type === "manutencao" ? "50%" : 4, flexShrink: 0, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}>
                   {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10" /></svg>}
                 </button>
                 <span style={{ fontSize: 11 }}>{area.emoji}</span>

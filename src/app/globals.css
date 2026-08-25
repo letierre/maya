@@ -184,6 +184,11 @@
   35%  { background-color: rgba(124,92,255,0.22); transform: scale(1.02); }
   100% { background-color: rgba(124,92,255,0); transform: scale(1); }
 }
+@keyframes checkPop {
+  0%   { transform: scale(0.3); opacity: 0; }
+  55%  { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
 @keyframes sheetUp {
   from { transform: translateY(48px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }

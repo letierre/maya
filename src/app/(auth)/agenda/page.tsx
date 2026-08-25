@@ -7,6 +7,7 @@ import {
   CheckCircle2, GripVertical, Plus, Clock, Star, Zap, Leaf, AlertCircle, Target,
 } from "lucide-react";
 import { getLocalDate } from "@/lib/utils";
+import { celebrate } from "@/lib/celebrate";
 import { AREA_CONFIG, AREA_LABELS } from "@/lib/planejamento-constants";
 import type { AgendaItem, EisenhowerPriority, TaskArea } from "@/types";
 import { MetasPanel } from "@/components/MetasPanel";
@@ -128,6 +129,7 @@ function AgendaPage() {
   const [planEditDay, setPlanEditDay] = useState(0);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+  const [swipeAnim, setSwipeAnim] = useState<{ dir: number } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; okLabel?: string; cancelLabel?: string; okColor?: string; onOk: () => void; onCancel?: () => void } | null>(null);
   const showConfirm = (message: string, onOk: () => void, opts?: { okLabel?: string; cancelLabel?: string; okColor?: string; onCancel?: () => void }) =>
     setConfirmDialog({ message, onOk, ...opts });
@@ -516,8 +518,9 @@ function AgendaPage() {
   /** Get the real DB id (handles synthetic repeated/crossed items) */
   const realId = (item: AgendaItem) => (item as any)._origId || item.id;
 
-  const toggleTask = async (item: AgendaItem) => {
+  const toggleTask = async (item: AgendaItem, coords?: { x: number; y: number }) => {
     const newStatus = item.status === "concluida" ? "pendente" : "concluida";
+    if (newStatus === "concluida") celebrate(coords?.x, coords?.y);
     // Detect synthetic items: repeated occurrences or midnight-crossing continuations
     const isSynthetic = item.id.includes("_r_") || item.id.includes("_cross");
 
@@ -689,6 +692,9 @@ function AgendaPage() {
             background: "#1a1530", borderRadius: 18,
             border: "1px solid rgba(167,139,250,0.12)",
             position: "relative", overflow: "hidden",
+            opacity: swipeAnim ? 0 : 1,
+            transform: swipeAnim ? `translateX(${swipeAnim.dir * 16}px)` : "translateX(0)",
+            transition: swipeAnim ? "none" : "opacity 0.16s ease, transform 0.16s ease",
           }}
             onTouchStart={(e) => {
               touchStartX.current = e.touches[0].clientX;
@@ -698,7 +704,10 @@ function AgendaPage() {
               const dx = e.changedTouches[0].clientX - touchStartX.current;
               const dy = e.changedTouches[0].clientY - touchStartY.current;
               if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60) {
-                setSelectedDate(shiftDate(selectedDate, dx > 0 ? -1 : 1));
+                const dir = dx > 0 ? -1 : 1;
+                setSwipeAnim({ dir });
+                setSelectedDate(shiftDate(selectedDate, dir));
+                window.setTimeout(() => setSwipeAnim(null), 220);
               }
             }}
           >
@@ -752,13 +761,13 @@ function AgendaPage() {
                           cursor: "pointer", fontFamily: "inherit", fontSize: 12,
                           color: done ? "#5a5470" : "#e0d6ff",
                           textDecoration: done ? "line-through" : "none",
-                          whiteSpace: "nowrap",
+                          whiteSpace: "nowrap", maxWidth: "100%",
                         }}>
-                        <span style={{ fontSize: 12, flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); toggleTask(item); }}>
+                        <span style={{ fontSize: 12, flexShrink: 0, animation: done ? "checkPop 0.3s ease" : "none" }} onClick={(e) => { e.stopPropagation(); toggleTask(item, { x: e.clientX, y: e.clientY }); }}>
                           {done ? <CheckCircle2 size={14} color="#7C5CFF" /> : <div style={{ width: 14, height: 14, borderRadius: "50%", border: "1.5px solid rgba(167,139,250,0.3)" }} />}
                         </span>
-                        {item.emoji && <span>{item.emoji}</span>}
-                        {item.title}
+                        {item.emoji && <span style={{ flexShrink: 0 }}>{item.emoji}</span>}
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{item.title}</span>
                       </button>
                     );
                   })}
@@ -780,21 +789,23 @@ function AgendaPage() {
                           cursor: "pointer", fontFamily: "inherit", fontSize: 12,
                           color: done ? "#5a5470" : "#9e96b5",
                           textDecoration: done ? "line-through" : "none",
-                          whiteSpace: "nowrap",
+                          whiteSpace: "nowrap", maxWidth: "100%",
                         }}>
                         <span onClick={async (e) => {
                           e.stopPropagation();
                           const newStatus = done ? "pendente" : "concluida";
+                          if (newStatus === "concluida") celebrate(e.clientX, e.clientY);
                           setAllWeekTasks((prev: any[]) => prev.map((wt: any) => wt.id === t.id ? { ...wt, status: newStatus } : wt));
                           await fetch(`/api/weekly-plans/tasks/${t.id}`, {
                             method: "PATCH",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ status: newStatus }),
                           });
-                        }} style={{ fontSize: 11, cursor: "pointer", display: "flex" }}>
+                        }} style={{ fontSize: 11, cursor: "pointer", display: "flex", flexShrink: 0, animation: done ? "checkPop 0.3s ease" : "none" }}>
                           {done ? <CheckCircle2 size={13} color="#7C5CFF" /> : <div style={{ width: 13, height: 13, borderRadius: "50%", border: "1.5px solid rgba(167,139,250,0.2)" }} />}
                         </span>
-                        {areaEmoji} {t.title}
+                        <span style={{ flexShrink: 0 }}>{areaEmoji}</span>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{t.title}</span>
                       </button>
                     );
                   })}
@@ -960,8 +971,8 @@ function AgendaPage() {
                               {item.title}
                             </span>
                           </span>
-                          <span onClick={(e) => { e.stopPropagation(); toggleTask(item); }}
-                            style={{ flexShrink: 0, cursor: "pointer", display: "flex", marginLeft: 4 }}>
+                          <span onClick={(e) => { e.stopPropagation(); toggleTask(item, { x: e.clientX, y: e.clientY }); }}
+                            style={{ flexShrink: 0, cursor: "pointer", display: "flex", marginLeft: "auto", animation: done ? "checkPop 0.3s ease" : "none" }}>
                             {done
                               ? <CheckCircle2 size={10} color="#7C5CFF" />
                               : <div style={{ width: 10, height: 10, borderRadius: "50%", border: isTask ? "1.5px solid rgba(167,139,250,0.35)" : "1.5px solid rgba(167,139,250,0.2)" }} />
@@ -976,8 +987,8 @@ function AgendaPage() {
                               {item.start_time?.slice(0, 5)}{item.end_time ? ` – ${item.end_time.slice(0, 5)}` : ""}
                               {crossesMidnight && " ↗"}
                             </span>
-                            <span onClick={(e) => { e.stopPropagation(); toggleTask(item); }}
-                              style={{ flexShrink: 0, cursor: "pointer", display: "flex" }}>
+                            <span onClick={(e) => { e.stopPropagation(); toggleTask(item, { x: e.clientX, y: e.clientY }); }}
+                              style={{ flexShrink: 0, cursor: "pointer", display: "flex", animation: done ? "checkPop 0.3s ease" : "none" }}>
                               {done
                                 ? <CheckCircle2 size={12} color="#7C5CFF" />
                                 : <div style={{ width: 12, height: 12, borderRadius: "50%", border: isTask ? "1.5px solid rgba(167,139,250,0.35)" : "1.5px solid rgba(167,139,250,0.2)" }} />
@@ -1494,7 +1505,7 @@ const navBtnStyle: React.CSSProperties = {
   color: "#e0d6ff",
 };
 
-function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, refreshItems, loading, toggleAgendaTask }: { allWeekTasks: any[]; compromissos: AgendaItem[]; selectedDate: string; setAllWeekTasks: React.Dispatch<React.SetStateAction<any[]>>; refreshItems: () => void; loading: boolean; toggleAgendaTask: (item: AgendaItem) => void }) {
+function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, refreshItems, loading, toggleAgendaTask }: { allWeekTasks: any[]; compromissos: AgendaItem[]; selectedDate: string; setAllWeekTasks: React.Dispatch<React.SetStateAction<any[]>>; refreshItems: () => void; loading: boolean; toggleAgendaTask: (item: AgendaItem, coords?: { x: number; y: number }) => void }) {
   const [goals, setGoals] = useState<any[]>([]);
   const [goalsLoading, setGoalsLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -1588,10 +1599,11 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   };
 
   // Marca/desmarca uma tarefa semanal como concluída (atualiza o estado local)
-  const toggleTaskDone = async (t: any) => {
+  const toggleTaskDone = async (t: any, coords?: { x: number; y: number }) => {
     const completing = t.status !== "concluida";
     const newStatus = completing ? "concluida" : "pendente";
     const isOpen = t.day_of_week == null;
+    if (completing) celebrate(coords?.x, coords?.y);
 
     // Completar uma tarefa "Em aberto": grava no dia de hoje (referência p/ análises)
     if (completing && isOpen) {
@@ -1806,7 +1818,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
                 animation: movingId === t.id ? "agendaMovePulse 0.45s ease" : "none",
               }}>
                 <span style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0, border: "1.5px solid rgba(255,159,67,0.4)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onClick={(e) => { e.stopPropagation(); toggleTaskDone(t); }}
+                  onClick={(e) => { e.stopPropagation(); toggleTaskDone(t, { x: e.clientX, y: e.clientY }); }}
                 />
                 <span style={{ flex: 1, fontSize: 11, color: "#FF9F43", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} onClick={() => openEditor(t)}>{t.title}</span>
                 <span style={{ fontSize: 8, color: "#9e96b5", flexShrink: 0 }}>{dateLabel}</span>
@@ -1832,8 +1844,8 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
             const done = t.status === "concluida";
             return (
               <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(167,139,250,0.05)", animation: movingId === t.id ? "agendaMovePulse 0.45s ease" : "none" }}>
-                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: 4, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onClick={(e) => { e.stopPropagation(); toggleTaskDone(t); }}>
+                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: 4, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}
+                  onClick={(e) => { e.stopPropagation(); toggleTaskDone(t, { x: e.clientX, y: e.clientY }); }}>
                   {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10"/></svg>}
                 </span>
                 <span style={{ flex: 1, fontSize: 11, color: done ? "#5a5470" : "#e0d6ff", textDecoration: done ? "line-through" : "none", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} onClick={() => openEditor(t)}>{t.title}</span>
@@ -1872,8 +1884,8 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
             const done = t.status === "concluida";
             return (
               <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)" }}>
-                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: 4, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onClick={(e) => { e.stopPropagation(); toggleAgendaTask(t); }}>
+                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: 4, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}
+                  onClick={(e) => { e.stopPropagation(); toggleAgendaTask(t, { x: e.clientX, y: e.clientY }); }}>
                   {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10"/></svg>}
                 </span>
                 {t.emoji && <span style={{ fontSize: 12, flexShrink: 0 }}>{t.emoji}</span>}
@@ -1894,8 +1906,8 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
             const done = t.status === "concluida";
             return (
               <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)" }}>
-                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: 4, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onClick={(e) => { e.stopPropagation(); toggleTaskDone(t); }}>
+                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: 4, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}
+                  onClick={(e) => { e.stopPropagation(); toggleTaskDone(t, { x: e.clientX, y: e.clientY }); }}>
                   {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10"/></svg>}
                 </span>
                 <span style={{ fontSize: 12 }}>{area.emoji}</span>
