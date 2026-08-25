@@ -86,6 +86,25 @@ export function getLocalDateFromISO(isoStr: string, tz?: string): string {
   return spDate(new Date(isoStr).getTime());
 }
 
+/** Converte "YYYY-MM-DD" em rótulo relativo ("hoje", "ontem", "há N dias")
+ *  em relação a `todayStr` (também "YYYY-MM-DD"). Usa UTC para evitar DST. */
+export function relativeDayLabel(dateStr: string, todayStr?: string): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr + "T00:00:00Z").getTime();
+  let ref: number;
+  if (todayStr) {
+    ref = new Date(todayStr + "T00:00:00Z").getTime();
+  } else {
+    const n = new Date();
+    ref = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate());
+  }
+  const diff = Math.round((ref - d) / 86400000);
+  if (diff <= 0) return "hoje";
+  if (diff === 1) return "ontem";
+  if (diff === 2) return "anteontem";
+  return `há ${diff} dias`;
+}
+
 /** Formats a Date as YYYY-MM-DD in the user's timezone. */
 export function formatLocalDate(d: Date, tz?: string): string {
   if (typeof window !== "undefined") return dateToYMD(d);

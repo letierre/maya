@@ -1,3 +1,5 @@
+import { relativeDayLabel } from "@/lib/utils";
+
 export interface UserContext {
   name: string;
   gender: string;
@@ -123,7 +125,7 @@ export function buildMayaSystemPrompt(input: MayaInput): string {
 
   const checkInBlock = recentCheckIns.length > 0
     ? `## CHECK-INS RECENTES\n${recentCheckIns.map(c =>
-        `${c.date}: ${(c.moodTags || []).length ? `[${(c.moodTags || []).join(", ")}] ` : ""}${c.feeling ? `"${c.feeling.slice(0, 60)}"` : "sem registro"} | ✅ ${c.positives.join(", ") || "nenhum"}`
+        `${c.date} (${relativeDayLabel(c.date, currentDate)}): ${(c.moodTags || []).length ? `[${(c.moodTags || []).join(", ")}] ` : ""}${c.feeling ? `"${c.feeling.slice(0, 60)}"` : "sem registro"} | ✅ ${c.positives.join(", ") || "nenhum"}`
       ).join("\n")}`
     : "";
 
@@ -148,7 +150,7 @@ ${(todayCheckIn.moodTags || []).length > 0 ? `- Humor: ${(todayCheckIn.moodTags 
 
   const diaryBlock = recentDiary.length > 0
     ? `## DIÁRIO RECENTE\n${recentDiary.map(d =>
-        `### ${d.date}${d.mood ? ` [humor: ${d.mood}/5]` : ""}\n${d.content.slice(0, 1500)}${d.content.length > 1500 ? "..." : ""}`
+        `### ${d.date} (${relativeDayLabel(d.date, currentDate)})${d.mood ? ` [humor: ${d.mood}/5]` : ""}\n${d.content.slice(0, 1500)}${d.content.length > 1500 ? "..." : ""}`
       ).join("\n\n")}`
     : "";
 
@@ -261,7 +263,8 @@ O histórico de mensagens que você recebe tem, entre colchetes no início, o DI
 ## IMAGENS ENVIADAS PELO USUÁRIO
 Quando a pessoa envia uma foto, principalmente prints de conversa (WhatsApp, mensagens, e-mail), leia com MÁXIMO cuidado antes de comentar:
 - Respeite a ordem visual das mensagens de cima para baixo — não misture o texto de bolhas diferentes numa única frase.
-- Identifique quem escreveu cada mensagem pela posição/cor da bolha (ex: bolhas à direita geralmente são de quem tirou o print; à esquerda, do contato) antes de dizer "ele disse" ou "você disse". Se não tiver certeza de quem é o autor de uma bolha, não afirme — descreva o conteúdo sem atribuir, ou pergunte à pessoa.
+- QUEM FALOU O QUÊ (regra fixa): em um print de WhatsApp (ou similar), a pessoa está te mostrando a tela do CELULAR DELA. As bolhas na DIREITA são as mensagens QUE ELA ENVIOU; as bolhas na ESQUERDA são do OUTRO participante. Aplique essa regra SEMPRE — confundir os lados inverte a conversa inteira. (Só não use a regra de lado em layouts sem lados, como e-mail.)
+- Se a imagem não deixar o lado claro (bolhas do mesmo lado, cores atípicas, print cortado), NÃO afirme quem falou — descreva o conteúdo sem atribuir autoria, ou pergunte à pessoa.
 - Nunca invente ou complete uma frase que está cortada, borrada ou ilegível na imagem. Diga que não conseguiu ler aquele trecho em vez de adivinhar.
 - Para prints de conversa, comente o conteúdo e o sentimento da troca, não apenas transcreva — mas a transcrição que você fizer precisa ser fiel.
 

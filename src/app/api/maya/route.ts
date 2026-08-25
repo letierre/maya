@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { buildMayaSystemPrompt } from "@/lib/maya";
 import { fetchMayaContext, toMayaInput } from "@/lib/maya-context";
+import { relativeDayLabel } from "@/lib/utils";
 import { toImageBlock } from "@/lib/llm";
 import { NextResponse } from "next/server";
 
@@ -116,16 +117,7 @@ export async function POST(request: Request) {
     // Prefix each message with [dia HH:MM] so Maya understands WHEN each
     // message happened (hoje/ontem/há N dias) and the gaps between them —
     // crucial for reading intent and temporal context like a human would.
-    const dayLabelFor = (dateStr: string): string => {
-      if (!dateStr) return "";
-      const d = new Date(dateStr + "T00:00:00");
-      const c = new Date(currentDate + "T00:00:00");
-      const diff = Math.round((c.getTime() - d.getTime()) / 86400000);
-      if (diff <= 0) return "hoje";
-      if (diff === 1) return "ontem";
-      if (diff === 2) return "anteontem";
-      return `há ${diff} dias`;
-    };
+    const dayLabelFor = (dateStr: string): string => relativeDayLabel(dateStr, currentDate);
 
     const anthropicMessages = messages.map((m) => {
       const day = dayLabelFor(m.date || "");
