@@ -13,12 +13,21 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = getSupabaseAdmin();
-  await admin.from("push_subscriptions").upsert({
+  const row = {
     user_id: session.user.id,
     endpoint: sub.endpoint,
     p256dh: sub.keys.p256dh,
     auth: sub.keys.auth,
-  }, { onConflict: "user_id,endpoint" });
+  };
+  const timezone = typeof sub.timezone === "string" && sub.timezone ? sub.timezone : null;
+  // Persist timezone when the column exists; fall back gracefully before migration 041.
+  const { error } = await admin.from("push_subscriptions").upsert(
+    { ...row, timezone },
+    { onConflict: "user_id,endpoint" },
+  );
+  if (error) {
+    await admin.from("push_subscriptions").upsert(row, { onConflict: "user_id,endpoint" });
+  }
 
   return NextResponse.json({ ok: true });
 }

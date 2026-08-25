@@ -155,6 +155,42 @@ export function getTimezoneOffset(tz: string, dateStr: string): string {
   return "-03:00"; // fallback SP
 }
 
+/** Returns the current wall-clock time/date/day-of-week in a given IANA timezone.
+ *  Used by the notification cron to fire each user's reminders at their local time. */
+export function getLocalNow(tz?: string): { time: string; date: string; dow: number } {
+  const tzName = tz || "America/Sao_Paulo";
+  try {
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: tzName,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short",
+    });
+    const parts = fmt.formatToParts(new Date());
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+    let hour = get("hour");
+    if (hour === "24") hour = "00";
+    const DOW: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return {
+      time: `${hour.padStart(2, "0")}:${get("minute").padStart(2, "0")}`,
+      date: `${get("year")}-${get("month")}-${get("day")}`,
+      dow: DOW[get("weekday")] ?? 0,
+    };
+  } catch {
+    // Fallback: São Paulo (UTC-3)
+    const sp = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    return {
+      time: `${String(sp.getUTCHours()).padStart(2, "0")}:${String(sp.getUTCMinutes()).padStart(2, "0")}`,
+      date: [sp.getUTCFullYear(), String(sp.getUTCMonth() + 1).padStart(2, "0"), String(sp.getUTCDate()).padStart(2, "0")].join("-"),
+      dow: sp.getUTCDay(),
+    };
+  }
+}
+
 /** Returns the Monday date (YYYY-MM-DD) of the current week in the user's timezone.
  *  Pass offsetWeeks to get a different week (e.g. 1 = next Monday, -1 = previous Monday). */
 export function getWeekMondayDate(offsetWeeks?: number, tz?: string): string {

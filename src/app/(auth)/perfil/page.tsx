@@ -7,6 +7,7 @@ import { BellRing, BellOff, Shield } from "lucide-react";
 import { useTranslation } from "@/lib/useTranslation";
 import { LANG_OPTIONS } from "@/lib/i18n";
 import { requestPushSubscription, hasPushPermission } from "@/lib/push-utils";
+import { getUserTimezone } from "@/lib/utils";
 import { LogoutButton } from "@/components/LogoutButton";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
 import { APP_VERSION } from "@/lib/version";
@@ -103,7 +104,7 @@ export default function PerfilPage() {
       await fetch("/api/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sub),
+        body: JSON.stringify({ ...sub, timezone: getUserTimezone() }),
       });
     } catch { /* retry next visit */ }
     setPushState("granted");
