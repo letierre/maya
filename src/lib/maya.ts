@@ -157,7 +157,15 @@ ${(todayCheckIn.moodTags || []).length > 0 ? `- Humor: ${(todayCheckIn.moodTags 
     : "";
 
   const memoriesBlock = memories.length > 0
-    ? `## O QUE EU SEI SOBRE VOCÊ\n${memories.map((m) => `- ${m}`).join("\n")}\n**Use essas memórias naturalmente se forem relevantes — NUNCA as liste.**`
+    ? `## O QUE EU SEI SOBRE VOCÊ (memórias, da mais recente para a mais antiga)
+${memories.map((m) => `- ${m}`).join("\n")}
+
+**Regras sobre memórias (MUITO importantes):**
+- Cada memória começa com a data em que foi registrada (formato AAAA-MM-DD). Hoje é ${currentDate || "hoje"}.
+- Uma memória é um FATO PASSADO, não uma verdade presente. Se ela menciona um mês ou data que JÁ passou (ex: "julho" quando já estamos em agosto), trate como algo que já aconteceu e ficou para trás — NUNCA como algo pendente, futuro ou a fazer.
+- NUNCA parabenize nem cobre por algo que já passou e foi resolvido ou abandonado. Exemplo: se a memória diz "marcou terapia para julho" e já estamos em agosto, isso é passado — não assuma que ainda vai acontecer. No máximo, pergunte com naturalidade como foi / se continuou.
+- Priorize memórias RECENTES e RELEVANTES para o momento atual da pessoa (bem-estar, crescimento pessoal, o que ela vive agora). Memórias antigas são apenas contexto.
+- NUNCA liste as memórias. Use naturalmente quando relevante.`
     : "";
 
   const goalsBlock = activeGoals && activeGoals.length > 0
@@ -165,7 +173,7 @@ ${(todayCheckIn.moodTags || []).length > 0 ? `- Humor: ${(todayCheckIn.moodTags 
 ${activeGoals.map((g) => {
   const urgency = g.daysInactive >= 14 ? ` ⚠️ ${g.daysInactive}d sem atividade` : "";
   const deadline = g.daysUntilDeadline !== null
-    ? (g.daysUntilDeadline < 0 ? ` | prazo vencido` : ` | ${g.daysUntilDeadline}d para o prazo`)
+    ? (g.daysUntilDeadline < 0 ? ` | prazo vencido há ${Math.abs(g.daysUntilDeadline)}d` : ` | ${g.daysUntilDeadline}d para o prazo`)
     : "";
   return `- "${g.title}" [${AREA_LABELS[g.area] ?? g.area}] — ${g.pct}% concluída${urgency}${deadline}${g.nextAction ? ` | próx: ${g.nextAction}` : ""}${g.guardianName ? ` | guardião: ${g.guardianName}` : ""}`;
 }).join("\n")}
@@ -175,6 +183,7 @@ ${weekPlan ? `Semana: foco em "${weekPlan.mainFocus}"${weekPlan.hasReview ? ` | 
 - Mencione metas naturalmente quando relevante — não force toda conversa para metas
 - Se o usuário mencionar progresso, celebre genuinamente
 - Se uma meta está inativa há muito tempo (⚠️), pergunte com cuidado o que está acontecendo
+- Se uma meta tem PRAZO VENCIDO, ela é PASSADO, não um plano futuro: não parabenize nem trate como algo a fazer. Se for relevante, pergunte com naturalidade como ficou (foi concluída, adiada ou abandonada?).
 - Se o usuário parecer desmotivado, lembre do "por quê" da meta ou do guardião
 - NUNCA invente progresso ou ações que não estejam no contexto acima`
     : "";

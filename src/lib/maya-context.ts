@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getLatestInsights, type SpecialistInsights } from "@/lib/specialists";
-import { calculateStreak, getWeekMondayDate, getLocalDate } from "@/lib/utils";
+import { calculateStreak, getWeekMondayDate, getLocalDate, getLocalDateFromISO } from "@/lib/utils";
 import { habitAnswered } from "@/lib/checkin-answered";
 import { getMoodById, getMoodLabel } from "@/lib/checkin-moods";
 import type {
@@ -47,6 +47,15 @@ export interface MayaContext {
 
 // ── Fetch (uma única rajada de queries compartilhadas) ───────────────
 
+/** Formata uma memória com a data em que foi registrada (AAAA-MM-DD), para que
+ *  a Maya saiba QUANDO aprendeu cada fato e consiga priorizar o recente. */
+function formatMemory(m: Record<string, unknown>): string {
+  const fact = (m.fact as string) || "";
+  const createdAt = m.created_at as string | undefined;
+  if (!createdAt) return fact;
+  return `${getLocalDateFromISO(createdAt)}: ${fact}`;
+}
+
 export async function fetchMayaContext(
   userId: string,
   opts: FetchMayaContextOptions = {},
@@ -63,7 +72,7 @@ export async function fetchMayaContext(
   add("prefs", admin.from("user_preferences").select("context").eq("user_id", userId).single());
   add("checkIns", admin.from("check_ins").select("*").eq("user_id", userId).order("date", { ascending: false }).limit(opts.checkInLimit ?? 7));
   add("diaryEntries", admin.from("diary_entries").select("*").eq("user_id", userId).order("date", { ascending: false }).limit(opts.diaryLimit ?? 10));
-  add("memories", admin.from("user_memories").select("fact").eq("user_id", userId).order("created_at", { ascending: false }));
+  add("memories", admin.from("user_memories").select("fact, created_at").eq("user_id", userId).order("created_at", { ascending: false }));
   add("rawGoals", admin.from("goals")
     .select("*, goal_stages(*, goal_actions(*))")
     .eq("user_id", userId).eq("status", "ativa")
@@ -124,7 +133,7 @@ export async function fetchMayaContext(
       case "prefs": ctx.prefs = res?.data ?? null; break;
       case "checkIns": ctx.checkIns = res?.data ?? []; break;
       case "diaryEntries": ctx.diaryEntries = res?.data ?? []; break;
-      case "memories": ctx.memories = (res?.data ?? []).map((m: any) => m.fact as string); break;
+      case "memories": ctx.memories = (res?.data ?? []).map((m: any) => formatMemory(m)); break;
       case "rawGoals": ctx.rawGoals = res?.data ?? []; break;
       case "weekPlanRaw": ctx.weekPlanRaw = res?.data ?? null; break;
       case "latestInsights": ctx.latestInsights = res ?? null; break;
