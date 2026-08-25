@@ -956,12 +956,13 @@ function AgendaPage() {
                       }}>
                       {/* Short mode: single-row layout */}
                       {short ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0, justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0 }}>
                           <span style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0, overflow: "hidden" }}>
                             <span style={{ fontSize: 8, color: isTask ? "#9e96b5" : (item.color || "#A78BFA"), flexShrink: 0, lineHeight: 1 }}>
                               {item.start_time?.slice(0, 5)}
                             </span>
                             <span style={{
+                              flex: 1, minWidth: 0,
                               fontSize: 10, fontWeight: done ? 400 : 600,
                               color: done ? "#5a5470" : "#e0d6ff",
                               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
