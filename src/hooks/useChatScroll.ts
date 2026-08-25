@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 
 interface UseChatScrollOptions {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -28,6 +28,7 @@ export function useChatScroll({
 }: UseChatScrollOptions) {
   const isAtBottomRef = useRef(true);
   const prevMessageCountRef = useRef(messageCount);
+  const [unread, setUnread] = useState(0);
 
   const checkAtBottom = useCallback(() => {
     const el = containerRef.current;
@@ -78,8 +79,12 @@ export function useChatScroll({
     if (!hydrated) return;
 
     if (messageCount > prevMessageCountRef.current) {
+      const added = messageCount - prevMessageCountRef.current;
       if (isAtBottomRef.current) {
-        scrollToBottom("smooth");
+        scrollToBottom("instant");
+        setUnread(0);
+      } else {
+        setUnread((n) => n + added);
       }
     }
     prevMessageCountRef.current = messageCount;
@@ -103,8 +108,15 @@ export function useChatScroll({
 
   // ── Track user scroll position ──────────────────────────────────
   const handleScroll = useCallback(() => {
-    isAtBottomRef.current = checkAtBottom();
+    const atBottom = checkAtBottom();
+    isAtBottomRef.current = atBottom;
+    if (atBottom) setUnread(0);
   }, [checkAtBottom]);
 
-  return { handleScroll, scrollToBottom, isAtBottomRef };
+  const jumpToLatest = useCallback(() => {
+    setUnread(0);
+    scrollToBottom("smooth");
+  }, [scrollToBottom]);
+
+  return { handleScroll, scrollToBottom, isAtBottomRef, unread, jumpToLatest };
 }

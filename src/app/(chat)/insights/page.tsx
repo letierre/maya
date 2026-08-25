@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "@/lib/useTranslation";
-import { Send, ArrowLeft, Plus, Camera, X, Image as ImageIcon } from "lucide-react";
+import { Send, ArrowLeft, Plus, Camera, X, Image as ImageIcon, ArrowDown } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
@@ -230,7 +230,7 @@ export default function MayaChatPage() {
   const nudgeActionRef = useRef<{ label: string; href: string } | null>(null);
 
   // ── Chat scroll management ──
-  const { handleScroll } = useChatScroll({
+  const { handleScroll, isAtBottomRef, unread, jumpToLatest } = useChatScroll({
     containerRef: messagesRef,
     bottomRef,
     messageCount: messages.length,
@@ -242,6 +242,8 @@ export default function MayaChatPage() {
   // Direct scrollTop — no ResizeObserver, no rAF timing issues.
   // Fires on every keystroke AND viewport change (keyboard open/close).
   useEffect(() => {
+    // Respeita quem está lendo mensagens antigas — não arrasta de volta pro fim
+    if (!isAtBottomRef.current) return;
     const mc = messagesRef.current;
     if (!mc) return;
     mc.scrollTop = mc.scrollHeight;
@@ -882,6 +884,27 @@ export default function MayaChatPage() {
         {/* Bottom sentinel — ResizeObserver uses this to scroll to bottom */}
         <div ref={bottomRef} style={{ flexShrink: 0 }} />
       </div>
+
+      {/* Novas mensagens — aparece quando chega mensagem abaixo da posição de leitura */}
+      {unread > 0 && (
+        <button
+          type="button"
+          onClick={jumpToLatest}
+          className="absolute left-1/2 -translate-x-1/2 bottom-3 z-10 inline-flex items-center rounded-full border-0 cursor-pointer"
+          style={{
+            background: "var(--maya-primary)",
+            color: "#fff",
+            padding: "8px 14px",
+            fontSize: 13,
+            fontWeight: 600,
+            boxShadow: "0 4px 14px rgba(124,92,255,0.45)",
+          }}
+          aria-label="Ver novas mensagens"
+        >
+          <ArrowDown className="size-4" />
+          <span style={{ marginLeft: 5 }}>{unread} nova{unread > 1 ? "s" : ""}</span>
+        </button>
+      )}
       </div>
 
       {/* ── Composer ── */}
@@ -895,25 +918,19 @@ export default function MayaChatPage() {
             : "calc(28px + env(safe-area-inset-bottom, 16px))",
         }}
       >
-        {/* Contextual suggestion chips — vanish once the user types */}
+        {/* Sugestões — só antes da 1ª mensagem; somem de vez depois de enviar algo */}
         {hydrated &&
           !input.trim() &&
           !typing &&
           !sending &&
-          selectedImages.length === 0 && (
+          selectedImages.length === 0 &&
+          messages.length === 0 && (
             <div className="flex gap-2 overflow-x-auto pb-2 maya-chat-msg">
-              {(messages.length === 0
-                ? [
-                    t("maya_sugg_financas"),
-                    t("maya_sugg_rotina"),
-                    t("maya_sugg_dia_dificil"),
-                  ]
-                : [
-                    t("maya_sugg_entender"),
-                    t("maya_sugg_agora"),
-                    t("maya_sugg_conversar"),
-                  ]
-              ).map((chip) => (
+              {[
+                t("maya_sugg_financas"),
+                t("maya_sugg_rotina"),
+                t("maya_sugg_dia_dificil"),
+              ].map((chip) => (
                 <button
                   key={chip}
                   type="button"
