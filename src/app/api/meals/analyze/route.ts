@@ -25,7 +25,7 @@ Regras de classificação (escolha UMA):
 - "alta_gordura": predominantemente gordurosa (frituras, carnes gordas, queijo, manteiga em excesso).
 - "alta_sal": alimentos muito salgados ou processados com alto teor de sódio (pipoca salgada, salgadinhos, embutidos, fast food, enlatados). Use quando sal/sódio for o destaque negativo.
 - "vegetais_baixo": predominantemente vegetais e/ou muito baixa caloria.
-Se não conseguir identificar com confiança, use "nao_identificada".
+Identifique cada alimento com cuidado e NÃO invente itens. Se um alimento não estiver claro na foto, não chute um nome: inclua apenas o que consegue ver com confiança. Se não conseguir identificar com confiança, use "nao_identificada".
 Observação em português, 1-2 frases, tom POSITIVO e encorajador — celebre algo bom da refeição (proteína presente, variedade, escolha consciente, etc.). Não critique nem liste o que faltou.
 NUNCA use markdown (**), travessão (—) ou caracteres especiais na observação — apenas texto plano com vírgula e ponto final.`;
 
@@ -45,7 +45,7 @@ ${hasMultiple ? `ATENÇÃO: Você receberá ${photos.length} fotos da MESMA refe
     return toImageBlock(dataUrl);
   });
 
-  return callLLM(system, [{ type: "text", text: textPrompt }, ...imageBlocks], { maxTokens: 400, temperature: 0.3 });
+  return callLLM(system, [{ type: "text", text: textPrompt }, ...imageBlocks], { maxTokens: 2000, model: "claude-sonnet-5" });
 }
 
 async function callTextOnly(description: string, items: string[]): Promise<string> {

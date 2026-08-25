@@ -319,7 +319,7 @@ export default function MealDetailPage() {
       return;
     }
     try {
-      const compressed = await compressImage(file);
+      const compressed = await compressImage(file, { maxDim: 1024, quality: 0.85 });
       const path = await uploadToCloud(compressed, "meals");
       setPhotos((prev) => [...prev, compressed]);
       setPhotoPaths((prev) => [...prev, path]);

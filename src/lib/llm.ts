@@ -20,10 +20,11 @@ export function toImageBlock(dataUrl: string): ContentBlock {
 export async function callLLM(
   systemPrompt: string,
   userMessage: string | ContentBlock[],
-  options?: { maxTokens?: number; temperature?: number }
+  options?: { maxTokens?: number; temperature?: number; model?: string }
 ): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY || "";
   const maxTokens = options?.maxTokens ?? 500;
+  const model = options?.model ?? "claude-haiku-4-5-20251001";
 
   const userContent = typeof userMessage === "string"
     ? [{ type: "text" as const, text: userMessage }]
@@ -37,7 +38,7 @@ export async function callLLM(
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
+      model,
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: "user", content: userContent }],
@@ -50,5 +51,8 @@ export async function callLLM(
   }
 
   const data = await response.json();
-  return data.content?.[0]?.text || "";
+  // Modelos com thinking (Sonnet/Opus 5) devolvem blocos de thinking antes do
+  // texto; extrai o primeiro bloco de texto real, não `content[0]`.
+  const textBlock = (data.content || []).find((b: any) => b.type === "text");
+  return textBlock?.text || "";
 }
