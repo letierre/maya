@@ -975,8 +975,8 @@ function AgendaPage() {
                           <span onClick={(e) => { e.stopPropagation(); toggleTask(item, { x: e.clientX, y: e.clientY }); }}
                             style={{ flexShrink: 0, cursor: "pointer", display: "flex", marginLeft: "auto", animation: done ? "checkPop 0.3s ease" : "none" }}>
                             {done
-                              ? <CheckCircle2 size={10} color="#7C5CFF" />
-                              : <div style={{ width: 10, height: 10, borderRadius: "50%", border: isTask ? "1.5px solid rgba(167,139,250,0.35)" : "1.5px solid rgba(167,139,250,0.2)" }} />
+                              ? <CheckCircle2 size={12} color="#7C5CFF" />
+                              : <div style={{ width: 12, height: 12, borderRadius: "50%", border: isTask ? "1.5px solid rgba(167,139,250,0.35)" : "1.5px solid rgba(167,139,250,0.2)" }} />
                             }
                           </span>
                         </div>
