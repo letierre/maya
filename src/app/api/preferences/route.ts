@@ -31,6 +31,26 @@ function normalizeEnabledQuestions(
   return [...out];
 }
 
+// Mapeia o payload de onboarding do cliente para as colunas da tabela
+// onboarding_responses (análise de perfil de usuário / otimização de anúncios).
+function mapOnboarding(o: Record<string, unknown> | undefined) {
+  const s = (v: unknown) => (Array.isArray(v) ? v : []);
+  return {
+    goal: o?.goal ?? null,
+    pain_points: s(o?.pain_points),
+    tinder_agreed: s(o?.tinder_agreed),
+    area_preferences: s(o?.area_preferences),
+    gender: o?.gender ?? null,
+    language: o?.language ?? null,
+    has_medication: o?.has_medication ?? null,
+    has_faith: o?.has_faith ?? null,
+    has_creative_hobby: o?.has_creative_hobby ?? null,
+    track_suicidal_thoughts: o?.track_suicidal_thoughts ?? null,
+    utm_source: o?.utm_source ?? null,
+    utm_campaign: o?.utm_campaign ?? null,
+  };
+}
+
 export async function GET() {
   const supabase = await createServerSupabaseClient();
   const { data: { session }, error: authError } = await supabase.auth.getSession();
@@ -83,7 +103,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { enabled_questions, context, onboarding_completed } = body;
+    const { enabled_questions, context, onboarding_completed, onboarding } = body;
 
     const admin = getSupabaseAdmin();
 
@@ -108,6 +128,12 @@ export async function POST(req: NextRequest) {
 
       if (error) throw error;
 
+      if (onboarding) {
+        await admin
+          .from("onboarding_responses")
+          .upsert({ user_id: user.id, ...mapOnboarding(onboarding) }, { onConflict: "user_id" });
+      }
+
       return NextResponse.json({
         enabled_questions: updated.enabled_questions,
         context: updated.context || {},
@@ -127,6 +153,12 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    if (onboarding) {
+      await admin
+        .from("onboarding_responses")
+        .upsert({ user_id: user.id, ...mapOnboarding(onboarding) }, { onConflict: "user_id" });
+    }
 
     return NextResponse.json(
       {

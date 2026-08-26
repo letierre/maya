@@ -154,3 +154,21 @@ export const meals = pgTable("meals", {
   statusAnalise: text("status_analise").notNull().default("pendente"),
   criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const onboardingResponses = pgTable("onboarding_responses", {
+  userId: uuid("user_id").primaryKey(),
+  goal: text("goal"),
+  painPoints: text("pain_points").array().notNull().default([]),
+  tinderAgreed: text("tinder_agreed").array().notNull().default([]),
+  areaPreferences: text("area_preferences").array().notNull().default([]),
+  gender: text("gender"),
+  language: text("language"),
+  hasMedication: boolean("has_medication"),
+  hasFaith: boolean("has_faith"),
+  hasCreativeHobby: boolean("has_creative_hobby"),
+  trackSuicidalThoughts: boolean("track_suicidal_thoughts"),
+  utmSource: text("utm_source"),
+  utmCampaign: text("utm_campaign"),
+  completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
