@@ -52,7 +52,10 @@ export function BudgetModal({
   });
   const [saving, setSaving] = useState(false);
 
-  const subcatKeys = (c: FinCat) => c.subcats.map((sc) => `${c.id}::${sc.label}`);
+  const subcatKeys = (c: FinCat) => [
+    ...c.subcats.map((sc) => `${c.id}::${sc.label}`),
+    `${c.id}::__outros__`,
+  ];
   const hasSubBudget = (c: FinCat) =>
     subcatKeys(c).some((k) => values[k] && Number(values[k]) > 0);
   const subTotal = (c: FinCat) =>
@@ -201,9 +204,25 @@ export function BudgetModal({
                         </div>
                       );
                     })}
+                    {/* "Outros" — catch-all próprio de cada categoria (restante sem subcategoria específica) */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 4, borderTop: "1px solid rgba(167,139,250,0.12)" }}>
+                      <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "#A78BFA" }}>
+                        {tFn(lang, "fin_cat_outros")}
+                      </span>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="10"
+                        value={values[`${c.id}::__outros__`] ?? ""}
+                        onChange={(e) => setValues((p) => ({ ...p, [`${c.id}::__outros__`]: e.target.value }))}
+                        placeholder="—"
+                        style={inputS}
+                      />
+                    </div>
                     <p style={{ margin: "4px 0 0", fontSize: 10, color: "#9e96b5" }}>
                       {subMode
-                        ? "Total da categoria = soma das subcategorias"
+                        ? "Total da categoria = soma das subcategorias + outros"
                         : "Preencha subcategorias para planejar por item (o total vira a soma)"}
                     </p>
                   </div>

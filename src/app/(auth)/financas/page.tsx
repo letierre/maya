@@ -105,40 +105,61 @@ function buildBudgetRows(
   lang: Lang,
 ): BudgetRow[] {
   const rows: BudgetRow[] = [];
+  const outrosLabel = tFn(lang, "fin_cat_outros");
+
+  // Categorias orçadas por subcategoria (subcategoria !== "")
+  const subBudgetedCats = new Set(budgets.filter((b) => b.subcategory).map((b) => b.category));
+
+  // Gasto residual por categoria: não bate com nenhuma subcategoria específica orçada.
+  // É o que alimenta a linha "Outros" (explícita ou derivada).
+  const residualByCat = new Map<string, number>();
+  for (const catId of subBudgetedCats) {
+    const budgetedLabels = new Set(
+      budgets
+        .filter((b) => b.category === catId && b.subcategory && b.subcategory !== "__outros__")
+        .map((b) => b.subcategory as string),
+    );
+    const residual = transactions
+      .filter((t) => t.type === "despesa" && t.category === catId && !budgetedLabels.has(t.subcategory ?? ""))
+      .reduce((s, t) => s + t.amount, 0);
+    residualByCat.set(catId, residual);
+  }
 
   for (const b of budgets) {
     const conf = resolveCat(b.category, "despesa", userCategories);
     const emoji = catEmoji(conf, customCat);
     const baseLabel = catLabel(conf, lang, customCat, userCategories);
-    const label = b.subcategory ? `${baseLabel} › ${b.subcategory}` : baseLabel;
-    const spent = transactions
-      .filter((t) => t.type === "despesa" && t.category === b.category && (!b.subcategory || t.subcategory === b.subcategory))
-      .reduce((s, t) => s + t.amount, 0);
-    const pct = Math.min((spent / b.monthly_limit) * 100, 100);
-    rows.push({ key: b.id, emoji, label, spent, limit: b.monthly_limit, pct, over: spent > b.monthly_limit });
+
+    if (b.subcategory === "__outros__") {
+      const spent = residualByCat.get(b.category) ?? 0;
+      const pct = Math.min((spent / b.monthly_limit) * 100, 100);
+      rows.push({ key: b.id, emoji, label: `${baseLabel} › ${outrosLabel}`, spent, limit: b.monthly_limit, pct, over: spent > b.monthly_limit });
+    } else if (b.subcategory) {
+      const spent = transactions
+        .filter((t) => t.type === "despesa" && t.category === b.category && t.subcategory === b.subcategory)
+        .reduce((s, t) => s + t.amount, 0);
+      const pct = Math.min((spent / b.monthly_limit) * 100, 100);
+      rows.push({ key: b.id, emoji, label: `${baseLabel} › ${b.subcategory}`, spent, limit: b.monthly_limit, pct, over: spent > b.monthly_limit });
+    } else {
+      const spent = transactions
+        .filter((t) => t.type === "despesa" && t.category === b.category)
+        .reduce((s, t) => s + t.amount, 0);
+      const pct = Math.min((spent / b.monthly_limit) * 100, 100);
+      rows.push({ key: b.id, emoji, label: baseLabel, spent, limit: b.monthly_limit, pct, over: spent > b.monthly_limit });
+    }
   }
 
-  const subBudgetedCats = new Set(budgets.filter((b) => b.subcategory).map((b) => b.category));
+  // "Outros" derivado (sem orçamento) só quando há gasto residual e a categoria
+  // NÃO tem um orçamento "Outros" explícito.
   for (const catId of subBudgetedCats) {
-    const budgetedLabels = new Set(
-      budgets.filter((b) => b.category === catId && b.subcategory).map((b) => b.subcategory as string),
-    );
-    const residual = transactions
-      .filter((t) => t.type === "despesa" && t.category === catId && !budgetedLabels.has(t.subcategory ?? ""))
-      .reduce((s, t) => s + t.amount, 0);
+    const hasOutrosBudget = budgets.some((b) => b.category === catId && b.subcategory === "__outros__");
+    if (hasOutrosBudget) continue;
+    const residual = residualByCat.get(catId) ?? 0;
     if (residual <= 0) continue;
     const conf = resolveCat(catId, "despesa", userCategories);
     const emoji = catEmoji(conf, customCat);
     const baseLabel = catLabel(conf, lang, customCat, userCategories);
-    rows.push({
-      key: `${catId}::__outros__`,
-      emoji,
-      label: `${baseLabel} › ${tFn(lang, "fin_cat_outros")}`,
-      spent: residual,
-      limit: null,
-      pct: 0,
-      over: true,
-    });
+    rows.push({ key: `${catId}::__outros__`, emoji, label: `${baseLabel} › ${outrosLabel}`, spent: residual, limit: null, pct: 0, over: true });
   }
 
   return rows;
