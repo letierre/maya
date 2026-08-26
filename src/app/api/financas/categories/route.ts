@@ -19,19 +19,18 @@ export async function GET() {
 
   // Also return hidden IDs from preferences
   const { data: prefs, error: prefsErr } = await admin
-    .from("preferences")
+    .from("user_preferences")
     .select("context")
     .eq("user_id", session.user.id)
     .maybeSingle();
 
-  if (prefsErr) {
-    // If preferences table doesn't exist or other error, just return empty
-    return NextResponse.json({ categories: cats ?? [], hiddenFinCats: [] });
-  }
+  const ctx = prefsErr ? {} : (prefs?.context ?? {});
 
-  const hiddenFinCats: string[] = prefs?.context?.hidden_fin_cats ?? [];
+  const hiddenFinCats: string[] = ctx.hidden_fin_cats ?? [];
+  const hiddenFinSubcats: Record<string, string[]> = ctx.hidden_fin_subcats ?? {};
+  const customFinSubcats: Record<string, string[]> = ctx.custom_fin_subcats ?? {};
 
-  return NextResponse.json({ categories: cats ?? [], hiddenFinCats });
+  return NextResponse.json({ categories: cats ?? [], hiddenFinCats, hiddenFinSubcats, customFinSubcats });
 }
 
 export async function POST(req: Request) {

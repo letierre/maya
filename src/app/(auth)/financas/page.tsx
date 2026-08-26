@@ -7,7 +7,7 @@ import { Plus, Pencil, Trash2, Target, ChevronLeft, ChevronRight, TrendingUp, Tr
 import type { FinancialTransaction, FinancialBudget, Goal } from "@/types";
 import { useTranslation } from "@/lib/useTranslation";
 import { t as tFn, type Lang } from "@/lib/i18n";
-import { mergeCats, resolveCat, type FinCat, type CustomCat, type UserCategory } from "@/lib/financas-categories";
+import { mergeCats, resolveCat, type FinCat, type CustomCat, type UserCategory, type SubcatOverrides } from "@/lib/financas-categories";
 import { GoalCreateSheet } from "@/components/GoalCreateSheet";
 import { TransactionModal } from "@/components/financas/TransactionModal";
 import { BudgetModal } from "@/components/financas/BudgetModal";
@@ -250,6 +250,7 @@ export default function FinancasPage() {
   const [customCat, setCustomCat] = useState<CustomCat | null>(null);
   const [userCategories, setUserCategories] = useState<UserCategory[]>([]);
   const [hiddenCatIds, setHiddenCatIds] = useState<string[]>([]);
+  const [subcatOverrides, setSubcatOverrides] = useState<SubcatOverrides>({ hidden: {}, custom: {} });
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [monthOffset, setMonthOffset] = useState(0);
@@ -277,7 +278,7 @@ export default function FinancasPage() {
         fetch(`/api/financas/transactions?month=${currentMonth}`).then((r) => r.json()),
         fetch(`/api/financas/budgets?month=${currentMonth}`).then((r) => r.json()),
         fetch("/api/goals").then((r) => r.json()),
-        fetch("/api/financas/categories").then((r) => r.json()).catch(() => ({ categories: [], hiddenFinCats: [] })),
+        fetch("/api/financas/categories").then((r) => r.json()).catch(() => ({ categories: [], hiddenFinCats: [], hiddenFinSubcats: {}, customFinSubcats: {} })),
       ]);
       if (prefsRes.context?.currency) setCurrency(prefsRes.context.currency);
       if (prefsRes.context?.custom_fin_cat) setCustomCat(prefsRes.context.custom_fin_cat);
@@ -288,6 +289,10 @@ export default function FinancasPage() {
       }
       if (catsRes?.categories) setUserCategories(catsRes.categories);
       if (catsRes?.hiddenFinCats) setHiddenCatIds(catsRes.hiddenFinCats);
+      setSubcatOverrides({
+        hidden: catsRes?.hiddenFinSubcats ?? {},
+        custom: catsRes?.customFinSubcats ?? {},
+      });
     } catch {
       toast.error("Erro ao carregar dados financeiros");
     } finally {
@@ -330,7 +335,7 @@ export default function FinancasPage() {
   const totalDespesas = transactions.filter((t) => t.type === "despesa").reduce((s, t) => s + t.amount, 0);
   const saldo = totalReceitas - totalDespesas;
 
-  const spendByCategory = mergeCats("despesa", hiddenCatIds, userCategories, customCat)
+  const spendByCategory = mergeCats("despesa", hiddenCatIds, userCategories, customCat, subcatOverrides)
     .map((c) => ({
       ...c,
       total: transactions.filter((t) => t.type === "despesa" && t.category === c.id).reduce((s, t) => s + t.amount, 0),
@@ -881,6 +886,7 @@ export default function FinancasPage() {
           onCustomCatUpdated={setCustomCat}
           userCategories={userCategories}
           hiddenCatIds={hiddenCatIds}
+          subcatOverrides={subcatOverrides}
           onManageCategories={() => {
             setShowAdd(false);
             setEditTx(null);
@@ -905,7 +911,9 @@ export default function FinancasPage() {
           userCategories={userCategories}
           customCat={customCat}
           lang={lang}
+          subcatOverrides={subcatOverrides}
           onHiddenChange={setHiddenCatIds}
+          onSubcatOverridesChange={setSubcatOverrides}
           onCategoriesChange={load}
           onClose={() => setShowCategoryManager(false)}
         />
@@ -922,6 +930,7 @@ export default function FinancasPage() {
           customCat={customCat}
           userCategories={userCategories}
           hiddenCatIds={hiddenCatIds}
+          subcatOverrides={subcatOverrides}
         />
       )}
 

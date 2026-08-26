@@ -231,6 +231,15 @@ export type CustomCat = {
   subcats: string[];
 };
 
+/**
+ * Sobrescritas de subcategorias das categorias padrão (por usuário).
+ * `hidden[catId]` = labels de subcategorias ocultas; `custom[catId]` = labels adicionadas.
+ */
+export type SubcatOverrides = {
+  hidden: Record<string, string[]>;
+  custom: Record<string, string[]>;
+};
+
 export function getSubcats(
   catId: string,
   cats: FinCat[],
@@ -256,6 +265,7 @@ export function mergeCats(
   hiddenIds: string[],
   userCats: UserCategory[],
   customCat: CustomCat | null,
+  subcatOverrides?: SubcatOverrides,
 ): FinCat[] {
   const defaults = type === "despesa" ? EXPENSE_CATS : INCOME_CATS;
 
@@ -267,6 +277,15 @@ export function mergeCats(
       return !!customCat && userCats.length === 0;
     }
     return !hiddenIds.includes(c.id);
+  }).map((c) => {
+    // Aplica sobrescritas de subcategorias nas categorias padrão (não em custom/system)
+    if (!subcatOverrides || c.custom || c.system) return c;
+    const hiddenSubs = subcatOverrides.hidden[c.id] ?? [];
+    const customSubs = subcatOverrides.custom[c.id] ?? [];
+    if (hiddenSubs.length === 0 && customSubs.length === 0) return c;
+    const base = c.subcats.filter((sc) => !hiddenSubs.includes(sc.label));
+    const added = customSubs.map((label, i) => ({ id: `cust_${c.id}_${i}`, label }));
+    return { ...c, subcats: [...base, ...added] };
   });
 
   // Convert user categories to FinCat format

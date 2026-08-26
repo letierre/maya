@@ -3,11 +3,11 @@
 import { Settings } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import { t as tFn } from "@/lib/i18n";
-import { mergeCats, type UserCategory, type CustomCat } from "@/lib/financas-categories";
+import { mergeCats, type UserCategory, type CustomCat, type SubcatOverrides } from "@/lib/financas-categories";
 
 export function CategoryPicker({
   type, category, subcategory, lang, customCat,
-  userCategories, hiddenCatIds,
+  userCategories, hiddenCatIds, subcatOverrides,
   onSelect, onManage,
 }: {
   type: "receita" | "despesa";
@@ -17,10 +17,11 @@ export function CategoryPicker({
   customCat: CustomCat | null;
   userCategories: UserCategory[];
   hiddenCatIds: string[];
+  subcatOverrides?: SubcatOverrides;
   onSelect: (cat: string, sub: string) => void;
   onManage: () => void;
 }) {
-  const cats = mergeCats(type, hiddenCatIds, userCategories, customCat);
+  const cats = mergeCats(type, hiddenCatIds, userCategories, customCat, subcatOverrides);
   const cols = type === "despesa" ? "repeat(4, minmax(0, 1fr))" : "repeat(5, minmax(0, 1fr))";
   const selectedCat = cats.find((c) => c.id === category);
   const subcats = selectedCat?.subcats ?? [];

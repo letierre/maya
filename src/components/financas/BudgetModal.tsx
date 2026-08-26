@@ -5,7 +5,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import type { FinancialBudget } from "@/types";
 import type { Lang } from "@/lib/i18n";
 import { t as tFn } from "@/lib/i18n";
-import { mergeCats, type FinCat, type CustomCat, type UserCategory } from "@/lib/financas-categories";
+import { mergeCats, type FinCat, type CustomCat, type UserCategory, type SubcatOverrides } from "@/lib/financas-categories";
 
 function catLabel(c: FinCat, lang: Lang, customCat: CustomCat | null, userCategories: UserCategory[]): string {
   if (c.custom) {
@@ -18,7 +18,7 @@ function catLabel(c: FinCat, lang: Lang, customCat: CustomCat | null, userCatego
 }
 
 export function BudgetModal({
-  budgets, month, onClose, onSaved, lang, currency, customCat, userCategories, hiddenCatIds,
+  budgets, month, onClose, onSaved, lang, currency, customCat, userCategories, hiddenCatIds, subcatOverrides,
 }: {
   budgets: FinancialBudget[];
   month: string;
@@ -29,8 +29,9 @@ export function BudgetModal({
   customCat: CustomCat | null;
   userCategories: UserCategory[];
   hiddenCatIds: string[];
+  subcatOverrides?: SubcatOverrides;
 }) {
-  const cats = mergeCats("despesa", hiddenCatIds, userCategories, customCat);
+  const cats = mergeCats("despesa", hiddenCatIds, userCategories, customCat, subcatOverrides);
 
   // Chaves dos valores:
   //   "categoria"            → orçamento da categoria toda

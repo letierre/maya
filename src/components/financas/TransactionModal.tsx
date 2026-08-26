@@ -5,7 +5,7 @@ import { X, TrendingDown, TrendingUp } from "lucide-react";
 import type { FinancialTransaction } from "@/types";
 import type { Lang } from "@/lib/i18n";
 import { t as tFn } from "@/lib/i18n";
-import type { CustomCat } from "@/lib/financas-categories";
+import type { CustomCat, SubcatOverrides } from "@/lib/financas-categories";
 import { mergeCats, type UserCategory } from "@/lib/financas-categories";
 import { CategoryPicker } from "./CategoryPicker";
 import { CustomCatModal } from "./CustomCatModal";
@@ -28,7 +28,7 @@ const inputStyle: React.CSSProperties = {
 
 export function TransactionModal({
   initial, prefill, onClose, onSaved, lang, currency, customCat, onCustomCatUpdated,
-  userCategories, hiddenCatIds, onManageCategories,
+  userCategories, hiddenCatIds, subcatOverrides, onManageCategories,
 }: {
   initial?: FinancialTransaction | null;
   prefill?: TxDraft;
@@ -40,6 +40,7 @@ export function TransactionModal({
   onCustomCatUpdated: (c: CustomCat) => void;
   userCategories: UserCategory[];
   hiddenCatIds: string[];
+  subcatOverrides?: SubcatOverrides;
   onManageCategories: () => void;
 }) {
   const [type, setType]         = useState<"receita" | "despesa">(initial?.type ?? prefill?.type ?? "despesa");
@@ -52,7 +53,7 @@ export function TransactionModal({
   const [saving, setSaving]     = useState(false);
   const [showCustomEdit, setShowCustomEdit] = useState(false);
 
-  const cats = mergeCats(type, hiddenCatIds, userCategories, customCat);
+  const cats = mergeCats(type, hiddenCatIds, userCategories, customCat, subcatOverrides);
   const subcatsForCat = category ? (cats.find((c) => c.id === category)?.subcats ?? []) : [];
   const canSave = amount.trim() !== "" && Number(amount) > 0 && category.length > 0
     && (subcatsForCat.length === 0 || subcategory.length > 0);
@@ -184,6 +185,7 @@ export function TransactionModal({
             customCat={customCat}
             userCategories={userCategories}
             hiddenCatIds={hiddenCatIds}
+            subcatOverrides={subcatOverrides}
             onSelect={(cat, sub) => { setCat(cat); setSubcat(sub); }}
             onManage={onManageCategories}
           />

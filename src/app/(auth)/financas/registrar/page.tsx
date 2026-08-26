@@ -7,7 +7,7 @@ import { Camera, ImageIcon, X, ArrowLeft } from "lucide-react";
 import { compressImage } from "@/lib/photo-storage";
 import { useTranslation } from "@/lib/useTranslation";
 import { t as tFn, type Lang } from "@/lib/i18n";
-import { mergeCats, type CustomCat, type UserCategory } from "@/lib/financas-categories";
+import { mergeCats, type CustomCat, type UserCategory, type SubcatOverrides } from "@/lib/financas-categories";
 import { CategoryPicker } from "@/components/financas/CategoryPicker";
 import { TransactionModal } from "@/components/financas/TransactionModal";
 import { CustomCatModal } from "@/components/financas/CustomCatModal";
@@ -49,6 +49,7 @@ export default function FinancasRegistrarPage() {
   const [customCat, setCustomCat] = useState<CustomCat | null>(null);
   const [userCategories, setUserCategories] = useState<UserCategory[]>([]);
   const [hiddenCatIds, setHiddenCatIds] = useState<string[]>([]);
+  const [subcatOverrides, setSubcatOverrides] = useState<SubcatOverrides>({ hidden: {}, custom: {} });
   const [currency, setCurrency] = useState("BRL");
   const [showCustomEdit, setShowCustomEdit] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
@@ -67,6 +68,10 @@ export default function FinancasRegistrarPage() {
       if (prefs.context?.currency) setCurrency(prefs.context.currency);
       if (catsRes?.categories) setUserCategories(catsRes.categories);
       if (catsRes?.hiddenFinCats) setHiddenCatIds(catsRes.hiddenFinCats);
+      setSubcatOverrides({
+        hidden: catsRes?.hiddenFinSubcats ?? {},
+        custom: catsRes?.customFinSubcats ?? {},
+      });
     }).catch(() => {});
   }, []);
 
@@ -119,7 +124,7 @@ export default function FinancasRegistrarPage() {
 
   const isDraftValid = (d: Draft) => {
     if (d.amount === "" || Number(d.amount) <= 0 || d.category.length === 0) return false;
-    const cats = mergeCats(d.type, hiddenCatIds, userCategories, customCat);
+    const cats = mergeCats(d.type, hiddenCatIds, userCategories, customCat, subcatOverrides);
     const subcats = d.category ? (cats.find((c) => c.id === d.category)?.subcats ?? []) : [];
     return subcats.length === 0 || d.subcategory.length > 0;
   };
@@ -296,6 +301,7 @@ export default function FinancasRegistrarPage() {
                 customCat={customCat}
                 userCategories={userCategories}
                 hiddenCatIds={hiddenCatIds}
+                subcatOverrides={subcatOverrides}
                 onSelect={(cat, sub) => updateDraft(i, { category: cat, subcategory: sub })}
                 onManage={() => setShowCategoryManager(true)}
               />
@@ -370,11 +376,17 @@ export default function FinancasRegistrarPage() {
             userCategories={userCategories}
             customCat={customCat}
             lang={lang}
+            subcatOverrides={subcatOverrides}
             onHiddenChange={setHiddenCatIds}
+            onSubcatOverridesChange={setSubcatOverrides}
             onCategoriesChange={async () => {
               const catsRes = await fetch("/api/financas/categories").then((r) => r.json());
               if (catsRes?.categories) setUserCategories(catsRes.categories);
               if (catsRes?.hiddenFinCats) setHiddenCatIds(catsRes.hiddenFinCats);
+              setSubcatOverrides({
+                hidden: catsRes?.hiddenFinSubcats ?? {},
+                custom: catsRes?.customFinSubcats ?? {},
+              });
             }}
             onClose={() => setShowCategoryManager(false)}
           />
@@ -492,6 +504,7 @@ export default function FinancasRegistrarPage() {
           onCustomCatUpdated={setCustomCat}
           userCategories={userCategories}
           hiddenCatIds={hiddenCatIds}
+          subcatOverrides={subcatOverrides}
           onManageCategories={() => {
             setShowManual(false);
             setShowCategoryManager(true);

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { X, Plus, Pencil, Trash2, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { X, Plus, Pencil, Trash2, Eye, EyeOff, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import { t as tFn } from "@/lib/i18n";
-import { EXPENSE_CATS, INCOME_CATS, type UserCategory, type CustomCat } from "@/lib/financas-categories";
+import { EXPENSE_CATS, INCOME_CATS, type UserCategory, type CustomCat, type SubcatOverrides } from "@/lib/financas-categories";
 import { CategoryFormModal } from "./CategoryFormModal";
 
 const SURFACE = "#151520";
@@ -17,14 +17,16 @@ const RED = "#FF5C5C";
 
 export function CategoryManager({
   type, hiddenIds, userCategories, customCat, lang,
-  onHiddenChange, onCategoriesChange, onClose,
+  subcatOverrides, onHiddenChange, onSubcatOverridesChange, onCategoriesChange, onClose,
 }: {
   type: "receita" | "despesa";
   hiddenIds: string[];
   userCategories: UserCategory[];
   customCat: CustomCat | null;
   lang: Lang;
+  subcatOverrides: SubcatOverrides;
   onHiddenChange: (ids: string[]) => void;
+  onSubcatOverridesChange: (o: SubcatOverrides) => void;
   onCategoriesChange: () => void;
   onClose: () => void;
 }) {
@@ -33,6 +35,8 @@ export function CategoryManager({
   const [editCat, setEditCat] = useState<UserCategory | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [expandedCat, setExpandedCat] = useState<string | null>(null);
+  const [newSubcatInput, setNewSubcatInput] = useState("");
 
   const defaults = selectedType === "despesa" ? EXPENSE_CATS : INCOME_CATS;
   const filteredUserCats = userCategories.filter((c) => c.type === selectedType);
@@ -50,6 +54,51 @@ export function CategoryManager({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ context: { ...ctx, hidden_fin_cats: next } }),
     });
+  };
+
+  const persistSubcatOverrides = async (next: SubcatOverrides) => {
+    const prefsRes = await fetch("/api/preferences").then((r) => r.json());
+    const ctx = prefsRes.context ?? {};
+    await fetch("/api/preferences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ context: { ...ctx, hidden_fin_subcats: next.hidden, custom_fin_subcats: next.custom } }),
+    });
+  };
+
+  const toggleSubcatHidden = (catId: string, label: string) => {
+    const cur = subcatOverrides.hidden[catId] ?? [];
+    const nextHidden = cur.includes(label) ? cur.filter((l) => l !== label) : [...cur, label];
+    const next: SubcatOverrides = {
+      ...subcatOverrides,
+      hidden: { ...subcatOverrides.hidden, [catId]: nextHidden },
+    };
+    onSubcatOverridesChange(next);
+    persistSubcatOverrides(next);
+  };
+
+  const removeCustomSubcat = (catId: string, label: string) => {
+    const cur = (subcatOverrides.custom[catId] ?? []).filter((l) => l !== label);
+    const next: SubcatOverrides = {
+      ...subcatOverrides,
+      custom: { ...subcatOverrides.custom, [catId]: cur },
+    };
+    onSubcatOverridesChange(next);
+    persistSubcatOverrides(next);
+  };
+
+  const addCustomSubcat = (catId: string) => {
+    const label = newSubcatInput.trim();
+    if (!label) return;
+    const cur = subcatOverrides.custom[catId] ?? [];
+    if (cur.includes(label)) { setNewSubcatInput(""); return; }
+    const next: SubcatOverrides = {
+      ...subcatOverrides,
+      custom: { ...subcatOverrides.custom, [catId]: [...cur, label] },
+    };
+    onSubcatOverridesChange(next);
+    persistSubcatOverrides(next);
+    setNewSubcatInput("");
   };
 
   const handleDelete = async (catId: string) => {
@@ -126,23 +175,93 @@ export function CategoryManager({
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
           {defaults.filter((c) => !c.custom && !c.system).map((c) => {
             const hidden = hiddenIds.includes(c.id);
+            const isOpen = expandedCat === c.id;
+            const hiddenSubs = subcatOverrides.hidden[c.id] ?? [];
+            const customSubs = subcatOverrides.custom[c.id] ?? [];
+            const hasSubs = c.subcats.length > 0 || customSubs.length > 0;
             return (
               <div key={c.id} style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "10px 12px", borderRadius: 12,
+                borderRadius: 12,
                 background: CARD, border: `1px solid ${BORDER}`,
                 opacity: hidden ? 0.45 : 1,
               }}>
-                <span style={{ fontSize: 18 }}>{c.emoji}</span>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: TEXT }}>
-                  {tFn(lang, `fin_cat_${c.id}`)}
-                </span>
-                <button type="button" onClick={() => toggleHidden(c.id)} style={{
-                  border: 0, background: "transparent", cursor: "pointer", padding: 6,
-                  color: hidden ? TEXT_SEC : ACCENT,
-                }}>
-                  {hidden ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
+                  <span style={{ fontSize: 18 }}>{c.emoji}</span>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: TEXT }}>
+                    {tFn(lang, `fin_cat_${c.id}`)}
+                  </span>
+                  {hasSubs && (
+                    <button type="button" onClick={() => setExpandedCat(isOpen ? null : c.id)} style={{
+                      border: 0, background: "transparent", cursor: "pointer", padding: 6,
+                      color: TEXT_SEC, display: "flex", alignItems: "center",
+                    }}>
+                      {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </button>
+                  )}
+                  <button type="button" onClick={() => toggleHidden(c.id)} style={{
+                    border: 0, background: "transparent", cursor: "pointer", padding: 6,
+                    color: hidden ? TEXT_SEC : ACCENT,
+                  }}>
+                    {hidden ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+
+                {isOpen && hasSubs && (
+                  <div style={{ padding: "4px 12px 12px", borderTop: `1px solid ${BORDER}` }}>
+                    {/* Subcategorias padrão */}
+                    {c.subcats.map((sc) => {
+                      const subHidden = hiddenSubs.includes(sc.label);
+                      return (
+                        <div key={sc.id} style={{
+                          display: "flex", alignItems: "center", gap: 8,
+                          padding: "5px 4px", opacity: subHidden ? 0.45 : 1,
+                        }}>
+                          <span style={{ flex: 1, fontSize: 12, color: subHidden ? TEXT_SEC : "#cfc4f2" }}>
+                            {sc.label}
+                          </span>
+                          <button type="button" onClick={() => toggleSubcatHidden(c.id, sc.label)} style={{
+                            border: 0, background: "transparent", cursor: "pointer", padding: 4,
+                            color: subHidden ? TEXT_SEC : ACCENT,
+                          }}>
+                            {subHidden ? <EyeOff size={13} /> : <Eye size={13} />}
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                    {/* Subcategorias adicionadas */}
+                    {customSubs.map((label) => (
+                      <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 4px" }}>
+                        <span style={{ flex: 1, fontSize: 12, color: ACCENT }}>{label}</span>
+                        <button type="button" onClick={() => removeCustomSubcat(c.id, label)} style={{
+                          border: 0, background: "transparent", cursor: "pointer", padding: 4, color: RED,
+                        }}>
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Adicionar subcategoria */}
+                    <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                      <input
+                        value={newSubcatInput}
+                        onChange={(e) => setNewSubcatInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomSubcat(c.id); } }}
+                        placeholder="Nova subcategoria"
+                        style={{
+                          flex: 1, padding: "7px 10px", borderRadius: 8, border: `1px solid ${BORDER}`,
+                          background: "#0B0B10", fontFamily: "inherit", fontSize: 12, color: TEXT, outline: "none",
+                        }}
+                      />
+                      <button type="button" onClick={() => addCustomSubcat(c.id)} style={{
+                        border: 0, background: "rgba(124,92,255,0.12)", borderRadius: 8, padding: "0 12px",
+                        cursor: "pointer", fontSize: 15, color: ACCENT, fontFamily: "inherit", fontWeight: 700,
+                      }}>
+                        +
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
