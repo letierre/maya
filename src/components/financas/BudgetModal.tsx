@@ -33,8 +33,8 @@ export function BudgetModal({
   const cats = mergeCats("despesa", hiddenCatIds, userCategories, customCat);
 
   // Chaves dos valores:
-  //   "categoria"                  → orçamento da categoria toda
-  //   "categoria::subcategoria"    → orçamento da subcategoria
+  //   "categoria"            → orçamento da categoria toda
+  //   "categoria::sub"       → orçamento da subcategoria
   const [values, setValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
     for (const b of budgets) {
@@ -52,35 +52,49 @@ export function BudgetModal({
   });
   const [saving, setSaving] = useState(false);
 
+  const subcatKeys = (c: FinCat) => c.subcats.map((sc) => `${c.id}::${sc.label}`);
+  const hasSubBudget = (c: FinCat) =>
+    subcatKeys(c).some((k) => values[k] && Number(values[k]) > 0);
+  const subTotal = (c: FinCat) =>
+    subcatKeys(c).reduce((s, k) => s + (Number(values[k]) || 0), 0);
+
   const save = async () => {
     setSaving(true);
-    const promises: Promise<unknown>[] = [];
-    for (const c of cats) {
-      const catVal = values[c.id];
-      if (catVal && Number(catVal) > 0) {
-        promises.push(
-          fetch("/api/financas/budgets", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ category: c.id, subcategory: "", monthly_limit: Number(catVal), month }),
-          })
-        );
-      }
-      for (const sc of c.subcats) {
-        const key = `${c.id}::${sc.label}`;
-        const scVal = values[key];
-        if (scVal && Number(scVal) > 0) {
-          promises.push(
-            fetch("/api/financas/budgets", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ category: c.id, subcategory: sc.label, monthly_limit: Number(scVal), month }),
+    const ops = cats
+      .filter((c) => {
+        const subs = subcatKeys(c).some((k) => values[k] && Number(values[k]) > 0);
+        const catVal = values[c.id];
+        return subs || (catVal && Number(catVal) > 0);
+      })
+      .map(async (c) => {
+        // Substitui o orçamento da categoria: apaga tudo e regrava no modo atual
+        await fetch("/api/financas/budgets", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category: c.id, month }),
+        });
+
+        const subs = subcatKeys(c).filter((k) => values[k] && Number(values[k]) > 0);
+        if (subs.length > 0) {
+          await Promise.all(
+            subs.map((k) => {
+              const sub = k.slice(c.id.length + 2); // remove "categoria::"
+              return fetch("/api/financas/budgets", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ category: c.id, subcategory: sub, monthly_limit: Number(values[k]), month }),
+              });
             })
           );
+        } else {
+          await fetch("/api/financas/budgets", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ category: c.id, subcategory: "", monthly_limit: Number(values[c.id]), month }),
+          });
         }
-      }
-    }
-    await Promise.all(promises);
+      });
+    await Promise.all(ops);
     setSaving(false);
     onSaved();
     onClose();
@@ -119,6 +133,7 @@ export function BudgetModal({
             const label = catLabel(c, lang, customCat, userCategories);
             const emoji = c.custom && !c.id.startsWith("user_") ? (customCat?.emoji ?? c.emoji) : c.emoji;
             const isOpen = !!expanded[c.id];
+            const subMode = hasSubBudget(c);
             return (
               <div key={c.id}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -146,16 +161,22 @@ export function BudgetModal({
                       {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </button>
                   )}
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step="10"
-                    value={values[c.id] ?? ""}
-                    onChange={(e) => setValues((p) => ({ ...p, [c.id]: e.target.value }))}
-                    placeholder="—"
-                    style={inputS}
-                  />
+                  {subMode ? (
+                    <span style={{ ...inputS, display: "flex", alignItems: "center", justifyContent: "flex-end", border: "1px solid rgba(124,92,255,0.35)", color: "#A78BFA", opacity: 0.95, width: 110, boxSizing: "border-box" }}>
+                      {subTotal(c).toLocaleString()}
+                    </span>
+                  ) : (
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="10"
+                      value={values[c.id] ?? ""}
+                      onChange={(e) => setValues((p) => ({ ...p, [c.id]: e.target.value }))}
+                      placeholder="—"
+                      style={inputS}
+                    />
+                  )}
                 </div>
 
                 {isOpen && c.subcats.length > 0 && (
@@ -180,6 +201,11 @@ export function BudgetModal({
                         </div>
                       );
                     })}
+                    <p style={{ margin: "4px 0 0", fontSize: 10, color: "#9e96b5" }}>
+                      {subMode
+                        ? "Total da categoria = soma das subcategorias"
+                        : "Preencha subcategorias para planejar por item (o total vira a soma)"}
+                    </p>
                   </div>
                 )}
               </div>

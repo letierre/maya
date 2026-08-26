@@ -85,14 +85,19 @@ export async function DELETE(req: NextRequest) {
 
   const { category, month, subcategory } = await req.json();
 
-  const { error } = await supabase
+  let query = supabase
     .from("financial_budgets")
     .delete()
     .eq("user_id", session.user.id)
     .eq("category", category)
-    .eq("month", month)
-    .eq("subcategory", subcategory || "");
+    .eq("month", month);
 
+  // Sem subcategoria → apaga TODOS os orçamentos da categoria (categoria + subcategorias).
+  if (subcategory !== undefined && subcategory !== null) {
+    query = query.eq("subcategory", subcategory || "");
+  }
+
+  const { error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return new NextResponse(null, { status: 204 });
 }

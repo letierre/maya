@@ -84,6 +84,66 @@ function catEmoji(c: FinCat, customCat: CustomCat | null): string {
   return c.emoji;
 }
 
+type BudgetRow = {
+  key: string;
+  emoji: string;
+  label: string;
+  spent: number;
+  limit: number | null; // null → linha "Outros" derivada (gasto residual, sem orçamento)
+  pct: number;
+  over: boolean;
+};
+
+// Monta as linhas de orçamento para exibição, incluindo uma linha derivada "Outros"
+// para categorias que usam orçamento por subcategoria (gasto que não bate com nenhuma
+// subcategoria orçada). Categoria-level e subcategoria são mutuamente exclusivos no save.
+function buildBudgetRows(
+  budgets: FinancialBudget[],
+  transactions: FinancialTransaction[],
+  userCategories: UserCategory[],
+  customCat: CustomCat | null,
+  lang: Lang,
+): BudgetRow[] {
+  const rows: BudgetRow[] = [];
+
+  for (const b of budgets) {
+    const conf = resolveCat(b.category, "despesa", userCategories);
+    const emoji = catEmoji(conf, customCat);
+    const baseLabel = catLabel(conf, lang, customCat, userCategories);
+    const label = b.subcategory ? `${baseLabel} › ${b.subcategory}` : baseLabel;
+    const spent = transactions
+      .filter((t) => t.type === "despesa" && t.category === b.category && (!b.subcategory || t.subcategory === b.subcategory))
+      .reduce((s, t) => s + t.amount, 0);
+    const pct = Math.min((spent / b.monthly_limit) * 100, 100);
+    rows.push({ key: b.id, emoji, label, spent, limit: b.monthly_limit, pct, over: spent > b.monthly_limit });
+  }
+
+  const subBudgetedCats = new Set(budgets.filter((b) => b.subcategory).map((b) => b.category));
+  for (const catId of subBudgetedCats) {
+    const budgetedLabels = new Set(
+      budgets.filter((b) => b.category === catId && b.subcategory).map((b) => b.subcategory as string),
+    );
+    const residual = transactions
+      .filter((t) => t.type === "despesa" && t.category === catId && !budgetedLabels.has(t.subcategory ?? ""))
+      .reduce((s, t) => s + t.amount, 0);
+    if (residual <= 0) continue;
+    const conf = resolveCat(catId, "despesa", userCategories);
+    const emoji = catEmoji(conf, customCat);
+    const baseLabel = catLabel(conf, lang, customCat, userCategories);
+    rows.push({
+      key: `${catId}::__outros__`,
+      emoji,
+      label: `${baseLabel} › ${tFn(lang, "fin_cat_outros")}`,
+      spent: residual,
+      limit: null,
+      pct: 0,
+      over: true,
+    });
+  }
+
+  return rows;
+}
+
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
 const BG = "#0B0B10";
@@ -433,21 +493,12 @@ export default function FinancasPage() {
 
             {/* Budget summary */}
             {visibleBudgets.length > 0 && (() => {
-              const allItems = visibleBudgets.map((b) => {
-                const conf = resolveCat(b.category, "despesa", userCategories);
-                const baseLabel = catLabel(conf, lang, customCat, userCategories);
-                const emoji = catEmoji(conf, customCat);
-                const label = b.subcategory ? `${baseLabel} › ${b.subcategory}` : baseLabel;
-                const spent = transactions.filter((t) => t.type === "despesa" && t.category === b.category && (!b.subcategory || t.subcategory === b.subcategory)).reduce((s, t) => s + t.amount, 0);
-                const pct = Math.min((spent / b.monthly_limit) * 100, 100);
-                const over = spent > b.monthly_limit;
-                return { b, spent, pct, over, label, emoji };
-              });
+              const allItems = buildBudgetRows(visibleBudgets, transactions, userCategories, customCat, lang);
 
               const visibleItems = budgetExpanded ? allItems : allItems.slice(0, 3);
               const hasMore = allItems.length > 3;
 
-              const totalLimit = visibleBudgets.reduce((s, b) => s + b.monthly_limit, 0);
+              const totalLimit = allItems.reduce((s, i) => s + (i.limit ?? 0), 0);
               const totalSpent = allItems.reduce((s, i) => s + i.spent, 0);
               const totalPct = totalLimit > 0 ? Math.min((totalSpent / totalLimit) * 100, 100) : 0;
               const totalOver = totalSpent > totalLimit;
@@ -466,20 +517,21 @@ export default function FinancasPage() {
                     </button>
                   </div>
 
-                  {visibleItems.map(({ b, spent, pct, over, label, emoji }) => (
-                    <div key={b.id} style={{ marginBottom: 8 }}>
+                  {visibleItems.map(({ key, spent, pct, over, label, emoji, limit }) => (
+                    <div key={key} style={{ marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                         <span style={{ fontSize: 15 }}>{emoji}</span>
                         <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: TEXT }}>{label}</span>
                         <span style={{ fontSize: 11, fontWeight: 700, color: over ? RED : TEXT_SEC }}>
-                          {fmt(spent, currency)} / {fmt(b.monthly_limit, currency)}
+                          {fmt(spent, currency)}
+                          {limit !== null && <span style={{ fontWeight: 500, color: TEXT_SEC }}> / {fmt(limit, currency)}</span>}
                         </span>
                       </div>
                       <div style={{ height: 5, borderRadius: 9999, background: "rgba(167,139,250,0.08)", overflow: "hidden" }}>
                         <div style={{
                           height: "100%", borderRadius: 9999,
                           background: over ? RED : pct > 80 ? AMBER : GREEN,
-                          width: `${pct}%`, transition: "width .5s ease",
+                          width: `${limit !== null ? pct : 100}%`, transition: "width .5s ease",
                         }} />
                       </div>
                     </div>
@@ -710,36 +762,28 @@ export default function FinancasPage() {
                 </div>
               ) : (
                 (() => {
-                  const items = visibleBudgets.map((b) => {
-                    const conf = resolveCat(b.category, "despesa", userCategories);
-                    const baseLabel = catLabel(conf, lang, customCat, userCategories);
-                    const emoji = catEmoji(conf, customCat);
-                    const label = b.subcategory ? `${baseLabel} › ${b.subcategory}` : baseLabel;
-                    const spent = transactions.filter((t) => t.type === "despesa" && t.category === b.category && (!b.subcategory || t.subcategory === b.subcategory)).reduce((s, t) => s + t.amount, 0);
-                    const pct = Math.min((spent / b.monthly_limit) * 100, 100);
-                    const over = spent > b.monthly_limit;
-                    return { b, label, emoji, spent, pct, over };
-                  });
-                  const totalLimit = visibleBudgets.reduce((s, b) => s + b.monthly_limit, 0);
+                  const items = buildBudgetRows(visibleBudgets, transactions, userCategories, customCat, lang);
+                  const totalLimit = items.reduce((s, i) => s + (i.limit ?? 0), 0);
                   const totalSpent = items.reduce((s, i) => s + i.spent, 0);
                   const totalPct = totalLimit > 0 ? Math.min((totalSpent / totalLimit) * 100, 100) : 0;
                   const totalOver = totalSpent > totalLimit;
                   return (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                      {items.map(({ b, label, emoji, spent, pct, over }) => (
-                          <div key={b.id}>
+                      {items.map(({ key, label, emoji, spent, pct, over, limit }) => (
+                          <div key={key}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                               <span style={{ fontSize: 15 }}>{emoji}</span>
                               <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: TEXT }}>{label}</span>
                               <span style={{ fontSize: 11, fontWeight: 700, color: over ? RED : TEXT_SEC }}>
-                                {fmt(spent, currency)} / {fmt(b.monthly_limit, currency)}
+                                {fmt(spent, currency)}
+                                {limit !== null && <span style={{ fontWeight: 500, color: TEXT_SEC }}> / {fmt(limit, currency)}</span>}
                               </span>
                             </div>
                             <div style={{ height: 6, borderRadius: 9999, background: "rgba(167,139,250,0.08)", overflow: "hidden" }}>
                               <div style={{
                                 height: "100%", borderRadius: 9999,
                                 background: over ? RED : pct > 80 ? AMBER : GREEN,
-                                width: `${pct}%`, transition: "width .5s ease",
+                                width: `${limit !== null ? pct : 100}%`, transition: "width .5s ease",
                               }} />
                             </div>
                           </div>
