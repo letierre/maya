@@ -24,6 +24,10 @@ export function CategoryPicker({
   const cols = type === "despesa" ? "repeat(4, minmax(0, 1fr))" : "repeat(5, minmax(0, 1fr))";
   const selectedCat = cats.find((c) => c.id === category);
   const subcats = selectedCat?.subcats ?? [];
+  // Se a subcategoria salva não está na lista (ex.: free-text vinda da IA),
+  // mostramos um chip extra pra ela não sumir / ficar ineditável.
+  const hasCustomSub = !!subcategory && !subcats.some((sc) => sc.label === subcategory);
+  const displaySubcats = hasCustomSub ? [{ id: "__custom__", label: subcategory }, ...subcats] : subcats;
 
   const textSecondary = "#9e96b5";
   const borderDefault = "rgba(167,139,250,0.15)";
@@ -102,13 +106,13 @@ export function CategoryPicker({
       </div>
 
       {/* Subcategory chips */}
-      {subcats.length > 0 && (
+      {displaySubcats.length > 0 && (
         <div style={{ marginTop: 10 }}>
           <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: textSecondary }}>
             {tFn(lang, "fin_subcategoria")}
           </p>
           <div style={{ overflowX: "auto", display: "flex", gap: 6, paddingBottom: 4 }}>
-            {subcats.map((sc) => {
+            {displaySubcats.map((sc) => {
               const selSub = subcategory === sc.label;
               return (
                 <button

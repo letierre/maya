@@ -6,7 +6,7 @@ import type { FinancialTransaction } from "@/types";
 import type { Lang } from "@/lib/i18n";
 import { t as tFn } from "@/lib/i18n";
 import type { CustomCat } from "@/lib/financas-categories";
-import { EXPENSE_CATS, INCOME_CATS, getSubcats, type UserCategory } from "@/lib/financas-categories";
+import { mergeCats, type UserCategory } from "@/lib/financas-categories";
 import { CategoryPicker } from "./CategoryPicker";
 import { CustomCatModal } from "./CustomCatModal";
 
@@ -52,8 +52,8 @@ export function TransactionModal({
   const [saving, setSaving]     = useState(false);
   const [showCustomEdit, setShowCustomEdit] = useState(false);
 
-  const cats = type === "despesa" ? EXPENSE_CATS : INCOME_CATS;
-  const subcatsForCat = category ? getSubcats(category, cats, customCat) : [];
+  const cats = mergeCats(type, hiddenCatIds, userCategories, customCat);
+  const subcatsForCat = category ? (cats.find((c) => c.id === category)?.subcats ?? []) : [];
   const canSave = amount.trim() !== "" && Number(amount) > 0 && category.length > 0
     && (subcatsForCat.length === 0 || subcategory.length > 0);
 

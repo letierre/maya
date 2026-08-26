@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type { FinancialBudget } from "@/types";
 import type { Lang } from "@/lib/i18n";
 import { t as tFn } from "@/lib/i18n";
@@ -30,24 +31,55 @@ export function BudgetModal({
   hiddenCatIds: string[];
 }) {
   const cats = mergeCats("despesa", hiddenCatIds, userCategories, customCat);
+
+  // Chaves dos valores:
+  //   "categoria"                  → orçamento da categoria toda
+  //   "categoria::subcategoria"    → orçamento da subcategoria
   const [values, setValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
-    for (const b of budgets) init[b.category] = String(b.monthly_limit);
+    for (const b of budgets) {
+      const key = b.subcategory ? `${b.category}::${b.subcategory}` : b.category;
+      init[key] = String(b.monthly_limit);
+    }
+    return init;
+  });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const b of budgets) {
+      if (b.subcategory) init[b.category] = true;
+    }
     return init;
   });
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
     setSaving(true);
-    const promises = cats
-      .filter((c) => values[c.id] && Number(values[c.id]) > 0)
-      .map((c) =>
-        fetch("/api/financas/budgets", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ category: c.id, monthly_limit: Number(values[c.id]), month }),
-        })
-      );
+    const promises: Promise<unknown>[] = [];
+    for (const c of cats) {
+      const catVal = values[c.id];
+      if (catVal && Number(catVal) > 0) {
+        promises.push(
+          fetch("/api/financas/budgets", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ category: c.id, subcategory: "", monthly_limit: Number(catVal), month }),
+          })
+        );
+      }
+      for (const sc of c.subcats) {
+        const key = `${c.id}::${sc.label}`;
+        const scVal = values[key];
+        if (scVal && Number(scVal) > 0) {
+          promises.push(
+            fetch("/api/financas/budgets", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ category: c.id, subcategory: sc.label, monthly_limit: Number(scVal), month }),
+            })
+          );
+        }
+      }
+    }
     await Promise.all(promises);
     setSaving(false);
     onSaved();
@@ -86,28 +118,70 @@ export function BudgetModal({
           {cats.map((c) => {
             const label = catLabel(c, lang, customCat, userCategories);
             const emoji = c.custom && !c.id.startsWith("user_") ? (customCat?.emoji ?? c.emoji) : c.emoji;
+            const isOpen = !!expanded[c.id];
             return (
-              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{
-                  width: 38, height: 38, borderRadius: 12, flexShrink: 0,
-                  background: "rgba(124,92,255,0.08)",
-                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
-                }}>
-                  {emoji}
+              <div key={c.id}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{
+                    width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+                    background: "rgba(124,92,255,0.08)",
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
+                  }}>
+                    {emoji}
+                  </div>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>
+                    {label}
+                  </span>
+                  {c.subcats.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((p) => ({ ...p, [c.id]: !isOpen }))}
+                      style={{
+                        border: 0, background: "transparent", cursor: "pointer", padding: 4,
+                        color: "#9e96b5", display: "flex", alignItems: "center", gap: 2,
+                        fontFamily: "inherit", fontSize: 11, fontWeight: 600,
+                      }}
+                    >
+                      {tFn(lang, "fin_subcategoria")}
+                      {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    </button>
+                  )}
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="10"
+                    value={values[c.id] ?? ""}
+                    onChange={(e) => setValues((p) => ({ ...p, [c.id]: e.target.value }))}
+                    placeholder="—"
+                    style={inputS}
+                  />
                 </div>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>
-                  {label}
-                </span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="10"
-                  value={values[c.id] ?? ""}
-                  onChange={(e) => setValues((p) => ({ ...p, [c.id]: e.target.value }))}
-                  placeholder="—"
-                  style={inputS}
-                />
+
+                {isOpen && c.subcats.length > 0 && (
+                  <div style={{ marginTop: 6, marginLeft: 50, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {c.subcats.map((sc) => {
+                      const key = `${c.id}::${sc.label}`;
+                      return (
+                        <div key={sc.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: "#9e96b5" }}>
+                            {sc.label}
+                          </span>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            min="0"
+                            step="10"
+                            value={values[key] ?? ""}
+                            onChange={(e) => setValues((p) => ({ ...p, [key]: e.target.value }))}
+                            placeholder="—"
+                            style={inputS}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}

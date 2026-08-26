@@ -435,9 +435,10 @@ export default function FinancasPage() {
             {visibleBudgets.length > 0 && (() => {
               const allItems = visibleBudgets.map((b) => {
                 const conf = resolveCat(b.category, "despesa", userCategories);
-                const label = catLabel(conf, lang, customCat, userCategories);
+                const baseLabel = catLabel(conf, lang, customCat, userCategories);
                 const emoji = catEmoji(conf, customCat);
-                const spent = transactions.filter((t) => t.type === "despesa" && t.category === b.category).reduce((s, t) => s + t.amount, 0);
+                const label = b.subcategory ? `${baseLabel} › ${b.subcategory}` : baseLabel;
+                const spent = transactions.filter((t) => t.type === "despesa" && t.category === b.category && (!b.subcategory || t.subcategory === b.subcategory)).reduce((s, t) => s + t.amount, 0);
                 const pct = Math.min((spent / b.monthly_limit) * 100, 100);
                 const over = spent > b.monthly_limit;
                 return { b, spent, pct, over, label, emoji };
@@ -447,10 +448,7 @@ export default function FinancasPage() {
               const hasMore = allItems.length > 3;
 
               const totalLimit = visibleBudgets.reduce((s, b) => s + b.monthly_limit, 0);
-              const totalSpent = visibleBudgets.reduce((s, b) => {
-                const catSpent = transactions.filter((t) => t.type === "despesa" && t.category === b.category).reduce((sum, t) => sum + t.amount, 0);
-                return s + catSpent;
-              }, 0);
+              const totalSpent = allItems.reduce((s, i) => s + i.spent, 0);
               const totalPct = totalLimit > 0 ? Math.min((totalSpent / totalLimit) * 100, 100) : 0;
               const totalOver = totalSpent > totalLimit;
 
@@ -712,23 +710,23 @@ export default function FinancasPage() {
                 </div>
               ) : (
                 (() => {
+                  const items = visibleBudgets.map((b) => {
+                    const conf = resolveCat(b.category, "despesa", userCategories);
+                    const baseLabel = catLabel(conf, lang, customCat, userCategories);
+                    const emoji = catEmoji(conf, customCat);
+                    const label = b.subcategory ? `${baseLabel} › ${b.subcategory}` : baseLabel;
+                    const spent = transactions.filter((t) => t.type === "despesa" && t.category === b.category && (!b.subcategory || t.subcategory === b.subcategory)).reduce((s, t) => s + t.amount, 0);
+                    const pct = Math.min((spent / b.monthly_limit) * 100, 100);
+                    const over = spent > b.monthly_limit;
+                    return { b, label, emoji, spent, pct, over };
+                  });
                   const totalLimit = visibleBudgets.reduce((s, b) => s + b.monthly_limit, 0);
-                  const totalSpent = visibleBudgets.reduce((s, b) => {
-                    const catSpent = transactions.filter((t) => t.type === "despesa" && t.category === b.category).reduce((sum, t) => sum + t.amount, 0);
-                    return s + catSpent;
-                  }, 0);
+                  const totalSpent = items.reduce((s, i) => s + i.spent, 0);
                   const totalPct = totalLimit > 0 ? Math.min((totalSpent / totalLimit) * 100, 100) : 0;
                   const totalOver = totalSpent > totalLimit;
                   return (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                      {visibleBudgets.map((b) => {
-                        const conf = resolveCat(b.category, "despesa", userCategories);
-                        const label = catLabel(conf, lang, customCat, userCategories);
-                        const emoji = catEmoji(conf, customCat);
-                        const spent = transactions.filter((t) => t.type === "despesa" && t.category === b.category).reduce((s, t) => s + t.amount, 0);
-                        const pct = Math.min((spent / b.monthly_limit) * 100, 100);
-                        const over = spent > b.monthly_limit;
-                        return (
+                      {items.map(({ b, label, emoji, spent, pct, over }) => (
                           <div key={b.id}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                               <span style={{ fontSize: 15 }}>{emoji}</span>
@@ -745,8 +743,7 @@ export default function FinancasPage() {
                               }} />
                             </div>
                           </div>
-                        );
-                      })}
+                      ))}
 
                       {/* Total row */}
                       <div style={{ paddingTop: 12, borderTop: `1px solid ${BORDER}`, marginTop: 4 }}>

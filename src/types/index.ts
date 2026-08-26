@@ -294,6 +294,7 @@ export interface FinancialBudget {
   id: string;
   user_id: string;
   category: string;
+  subcategory: string | null; // '' ou null = orçamento da categoria toda; string = subcategoria
   monthly_limit: number;
   month: string;      // YYYY-MM
   created_at: string;

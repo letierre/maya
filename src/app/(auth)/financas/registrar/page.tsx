@@ -7,8 +7,9 @@ import { Camera, ImageIcon, X, ArrowLeft } from "lucide-react";
 import { compressImage } from "@/lib/photo-storage";
 import { useTranslation } from "@/lib/useTranslation";
 import { t as tFn, type Lang } from "@/lib/i18n";
-import { EXPENSE_CATS, INCOME_CATS, getSubcats, type CustomCat, type UserCategory } from "@/lib/financas-categories";
+import { mergeCats, type CustomCat, type UserCategory } from "@/lib/financas-categories";
 import { CategoryPicker } from "@/components/financas/CategoryPicker";
+import { TransactionModal } from "@/components/financas/TransactionModal";
 import { CustomCatModal } from "@/components/financas/CustomCatModal";
 import { CategoryManager } from "@/components/financas/CategoryManager";
 
@@ -48,8 +49,10 @@ export default function FinancasRegistrarPage() {
   const [customCat, setCustomCat] = useState<CustomCat | null>(null);
   const [userCategories, setUserCategories] = useState<UserCategory[]>([]);
   const [hiddenCatIds, setHiddenCatIds] = useState<string[]>([]);
+  const [currency, setCurrency] = useState("BRL");
   const [showCustomEdit, setShowCustomEdit] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [showManual, setShowManual] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>("capture");
   const [drafts, setDrafts] = useState<Draft[]>([]);
@@ -61,6 +64,7 @@ export default function FinancasRegistrarPage() {
       fetch("/api/financas/categories").then((r) => r.json()),
     ]).then(([prefs, catsRes]) => {
       if (prefs.context?.custom_fin_cat) setCustomCat(prefs.context.custom_fin_cat);
+      if (prefs.context?.currency) setCurrency(prefs.context.currency);
       if (catsRes?.categories) setUserCategories(catsRes.categories);
       if (catsRes?.hiddenFinCats) setHiddenCatIds(catsRes.hiddenFinCats);
     }).catch(() => {});
@@ -115,8 +119,8 @@ export default function FinancasRegistrarPage() {
 
   const isDraftValid = (d: Draft) => {
     if (d.amount === "" || Number(d.amount) <= 0 || d.category.length === 0) return false;
-    const cats = d.type === "despesa" ? EXPENSE_CATS : INCOME_CATS;
-    const subcats = d.category ? getSubcats(d.category, cats, customCat) : [];
+    const cats = mergeCats(d.type, hiddenCatIds, userCategories, customCat);
+    const subcats = d.category ? (cats.find((c) => c.id === d.category)?.subcats ?? []) : [];
     return subcats.length === 0 || d.subcategory.length > 0;
   };
 
@@ -469,7 +473,7 @@ export default function FinancasRegistrarPage() {
           </div>
         )}
 
-        <button type="button" onClick={() => router.push("/financas")} style={{
+        <button type="button" onClick={() => setShowManual(true)} style={{
           border: 0, background: "none", cursor: "pointer",
           fontFamily: "inherit", fontSize: 13, fontWeight: 600,
           color: TEXT_SEC, padding: "4px 0", textAlign: "center",
@@ -477,6 +481,23 @@ export default function FinancasRegistrarPage() {
           Registrar manualmente →
         </button>
       </div>
+
+      {showManual && (
+        <TransactionModal
+          onClose={() => setShowManual(false)}
+          onSaved={() => router.push("/financas")}
+          lang={lang}
+          currency={currency}
+          customCat={customCat}
+          onCustomCatUpdated={setCustomCat}
+          userCategories={userCategories}
+          hiddenCatIds={hiddenCatIds}
+          onManageCategories={() => {
+            setShowManual(false);
+            setShowCategoryManager(true);
+          }}
+        />
+      )}
 
       <input
         ref={cameraRef}

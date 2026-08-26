@@ -134,9 +134,11 @@ export function CategoryFormModal({
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {subcats.map((sc, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ flex: 1, fontSize: 13, color: "#e0d6ff", padding: "8px 12px", borderRadius: 10, background: "#0B0B10" }}>
-                    {sc}
-                  </span>
+                  <input
+                    value={sc}
+                    onChange={(e) => setSubcats((p) => p.map((s, j) => (j === i ? e.target.value : s)))}
+                    style={{ flex: 1, fontSize: 13, color: "#e0d6ff", padding: "8px 12px", borderRadius: 10, background: "#0B0B10", border: "none", outline: "none", fontFamily: "inherit" }}
+                  />
                   <button
                     type="button"
                     onClick={() => setSubcats((p) => p.filter((_, j) => j !== i))}
