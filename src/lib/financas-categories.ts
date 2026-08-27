@@ -128,7 +128,7 @@ export const EXPENSE_CATS: FinCat[] = [
   {
     id: "comunicacao", emoji: "📡", hue: 200,
     subcats: [
-      { id: "cel_let",    label: "Plano Vivo Letierre" },
+      { id: "celular",    label: "Plano Celular" },
       { id: "internet",   label: "Internet Wifi" },
       { id: "netflix",    label: "Netflix" },
       { id: "spotify",    label: "Spotify" },
@@ -139,10 +139,8 @@ export const EXPENSE_CATS: FinCat[] = [
   {
     id: "doacoes", emoji: "🙏", hue: 310,
     subcats: [
-      { id: "dizimo_let",    label: "Dízimo Letierre" },
-      { id: "dizimo_jos",    label: "Dízimo Josefa" },
-      { id: "oferta_let",    label: "Ofertas Letierre" },
-      { id: "oferta_jos",    label: "Ofertas Josefa" },
+      { id: "dizimo",         label: "Dízimo" },
+      { id: "ofertas",        label: "Ofertas" },
       { id: "caravana",      label: "Caravana ao Templo" },
       { id: "roupas_templo", label: "Roupas Templo" },
       { id: "ajudas",        label: "Ajudas ao Próximo" },
