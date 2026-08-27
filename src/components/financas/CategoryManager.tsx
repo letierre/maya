@@ -300,26 +300,47 @@ export function CategoryManager({
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {filteredUserCats.map((uc) => (
+            {filteredUserCats.map((uc) => {
+              const isOpen = expandedCat === uc.id;
+              return (
               <div key={uc.id} style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "10px 12px", borderRadius: 12,
-                background: CARD, border: `1px solid ${BORDER}`,
+                borderRadius: 12, background: CARD, border: `1px solid ${BORDER}`,
               }}>
-                <span style={{ fontSize: 18 }}>{uc.emoji}</span>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: TEXT }}>{uc.name}</span>
-                <button type="button" onClick={() => setEditCat(uc)} style={{
-                  border: 0, background: "transparent", cursor: "pointer", padding: 6, color: TEXT_SEC,
-                }}>
-                  <Pencil size={14} />
-                </button>
-                <button type="button" onClick={() => setDeleteConfirm(uc.id)} style={{
-                  border: 0, background: "transparent", cursor: "pointer", padding: 6, color: RED,
-                }}>
-                  <Trash2 size={14} />
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
+                  <span style={{ fontSize: 18 }}>{uc.emoji}</span>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: TEXT }}>{uc.name}</span>
+                  {uc.subcats.length > 0 && (
+                    <button type="button" onClick={() => setExpandedCat(isOpen ? null : uc.id)} style={{
+                      border: 0, background: "transparent", cursor: "pointer", padding: 6,
+                      color: TEXT_SEC, display: "flex", alignItems: "center",
+                    }}>
+                      {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setEditCat(uc)} style={{
+                    border: 0, background: "transparent", cursor: "pointer", padding: 6, color: TEXT_SEC,
+                  }}>
+                    <Pencil size={14} />
+                  </button>
+                  <button type="button" onClick={() => setDeleteConfirm(uc.id)} style={{
+                    border: 0, background: "transparent", cursor: "pointer", padding: 6, color: RED,
+                  }}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+
+                {isOpen && uc.subcats.length > 0 && (
+                  <div style={{ padding: "4px 12px 12px", borderTop: `1px solid ${BORDER}` }}>
+                    {uc.subcats.map((label) => (
+                      <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 4px" }}>
+                        <span style={{ flex: 1, fontSize: 12, color: "#cfc4f2" }}>{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
