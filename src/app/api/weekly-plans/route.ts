@@ -96,11 +96,31 @@ export async function POST(req: Request) {
 
   // Only touch focus goals when explicitly provided (avoid wiping existing links)
   if (focus_goal_ids !== undefined) {
-    await admin.from("weekly_focus_goals").delete().eq("weekly_plan_id", plan.id);
-    if (focus_goal_ids?.length) {
-      await admin.from("weekly_focus_goals").insert(
-        focus_goal_ids.map((gid: string) => ({ weekly_plan_id: plan.id, goal_id: gid }))
-      );
+    const goalIds: string[] = focus_goal_ids ?? [];
+    const { data: existing } = await admin
+      .from("weekly_focus_goals")
+      .select("goal_id")
+      .eq("weekly_plan_id", plan.id);
+    const existingIds = new Set((existing ?? []).map((r: { goal_id: string }) => r.goal_id));
+
+    // Insere os novos primeiro (não-destrutivo); se falhar, nada é apagado.
+    const toAdd = goalIds.filter((gid) => !existingIds.has(gid));
+    if (toAdd.length) {
+      const { error: insErr } = await admin
+        .from("weekly_focus_goals")
+        .insert(toAdd.map((gid) => ({ weekly_plan_id: plan.id, goal_id: gid })));
+      if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
+    }
+
+    // Só então remove os que saíram.
+    const toRemove = [...existingIds].filter((gid) => !goalIds.includes(gid));
+    if (toRemove.length) {
+      const { error: delErr } = await admin
+        .from("weekly_focus_goals")
+        .delete()
+        .eq("weekly_plan_id", plan.id)
+        .in("goal_id", toRemove);
+      if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
     }
   }
 

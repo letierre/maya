@@ -33,18 +33,16 @@ export async function POST(
     );
   }
 
-  // Upsert: delete existing review for this cycle, then insert
-  await admin.from("quarterly_reviews").delete().eq("cycle_id", id);
-
+  // Upsert não-destrutivo (UNIQUE(cycle_id)): nunca apaga antes de gravar.
   const { data: review, error } = await admin
     .from("quarterly_reviews")
-    .insert({
+    .upsert({
       cycle_id: id,
       overall_score,
       biggest_win,
       main_learning,
       what_to_carry_forward: what_to_carry_forward || "",
-    })
+    }, { onConflict: "cycle_id" })
     .select()
     .single();
 
