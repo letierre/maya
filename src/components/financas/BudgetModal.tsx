@@ -17,6 +17,25 @@ function catLabel(c: FinCat, lang: Lang, customCat: CustomCat | null, userCatego
   return tFn(lang, `fin_cat_${c.id}`);
 }
 
+const CURRENCY_LOCALE: Record<string, string> = {
+  CLP: "es-CL", ARS: "es-AR", BRL: "pt-BR", MXN: "es-MX",
+  USD: "en-US", EUR: "de-DE", GBP: "en-GB", COP: "es-CO",
+};
+
+// Guarda só os dígitos; formata com separador de milhar conforme a moeda.
+function formatMoney(raw: string, currency: string): string {
+  const digits = (raw ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  const n = Number(digits);
+  if (Number.isNaN(n)) return "";
+  const locale = CURRENCY_LOCALE[currency] ?? "pt-BR";
+  return new Intl.NumberFormat(locale, { useGrouping: true, maximumFractionDigits: 0 }).format(n);
+}
+
+function parseMoney(input: string): string {
+  return (input ?? "").replace(/\D/g, "");
+}
+
 export function BudgetModal({
   budgets, month, onClose, onSaved, lang, currency, customCat, userCategories, hiddenCatIds, subcatOverrides,
 }: {
@@ -193,16 +212,14 @@ export function BudgetModal({
                   )}
                   {subMode ? (
                     <span style={{ ...inputS, display: "flex", alignItems: "center", justifyContent: "flex-end", border: "1px solid rgba(124,92,255,0.35)", color: "#A78BFA", opacity: 0.95, width: 110, boxSizing: "border-box" }}>
-                      {subTotal(c).toLocaleString()}
+                      {formatMoney(String(subTotal(c)), currency)}
                     </span>
                   ) : (
                     <input
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      step="10"
-                      value={values[c.id] ?? ""}
-                      onChange={(e) => setValues((p) => ({ ...p, [c.id]: e.target.value }))}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatMoney(values[c.id], currency)}
+                      onChange={(e) => setValues((p) => ({ ...p, [c.id]: parseMoney(e.target.value) }))}
                       placeholder="—"
                       style={inputS}
                     />
@@ -219,12 +236,10 @@ export function BudgetModal({
                             {sc.label}
                           </span>
                           <input
-                            type="number"
-                            inputMode="decimal"
-                            min="0"
-                            step="10"
-                            value={values[key] ?? ""}
-                            onChange={(e) => setValues((p) => ({ ...p, [key]: e.target.value }))}
+                            type="text"
+                            inputMode="numeric"
+                            value={formatMoney(values[key], currency)}
+                            onChange={(e) => setValues((p) => ({ ...p, [key]: parseMoney(e.target.value) }))}
                             placeholder="—"
                             style={inputS}
                           />
@@ -237,12 +252,10 @@ export function BudgetModal({
                         {tFn(lang, "fin_cat_outros")}
                       </span>
                       <input
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        step="10"
-                        value={values[`${c.id}::__outros__`] ?? ""}
-                        onChange={(e) => setValues((p) => ({ ...p, [`${c.id}::__outros__`]: e.target.value }))}
+                        type="text"
+                        inputMode="numeric"
+                        value={formatMoney(values[`${c.id}::__outros__`], currency)}
+                        onChange={(e) => setValues((p) => ({ ...p, [`${c.id}::__outros__`]: parseMoney(e.target.value) }))}
                         placeholder="—"
                         style={inputS}
                       />
