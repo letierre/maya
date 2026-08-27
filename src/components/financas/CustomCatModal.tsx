@@ -35,7 +35,9 @@ export function CustomCatModal({
 
   const save = async () => {
     setSaving(true);
-    const updated: CustomCat = { name: name.trim() || "Personalizada", emoji: emoji || "⭐", subcats };
+    const pending = newSubcat.trim();
+    const finalSubcats = pending && !subcats.includes(pending) ? [...subcats, pending] : subcats;
+    const updated: CustomCat = { name: name.trim() || "Personalizada", emoji: emoji || "⭐", subcats: finalSubcats };
     const prefsRes = await fetch("/api/preferences").then((r) => r.json());
     const ctx = prefsRes.context ?? {};
     await fetch("/api/preferences", {

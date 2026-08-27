@@ -47,7 +47,10 @@ export function CategoryFormModal({
 
   const save = () => {
     if (!name.trim()) return;
-    const data: CategoryFormData = { name: name.trim(), emoji, hue, subcats };
+    // Se o usuário digitou uma subcategoria mas não confirmou com "+", inclui mesmo assim.
+    const pending = newSubcat.trim();
+    const finalSubcats = pending && !subcats.includes(pending) ? [...subcats, pending] : subcats;
+    const data: CategoryFormData = { name: name.trim(), emoji, hue, subcats: finalSubcats };
     onSaved(data);
   };
 
