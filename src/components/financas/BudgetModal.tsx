@@ -67,7 +67,7 @@ export function BudgetModal({
     setSaving(true);
     setError("");
 
-    const postOps: Promise<boolean>[] = [];
+    const postOps: Promise<{ ok: boolean; error?: string }>[] = [];
     const deleteOps: { category: string; subcategory: string }[] = [];
 
     for (const c of cats) {
@@ -92,7 +92,11 @@ export function BudgetModal({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ category: c.id, subcategory: sub, monthly_limit: val, month }),
-          }).then((r) => r.ok)
+          }).then(async (r) => {
+            if (r.ok) return { ok: true };
+            const body = await r.json().catch(() => null);
+            return { ok: false, error: body?.error ?? `HTTP ${r.status}` };
+          })
         );
       }
 
@@ -104,9 +108,10 @@ export function BudgetModal({
 
     // 1) Grava tudo primeiro; só apaga o que saiu se todos os POST derem certo.
     const postResults = await Promise.all(postOps);
-    if (postResults.some((ok) => !ok)) {
+    const firstFail = postResults.find((r) => !r.ok);
+    if (firstFail) {
       setSaving(false);
-      setError("Não foi possível salvar o orçamento. Nada foi alterado.");
+      setError(`Não foi possível salvar: ${firstFail.error ?? "erro desconhecido"}`);
       return;
     }
 
