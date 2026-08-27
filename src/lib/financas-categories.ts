@@ -141,8 +141,6 @@ export const EXPENSE_CATS: FinCat[] = [
     subcats: [
       { id: "dizimo",         label: "Dízimo" },
       { id: "ofertas",        label: "Ofertas" },
-      { id: "caravana",      label: "Caravana ao Templo" },
-      { id: "roupas_templo", label: "Roupas Templo" },
       { id: "ajudas",        label: "Ajudas ao Próximo" },
     ],
   },
