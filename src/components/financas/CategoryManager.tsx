@@ -185,20 +185,20 @@ export function CategoryManager({
                 background: CARD, border: `1px solid ${BORDER}`,
                 opacity: hidden ? 0.45 : 1,
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
+                <div
+                  onClick={() => { if (hasSubs) setExpandedCat(isOpen ? null : c.id); }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: hasSubs ? "pointer" : "default" }}
+                >
                   <span style={{ fontSize: 18 }}>{c.emoji}</span>
                   <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: TEXT }}>
                     {tFn(lang, `fin_cat_${c.id}`)}
                   </span>
                   {hasSubs && (
-                    <button type="button" onClick={() => setExpandedCat(isOpen ? null : c.id)} style={{
-                      border: 0, background: "transparent", cursor: "pointer", padding: 6,
-                      color: TEXT_SEC, display: "flex", alignItems: "center",
-                    }}>
+                    <span style={{ padding: 6, color: TEXT_SEC, display: "flex", alignItems: "center" }}>
                       {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                    </button>
+                    </span>
                   )}
-                  <button type="button" onClick={() => toggleHidden(c.id)} style={{
+                  <button type="button" onClick={(e) => { e.stopPropagation(); toggleHidden(c.id); }} style={{
                     border: 0, background: "transparent", cursor: "pointer", padding: 6,
                     color: hidden ? TEXT_SEC : ACCENT,
                   }}>
@@ -207,14 +207,16 @@ export function CategoryManager({
                 </div>
 
                 {isOpen && hasSubs && (
-                  <div style={{ padding: "4px 12px 12px", borderTop: `1px solid ${BORDER}` }}>
+                  <div style={{ padding: "4px 12px 12px", borderTop: `1px solid ${BORDER}`, display: "flex", flexDirection: "column", gap: 6 }}>
                     {/* Subcategorias padrão */}
                     {c.subcats.map((sc) => {
                       const subHidden = hiddenSubs.includes(sc.label);
                       return (
                         <div key={sc.id} style={{
                           display: "flex", alignItems: "center", gap: 8,
-                          padding: "5px 4px", opacity: subHidden ? 0.45 : 1,
+                          padding: "6px 10px", borderRadius: 8,
+                          background: "#0B0B10", border: "1px solid rgba(167,139,250,0.08)",
+                          opacity: subHidden ? 0.45 : 1,
                         }}>
                           <span style={{ flex: 1, fontSize: 12, color: subHidden ? TEXT_SEC : "#cfc4f2" }}>
                             {sc.label}
@@ -231,7 +233,7 @@ export function CategoryManager({
 
                     {/* Subcategorias adicionadas */}
                     {customSubs.map((label) => (
-                      <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 4px" }}>
+                      <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, background: "#0B0B10", border: "1px solid rgba(167,139,250,0.08)" }}>
                         <span style={{ flex: 1, fontSize: 12, color: ACCENT }}>{label}</span>
                         <button type="button" onClick={() => removeCustomSubcat(c.id, label)} style={{
                           border: 0, background: "transparent", cursor: "pointer", padding: 4, color: RED,
@@ -306,23 +308,23 @@ export function CategoryManager({
               <div key={uc.id} style={{
                 borderRadius: 12, background: CARD, border: `1px solid ${BORDER}`,
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
+                <div
+                  onClick={() => { if (uc.subcats.length > 0) setExpandedCat(isOpen ? null : uc.id); }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: uc.subcats.length > 0 ? "pointer" : "default" }}
+                >
                   <span style={{ fontSize: 18 }}>{uc.emoji}</span>
                   <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: TEXT }}>{uc.name}</span>
                   {uc.subcats.length > 0 && (
-                    <button type="button" onClick={() => setExpandedCat(isOpen ? null : uc.id)} style={{
-                      border: 0, background: "transparent", cursor: "pointer", padding: 6,
-                      color: TEXT_SEC, display: "flex", alignItems: "center",
-                    }}>
+                    <span style={{ padding: 6, color: TEXT_SEC, display: "flex", alignItems: "center" }}>
                       {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                    </button>
+                    </span>
                   )}
-                  <button type="button" onClick={() => setEditCat(uc)} style={{
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setEditCat(uc); }} style={{
                     border: 0, background: "transparent", cursor: "pointer", padding: 6, color: TEXT_SEC,
                   }}>
                     <Pencil size={14} />
                   </button>
-                  <button type="button" onClick={() => setDeleteConfirm(uc.id)} style={{
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteConfirm(uc.id); }} style={{
                     border: 0, background: "transparent", cursor: "pointer", padding: 6, color: RED,
                   }}>
                     <Trash2 size={14} />
@@ -330,9 +332,9 @@ export function CategoryManager({
                 </div>
 
                 {isOpen && uc.subcats.length > 0 && (
-                  <div style={{ padding: "4px 12px 12px", borderTop: `1px solid ${BORDER}` }}>
+                  <div style={{ padding: "4px 12px 12px", borderTop: `1px solid ${BORDER}`, display: "flex", flexDirection: "column", gap: 6 }}>
                     {uc.subcats.map((label) => (
-                      <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 4px" }}>
+                      <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, background: "#0B0B10", border: "1px solid rgba(167,139,250,0.08)" }}>
                         <span style={{ flex: 1, fontSize: 12, color: "#cfc4f2" }}>{label}</span>
                       </div>
                     ))}
