@@ -52,6 +52,7 @@ export function BudgetModal({
     return init;
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const subcatKeys = (c: FinCat) => [
     ...c.subcats.map((sc) => `${c.id}::${sc.label}`),
@@ -64,41 +65,61 @@ export function BudgetModal({
 
   const save = async () => {
     setSaving(true);
-    const ops = cats
-      .filter((c) => {
-        const subs = subcatKeys(c).some((k) => values[k] && Number(values[k]) > 0);
-        const catVal = values[c.id];
-        return subs || (catVal && Number(catVal) > 0);
-      })
-      .map(async (c) => {
-        // Substitui o orçamento da categoria: apaga tudo e regrava no modo atual
-        await fetch("/api/financas/budgets", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ category: c.id, month }),
-        });
+    setError("");
 
-        const subs = subcatKeys(c).filter((k) => values[k] && Number(values[k]) > 0);
-        if (subs.length > 0) {
-          await Promise.all(
-            subs.map((k) => {
-              const sub = k.slice(c.id.length + 2); // remove "categoria::"
-              return fetch("/api/financas/budgets", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ category: c.id, subcategory: sub, monthly_limit: Number(values[k]), month }),
-              });
-            })
-          );
-        } else {
-          await fetch("/api/financas/budgets", {
+    const postOps: Promise<boolean>[] = [];
+    const deleteOps: { category: string; subcategory: string }[] = [];
+
+    for (const c of cats) {
+      const subVals = subcatKeys(c).filter((k) => values[k] && Number(values[k]) > 0);
+      const catVal = values[c.id];
+      const hasCatVal = !!catVal && Number(catVal) > 0;
+
+      // Novo estado da categoria: lista de subcategorias, ou [""] (categoria toda), ou [] (limpa).
+      const newSubs = subVals.length > 0
+        ? subVals.map((k) => k.slice(c.id.length + 2))
+        : (hasCatVal ? [""] : []);
+
+      const oldSubs = budgets
+        .filter((b) => b.category === c.id)
+        .map((b) => b.subcategory ?? "");
+
+      // Upsert das linhas novas (não-destrutivo)
+      for (const sub of newSubs) {
+        const val = sub === "" ? Number(catVal) : Number(values[`${c.id}::${sub}`]);
+        postOps.push(
+          fetch("/api/financas/budgets", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ category: c.id, subcategory: "", monthly_limit: Number(values[c.id]), month }),
-          });
-        }
-      });
-    await Promise.all(ops);
+            body: JSON.stringify({ category: c.id, subcategory: sub, monthly_limit: val, month }),
+          }).then((r) => r.ok)
+        );
+      }
+
+      // Linhas antigas que não estão mais no novo estado → apagar depois
+      for (const sub of oldSubs) {
+        if (!newSubs.includes(sub)) deleteOps.push({ category: c.id, subcategory: sub });
+      }
+    }
+
+    // 1) Grava tudo primeiro; só apaga o que saiu se todos os POST derem certo.
+    const postResults = await Promise.all(postOps);
+    if (postResults.some((ok) => !ok)) {
+      setSaving(false);
+      setError("Não foi possível salvar o orçamento. Nada foi alterado.");
+      return;
+    }
+
+    await Promise.all(
+      deleteOps.map(({ category, subcategory }) =>
+        fetch("/api/financas/budgets", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category, subcategory, month }),
+        })
+      )
+    );
+
     setSaving(false);
     onSaved();
     onClose();
@@ -233,6 +254,11 @@ export function BudgetModal({
           })}
         </div>
 
+        {error && (
+          <p style={{ margin: "16px 0 0", fontSize: 12, fontWeight: 600, color: "#FF5C5C", textAlign: "center" }}>
+            {error}
+          </p>
+        )}
         <button type="button" onClick={save} disabled={saving} style={{
           marginTop: 24, width: "100%", padding: "15px 20px", borderRadius: 14, border: 0,
           cursor: saving ? "not-allowed" : "pointer",

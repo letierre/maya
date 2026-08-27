@@ -16,12 +16,15 @@ async function ensureSubcategorySchema() {
       DO $$
       DECLARE cname text;
       BEGIN
-        SELECT conname INTO cname FROM pg_constraint
-        WHERE conrelid = 'financial_budgets'::regclass AND contype = 'u';
-        IF cname IS NOT NULL THEN
+        FOR cname IN
+          SELECT conname FROM pg_constraint
+          WHERE conrelid = 'financial_budgets'::regclass AND contype = 'u'
+        LOOP
           EXECUTE format('ALTER TABLE financial_budgets DROP CONSTRAINT %I', cname);
-        END IF;
+        END LOOP;
       END $$;
+
+      DROP INDEX IF EXISTS financial_budgets_user_id_category_month_key;
 
       CREATE UNIQUE INDEX IF NOT EXISTS financial_budgets_user_id_category_month_subcategory_key
         ON financial_budgets (user_id, category, month, subcategory);
