@@ -37,7 +37,6 @@ export const EXPENSE_CATS: FinCat[] = [
       { id: "manutencao", label: "Manutenção/Reforma" },
       { id: "limpeza",    label: "Serv. de Limpeza" },
       { id: "utensils",   label: "Utensílios/Eletr." },
-      { id: "seguradora", label: "Seguradora" },
     ],
   },
   {
@@ -58,7 +57,6 @@ export const EXPENSE_CATS: FinCat[] = [
     id: "transporte", emoji: "🚗", hue: 220,
     subcats: [
       { id: "uber",          label: "Uber" },
-      { id: "99app",         label: "99" },
       { id: "bus",           label: "Ônibus" },
       { id: "outros_transp", label: "Outros" },
     ],
@@ -98,8 +96,6 @@ export const EXPENSE_CATS: FinCat[] = [
       { id: "festas",         label: "Festas" },
       { id: "clube",          label: "Clube/Parques" },
       { id: "jogos",          label: "Jogos" },
-      { id: "livros_lz",      label: "Livros/Revistas" },
-      { id: "restaurante_lz", label: "Restaurantes" },
       { id: "outras_lz",      label: "Outras" },
     ],
   },
@@ -130,9 +126,6 @@ export const EXPENSE_CATS: FinCat[] = [
     subcats: [
       { id: "celular",    label: "Plano Celular" },
       { id: "internet",   label: "Internet Wifi" },
-      { id: "netflix",    label: "Netflix" },
-      { id: "spotify",    label: "Spotify" },
-      { id: "memoria",    label: "Memória iPhone" },
       { id: "outros_com", label: "Outros" },
     ],
   },
