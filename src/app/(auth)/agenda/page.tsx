@@ -161,6 +161,9 @@ function AgendaPage() {
   const [weekPedras, setWeekPedras] = useState<{ id: string; title: string }[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null); // non-null = editing existing item
   const [editingIsRepeat, setEditingIsRepeat] = useState(false); // true if editing a repeated occurrence
+  // Chave original da ocorrência em edição — usada para marcar a ocorrência como
+  // excluída quando "Apenas este" muda título/horário (senão vira duplicata).
+  const [editingOrig, setEditingOrig] = useState<{ title: string; date: string; start_time: string; end_time: string }>({ title: "", date: "", start_time: "", end_time: "" });
 
   const handleSave = async () => {
     if (!newTitle.trim()) return;
@@ -191,6 +194,29 @@ function AgendaPage() {
       } else {
         // Create a standalone copy for this date
         delete body.id;
+        // Se título, data ou horário mudou, a ocorrência original desta data
+        // precisa ser marcada como excluída — senão continua aparecendo ao lado
+        // da nova (chave diferente, vira duplicata).
+        const startChanged = newItemType === "compromisso"
+          && newStartTime !== (editingOrig.start_time ? editingOrig.start_time.slice(0, 5) : "");
+        const endChanged = newItemType === "compromisso"
+          && newEndTime !== (editingOrig.end_time ? editingOrig.end_time.slice(0, 5) : "");
+        const dateChanged = (body.date as string) !== editingOrig.date;
+        if (body.title !== editingOrig.title || startChanged || endChanged || dateChanged) {
+          await fetch("/api/agenda", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: editingOrig.title,
+              item_type: newItemType,
+              date: editingOrig.date,
+              start_time: editingOrig.start_time || null,
+              end_time: editingOrig.end_time || null,
+              repeat_type: "none",
+              excluded: true,
+            }),
+          });
+        }
       }
     } else if (editingId) {
       body.id = editingId;
@@ -203,13 +229,10 @@ function AgendaPage() {
       body: JSON.stringify(body),
     });
     if (res.ok) {
-      const saved = await res.json();
-      if (editingId) {
-        setItems(prev => prev.map(i => i.id === editingId ? saved : i));
-      } else {
-        setItems(prev => [...prev, saved]);
-      }
       closeNewItemModal();
+      // Refetch para reaplicar dedup/repetição (editar ocorrência sintética não
+      // casa pelo id manual — precisa reconstruir a lista da data).
+      fetchItems(selectedDate);
     }
     setSaving(false);
   };
@@ -218,6 +241,7 @@ function AgendaPage() {
     setShowNewItem(false);
     setEditingId(null);
     setEditingIsRepeat(false);
+    setEditingOrig({ title: "", date: "", start_time: "", end_time: "" });
     setNewTitle(""); setNewEmoji(""); setNewPriority("importante_nao_urgente");
     setNewStartTime("09:00"); setNewEndTime("10:00");
     setNewDescription(""); setNewColor("#7C5CFF"); setNewArea("");
@@ -241,6 +265,12 @@ function AgendaPage() {
     setNewLinkedGoalId(item.linked_goal_id || "");
     setEditingId(realId(item));
     setEditingIsRepeat(item.id.includes("_r_") || item.id.includes("_cross"));
+    setEditingOrig({
+      title: item.title,
+      date: item.date || selectedDate,
+      start_time: item.start_time || "",
+      end_time: item.end_time || "",
+    });
     setEditingItem(null);
     setShowNewItem(true);
   };
