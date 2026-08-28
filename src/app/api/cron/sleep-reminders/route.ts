@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push-send";
 import { getLocalNow, getTimezoneOffset } from "@/lib/utils";
-import { repeatMatches } from "@/lib/agenda-repeat";
+import { repeatMatches, occKey } from "@/lib/agenda-repeat";
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -185,7 +185,7 @@ export async function GET(req: NextRequest) {
     })();
 
     const AGENDA_COLS =
-      "id, user_id, title, date, start_time, notify_minutes, item_type, repeat_type, repeat_until, excluded, status";
+      "id, user_id, title, date, start_time, end_time, notify_minutes, item_type, repeat_type, repeat_until, excluded, status";
 
     // Ocorrências exatas (não repetidas + data original de itens repetidos)
     const { data: exactItems } = await admin
@@ -209,14 +209,14 @@ export async function GET(req: NextRequest) {
     // Ocorrências concluídas/excluídas ("apenas este") sombreiam a regra naquela data
     const { data: windowItems } = await admin
       .from("agenda_items")
-      .select("title, date, status, excluded")
+      .select("title, date, start_time, end_time, status, excluded")
       .in("date", [todaySP, tomorrowSP])
       .in("user_id", tzUserIds);
 
     const blockedKeys = new Set(
       (windowItems ?? [])
         .filter((r) => r.excluded || r.status === "concluida")
-        .map((r) => `${r.date}|${(r.title ?? "").toLowerCase().trim()}`),
+        .map((r) => occKey({ date: r.date, title: r.title ?? "", start_time: r.start_time, end_time: r.end_time })),
     );
 
     // Lista de candidatos a notificar: cada ocorrência efetiva (item, data)
@@ -224,7 +224,7 @@ export async function GET(req: NextRequest) {
     const seen = new Set<string>();
     const pushCandidate = (it: any, date: string) => {
       if (it.excluded || it.status === "concluida") return;
-      if (blockedKeys.has(`${date}|${(it.title ?? "").toLowerCase().trim()}`)) return;
+      if (blockedKeys.has(occKey({ date, title: it.title ?? "", start_time: it.start_time, end_time: it.end_time }))) return;
       const key = `${it.id}|${date}`;
       if (seen.has(key)) return;
       seen.add(key);

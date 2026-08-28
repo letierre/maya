@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { getLocalDate } from "@/lib/utils";
 import { celebrate } from "@/lib/celebrate";
-import { isRepeatingItem, repeatMatches, dedupeByDateTitle } from "@/lib/agenda-repeat";
+import { isRepeatingItem, repeatMatches, dedupeByDateTitle, occKey } from "@/lib/agenda-repeat";
 import { AREA_CONFIG, AREA_LABELS } from "@/lib/planejamento-constants";
 import type { AgendaItem, EisenhowerPriority, TaskArea } from "@/types";
 import { MetasPanel } from "@/components/MetasPanel";
@@ -259,15 +259,19 @@ function AgendaPage() {
       // ── Build result: items that belong to `date` ──
       const result: AgendaItem[] = [];
 
-      // Track which (date, title) combos already exist as real items.
+      // Track which (date, title, horários) combos already exist as real items.
       // Ocorrências avulsas (concluídas/excluídas) sombreiam a regra de repetição na mesma data.
-      const realEntries = new Set<string>();
+      // `exactOccKeys` usa horários (dois compromissos de mesmo título em horas diferentes
+      // são distintos); `exactTitleKeys` (só data+título) é para o crossing de meia-noite.
+      const exactOccKeys = new Set<string>();
+      const exactTitleKeys = new Set<string>();
       const exactItems: AgendaItem[] = [];
       for (const item of all) {
         // Exact date match
         if (item.date === date) {
           exactItems.push(item);
-          realEntries.add(item.date + "|" + item.title.toLowerCase().trim());
+          exactOccKeys.add(occKey(item));
+          exactTitleKeys.add(item.date + "|" + item.title.toLowerCase().trim());
           continue;
         }
       }
@@ -281,9 +285,9 @@ function AgendaPage() {
         if (item.date === date) continue;
         // Repeating item
         if (repeatMatches(item, date)) {
-          const key = date + "|" + item.title.toLowerCase().trim();
-          // Skip if a standalone item already exists for this date+title
-          if (realEntries.has(key)) continue;
+          const key = occKey({ date, title: item.title, start_time: item.start_time, end_time: item.end_time });
+          // Skip if a standalone item already exists for this date+title+horários
+          if (exactOccKeys.has(key)) continue;
           result.push({ ...item, date, id: item.id + "_r_" + date, _origId: item.id } as AgendaItem & { _origId?: string });
         }
       }
@@ -309,7 +313,7 @@ function AgendaPage() {
         const [eh, em] = (item.end_time || "00:00").split(":").map(Number);
         if (eh * 60 + em <= sh * 60 + sm) {
           const crossKey = date + "|" + item.title.toLowerCase().trim();
-          if (!realEntries.has(crossKey)) {
+          if (!exactTitleKeys.has(crossKey)) {
             result.push({
               ...item,
               date,
@@ -518,6 +522,9 @@ function AgendaPage() {
     const isRepeating = isRepeatingItem(item);
 
     if (isRepeating || isSynthetic) {
+      // Atualização otimista: marca o círculo já no primeiro toque (evita a sensação
+      // de "precisei clicar duas vezes" enquanto o POST + refetch rodam).
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: newStatus } : i));
       const res = await fetch("/api/agenda", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -539,6 +546,9 @@ function AgendaPage() {
       if (res.ok) {
         // Refetch to get clean data instead of manually patching state
         fetchItems(selectedDate);
+      } else {
+        // Revert on failure so the UI doesn't show a state that wasn't saved.
+        setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: item.status } : i));
       }
     } else {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: newStatus } : i));

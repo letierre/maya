@@ -6,9 +6,17 @@ export interface AgendaRepeatFields {
   id: string;
   title: string;
   date: string; // YYYY-MM-DD
+  start_time?: string | null; // HH:MM — distingue itens de mesmo título em horários diferentes
+  end_time?: string | null; // HH:MM
   repeat_type?: string | null;
   repeat_until?: string | null; // YYYY-MM-DD — limite superior (inclusive) da série
   excluded?: boolean; // ocorrência isolada excluída ("apenas este")
+}
+
+/** Chave de ocorrência (data + título + horários). Dois compromissos de mesmo título
+ *  em horários diferentes são ocorrências distintas, não duplicatas. */
+export function occKey(item: { date: string; title: string; start_time?: string | null; end_time?: string | null }): string {
+  return `${item.date}|${(item.title ?? "").toLowerCase().trim()}|${item.start_time ?? ""}|${item.end_time ?? ""}`;
 }
 
 /** Item que se repete (tem um repeat_type diferente de "none"). */
@@ -43,12 +51,12 @@ function overridePriority(item: AgendaRepeatFields): number {
   return isRepeatingItem(item) ? 0 : 1;
 }
 
-/** Remove duplicatas com a mesma (data, título), mantendo a ocorrência avulsa
- *  (concluída/excluída) no lugar da regra de repetição original naquela data. */
+/** Remove duplicatas com a mesma (data, título, horários), mantendo a ocorrência
+ *  avulsa (concluída/excluída) no lugar da regra de repetição original naquela data. */
 export function dedupeByDateTitle<T extends AgendaRepeatFields>(items: T[]): T[] {
   const byKey = new Map<string, T>();
   for (const it of items) {
-    const key = `${it.date}|${it.title.toLowerCase().trim()}`;
+    const key = occKey(it);
     const existing = byKey.get(key);
     if (!existing) {
       byKey.set(key, it);

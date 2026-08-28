@@ -28,7 +28,7 @@ interface RawPlan {
   weekly_reviews?: RawReview[];
 }
 interface WeeklyPlansResp { plans: RawPlan[]; }
-interface RawAgendaItem { id: string; title: string; date: string; area: string | null; status: string; repeat_type?: string | null; repeat_until?: string | null; excluded?: boolean; }
+interface RawAgendaItem { id: string; title: string; date: string; start_time?: string | null; end_time?: string | null; area: string | null; status: string; repeat_type?: string | null; repeat_until?: string | null; excluded?: boolean; }
 
 interface Pillar { key: string; label: string; emoji: string; pct: number | null; }
 
