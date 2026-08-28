@@ -1567,6 +1567,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   const [editDate, setEditDate] = useState("");
   const [detailGoalId, setDetailGoalId] = useState<string | null>(null);
   const [movingId, setMovingId] = useState<string | null>(null);
+  const [deleteOpts, setDeleteOpts] = useState<any | null>(null);
 
   const refreshGoals = () => {
     setGoalsLoading(true);
@@ -1779,7 +1780,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       await fetch("/api/agenda", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editingItem.id, ...updates, date: editDate || originalDate }),
+        body: JSON.stringify({ id: (editingItem as any)._origId || editingItem.id, ...updates, date: editDate || originalDate }),
       });
       setEditingItem(null);
       refreshItems();
@@ -1813,17 +1814,65 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
     toast.success(dayChanged ? `Movida para ${shortDate(editDate)}` : (isWeeklyOpen && editDone ? `"${editTitle.trim()}" concluída hoje` : "Alterações salvas"));
   };
 
-  const deleteItem = async () => {
-    if (!confirm("Tem certeza que deseja excluir?")) return;
-    if (editingItem.item_type) {
-      await fetch(`/api/agenda?id=${(editingItem as any)._origId || editingItem.id}`, { method: "DELETE" });
-      refreshItems();
+  const realItemId = (item: any) => item._origId || item.id;
+
+  const deleteThisOccurrence = async (item: any) => {
+    await fetch("/api/agenda", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: item.title, item_type: item.item_type, date: item.date,
+        start_time: item.start_time, end_time: item.end_time,
+        priority: item.priority, emoji: item.emoji || null,
+        description: item.description || null, color: item.color || null,
+        area: item.area || null, repeat_type: "none", excluded: true,
+      }),
+    });
+    setDeleteOpts(null); setEditingItem(null); refreshItems();
+  };
+
+  const deleteThisAndFuture = async (item: any) => {
+    const isOriginal = !(item.id.includes("_r_") || item.id.includes("_cross"));
+    if (isOriginal) {
+      await fetch(`/api/agenda?id=${realItemId(item)}&scope=all&title=${encodeURIComponent(item.title)}`, { method: "DELETE" });
     } else {
+      const d = new Date(item.date + "T12:00:00");
+      d.setDate(d.getDate() - 1);
+      const prev = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      await fetch("/api/agenda", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: realItemId(item), repeat_until: prev }),
+      });
+    }
+    setDeleteOpts(null); setEditingItem(null); refreshItems();
+  };
+
+  const deleteAllOccurrences = async (item: any) => {
+    await fetch(`/api/agenda?id=${realItemId(item)}&scope=all&title=${encodeURIComponent(item.title)}`, { method: "DELETE" });
+    setDeleteOpts(null); setEditingItem(null); refreshItems();
+  };
+
+  const deleteItem = async () => {
+    if (!editingItem) return;
+    if (editingItem.item_type) {
+      const isSynth = editingItem.id.includes("_r_") || editingItem.id.includes("_cross");
+      if (isSynth || isRepeatingItem(editingItem)) {
+        setDeleteOpts(editingItem);
+        return;
+      }
+      if (!confirm("Tem certeza que deseja excluir?")) return;
+      await fetch(`/api/agenda?id=${realItemId(editingItem)}`, { method: "DELETE" });
+      refreshItems();
+      setEditingItem(null);
+      toast.success("Atividade excluída");
+    } else {
+      if (!confirm("Tem certeza que deseja excluir?")) return;
       await fetch(`/api/weekly-plans/tasks/${editingItem.id}`, { method: "DELETE" });
       setAllWeekTasks((prev: any[]) => prev.filter((wt: any) => wt.id !== editingItem.id));
+      setEditingItem(null);
+      toast.success("Atividade excluída");
     }
-    setEditingItem(null);
-    toast.success("Atividade excluída");
   };
 
   // Pular (descartar) uma tarefa semanal sem apagar o registro
@@ -2004,6 +2053,37 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
 
       {todayComp.length === 0 && todayAgendaTarefas.length === 0 && dayPlanTasks.length === 0 && openWeekTasks.length === 0 && overdueTasks.length === 0 && activeGoals.length === 0 && puladaTasks.length === 0 && (
         <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center", padding: 32 }}>Nenhuma atividade</p>
+      )}
+
+      {/* Delete dialog (compromisso repetido) */}
+      {deleteOpts && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 210, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ width: "100%", maxWidth: 320, background: "#1a1530", borderRadius: 20, padding: 24, border: "1px solid rgba(167,139,250,0.2)", textAlign: "center" }}>
+            <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 700, color: "#e0d6ff", lineHeight: 1.5 }}>
+              {deleteOpts.emoji && <span style={{ marginRight: 6 }}>{deleteOpts.emoji}</span>}
+              {deleteOpts.title}
+            </p>
+            <p style={{ margin: "0 0 18px", fontSize: 12, color: "#9e96b5", lineHeight: 1.5 }}>
+              Este compromisso se repete. O que deseja excluir?
+            </p>
+            <button type="button" onClick={() => deleteThisOccurrence(deleteOpts)}
+              style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.06)", color: "#e0d6ff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              Apenas este
+            </button>
+            <button type="button" onClick={() => deleteThisAndFuture(deleteOpts)}
+              style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.06)", color: "#e0d6ff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              Este e os seguintes
+            </button>
+            <button type="button" onClick={() => deleteAllOccurrences(deleteOpts)}
+              style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: 0, background: "rgba(255,92,92,0.12)", color: "#FF5C5C", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              Todos (passado e futuro)
+            </button>
+            <button type="button" onClick={() => setDeleteOpts(null)}
+              style={{ width: "100%", padding: "10px 0", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Edit modal */}
