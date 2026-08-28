@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { Plus, Star, ChevronDown, Clock, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import { celebrate } from "@/lib/celebrate";
+import { filterActiveAgenda } from "@/lib/agenda-repeat";
 import type { TaskArea, AreaSuggestion } from "@/types";
 import {
   AREA_CONFIG, ALL_AREAS, LIFE_AREAS, AREA_LABELS, DAY_NAMES, DAY_FULL,
@@ -131,7 +132,7 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
     // Fetch agenda items (compromissos/tarefas criados direto na agenda) for the week
     fetch(`/api/agenda?from=${currentWeekStart}&to=${currentWeekEnd}`)
       .then(r => r.json())
-      .then(d => { if (Array.isArray(d)) setAgendaItems(d); })
+      .then(d => { if (Array.isArray(d)) setAgendaItems(filterActiveAgenda(d)); })
       .catch(() => {});
     // Fetch user profile for planning mode
     fetch("/api/preferences")

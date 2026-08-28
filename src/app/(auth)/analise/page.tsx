@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { cachedFetch } from "@/lib/fetch-cache";
+import { filterActiveAgenda } from "@/lib/agenda-repeat";
 import { MOOD_CHIPS } from "@/lib/checkin-moods";
 import { didExercise, didPause, isLegacyExercise, isLegacyPause } from "@/lib/checkin-answered";
 import { sleepScore } from "@/lib/sleep-utils";
@@ -158,7 +159,7 @@ export default function AnalisePage() {
     const to = daysAgo(0);
     cachedFetch<AgendaItem[]>(`/api/agenda?from=${from}&to=${to}`)
       .then((data) => {
-        if (Array.isArray(data)) setAgendaItems(data);
+        if (Array.isArray(data)) setAgendaItems(filterActiveAgenda(data));
       })
       .catch(() => {});
   }, [periodDays]);

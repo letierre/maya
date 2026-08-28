@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
+import { filterActiveAgenda } from "@/lib/agenda-repeat";
 import type { QuarterlyCycle } from "@/types";
 import { FOREGROUND, MUTED, PURPLE, CARD } from "./Section";
 
@@ -27,7 +28,7 @@ interface RawPlan {
   weekly_reviews?: RawReview[];
 }
 interface WeeklyPlansResp { plans: RawPlan[]; }
-interface RawAgendaItem { area: string | null; status: string; }
+interface RawAgendaItem { id: string; title: string; date: string; area: string | null; status: string; repeat_type?: string | null; repeat_until?: string | null; excluded?: boolean; }
 
 interface Pillar { key: string; label: string; emoji: string; pct: number | null; }
 
@@ -105,7 +106,7 @@ export function GrowthScore({ from, to }: { from: string; to: string }) {
     safeCachedFetch<GoalSummary[]>("/api/goals").then((d) => setGoals(Array.isArray(d) ? d : []));
     safeCachedFetch<QuarterlyCycle[]>("/api/quarterly-cycles").then((d) => setCycles(Array.isArray(d) ? d : []));
     safeCachedFetch<WeeklyPlansResp>(`/api/weekly-plans?from=${from}&to=${to}`).then((r) => setPlans(r?.plans ?? []));
-    safeCachedFetch<RawAgendaItem[]>(`/api/agenda?from=${from}&to=${to}`).then((d) => setAgendaItems(Array.isArray(d) ? d : []));
+    safeCachedFetch<RawAgendaItem[]>(`/api/agenda?from=${from}&to=${to}`).then((d) => setAgendaItems(filterActiveAgenda(Array.isArray(d) ? d : [])));
   }, [from, to]);
 
   if (goals === null || cycles === null || plans === null || agendaItems === null) return null;

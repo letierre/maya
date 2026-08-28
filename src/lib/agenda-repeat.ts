@@ -58,3 +58,9 @@ export function dedupeByDateTitle<T extends AgendaRepeatFields>(items: T[]): T[]
   }
   return [...byKey.values()];
 }
+
+/** Prepara itens da agenda para contagem/exibição: remove ocorrências excluídas
+ *  ("apenas este") e duplicatas (avulsa sobrepõe a regra de repetição). */
+export function filterActiveAgenda<T extends AgendaRepeatFields>(items: T[]): T[] {
+  return dedupeByDateTitle(items).filter((it) => !it.excluded);
+}
