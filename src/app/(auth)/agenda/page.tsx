@@ -1818,6 +1818,39 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
     setEditDate(item.item_type ? (item.date || selectedDate) : (isOpen ? "" : taskDate(item)));
   };
 
+  // Corpo de um registro avulso (repeat_type none) derivado de um item da agenda.
+  const standaloneBody = (item: any, over: { title?: string; date?: string; status?: string; excluded?: boolean } = {}) => ({
+    title: over.title ?? item.title,
+    item_type: item.item_type,
+    date: over.date ?? item.date,
+    start_time: item.start_time || null,
+    end_time: item.end_time || null,
+    priority: item.priority,
+    emoji: item.emoji || null,
+    description: item.description || null,
+    color: item.color || null,
+    area: item.area || null,
+    repeat_type: "none",
+    status: over.status ?? item.status ?? "pendente",
+    excluded: over.excluded ?? false,
+  });
+
+  // Marca/desmarca "Concluído" numa única ocorrência (nunca na regra da série).
+  const toggleOccurrenceDone = async (item: any, done: boolean) => {
+    if (done) {
+      await fetch("/api/agenda", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(standaloneBody(item, { status: "concluida" })),
+      });
+    } else {
+      const params = new URLSearchParams({ title: item.title, date: item.date });
+      if (item.start_time) params.set("start_time", item.start_time);
+      if (item.end_time) params.set("end_time", item.end_time);
+      await fetch(`/api/agenda?scope=occurrence&${params.toString()}`, { method: "DELETE" });
+    }
+  };
+
   const saveEdit = async () => {
     if (!editTitle.trim() || !editingItem) return;
     const updates: Record<string, unknown> = {
@@ -1834,11 +1867,52 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
     const dayChanged = isWeeklyOpen ? !!editDate : (!!editDate && editDate !== originalDate);
     if (editingItem.item_type) {
       // Item da agenda (compromisso/tarefa): pode mudar o dia
-      await fetch("/api/agenda", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: (editingItem as any)._origId || editingItem.id, ...updates, date: editDate || originalDate }),
-      });
+      const isSynth = editingItem.id.includes("_r_") || editingItem.id.includes("_cross");
+      const isRepeat = isRepeatingItem(editingItem);
+      const title = editTitle.trim();
+      const newDate = editDate || originalDate;
+      const titleChanged = title !== (editingItem.title || "");
+      const dateChanged = newDate !== originalDate;
+      const newStatus = editDone ? "concluida" : "pendente";
+      const statusChanged = newStatus !== (editingItem.status === "concluida" ? "concluida" : "pendente");
+
+      if (isSynth || isRepeat) {
+        // Repetição: título/data podem ser "todos" ou "apenas este"; "Concluído"
+        // é sempre per-ocorrência (nunca PATCH na regra para não concluir a série).
+        const keyChanged = titleChanged || dateChanged;
+        if (keyChanged) {
+          const applyAll = confirm("Aplicar alterações a TODOS os compromissos desta repetição?\n\nOK = Todos\nCancelar = Apenas este");
+          if (applyAll) {
+            await fetch("/api/agenda", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: (editingItem as any)._origId || editingItem.id, title, date: newDate }),
+            });
+            if (statusChanged) await toggleOccurrenceDone(editingItem, editDone);
+          } else {
+            // Apenas este: exclui a original e cria a avulsa com o novo título/data/status.
+            await fetch("/api/agenda", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(standaloneBody(editingItem, { title: editingItem.title, date: originalDate, excluded: true })),
+            });
+            await fetch("/api/agenda", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(standaloneBody(editingItem, { title, date: newDate, status: newStatus })),
+            });
+          }
+        } else if (statusChanged) {
+          await toggleOccurrenceDone(editingItem, editDone);
+        }
+      } else {
+        // Avulso (não repete): PATCH direto.
+        await fetch("/api/agenda", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: (editingItem as any)._origId || editingItem.id, ...updates, date: newDate }),
+        });
+      }
       setEditingItem(null);
       refreshItems();
     } else {
