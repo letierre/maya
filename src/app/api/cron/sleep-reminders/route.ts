@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push-send";
 import { getLocalNow, getTimezoneOffset } from "@/lib/utils";
+import { repeatMatches } from "@/lib/agenda-repeat";
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -183,15 +184,70 @@ export async function GET(req: NextRequest) {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     })();
 
-    const { data: agendaItems } = await admin
+    const AGENDA_COLS =
+      "id, user_id, title, date, start_time, notify_minutes, item_type, repeat_type, repeat_until, excluded";
+
+    // Ocorrências exatas (não repetidas + data original de itens repetidos)
+    const { data: exactItems } = await admin
       .from("agenda_items")
-      .select("id, user_id, title, date, start_time, notify_minutes, item_type")
+      .select(AGENDA_COLS)
       .in("date", [todaySP, tomorrowSP])
       .not("notify_minutes", "is", null)
       .not("start_time", "is", null)
       .in("user_id", tzUserIds);
 
-    for (const item of (agendaItems ?? [])) {
+    // Regras de repetição que podem gerar ocorrência hoje/amanhã
+    const { data: repeatRules } = await admin
+      .from("agenda_items")
+      .select(AGENDA_COLS)
+      .neq("repeat_type", "none")
+      .lte("date", tomorrowSP)
+      .not("notify_minutes", "is", null)
+      .not("start_time", "is", null)
+      .in("user_id", tzUserIds);
+
+    // Ocorrências excluídas ("apenas este") sombreiam a regra naquela data
+    const { data: excludedRows } = await admin
+      .from("agenda_items")
+      .select("title, date")
+      .eq("excluded", true)
+      .in("date", [todaySP, tomorrowSP])
+      .in("user_id", tzUserIds);
+
+    const excludedKeys = new Set(
+      (excludedRows ?? []).map((r) => `${r.date}|${(r.title ?? "").toLowerCase().trim()}`),
+    );
+
+    // Lista de candidatos a notificar: cada ocorrência efetiva (item, data)
+    const candidates: { id: string; user_id: string; title: string; date: string; start_time: string; notify_minutes: number; item_type: string }[] = [];
+    const seen = new Set<string>();
+    const pushCandidate = (it: any, date: string) => {
+      if (excludedKeys.has(`${date}|${(it.title ?? "").toLowerCase().trim()}`)) return;
+      const key = `${it.id}|${date}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      candidates.push({
+        id: it.id,
+        user_id: it.user_id,
+        title: it.title,
+        date,
+        start_time: it.start_time,
+        notify_minutes: it.notify_minutes,
+        item_type: it.item_type,
+      });
+    };
+
+    for (const it of (exactItems ?? [])) {
+      if (it.excluded) continue;
+      pushCandidate(it, it.date);
+    }
+    for (const rule of (repeatRules ?? [])) {
+      for (const target of [todaySP, tomorrowSP]) {
+        if (repeatMatches(rule, target)) pushCandidate(rule, target);
+      }
+    }
+
+    for (const item of candidates) {
       if (!item.start_time || !item.notify_minutes) continue;
 
       // Calculate notification time: start_time minus notify_minutes
@@ -230,7 +286,7 @@ export async function GET(req: NextRequest) {
       totalSent += await sendPushToUser(item.user_id, {
         title: `${emoji} ${item.title}`,
         body: `Em ${notifyMins} min — ${item.start_time.slice(0, 5)}`,
-        tag: `agenda-${item.id}`,
+        tag: `agenda-${item.id}-${item.date}`,
         data: { url: "/agenda" },
       });
       log.agenda = (log.agenda ?? 0) + 1;
