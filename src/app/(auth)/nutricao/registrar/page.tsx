@@ -436,7 +436,7 @@ export default function RegistrarRefeicaoPage() {
                   boxShadow: "0 4px 16px rgba(0,0,0,0.15)", overflow: "hidden",
                 }}>
                   <img
-                    src="/Maya.png" alt="Maya"
+                    src="/maya-avatar.webp" alt="Maya"
                     style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", border: "2px solid white" }}
                   />
                 </div>
