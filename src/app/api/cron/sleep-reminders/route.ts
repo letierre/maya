@@ -185,7 +185,7 @@ export async function GET(req: NextRequest) {
     })();
 
     const AGENDA_COLS =
-      "id, user_id, title, date, start_time, notify_minutes, item_type, repeat_type, repeat_until, excluded";
+      "id, user_id, title, date, start_time, notify_minutes, item_type, repeat_type, repeat_until, excluded, status";
 
     // Ocorrências exatas (não repetidas + data original de itens repetidos)
     const { data: exactItems } = await admin
@@ -206,23 +206,25 @@ export async function GET(req: NextRequest) {
       .not("start_time", "is", null)
       .in("user_id", tzUserIds);
 
-    // Ocorrências excluídas ("apenas este") sombreiam a regra naquela data
-    const { data: excludedRows } = await admin
+    // Ocorrências concluídas/excluídas ("apenas este") sombreiam a regra naquela data
+    const { data: windowItems } = await admin
       .from("agenda_items")
-      .select("title, date")
-      .eq("excluded", true)
+      .select("title, date, status, excluded")
       .in("date", [todaySP, tomorrowSP])
       .in("user_id", tzUserIds);
 
-    const excludedKeys = new Set(
-      (excludedRows ?? []).map((r) => `${r.date}|${(r.title ?? "").toLowerCase().trim()}`),
+    const blockedKeys = new Set(
+      (windowItems ?? [])
+        .filter((r) => r.excluded || r.status === "concluida")
+        .map((r) => `${r.date}|${(r.title ?? "").toLowerCase().trim()}`),
     );
 
     // Lista de candidatos a notificar: cada ocorrência efetiva (item, data)
     const candidates: { id: string; user_id: string; title: string; date: string; start_time: string; notify_minutes: number; item_type: string }[] = [];
     const seen = new Set<string>();
     const pushCandidate = (it: any, date: string) => {
-      if (excludedKeys.has(`${date}|${(it.title ?? "").toLowerCase().trim()}`)) return;
+      if (it.excluded || it.status === "concluida") return;
+      if (blockedKeys.has(`${date}|${(it.title ?? "").toLowerCase().trim()}`)) return;
       const key = `${it.id}|${date}`;
       if (seen.has(key)) return;
       seen.add(key);
@@ -238,7 +240,6 @@ export async function GET(req: NextRequest) {
     };
 
     for (const it of (exactItems ?? [])) {
-      if (it.excluded) continue;
       pushCandidate(it, it.date);
     }
     for (const rule of (repeatRules ?? [])) {
