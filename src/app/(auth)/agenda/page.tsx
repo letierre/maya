@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { getLocalDate } from "@/lib/utils";
 import { celebrate } from "@/lib/celebrate";
-import { isRepeatingItem, repeatMatches, dedupeByDateTitle, occKey } from "@/lib/agenda-repeat";
+import { isRepeatingItem, repeatMatches, dedupeByDateTitle, occKey, seriesDeleteParams } from "@/lib/agenda-repeat";
 import { AREA_CONFIG, AREA_LABELS } from "@/lib/planejamento-constants";
 import type { AgendaItem, EisenhowerPriority, TaskArea } from "@/types";
 import { MetasPanel } from "@/components/MetasPanel";
@@ -522,33 +522,50 @@ function AgendaPage() {
     const isRepeating = isRepeatingItem(item);
 
     if (isRepeating || isSynthetic) {
-      // Atualização otimista: marca o círculo já no primeiro toque (evita a sensação
-      // de "precisei clicar duas vezes" enquanto o POST + refetch rodam).
-      setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: newStatus } : i));
-      const res = await fetch("/api/agenda", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: item.title,
-          item_type: item.item_type,
-          date: item.date,
-          start_time: item.start_time,
-          end_time: item.end_time,
-          priority: item.priority,
-          emoji: item.emoji || null,
-          description: item.description || null,
-          color: item.color || null,
-          area: item.area || null,
-          repeat_type: "none",
-          status: newStatus,
-        }),
-      });
-      if (res.ok) {
-        // Refetch to get clean data instead of manually patching state
-        fetchItems(selectedDate);
+      if (newStatus === "pendente") {
+        // Desmarcar: remove a ocorrência avulsa (concluída) — o item volta ao
+        // "pendente" da série, sem acumular registros concorrentes.
+        setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: "pendente" } : i));
+        const params = new URLSearchParams({ title: item.title, date: item.date });
+        if (item.start_time) params.set("start_time", item.start_time);
+        if (item.end_time) params.set("end_time", item.end_time);
+        const res = await fetch(`/api/agenda?scope=occurrence&${params.toString()}`, { method: "DELETE" });
+        if (res.ok) {
+          // Refetch to get clean data instead of manually patching state
+          fetchItems(selectedDate);
+        } else {
+          // Revert on failure so the UI doesn't show a state that wasn't saved.
+          setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: "concluida" } : i));
+        }
       } else {
-        // Revert on failure so the UI doesn't show a state that wasn't saved.
-        setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: item.status } : i));
+        // Concluir: marca o círculo otimista e cria um registro standalone
+        // (status concluída) só para esta ocorrência.
+        setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: newStatus } : i));
+        const res = await fetch("/api/agenda", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: item.title,
+            item_type: item.item_type,
+            date: item.date,
+            start_time: item.start_time,
+            end_time: item.end_time,
+            priority: item.priority,
+            emoji: item.emoji || null,
+            description: item.description || null,
+            color: item.color || null,
+            area: item.area || null,
+            repeat_type: "none",
+            status: newStatus,
+          }),
+        });
+        if (res.ok) {
+          // Refetch to get clean data instead of manually patching state
+          fetchItems(selectedDate);
+        } else {
+          // Revert on failure so the UI doesn't show a state that wasn't saved.
+          setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: item.status } : i));
+        }
       }
     } else {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: newStatus } : i));
@@ -588,7 +605,7 @@ function AgendaPage() {
     const isOriginal = !(item.id.includes("_r_") || item.id.includes("_cross"));
     if (isOriginal) {
       // Ocorrência original: "daqui em diante" equivale a excluir tudo.
-      await fetch(`/api/agenda?id=${realId(item)}&scope=all&title=${encodeURIComponent(item.title)}`, { method: "DELETE" });
+      await fetch(`/api/agenda?id=${realId(item)}&scope=all&${seriesDeleteParams(item)}`, { method: "DELETE" });
     } else {
       // Corta a série um dia antes desta ocorrência, preservando o passado.
       const prev = shiftDate(item.date, -1);
@@ -602,7 +619,7 @@ function AgendaPage() {
   };
 
   const deleteAllOccurrences = async (item: AgendaItem) => {
-    await fetch(`/api/agenda?id=${realId(item)}&scope=all&title=${encodeURIComponent(item.title)}`, { method: "DELETE" });
+    await fetch(`/api/agenda?id=${realId(item)}&scope=all&${seriesDeleteParams(item)}`, { method: "DELETE" });
     setDeleteDialog(null); setEditingItem(null); fetchItems(selectedDate);
   };
 
@@ -1844,7 +1861,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   const deleteThisAndFuture = async (item: any) => {
     const isOriginal = !(item.id.includes("_r_") || item.id.includes("_cross"));
     if (isOriginal) {
-      await fetch(`/api/agenda?id=${realItemId(item)}&scope=all&title=${encodeURIComponent(item.title)}`, { method: "DELETE" });
+      await fetch(`/api/agenda?id=${realItemId(item)}&scope=all&${seriesDeleteParams(item)}`, { method: "DELETE" });
     } else {
       const d = new Date(item.date + "T12:00:00");
       d.setDate(d.getDate() - 1);
@@ -1859,7 +1876,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   };
 
   const deleteAllOccurrences = async (item: any) => {
-    await fetch(`/api/agenda?id=${realItemId(item)}&scope=all&title=${encodeURIComponent(item.title)}`, { method: "DELETE" });
+    await fetch(`/api/agenda?id=${realItemId(item)}&scope=all&${seriesDeleteParams(item)}`, { method: "DELETE" });
     setDeleteOpts(null); setEditingItem(null); refreshItems();
   };
 

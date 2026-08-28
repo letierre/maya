@@ -72,3 +72,12 @@ export function dedupeByDateTitle<T extends AgendaRepeatFields>(items: T[]): T[]
 export function filterActiveAgenda<T extends AgendaRepeatFields>(items: T[]): T[] {
   return dedupeByDateTitle(items).filter((it) => !it.excluded);
 }
+
+/** Query string (title + horários) para o DELETE "excluir todos" de uma série.
+ *  Incluir o horário evita apagar séries de mesmo título em horários diferentes. */
+export function seriesDeleteParams(item: { title: string; start_time?: string | null; end_time?: string | null }): string {
+  const p = new URLSearchParams({ title: item.title });
+  if (item.start_time) p.set("start_time", item.start_time);
+  if (item.end_time) p.set("end_time", item.end_time);
+  return p.toString();
+}

@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       priority: body.priority || "importante_nao_urgente",
       emoji: body.emoji || null,
       area: body.area || null,
-      status: "pendente",
+      status: body.status || "pendente",
       description: body.description || null,
       color: body.color || null,
       repeat_type: body.repeat_type || "none",
@@ -156,13 +156,45 @@ export async function DELETE(req: NextRequest) {
   const admin = getSupabaseAdmin();
 
   // "Excluir todos" de uma repetição: remove a regra original + ocorrências
-  // avulsas (concluídas/excluídas) com o mesmo título do usuário.
+  // avulsas (concluídas/excluídas) com o mesmo título E horário do usuário.
+  // Incluir o horário evita apagar uma série diferente que por acaso tenha o
+  // mesmo título (ex.: dois "HIVETIRE" em horários distintos).
   if (scope === "all" && title) {
-    const { error } = await admin
+    const start_time = searchParams.get("start_time");
+    const end_time = searchParams.get("end_time");
+    let q = admin
       .from("agenda_items")
       .delete()
       .eq("user_id", user.id)
       .eq("title", title);
+    if (start_time) q = q.eq("start_time", start_time);
+    else q = q.is("start_time", null);
+    if (end_time) q = q.eq("end_time", end_time);
+    else q = q.is("end_time", null);
+    const { error } = await q;
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
+  }
+
+  // "Desmarcar" uma ocorrência avulsa de item repetido: remove o registro
+  // standalone (repeat_type = none) daquela data/horário, voltando ao "pendente"
+  // da série original — em vez de criar um segundo registro concorrente.
+  if (scope === "occurrence" && title) {
+    const date = searchParams.get("date");
+    const start_time = searchParams.get("start_time");
+    const end_time = searchParams.get("end_time");
+    let q = admin
+      .from("agenda_items")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("title", title)
+      .eq("repeat_type", "none");
+    if (date) q = q.eq("date", date);
+    if (start_time) q = q.eq("start_time", start_time);
+    else q = q.is("start_time", null);
+    if (end_time) q = q.eq("end_time", end_time);
+    else q = q.is("end_time", null);
+    const { error } = await q;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
   }
