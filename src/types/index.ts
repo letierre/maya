@@ -325,6 +325,8 @@ export interface AgendaItem {
   description: string | null;
   color: string | null;
   repeat_type: "none" | "daily" | "weekly" | "monthly" | "yearly" | "weekdays";
+  repeat_until?: string | null; // YYYY-MM-DD — limite superior da série
+  excluded?: boolean; // ocorrência isolada excluída ("apenas este")
   notify_minutes: number | null;
   due_date: string | null;
   linked_goal_id: string | null;

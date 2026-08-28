@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
 import { LifeWheel } from "@/components/planejamento/LifeWheel";
+import { isRepeatingItem, dedupeByDateTitle } from "@/lib/agenda-repeat";
 import { Section } from "./Section";
 import { AreaDetailSheet } from "./AreaDetailSheet";
 
@@ -30,6 +31,13 @@ interface RawAgendaItem {
   item_type: string;
   date: string;
   start_time: string | null;
+  end_time: string | null;
+  priority: string | null;
+  emoji: string | null;
+  description: string | null;
+  color: string | null;
+  repeat_type: string | null;
+  excluded?: boolean;
 }
 
 /** Roda da Vida agregando as tarefas de TODAS as semanas do período selecionado. */
@@ -43,7 +51,7 @@ export function AreaBalance({ from, to }: { from: string; to: string }) {
       if (r?.plans) setPlans(r.plans);
     });
     safeCachedFetch<RawAgendaItem[]>(`/api/agenda?from=${from}&to=${to}`).then((r) => {
-      if (Array.isArray(r)) setAgendaItems(r);
+      if (Array.isArray(r)) setAgendaItems(dedupeByDateTitle(r).filter((x) => !x.excluded));
     });
   }, [from, to]);
 
@@ -84,12 +92,40 @@ export function AreaBalance({ from, to }: { from: string; to: string }) {
   };
 
   const toggleAgenda = async (id: string, next: string) => {
-    setAgendaItems((prev) => prev.map((it) => (it.id === id ? { ...it, status: next } : it)));
-    await fetch("/api/agenda", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status: next }),
-    });
+    const it = agendaItems.find((x) => x.id === id);
+    if (!it) return;
+    if (isRepeatingItem(it)) {
+      // Cria uma ocorrência avulsa só para esta data — não altera a regra original
+      // (assim marcar um dia não conclui a série inteira).
+      await fetch("/api/agenda", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: it.title,
+          item_type: it.item_type,
+          date: it.date,
+          start_time: it.start_time,
+          end_time: it.end_time,
+          priority: it.priority,
+          emoji: it.emoji,
+          description: it.description,
+          color: it.color,
+          area: it.area,
+          repeat_type: "none",
+          status: next,
+        }),
+      });
+      const res = await fetch(`/api/agenda?from=${from}&to=${to}`);
+      const r = await res.json();
+      if (Array.isArray(r)) setAgendaItems(dedupeByDateTitle(r).filter((x) => !x.excluded));
+    } else {
+      setAgendaItems((prev) => prev.map((x) => (x.id === id ? { ...x, status: next } : x)));
+      await fetch("/api/agenda", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: next }),
+      });
+    }
   };
 
   return (

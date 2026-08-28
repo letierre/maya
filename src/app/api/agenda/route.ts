@@ -70,6 +70,8 @@ export async function POST(req: NextRequest) {
       description: body.description || null,
       color: body.color || null,
       repeat_type: body.repeat_type || "none",
+      repeat_until: body.repeat_until || null,
+      excluded: body.excluded || false,
       notify_minutes: body.notify_minutes || null,
       due_date: body.due_date || null,
       linked_goal_id: body.linked_goal_id || null,
@@ -112,6 +114,8 @@ export async function PATCH(req: NextRequest) {
   if (body.description !== undefined) updates.description = body.description;
   if (body.color !== undefined) updates.color = body.color;
   if (body.repeat_type !== undefined) updates.repeat_type = body.repeat_type;
+  if (body.repeat_until !== undefined) updates.repeat_until = body.repeat_until;
+  if (body.excluded !== undefined) updates.excluded = body.excluded;
   if (body.notify_minutes !== undefined) updates.notify_minutes = body.notify_minutes;
   if (body.due_date !== undefined) updates.due_date = body.due_date;
   updates.updated_at = new Date().toISOString();
@@ -145,9 +149,24 @@ export async function DELETE(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
+  const scope = searchParams.get("scope");
+  const title = searchParams.get("title");
   if (!id) return NextResponse.json({ error: "id obrigatório" }, { status: 400 });
 
   const admin = getSupabaseAdmin();
+
+  // "Excluir todos" de uma repetição: remove a regra original + ocorrências
+  // avulsas (concluídas/excluídas) com o mesmo título do usuário.
+  if (scope === "all" && title) {
+    const { error } = await admin
+      .from("agenda_items")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("title", title);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
+  }
+
   const { error } = await admin
     .from("agenda_items")
     .delete()

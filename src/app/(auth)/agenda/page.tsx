@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { getLocalDate } from "@/lib/utils";
 import { celebrate } from "@/lib/celebrate";
+import { isRepeatingItem, repeatMatches, dedupeByDateTitle } from "@/lib/agenda-repeat";
 import { AREA_CONFIG, AREA_LABELS } from "@/lib/planejamento-constants";
 import type { AgendaItem, EisenhowerPriority, TaskArea } from "@/types";
 import { MetasPanel } from "@/components/MetasPanel";
@@ -134,6 +135,7 @@ function AgendaPage() {
   const showConfirm = (message: string, onOk: () => void, opts?: { okLabel?: string; cancelLabel?: string; okColor?: string; onCancel?: () => void }) =>
     setConfirmDialog({ message, onOk, ...opts });
   const [editingItem, setEditingItem] = useState<AgendaItem | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<AgendaItem | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDone, setEditDone] = useState(false);
   const [editDate, setEditDate] = useState("");
@@ -257,32 +259,21 @@ function AgendaPage() {
       // ── Build result: items that belong to `date` ──
       const result: AgendaItem[] = [];
 
-      // Helper: does a repeat rule match `date` given an original date?
-      const repeatMatches = (item: AgendaItem, target: string): boolean => {
-        if (!item.repeat_type || item.repeat_type === "none") return false;
-        const orig = new Date(item.date + "T12:00:00");
-        const tgt = new Date(target + "T12:00:00");
-        if (tgt <= orig) return false; // don't repeat before original
-        switch (item.repeat_type) {
-          case "daily": return true;
-          case "weekly": return orig.getDay() === tgt.getDay();
-          case "monthly": return orig.getDate() === tgt.getDate();
-          case "weekdays": return tgt.getDay() >= 1 && tgt.getDay() <= 5;
-          case "yearly":
-            return orig.getDate() === tgt.getDate() && orig.getMonth() === tgt.getMonth();
-          default: return false;
-        }
-      };
-
-      // Track which (date, title) combos already exist as real items
+      // Track which (date, title) combos already exist as real items.
+      // Ocorrências avulsas (concluídas/excluídas) sombreiam a regra de repetição na mesma data.
       const realEntries = new Set<string>();
+      const exactItems: AgendaItem[] = [];
       for (const item of all) {
         // Exact date match
         if (item.date === date) {
-          result.push(item);
+          exactItems.push(item);
           realEntries.add(item.date + "|" + item.title.toLowerCase().trim());
           continue;
         }
+      }
+      for (const item of dedupeByDateTitle(exactItems)) {
+        if (item.excluded) continue; // ocorrência excluída não aparece
+        result.push(item);
       }
 
       for (const item of all) {
@@ -521,11 +512,12 @@ function AgendaPage() {
   const toggleTask = async (item: AgendaItem, coords?: { x: number; y: number }) => {
     const newStatus = item.status === "concluida" ? "pendente" : "concluida";
     if (newStatus === "concluida") celebrate(coords?.x, coords?.y);
-    // Detect synthetic items: repeated occurrences or midnight-crossing continuations
+    // Ocorrência avulsa (repetida ou continuação pós-meia-noite) nunca altera a
+    // regra original — cria um registro standalone só para esta data.
     const isSynthetic = item.id.includes("_r_") || item.id.includes("_cross");
+    const isRepeating = isRepeatingItem(item);
 
-    if (isSynthetic) {
-      // Create a standalone record for this specific date (don't touch the original)
+    if (isRepeating || isSynthetic) {
       const res = await fetch("/api/agenda", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -539,6 +531,8 @@ function AgendaPage() {
           emoji: item.emoji || null,
           description: item.description || null,
           color: item.color || null,
+          area: item.area || null,
+          repeat_type: "none",
           status: newStatus,
         }),
       });
@@ -554,6 +548,52 @@ function AgendaPage() {
         body: JSON.stringify({ id: realId(item), status: newStatus }),
       });
     }
+  };
+
+  // ── Exclusão de compromissos repetidos (3 opções) ──────────────
+  const deleteThisOccurrence = async (item: AgendaItem) => {
+    // Exclui apenas esta ocorrência: cria uma avulsa marcada como excluída.
+    await fetch("/api/agenda", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: item.title,
+        item_type: item.item_type,
+        date: item.date,
+        start_time: item.start_time,
+        end_time: item.end_time,
+        priority: item.priority,
+        emoji: item.emoji || null,
+        description: item.description || null,
+        color: item.color || null,
+        area: item.area || null,
+        repeat_type: "none",
+        excluded: true,
+      }),
+    });
+    setDeleteDialog(null); setEditingItem(null); fetchItems(selectedDate);
+  };
+
+  const deleteThisAndFuture = async (item: AgendaItem) => {
+    const isOriginal = !(item.id.includes("_r_") || item.id.includes("_cross"));
+    if (isOriginal) {
+      // Ocorrência original: "daqui em diante" equivale a excluir tudo.
+      await fetch(`/api/agenda?id=${realId(item)}&scope=all&title=${encodeURIComponent(item.title)}`, { method: "DELETE" });
+    } else {
+      // Corta a série um dia antes desta ocorrência, preservando o passado.
+      const prev = shiftDate(item.date, -1);
+      await fetch("/api/agenda", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: realId(item), repeat_until: prev }),
+      });
+    }
+    setDeleteDialog(null); setEditingItem(null); fetchItems(selectedDate);
+  };
+
+  const deleteAllOccurrences = async (item: AgendaItem) => {
+    await fetch(`/api/agenda?id=${realId(item)}&scope=all&title=${encodeURIComponent(item.title)}`, { method: "DELETE" });
+    setDeleteDialog(null); setEditingItem(null); fetchItems(selectedDate);
   };
 
   // ── Timeline calculations ──────────────────────────────────────
@@ -1068,28 +1108,9 @@ function AgendaPage() {
               </button>
               <button type="button" onClick={() => {
                 const isSynth = editingItem.id.includes("_r_") || editingItem.id.includes("_cross");
-                if (isSynth) {
-                  showConfirm("Este compromisso se repete.", () => {
-                    fetch(`/api/agenda?id=${realId(editingItem)}`, { method: "DELETE" }).then(() => {
-                      setEditingItem(null); fetchItems(selectedDate);
-                    });
-                  }, {
-                    okLabel: "Excluir todos",
-                    cancelLabel: "Apenas este",
-                    onCancel: () => {
-                      fetch("/api/agenda", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          title: editingItem.title, item_type: editingItem.item_type,
-                          date: editingItem.date, start_time: editingItem.start_time,
-                          end_time: editingItem.end_time, priority: editingItem.priority,
-                          emoji: editingItem.emoji || null, description: editingItem.description || null,
-                          color: editingItem.color || null, status: "concluida",
-                        }),
-                      }).then(() => { setEditingItem(null); fetchItems(selectedDate); });
-                    },
-                  });
+                const isRepeating = isRepeatingItem(editingItem);
+                if (isSynth || isRepeating) {
+                  setDeleteDialog(editingItem);
                 } else {
                   showConfirm("Excluir este compromisso?", () => {
                     fetch(`/api/agenda?id=${realId(editingItem)}`, { method: "DELETE" }).then(() => {
@@ -1452,6 +1473,37 @@ function AgendaPage() {
                   color: (saving || !newTitle.trim()) ? "#9e96b5" : "#fff",
                 }}>{saving ? "Salvando…" : editingId ? "Salvar alterações" : "Adicionar"}</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete dialog (compromisso repetido) ───────────── */}
+      {deleteDialog && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 210, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ width: "100%", maxWidth: 320, background: "#1a1530", borderRadius: 20, padding: 24, border: "1px solid rgba(167,139,250,0.2)", textAlign: "center" }}>
+            <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 700, color: "#e0d6ff", lineHeight: 1.5 }}>
+              {deleteDialog.emoji && <span style={{ marginRight: 6 }}>{deleteDialog.emoji}</span>}
+              {deleteDialog.title}
+            </p>
+            <p style={{ margin: "0 0 18px", fontSize: 12, color: "#9e96b5", lineHeight: 1.5 }}>
+              Este compromisso se repete. O que deseja excluir?
+            </p>
+            <button type="button" onClick={() => deleteThisOccurrence(deleteDialog)}
+              style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.06)", color: "#e0d6ff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              Apenas este
+            </button>
+            <button type="button" onClick={() => deleteThisAndFuture(deleteDialog)}
+              style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.06)", color: "#e0d6ff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              Este e os seguintes
+            </button>
+            <button type="button" onClick={() => deleteAllOccurrences(deleteDialog)}
+              style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: 0, background: "rgba(255,92,92,0.12)", color: "#FF5C5C", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              Todos (passado e futuro)
+            </button>
+            <button type="button" onClick={() => setDeleteDialog(null)}
+              style={{ width: "100%", padding: "10px 0", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              Cancelar
+            </button>
           </div>
         </div>
       )}
