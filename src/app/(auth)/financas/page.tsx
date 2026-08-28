@@ -599,6 +599,25 @@ export default function FinancasPage() {
                       {Math.round(totalPct)}% do orçamento total
                     </p>
                   </div>
+
+                  {/* Projeção: receitas do mês − orçamento planejado */}
+                  <div style={{
+                    marginTop: 12, padding: "12px 14px", borderRadius: 12,
+                    background: "rgba(124,92,255,0.06)", border: `1px solid ${BORDER}`,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>
+                        Sobra projetada
+                      </span>
+                      <span style={{ fontSize: 15, fontWeight: 800, color: (totalReceitas - totalLimit) >= 0 ? GREEN : RED }}>
+                        {fmt(totalReceitas - totalLimit, currency)}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: TEXT_SEC }}>
+                      <span>Receitas {fmt(totalReceitas, currency)}</span>
+                      <span>− Orçamento {fmt(totalLimit, currency)}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
               );
@@ -835,6 +854,25 @@ export default function FinancasPage() {
                         <p style={{ margin: "4px 0 0", fontSize: 10, color: totalOver ? RED : TEXT_SEC, textAlign: "right" }}>
                           {Math.round(totalPct)}% do orçamento total
                         </p>
+                      </div>
+
+                      {/* Projeção: receitas do mês − orçamento planejado */}
+                      <div style={{
+                        marginTop: 12, padding: "12px 14px", borderRadius: 12,
+                        background: "rgba(124,92,255,0.06)", border: `1px solid ${BORDER}`,
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>
+                            Sobra projetada
+                          </span>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: (totalReceitas - totalLimit) >= 0 ? GREEN : RED }}>
+                            {fmt(totalReceitas - totalLimit, currency)}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: TEXT_SEC }}>
+                          <span>Receitas {fmt(totalReceitas, currency)}</span>
+                          <span>− Orçamento {fmt(totalLimit, currency)}</span>
+                        </div>
                       </div>
                     </div>
                   );

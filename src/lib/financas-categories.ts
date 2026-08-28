@@ -277,9 +277,10 @@ export function mergeCats(
     return { ...c, subcats: [...base, ...added] };
   });
 
-  // Convert user categories to FinCat format
+  // Convert user categories to FinCat format (skip hidden)
   const userFinCats: FinCat[] = userCats
     .filter((uc) => uc.type === type)
+    .filter((uc) => !hiddenIds.includes(`user_${uc.id}`))
     .map((uc) => ({
       id: `user_${uc.id}`,
       emoji: uc.emoji,

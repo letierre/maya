@@ -134,6 +134,23 @@ export function CategoryPicker({
                 </button>
               );
             })}
+            {/* "Outros" — catch-all: lançamento sem subcategoria específica */}
+            <button
+              key="__outros__"
+              type="button"
+              onClick={() => onSelect(category, "")}
+              style={{
+                flexShrink: 0, padding: "6px 13px", borderRadius: 20,
+                border: subcategory === "" ? "1.5px solid #7C5CFF" : `1.5px solid ${borderDefault}`,
+                background: subcategory === "" ? "rgba(124,92,255,0.08)" : "#0B0B10",
+                cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                fontSize: 12, fontWeight: 600,
+                color: subcategory === "" ? "#A78BFA" : "#9e96b5",
+                transition: "all .12s ease",
+              }}
+            >
+              {tFn(lang, "fin_cat_outros")}
+            </button>
           </div>
         </div>
       )}

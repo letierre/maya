@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { X, Plus, Pencil, Trash2, Eye, EyeOff, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import { t as tFn } from "@/lib/i18n";
@@ -34,6 +35,7 @@ export function CategoryManager({
   const [showForm, setShowForm] = useState(false);
   const [editCat, setEditCat] = useState<UserCategory | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [blockedDelete, setBlockedDelete] = useState<{ id: string; name: string; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
   const [newSubcatInput, setNewSubcatInput] = useState("");
@@ -103,10 +105,25 @@ export function CategoryManager({
 
   const handleDelete = async (catId: string) => {
     setSaving(true);
-    await fetch(`/api/financas/categories/${catId}`, { method: "DELETE" });
+    const res = await fetch(`/api/financas/categories/${catId}`, { method: "DELETE" });
     setSaving(false);
     setDeleteConfirm(null);
+    if (res.status === 409) {
+      const body = await res.json().catch(() => null);
+      setBlockedDelete({
+        id: catId,
+        name: filteredUserCats.find((c) => c.id === catId)?.name ?? "",
+        message: body?.message ?? "Esta categoria tem registros.",
+      });
+      return;
+    }
     onCategoriesChange();
+  };
+
+  const hideBlocked = () => {
+    if (!blockedDelete) return;
+    toggleHidden(`user_${blockedDelete.id}`);
+    setBlockedDelete(null);
   };
 
   const handleCreate = async (data: { name: string; emoji: string; hue: number; subcats: string[] }) => {
@@ -121,11 +138,16 @@ export function CategoryManager({
 
   const handleEdit = async (data: { name: string; emoji: string; hue: number; subcats: string[] }) => {
     if (!editCat) return;
-    await fetch(`/api/financas/categories/${editCat.id}`, {
+    const res = await fetch(`/api/financas/categories/${editCat.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    if (res.status === 409) {
+      const body = await res.json().catch(() => null);
+      toast.error(body?.message ?? "Não foi possível salvar: uma subcategoria tem registros.");
+      return; // mantém o formulário aberto
+    }
     setEditCat(null);
     onCategoriesChange();
   };
@@ -304,9 +326,11 @@ export function CategoryManager({
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {filteredUserCats.map((uc) => {
               const isOpen = expandedCat === uc.id;
+              const hidden = hiddenIds.includes(`user_${uc.id}`);
               return (
               <div key={uc.id} style={{
                 borderRadius: 12, background: CARD, border: `1px solid ${BORDER}`,
+                opacity: hidden ? 0.45 : 1,
               }}>
                 <div
                   onClick={() => { if (uc.subcats.length > 0) setExpandedCat(isOpen ? null : uc.id); }}
@@ -319,6 +343,12 @@ export function CategoryManager({
                       {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </span>
                   )}
+                  <button type="button" onClick={(e) => { e.stopPropagation(); toggleHidden(`user_${uc.id}`); }} style={{
+                    border: 0, background: "transparent", cursor: "pointer", padding: 6,
+                    color: hidden ? TEXT_SEC : ACCENT,
+                  }}>
+                    {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
                   <button type="button" onClick={(e) => { e.stopPropagation(); setEditCat(uc); }} style={{
                     border: 0, background: "transparent", cursor: "pointer", padding: 6, color: TEXT_SEC,
                   }}>
@@ -386,7 +416,7 @@ export function CategoryManager({
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: TEXT }}>Excluir categoria?</h3>
               </div>
               <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SEC, lineHeight: 1.5 }}>
-                As transações desta categoria serão movidas para "Outros". Esta ação não pode ser desfeita.
+                Esta ação não pode ser desfeita. Categorias com registros não podem ser excluídas (apenas ocultadas).
               </p>
               <div style={{ display: "flex", gap: 10 }}>
                 <button type="button" onClick={() => setDeleteConfirm(null)} style={{
@@ -401,6 +431,43 @@ export function CategoryManager({
                   opacity: saving ? 0.6 : 1,
                 }}>
                   {saving ? "..." : "Excluir"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Blocked delete — categoria com registros (só pode ocultar) */}
+      {blockedDelete && (
+        <>
+          <div onClick={() => setBlockedDelete(null)} style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} />
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+          }}>
+            <div style={{
+              width: "100%", maxWidth: 320, background: SURFACE, borderRadius: 20, padding: 24,
+              border: `1px solid ${BORDER}`,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <AlertTriangle size={18} style={{ color: "#f59e0b" }} />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: TEXT }}>Não é possível excluir</h3>
+              </div>
+              <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SEC, lineHeight: 1.5 }}>
+                {blockedDelete.message} Você pode ocultá-la para que deixe de aparecer.
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button type="button" onClick={() => setBlockedDelete(null)} style={{
+                  flex: 1, padding: 12, borderRadius: 12, border: `1px solid ${BORDER}`,
+                  background: "transparent", color: TEXT_SEC, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+                }}>
+                  Cancelar
+                </button>
+                <button type="button" onClick={hideBlocked} style={{
+                  flex: 1, padding: 12, borderRadius: 12, border: 0,
+                  background: ACCENT, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                }}>
+                  Ocultar
                 </button>
               </div>
             </div>

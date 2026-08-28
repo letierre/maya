@@ -14,6 +14,48 @@ export async function PATCH(
   const body = await req.json();
   const admin = getSupabaseAdmin();
 
+  // Guard: não permite remover subcategoria que já tem transações/orçamentos.
+  if (Array.isArray(body.subcats)) {
+    const { data: existing } = await admin
+      .from("user_categories")
+      .select("subcats")
+      .eq("id", id)
+      .eq("user_id", session.user.id)
+      .single();
+
+    const oldSubs: string[] = existing?.subcats ?? [];
+    const newSubs: string[] = body.subcats;
+    const removed = oldSubs.filter((s) => !newSubs.includes(s));
+
+    if (removed.length > 0) {
+      const legacyId = `user_${id}`;
+      const [{ count: txCount }, { count: budgetCount }] = await Promise.all([
+        admin
+          .from("financial_transactions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", session.user.id)
+          .eq("category", legacyId)
+          .in("subcategory", removed),
+        admin
+          .from("financial_budgets")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", session.user.id)
+          .eq("category", legacyId)
+          .in("subcategory", removed),
+      ]);
+
+      if ((txCount ?? 0) > 0 || (budgetCount ?? 0) > 0) {
+        return NextResponse.json(
+          {
+            error: "has_records",
+            message: "Uma das subcategorias removidas tem registros. Você pode ocultá-la em vez de removê-la.",
+          },
+          { status: 409 },
+        );
+      }
+    }
+  }
+
   const { data, error } = await admin
     .from("user_categories")
     .update(body)
@@ -49,13 +91,34 @@ export async function DELETE(
     return NextResponse.json({ error: "Categoria não encontrada" }, { status: 404 });
   }
 
-  // Reassign any transactions using this category to "outros"
   const legacyId = `user_${cat.id}`;
-  await admin
-    .from("financial_transactions")
-    .update({ category: "outros", subcategory: null })
-    .eq("user_id", session.user.id)
-    .eq("category", legacyId);
+
+  // Guard: não permite excluir categoria que já tem registros (transações ou
+  // orçamentos). O usuário pode apenas ocultá-la, para não deixar valores "no ar".
+  const [{ count: txCount }, { count: budgetCount }] = await Promise.all([
+    admin
+      .from("financial_transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", session.user.id)
+      .eq("category", legacyId),
+    admin
+      .from("financial_budgets")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", session.user.id)
+      .eq("category", legacyId),
+  ]);
+
+  if ((txCount ?? 0) > 0 || (budgetCount ?? 0) > 0) {
+    return NextResponse.json(
+      {
+        error: "has_records",
+        message: "Esta categoria tem registros. Você pode ocultá-la em vez de excluir.",
+        txCount: txCount ?? 0,
+        budgetCount: budgetCount ?? 0,
+      },
+      { status: 409 },
+    );
+  }
 
   // Delete the category
   const { error } = await admin

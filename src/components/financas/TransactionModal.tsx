@@ -6,7 +6,7 @@ import type { FinancialTransaction } from "@/types";
 import type { Lang } from "@/lib/i18n";
 import { t as tFn } from "@/lib/i18n";
 import type { CustomCat, SubcatOverrides } from "@/lib/financas-categories";
-import { mergeCats, type UserCategory } from "@/lib/financas-categories";
+import type { UserCategory } from "@/lib/financas-categories";
 import { CategoryPicker } from "./CategoryPicker";
 import { CustomCatModal } from "./CustomCatModal";
 
@@ -53,10 +53,8 @@ export function TransactionModal({
   const [saving, setSaving]     = useState(false);
   const [showCustomEdit, setShowCustomEdit] = useState(false);
 
-  const cats = mergeCats(type, hiddenCatIds, userCategories, customCat, subcatOverrides);
-  const subcatsForCat = category ? (cats.find((c) => c.id === category)?.subcats ?? []) : [];
-  const canSave = amount.trim() !== "" && Number(amount) > 0 && category.length > 0
-    && (subcatsForCat.length === 0 || subcategory.length > 0);
+  // Subcategoria não é obrigatória: lançamento sem subcategoria cai em "Outros" (catch-all).
+  const canSave = amount.trim() !== "" && Number(amount) > 0 && category.length > 0;
 
   const typeColor = type === "despesa" ? "#FF5C5C" : "#22c55e";
   const typeSoft = type === "despesa" ? "rgba(255,92,92,0.12)" : "rgba(34,197,94,0.12)";
