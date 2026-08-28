@@ -642,10 +642,29 @@ function PaywallScreen({ onFinish, saving }: { onFinish: () => void; saving: boo
         <p style={{ margin: 0, fontSize: 12, color: ACCENT_2, fontWeight: 700 }}>★★★★★</p>
       </div>
 
-      {/* TODO: Stripe — substituir valores e conectar checkout */}
-      <div style={{ background: "oklch(0.5 0.12 270 / .12)", border: `1px solid ${BORDER}`, borderRadius: 16, padding: "18px 16px", marginBottom: 20 }}>
-        <p style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: TEXT }}>7 dias grátis</p>
-        <p style={{ margin: 0, fontSize: 13.5, color: MUTED }}>depois R$ XX/mês · cancele quando quiser</p>
+      {/* TODO: Stripe — conectar checkout (valores reais já definidos) */}
+      <div style={{ marginBottom: 20 }}>
+        <p style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 800, color: TEXT }}>7 dias grátis</p>
+
+        {/* Plano anual (destaque) */}
+        <div style={{ background: "oklch(0.5 0.12 270 / .16)", border: `1.5px solid ${ACCENT}`, borderRadius: 16, padding: "14px 16px", marginBottom: 10, textAlign: "left" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 15, fontWeight: 800, color: TEXT }}>Anual</span>
+            <span style={{ background: ACCENT, color: "#fff", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>economize 30%</span>
+          </div>
+          <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
+            US$ 83,99<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/ano</span>
+          </p>
+          <p style={{ margin: "2px 0 0", fontSize: 12.5, color: MUTED }}>≈ US$ 7,00/mês · cancele quando quiser</p>
+        </div>
+
+        {/* Plano mensal */}
+        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px", textAlign: "left" }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>Mensal</span>
+          <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
+            US$ 9,99<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/mês</span>
+          </p>
+        </div>
       </div>
 
       <button type="button" onClick={onFinish} disabled={saving} style={{
