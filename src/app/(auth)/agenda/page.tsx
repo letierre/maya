@@ -349,6 +349,7 @@ function AgendaPage() {
               date,
               id: (item as any)._origId ? (item as any)._origId + "_cross" : item.id + "_cross",
               start_time: "00:00",
+              _origStartTime: item.start_time,
               _origId: (item as any)._origId || item.id,
             } as any);
           }
@@ -587,6 +588,10 @@ function AgendaPage() {
             area: item.area || null,
             repeat_type: "none",
             status: newStatus,
+            notify_minutes: item.notify_minutes || null,
+            linked_goal_id: item.linked_goal_id || null,
+            linked_action_id: item.linked_action_id || null,
+            linked_weekly_task_id: item.linked_weekly_task_id || null,
           }),
         });
         if (res.ok) {
@@ -1833,6 +1838,10 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
     repeat_type: "none",
     status: over.status ?? item.status ?? "pendente",
     excluded: over.excluded ?? false,
+    notify_minutes: item.notify_minutes || null,
+    linked_goal_id: item.linked_goal_id || null,
+    linked_action_id: item.linked_action_id || null,
+    linked_weekly_task_id: item.linked_weekly_task_id || null,
   });
 
   // Marca/desmarca "Concluído" numa única ocorrência (nunca na regra da série).

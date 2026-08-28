@@ -74,10 +74,13 @@ export function filterActiveAgenda<T extends AgendaRepeatFields>(items: T[]): T[
 }
 
 /** Query string (title + horários) para o DELETE "excluir todos" de uma série.
- *  Incluir o horário evita apagar séries de mesmo título em horários diferentes. */
-export function seriesDeleteParams(item: { title: string; start_time?: string | null; end_time?: string | null }): string {
+ *  Incluir o horário evita apagar séries de mesmo título em horários diferentes.
+ *  Para continuações pós-meia-noite (`_cross`), usa o horário original da regra
+ *  (guardado em `_origStartTime`) em vez do "00:00" de exibição. */
+export function seriesDeleteParams(item: { title: string; start_time?: string | null; end_time?: string | null; _origStartTime?: string | null }): string {
   const p = new URLSearchParams({ title: item.title });
-  if (item.start_time) p.set("start_time", item.start_time);
+  const start = item._origStartTime || item.start_time;
+  if (start) p.set("start_time", start);
   if (item.end_time) p.set("end_time", item.end_time);
   return p.toString();
 }

@@ -86,6 +86,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Se concluiu um item vinculado a meta, sincroniza check-in em tempo real
+  // (mesmo tratamento do PATCH — ocorrências avulsas de itens repetidos entram aqui).
+  if (data.linked_goal_id && data.status === "concluida" && data.date) {
+    syncCheckInField(user.id, data.date, "worked_on_goals", true).catch(() => {});
+  }
+
   return NextResponse.json(data, { status: 201 });
 }
 
