@@ -37,7 +37,7 @@ const translations: Record<Lang, Record<string, string>> = {
       "Se sim, incluiremos essas opções. Se não, a pergunta será mais geral sobre criatividade e lazer.",
     q_suicida: "Quer incluir a pergunta sobre pensamento suicida?",
     q_suicida_desc:
-      "É uma pergunta importante para acompanhar sua segurança. Recomendamos incluir.",
+      "É uma pergunta importante para acompanhar sua segurança. Recomendamos incluir caso necessário.",
 
     // Config
     config_title: "Configurações",
@@ -684,7 +684,7 @@ const translations: Record<Lang, Record<string, string>> = {
       "Si sí, incluiremos esas opciones. Si no, la pregunta será más general sobre creatividad y ocio.",
     q_suicida: "¿Quieres incluir la pregunta sobre pensamiento suicida?",
     q_suicida_desc:
-      "Es una pregunta importante para acompañar tu seguridad. Recomendamos incluir.",
+      "Es una pregunta importante para acompañar tu seguridad. Recomendamos incluirla solo si es necesario.",
 
     config_title: "Configuraciones",
     config_subtitle: "Tus respuestas ayudan a personalizar las preguntas del check-in.",
@@ -1317,7 +1317,7 @@ const translations: Record<Lang, Record<string, string>> = {
       "If yes, we'll include those options. If not, the question will be more general about creativity and leisure.",
     q_suicida: "Include the suicidal thoughts question?",
     q_suicida_desc:
-      "It's an important question to track your safety. We recommend including it.",
+      "It's an important question to track your safety. We recommend including it only if needed.",
 
     config_title: "Settings",
     config_subtitle: "Your answers help personalize your check-in questions.",

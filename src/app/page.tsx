@@ -52,9 +52,9 @@ export default function LandingPage() {
             color: "#e0d6ff",
             lineHeight: 1.65, fontWeight: 500,
           }}>
-            Sua IA pessoal que conecta sono, humor, hábitos,<br />
-            metas e dinheiro para mostrar<br />
-            o que você sozinho não enxerga.
+            Sua IA pessoal de bem-estar e crescimento pessoal,<br />
+            que conecta sono, humor, hábitos, metas e dinheiro<br />
+            para mostrar o que você sozinho não enxerga.
           </p>
         </div>
 
@@ -92,7 +92,7 @@ export default function LandingPage() {
         }}>
           <span>🔒 Privacidade total</span>
           <span>·</span>
-          <span>🆓 100% gratuito</span>
+          <span>🆓 7 dias grátis</span>
           <span>·</span>
           <span>📱 PWA</span>
         </div>
@@ -112,7 +112,7 @@ export default function LandingPage() {
               transition: "opacity .15s ease",
             }}
           >
-            Começar agora — é grátis
+            Começar agora — 7 dias grátis
           </a>
           <a
             href="/login"

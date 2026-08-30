@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getUserTimezone } from "@/lib/utils";
-import { defaultAnswers } from "@/components/CheckInEditor";
+import { defaultAnswers, WaterCupSelector, WATER_GOAL, ML_PER_CUP } from "@/components/CheckInEditor";
 import { requestPushSubscription } from "@/lib/push-utils";
 import { invalidateFetchCache } from "@/lib/fetch-cache";
 import { Paywall } from "@/components/Paywall";
@@ -62,7 +62,6 @@ const AREAS = [
 
 // Hábitos do check-in de demonstração (mapeiam para campos reais do CheckInAnswers).
 const DEMO_HABITS = [
-  { key: "drank_water", emoji: "💧", label: "Bebi água" },
   { key: "slept_well", emoji: "😴", label: "Dormi bem" },
   { key: "meditation", emoji: "🧘", label: "Meditei" },
   { key: "walked", emoji: "🏃", label: "Me exercitei" },
@@ -473,14 +472,14 @@ function AboutScreen({ gender, setGender, ctx, setCtxValue, lang, onNext, onPrev
               <button type="button" onClick={() => setCtxValue(q.id, true)} style={{
                 flex: 1, height: 40, borderRadius: 10, border: 0, cursor: "pointer",
                 fontFamily: "inherit", fontSize: 13, fontWeight: 600,
-                background: ctx[q.id] ? ACCENT : CARD, color: ctx[q.id] ? "#fff" : MUTED,
+                background: ctx[q.id] ? ACCENT : CARD, color: ctx[q.id] ? "#fff" : ACCENT,
                 outline: ctx[q.id] ? "none" : `1px solid ${BORDER}`,
               }}>{translate(lang as Lang, "sim")}</button>
               <button type="button" onClick={() => setCtxValue(q.id, false)} style={{
                 flex: 1, height: 40, borderRadius: 10, border: 0, cursor: "pointer",
                 fontFamily: "inherit", fontSize: 13, fontWeight: 600,
-                background: !ctx[q.id] ? "oklch(0.72 0.1 30 / .25)" : CARD,
-                color: !ctx[q.id] ? "oklch(0.35 0.07 30)" : MUTED,
+                background: !ctx[q.id] ? "#FF5C5C" : CARD,
+                color: !ctx[q.id] ? "#fff" : ACCENT,
                 outline: `1px solid ${BORDER}`,
               }}>{translate(lang as Lang, "nao")}</button>
             </div>
@@ -511,9 +510,11 @@ function ProcessingScreen() {
   );
 }
 
-function DemoStep({ selected, toggle, onNext, onPrev }: {
+function DemoStep({ selected, toggle, waterCups, setWaterCups, onNext, onPrev }: {
   selected: Set<string>;
   toggle: (key: string) => void;
+  waterCups: number;
+  setWaterCups: (n: number) => void;
   onNext: () => void;
   onPrev: () => void;
 }) {
@@ -521,6 +522,19 @@ function DemoStep({ selected, toggle, onNext, onPrev }: {
   return (
     <>
       <Section title="Vamos fazer seu primeiro check-in." sub="Toque no que você fez hoje." />
+
+      {/* Água em copos */}
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <span style={{ fontSize: 21, flexShrink: 0, lineHeight: 1 }}>🥛</span>
+          <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: TEXT }}>Copos de água hoje</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: waterCups >= WATER_GOAL ? "#5EEAD4" : MUTED }}>
+            {waterCups * ML_PER_CUP}ml{waterCups >= WATER_GOAL ? " ✓" : ""}
+          </span>
+        </div>
+        <WaterCupSelector cups={waterCups} size={42} onChange={setWaterCups} />
+      </div>
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {DEMO_HABITS.map((h) => {
           const active = selected.has(h.key);
@@ -541,19 +555,20 @@ function DemoStep({ selected, toggle, onNext, onPrev }: {
         })}
       </div>
       <p style={{ margin: "14px 0 0", textAlign: "center", fontSize: 13, color: MUTED }}>
-        {n >= 3 ? "Prontinho! ✨" : `Toque em pelo menos ${3 - n} ${3 - n === 1 ? "coisa" : "coisas"}`}
+        {n > 0 || waterCups > 0 ? "Prontinho! ✨" : "Toque no que você fez hoje."}
       </p>
-      <Footer onPrev={onPrev} onNext={n >= 3 ? onNext : undefined} nextDisabled={n < 3} nextLabel="Concluir" />
+      <Footer onPrev={onPrev} onNext={onNext} nextLabel="Concluir" />
     </>
   );
 }
 
-function ValueStep({ selected, onShare, onNext }: {
+function ValueStep({ selected, waterCups, onNext }: {
   selected: Set<string>;
-  onShare: () => void;
+  waterCups: number;
   onNext: () => void;
 }) {
   const items = DEMO_HABITS.filter((h) => selected.has(h.key));
+  if (waterCups > 0) items.unshift({ key: "drank_water", emoji: "🥛", label: "Bebi água" });
   return (
     <div style={{ textAlign: "center" }}>
       <div style={{ fontSize: 64, lineHeight: 1, marginBottom: 12 }}>🎉</div>
@@ -571,16 +586,6 @@ function ValueStep({ selected, onShare, onNext }: {
         ))}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <button type="button" onClick={onShare} style={{
-          width: "100%", height: 52, borderRadius: 14, border: `1px solid ${BORDER}`, cursor: "pointer",
-          background: CARD, color: TEXT, fontFamily: "inherit", fontSize: 14.5, fontWeight: 600,
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-        }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13" />
-          </svg>
-          Compartilhar
-        </button>
         <button type="button" onClick={onNext} style={{
           width: "100%", height: 54, borderRadius: 16, border: 0, cursor: "pointer",
           background: `linear-gradient(135deg, ${ACCENT}, ${ACCENT_2})`, color: "#fff",
@@ -648,6 +653,7 @@ export default function OnboardingFlow() {
     track_suicidal_thoughts: true,
   });
   const [demo, setDemo] = useState<Set<string>>(new Set());
+  const [waterCups, setWaterCups] = useState(0);
   const savedRef = useRef(false);
 
   const step = STEPS[stepIdx];
@@ -692,19 +698,6 @@ export default function OnboardingFlow() {
     return () => clearTimeout(t);
   }, [step, goNext]);
 
-  const handleShare = async () => {
-    const text = "Comecei minha jornada com a Maya 🌱";
-    if (navigator.share) {
-      try { await navigator.share({ title: "Maya", text }); return; } catch {}
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success("Copiado! Compartilhe com quem você gosta.");
-    } catch {
-      toast.info("Compartilhe sua jornada com a Maya 🌱");
-    }
-  };
-
   const handleEnableNotifications = async () => {
     setNotifLoading(true);
     try {
@@ -713,7 +706,7 @@ export default function OnboardingFlow() {
         await fetch("/api/push/subscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...sub, timezone: getUserTimezone() }),
+          body: JSON.stringify({ ...sub.toJSON(), timezone: getUserTimezone() }),
         });
         toast.success("Lembretes ativados! 🔔");
       }
@@ -724,18 +717,20 @@ export default function OnboardingFlow() {
 
   // Salva o check-in da demo quando o usuário conclui a etapa 11 (demo).
   const saveDemoCheckIn = useCallback(() => {
-    if (savedRef.current || demo.size === 0) return;
+    if (savedRef.current || (demo.size === 0 && waterCups === 0)) return;
     savedRef.current = true;
     const answers = defaultAnswers();
     for (const h of DEMO_HABITS) {
       if (demo.has(h.key)) (answers as unknown as Record<string, boolean>)[h.key] = true;
     }
+    answers.water_cups = waterCups;
+    answers.drank_water = waterCups >= WATER_GOAL;
     fetch("/api/check-ins", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(answers),
     }).catch(() => {});
-  }, [demo]);
+  }, [demo, waterCups]);
 
   // Completa o onboarding (antes do redirect pro Checkout do Stripe).
   const handleFinish = async () => {
@@ -823,8 +818,8 @@ export default function OnboardingFlow() {
           />
         )}
         {step === "processing" && <ProcessingScreen />}
-        {step === "demo" && <DemoStep selected={demo} toggle={toggleDemo} onNext={() => { saveDemoCheckIn(); goNext(); }} onPrev={goPrev} />}
-        {step === "value" && <ValueStep selected={demo} onShare={handleShare} onNext={goNext} />}
+        {step === "demo" && <DemoStep selected={demo} toggle={toggleDemo} waterCups={waterCups} setWaterCups={setWaterCups} onNext={() => { saveDemoCheckIn(); goNext(); }} onPrev={goPrev} />}
+        {step === "value" && <ValueStep selected={demo} waterCups={waterCups} onNext={goNext} />}
         {step === "notifications" && <NotificationsStep onEnable={handleEnableNotifications} onSkip={goNext} loading={notifLoading} />}
         {step === "paywall" && <Paywall beforeCheckout={handleFinish} />}
       </div>

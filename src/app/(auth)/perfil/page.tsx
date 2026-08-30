@@ -104,7 +104,7 @@ export default function PerfilPage() {
       await fetch("/api/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...sub, timezone: getUserTimezone() }),
+        body: JSON.stringify({ ...sub.toJSON(), timezone: getUserTimezone() }),
       });
     } catch { /* retry next visit */ }
     setPushState("granted");
