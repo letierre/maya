@@ -7,6 +7,7 @@ import { getUserTimezone } from "@/lib/utils";
 import { defaultAnswers } from "@/components/CheckInEditor";
 import { requestPushSubscription } from "@/lib/push-utils";
 import { invalidateFetchCache } from "@/lib/fetch-cache";
+import { Paywall } from "@/components/Paywall";
 import { LANG_OPTIONS, t as translate, type Lang } from "@/lib/i18n";
 
 // ── Design tokens (mesmos do check-in) ────────────────────────────────────────
@@ -626,71 +627,11 @@ function NotificationsStep({ onEnable, onSkip, loading }: {
   );
 }
 
-function PaywallScreen({ onFinish, saving }: { onFinish: () => void; saving: boolean }) {
-  return (
-    <div style={{ textAlign: "center" }}>
-      <div style={{ fontSize: 56, lineHeight: 1, marginBottom: 10 }}>💜</div>
-      <h1 style={{ margin: "0 0 6px", fontSize: 27, fontWeight: 700, letterSpacing: "-0.025em", color: TEXT }}>
-        Seu equilíbrio, com a Maya ao seu lado.
-      </h1>
-      <p style={{ margin: "0 0 20px", fontSize: 14, color: MUTED, lineHeight: 1.5 }}>
-        Continue sua jornada com uma companheira que entende você.
-      </p>
-
-      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px", marginBottom: 20 }}>
-        <p style={{ margin: "0 0 4px", fontSize: 13.5, color: TEXT, fontStyle: "italic" }}>“É como ter alguém que presta atenção em mim.”</p>
-        <p style={{ margin: 0, fontSize: 12, color: ACCENT_2, fontWeight: 700 }}>★★★★★</p>
-      </div>
-
-      {/* TODO: Stripe — conectar checkout (valores reais já definidos) */}
-      <div style={{ marginBottom: 20 }}>
-        <p style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 800, color: TEXT }}>7 dias grátis</p>
-
-        {/* Plano anual (destaque) */}
-        <div style={{ background: "oklch(0.5 0.12 270 / .16)", border: `1.5px solid ${ACCENT}`, borderRadius: 16, padding: "14px 16px", marginBottom: 10, textAlign: "left" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 15, fontWeight: 800, color: TEXT }}>Anual</span>
-            <span style={{ background: ACCENT, color: "#fff", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>economize 30%</span>
-          </div>
-          <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
-            US$ 83,99<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/ano</span>
-          </p>
-          <p style={{ margin: "2px 0 0", fontSize: 12.5, color: MUTED }}>≈ US$ 7,00/mês · cancele quando quiser</p>
-        </div>
-
-        {/* Plano mensal */}
-        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px", textAlign: "left" }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>Mensal</span>
-          <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
-            US$ 9,99<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/mês</span>
-          </p>
-        </div>
-      </div>
-
-      <button type="button" onClick={onFinish} disabled={saving} style={{
-        width: "100%", height: 54, borderRadius: 16, border: 0, cursor: "pointer",
-        background: `linear-gradient(135deg, ${ACCENT}, ${ACCENT_2})`, color: "#fff",
-        fontFamily: "inherit", fontSize: 15.5, fontWeight: 700,
-        opacity: saving ? 0.7 : 1,
-        boxShadow: "0 4px 18px -4px oklch(.55 .2 270 / .5)",
-      }}>
-        {saving ? "Preparando…" : "Começar meus 7 dias grátis"}
-      </button>
-
-      <button type="button" onClick={() => toast.info("Em breve: integração com Stripe para restaurar compras.")} style={{
-        marginTop: 14, background: "transparent", border: 0, cursor: "pointer",
-        fontFamily: "inherit", fontSize: 13, color: MUTED, textDecoration: "underline",
-      }}>Restaurar compras</button>
-    </div>
-  );
-}
-
 // ── Fluxo principal ───────────────────────────────────────────────────────────
 
 export default function OnboardingFlow() {
   const router = useRouter();
   const [stepIdx, setStepIdx] = useState(0);
-  const [saving, setSaving] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
 
   const [goal, setGoal] = useState("");
@@ -796,60 +737,55 @@ export default function OnboardingFlow() {
     }).catch(() => {});
   }, [demo]);
 
+  // Completa o onboarding (antes do redirect pro Checkout do Stripe).
   const handleFinish = async () => {
-    setSaving(true);
-    try {
-      // 1. Garante o check-in da demo salvo
-      saveDemoCheckIn();
+    // 1. Garante o check-in da demo salvo
+    saveDemoCheckIn();
 
-      // 2. Monta enabled_questions (mesmo padrão do onboarding anterior)
-      const enabled = [
-        "felt_judged", "talked_to_someone", "meditation", "breathing", "creative_activity",
-        "ate_well", "bowel_movement", "walked", "ran", "strength_training", "read",
-        "drank_water", "slept_well", "did_something_enjoyable", "worked_on_goals",
-      ];
-      if (ctx.has_medication) enabled.push("took_medication");
-      if (ctx.has_faith) enabled.push("prayer");
-      if (ctx.track_suicidal_thoughts) enabled.push("suicidal_thoughts");
+    // 2. Monta enabled_questions (mesmo padrão do onboarding anterior)
+    const enabled = [
+      "felt_judged", "talked_to_someone", "meditation", "breathing", "creative_activity",
+      "ate_well", "bowel_movement", "walked", "ran", "strength_training", "read",
+      "drank_water", "slept_well", "did_something_enjoyable", "worked_on_goals",
+    ];
+    if (ctx.has_medication) enabled.push("took_medication");
+    if (ctx.has_faith) enabled.push("prayer");
+    if (ctx.track_suicidal_thoughts) enabled.push("suicidal_thoughts");
 
-      const context = {
-        ...ctx,
-        gender,
-        language: lang,
-        community_name: `Anônimo${Math.floor(1000 + Math.random() * 9000)}`,
-      };
+    const context = {
+      ...ctx,
+      gender,
+      language: lang,
+      community_name: `Anônimo${Math.floor(1000 + Math.random() * 9000)}`,
+    };
 
-      const onboarding = {
-        goal,
-        pain_points: pains,
-        tinder_agreed: tinderAgreed,
-        area_preferences: areas,
-        gender,
-        language: lang,
-        ...ctx,
-        // TODO: capturar utm_source/utm_campaign do cadastro quando houver atribuição de anúncios
-      };
+    const onboarding = {
+      goal,
+      pain_points: pains,
+      tinder_agreed: tinderAgreed,
+      area_preferences: areas,
+      gender,
+      language: lang,
+      ...ctx,
+      // TODO: capturar utm_source/utm_campaign do cadastro quando houver atribuição de anúncios
+    };
 
-      const res = await fetch("/api/preferences", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          enabled_questions: enabled,
-          context,
-          onboarding_completed: true,
-          onboarding,
-        }),
-      });
+    const res = await fetch("/api/preferences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        enabled_questions: enabled,
+        context,
+        onboarding_completed: true,
+        onboarding,
+      }),
+    });
 
-      if (!res.ok) throw new Error("save");
+    if (!res.ok) throw new Error("save");
 
-      invalidateFetchCache("/api/check-ins");
-      router.push("/dashboard");
-      router.refresh();
-    } catch {
-      toast.error("Erro ao salvar. Tente novamente.");
-      setSaving(false);
-    }
+    invalidateFetchCache("/api/check-ins");
+    // O redirect pro Checkout do Stripe é feito pelo componente Paywall,
+    // que chama este beforeCheckout antes de criar a sessão.
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -890,7 +826,7 @@ export default function OnboardingFlow() {
         {step === "demo" && <DemoStep selected={demo} toggle={toggleDemo} onNext={() => { saveDemoCheckIn(); goNext(); }} onPrev={goPrev} />}
         {step === "value" && <ValueStep selected={demo} onShare={handleShare} onNext={goNext} />}
         {step === "notifications" && <NotificationsStep onEnable={handleEnableNotifications} onSkip={goNext} loading={notifLoading} />}
-        {step === "paywall" && <PaywallScreen onFinish={handleFinish} saving={saving} />}
+        {step === "paywall" && <Paywall beforeCheckout={handleFinish} />}
       </div>
     </main>
   );

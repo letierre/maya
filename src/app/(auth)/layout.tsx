@@ -2,6 +2,7 @@ import { MainWrapper, BottomNavWrapper } from "@/components/DashboardChrome";
 import { SleepCapture } from "@/components/SleepCapture";
 import { ServiceWorkerNavListener } from "@/components/ServiceWorkerNavListener";
 import { SessionGuard } from "@/components/SessionGuard";
+import { SubscriptionGate } from "@/components/SubscriptionGate";
 
 export default function AuthLayout({
   children,
@@ -11,6 +12,7 @@ export default function AuthLayout({
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <SessionGuard />
+      <SubscriptionGate />
       <ServiceWorkerNavListener />
       <SleepCapture />
       <MainWrapper>{children}</MainWrapper>
