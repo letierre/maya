@@ -163,6 +163,33 @@
   display: none;
 }
 
+/* ── Molde de celular no desktop ─────────────────────────────────────────
+   Em telas largas (PC), o app é exibido numa coluna de 430px centrada,
+   como um telefone. O `transform` cria um containing block para os filhos
+   `position: fixed` (BottomNav, sheets, modais), fazendo-os respeitar a
+   largura do frame em vez do viewport inteiro. */
+.app-frame {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  body {
+    background: oklch(0.055 0.012 270); /* fundo externo escurecido */
+  }
+  .app-frame {
+    max-width: 430px;
+    transform: translateZ(0);
+    border-left: 1px solid oklch(0.28 0.02 270);
+    border-right: 1px solid oklch(0.28 0.02 270);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.5);
+  }
+}
+
 @keyframes mayaBreathe {
   0%, 100% { transform: scale(1); opacity: 0.6; }
   50% { transform: scale(1.1); opacity: 1; }
