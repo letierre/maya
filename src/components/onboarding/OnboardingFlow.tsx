@@ -7,6 +7,7 @@ import { getUserTimezone } from "@/lib/utils";
 import { defaultAnswers, WaterCupSelector, WATER_GOAL, ML_PER_CUP } from "@/components/CheckInEditor";
 import { requestPushSubscription } from "@/lib/push-utils";
 import { invalidateFetchCache } from "@/lib/fetch-cache";
+import { useInstallPrompt, IosGuide } from "@/components/InstallAppCard";
 import { Paywall } from "@/components/Paywall";
 import { LANG_OPTIONS, t as translate, type Lang } from "@/lib/i18n";
 
@@ -85,7 +86,7 @@ const CONTEXT_QUESTIONS = [
 
 const STEPS = [
   "welcome", "goal", "pain", "social", "tinder", "solution", "comparison",
-  "preferences", "about", "processing", "demo", "value", "notifications", "paywall",
+  "preferences", "about", "processing", "demo", "value", "notifications", "install", "paywall",
 ] as const;
 
 // ── Shared UI ─────────────────────────────────────────────────────────────────
@@ -632,6 +633,61 @@ function NotificationsStep({ onEnable, onSkip, loading }: {
   );
 }
 
+function InstallStep({ onNext }: { onNext: () => void }) {
+  const { deferred, ios, installed, handleInstall } = useInstallPrompt();
+  const [showGuide, setShowGuide] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Já instalado (aberto em modo standalone) → pula automaticamente.
+  useEffect(() => {
+    if (installed) onNext();
+  }, [installed, onNext]);
+
+  const primary = async () => {
+    if (ios) { setShowGuide(true); return; }
+    if (deferred) {
+      setLoading(true);
+      await handleInstall();
+      setLoading(false);
+      onNext();
+      return;
+    }
+    onNext();
+  };
+
+  const label = ios ? "Como instalar" : deferred ? "Instalar app" : "Continuar";
+
+  return (
+    <>
+      <Section title="Tenha a Maya na sua tela de início." />
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 6 }}>
+        {[
+          ["📱", "A Maya fica como um app, ao lado dos seus outros."],
+          ["⚡", "Abre em um toque, sem digitar endereço."],
+          ["🔔", "Roda junto com os lembretes que você ativou."],
+        ].map(([e, txt]) => (
+          <div key={txt} style={{ display: "flex", alignItems: "flex-start", gap: 12, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px" }}>
+            <span style={{ fontSize: 22, lineHeight: 1 }}>{e}</span>
+            <span style={{ fontSize: 14, color: TEXT, lineHeight: 1.5 }}>{txt}</span>
+          </div>
+        ))}
+      </div>
+      <Footer
+        onNext={primary}
+        nextLabel={loading ? "Instalando…" : label}
+        nextDisabled={loading}
+        secondary={
+          <button type="button" onClick={onNext} style={{
+            background: "transparent", border: 0, cursor: "pointer",
+            fontFamily: "inherit", fontSize: 13, color: MUTED, padding: "8px 0", flexShrink: 0,
+          }}>Agora não</button>
+        }
+      />
+      {showGuide && <IosGuide onClose={() => setShowGuide(false)} onDone={onNext} />}
+    </>
+  );
+}
+
 // ── Fluxo principal ───────────────────────────────────────────────────────────
 
 export default function OnboardingFlow() {
@@ -786,7 +842,7 @@ export default function OnboardingFlow() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   const showProgress = step !== "welcome" && step !== "paywall";
-  const showBack = stepIdx > 0 && step !== "processing" && step !== "value" && step !== "paywall" && step !== "notifications";
+  const showBack = stepIdx > 0 && step !== "processing" && step !== "value" && step !== "paywall" && step !== "notifications" && step !== "install";
 
   return (
     <main style={{
@@ -821,6 +877,7 @@ export default function OnboardingFlow() {
         {step === "demo" && <DemoStep selected={demo} toggle={toggleDemo} waterCups={waterCups} setWaterCups={setWaterCups} onNext={() => { saveDemoCheckIn(); goNext(); }} onPrev={goPrev} />}
         {step === "value" && <ValueStep selected={demo} waterCups={waterCups} onNext={goNext} />}
         {step === "notifications" && <NotificationsStep onEnable={handleEnableNotifications} onSkip={goNext} loading={notifLoading} />}
+        {step === "install" && <InstallStep onNext={goNext} />}
         {step === "paywall" && <Paywall beforeCheckout={handleFinish} />}
       </div>
     </main>

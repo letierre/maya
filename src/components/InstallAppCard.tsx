@@ -44,6 +44,44 @@ function isStandalone(): boolean {
   return (navigator as unknown as { standalone?: boolean }).standalone === true;
 }
 
+// Detecta a capacidade de instalação do PWA. Compartilhado entre o Perfil e o onboarding.
+export function useInstallPrompt() {
+  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [ios, setIos] = useState(false);
+  const [installed, setInstalled] = useState(false);
+
+  useEffect(() => {
+    if (isStandalone()) { setInstalled(true); return; }
+    setIos(isIOS());
+
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferred(e as BeforeInstallPromptEvent);
+    };
+    const onInstalled = () => { setInstalled(true); setDeferred(null); };
+
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferred) return;
+    await deferred.prompt();
+    try {
+      const choice = await deferred.userChoice;
+      if (choice.outcome === "accepted") setDeferred(null);
+    } catch {
+      /* usuário fechou o prompt */
+    }
+  };
+
+  return { deferred, ios, installed, handleInstall };
+}
+
 function Step({ n, title, desc, icon }: { n: number; title: string; desc: string; icon?: React.ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -65,7 +103,7 @@ function Step({ n, title, desc, icon }: { n: number; title: string; desc: string
   );
 }
 
-function IosGuide({ onClose }: { onClose: () => void }) {
+export function IosGuide({ onClose, onDone }: { onClose: () => void; onDone?: () => void }) {
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} />
@@ -99,45 +137,24 @@ function IosGuide({ onClose }: { onClose: () => void }) {
           <Step n={2} title="Escolha “Adicionar à Tela de Início”" desc="Role o menu para baixo até encontrar essa opção." />
           <Step n={3} title="Toque em Adicionar" desc="Pronto! A Maya aparece como um app na sua tela de início." />
         </div>
+
+        {onDone && (
+          <button type="button" onClick={() => { onClose(); onDone(); }} style={{
+            width: "100%", marginTop: 20, padding: "14px 16px", borderRadius: 12, border: 0,
+            cursor: "pointer", background: "#7C5CFF", color: "#fff",
+            fontFamily: "inherit", fontSize: 14, fontWeight: 700,
+          }}>
+            Continuar
+          </button>
+        )}
       </div>
     </>
   );
 }
 
 export function InstallAppCard() {
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [ios, setIos] = useState(false);
-  const [installed, setInstalled] = useState(false);
+  const { deferred, ios, installed, handleInstall } = useInstallPrompt();
   const [showGuide, setShowGuide] = useState(false);
-
-  useEffect(() => {
-    if (isStandalone()) { setInstalled(true); return; }
-    setIos(isIOS());
-
-    const onPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-    };
-    const onInstalled = () => { setInstalled(true); setDeferred(null); };
-
-    window.addEventListener("beforeinstallprompt", onPrompt);
-    window.addEventListener("appinstalled", onInstalled);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onPrompt);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
-  }, []);
-
-  const handleInstall = async () => {
-    if (!deferred) return;
-    await deferred.prompt();
-    try {
-      const choice = await deferred.userChoice;
-      if (choice.outcome === "accepted") setDeferred(null);
-    } catch {
-      /* usuário fechou o prompt */
-    }
-  };
 
   if (installed) return null;
 
