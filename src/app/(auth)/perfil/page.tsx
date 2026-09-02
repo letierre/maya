@@ -9,6 +9,7 @@ import { LANG_OPTIONS } from "@/lib/i18n";
 import { requestPushSubscription, hasPushPermission } from "@/lib/push-utils";
 import { getUserTimezone } from "@/lib/utils";
 import { LogoutButton } from "@/components/LogoutButton";
+import { InstallAppCard } from "@/components/InstallAppCard";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
 import { APP_VERSION } from "@/lib/version";
 
@@ -394,6 +395,8 @@ export default function PerfilPage() {
 
           {pushState === "unsupported" && null}
         </div>
+
+        <InstallAppCard />
 
         {/* Configurações */}
         <div style={card}>
