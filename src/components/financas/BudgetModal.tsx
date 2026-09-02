@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import type { FinancialBudget } from "@/types";
+import { ChevronDown, ChevronRight, Repeat } from "lucide-react";
+import type { FinancialBudget, FinancialRecurringBudget } from "@/types";
 import type { Lang } from "@/lib/i18n";
 import { t as tFn } from "@/lib/i18n";
 import { mergeCats, type FinCat, type CustomCat, type UserCategory, type SubcatOverrides } from "@/lib/financas-categories";
+import { addMonths, monthsBetween } from "@/lib/financas-budget";
+
+type RecurMode = "once" | "months" | "forever";
 
 function catLabel(c: FinCat, lang: Lang, customCat: CustomCat | null, userCategories: UserCategory[]): string {
   if (c.custom) {
@@ -37,7 +40,7 @@ function parseMoney(input: string): string {
 }
 
 export function BudgetModal({
-  budgets, month, onClose, onSaved, lang, currency, customCat, userCategories, hiddenCatIds, subcatOverrides,
+  budgets, month, onClose, onSaved, lang, currency, customCat, userCategories, hiddenCatIds, subcatOverrides, recurringBudgets,
 }: {
   budgets: FinancialBudget[];
   month: string;
@@ -49,6 +52,7 @@ export function BudgetModal({
   userCategories: UserCategory[];
   hiddenCatIds: string[];
   subcatOverrides?: SubcatOverrides;
+  recurringBudgets: FinancialRecurringBudget[];
 }) {
   const cats = mergeCats("despesa", hiddenCatIds, userCategories, customCat, subcatOverrides);
 
@@ -73,6 +77,18 @@ export function BudgetModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Recorrência por linha de orçamento. Key = `${cat.id}` (categoria toda) ou
+  // `${cat.id}::${sub}` (subcategoria/outros). Inicializa a partir dos templates.
+  const [recur, setRecur] = useState<Record<string, { mode: RecurMode; count: number }>>(() => {
+    const init: Record<string, { mode: RecurMode; count: number }> = {};
+    for (const t of recurringBudgets) {
+      const key = t.subcategory === "" ? t.category : `${t.category}::${t.subcategory}`;
+      if (t.end_month === null) init[key] = { mode: "forever", count: 0 };
+      else init[key] = { mode: "months", count: monthsBetween(t.start_month, t.end_month) };
+    }
+    return init;
+  });
+
   const subcatKeys = (c: FinCat) => [
     ...c.subcats.map((sc) => `${c.id}::${sc.label}`),
     `${c.id}::__outros__`,
@@ -88,6 +104,8 @@ export function BudgetModal({
 
     const postOps: Promise<{ ok: boolean; error?: string }>[] = [];
     const deleteOps: { category: string; subcategory: string }[] = [];
+    const recurOps: Promise<void>[] = [];
+    const recurDeleteOps: { category: string; subcategory: string }[] = [];
 
     for (const c of cats) {
       const subVals = subcatKeys(c).filter((k) => values[k] && Number(values[k]) > 0);
@@ -117,15 +135,38 @@ export function BudgetModal({
             return { ok: false, error: body?.error ?? `HTTP ${r.status}` };
           })
         );
+
+        // Recorrência da linha (template). Preserva o start_month original se já existir.
+        const key = sub === "" ? c.id : `${c.id}::${sub}`;
+        const rec = recur[key] ?? { mode: "once" as RecurMode, count: 3 };
+        const existing = recurringBudgets.find((r) => r.category === c.id && r.subcategory === sub);
+        if (rec.mode !== "once") {
+          const startMonth = existing?.start_month ?? month;
+          const endMonth = rec.mode === "forever" ? null : addMonths(startMonth, rec.count - 1);
+          recurOps.push(
+            fetch("/api/financas/budgets/recurring", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ category: c.id, subcategory: sub, monthly_limit: val, start_month: startMonth, end_month: endMonth }),
+            }).then(() => {})
+          );
+        } else if (existing) {
+          recurDeleteOps.push({ category: c.id, subcategory: sub });
+        }
       }
 
-      // Linhas antigas que não estão mais no novo estado → apagar depois
+      // Linhas antigas que não estão mais no novo estado → apagar explícita + template
       for (const sub of oldSubs) {
-        if (!newSubs.includes(sub)) deleteOps.push({ category: c.id, subcategory: sub });
+        if (!newSubs.includes(sub)) {
+          deleteOps.push({ category: c.id, subcategory: sub });
+          if (recurringBudgets.some((r) => r.category === c.id && r.subcategory === sub)) {
+            recurDeleteOps.push({ category: c.id, subcategory: sub });
+          }
+        }
       }
     }
 
-    // 1) Grava tudo primeiro; só apaga o que saiu se todos os POST derem certo.
+    // 1) Grava as linhas explícitas; só apaga o que saiu se todos os POST derem certo.
     const postResults = await Promise.all(postOps);
     const firstFail = postResults.find((r) => !r.ok);
     if (firstFail) {
@@ -144,6 +185,18 @@ export function BudgetModal({
       )
     );
 
+    // 2) Reconcilia os templates de recorrência (idempotente).
+    await Promise.all(recurOps);
+    await Promise.all(
+      recurDeleteOps.map(({ category, subcategory }) =>
+        fetch("/api/financas/budgets/recurring", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category, subcategory }),
+        })
+      )
+    );
+
     setSaving(false);
     onSaved();
     onClose();
@@ -155,6 +208,50 @@ export function BudgetModal({
     background: "#0B0B10", fontFamily: "inherit",
     fontSize: 13, fontWeight: 700, color: "#e0d6ff", outline: "none",
     textAlign: "right",
+  };
+
+  const recurSelectS: React.CSSProperties = {
+    width: 46, padding: "6px 2px", borderRadius: 8,
+    border: "1px solid rgba(167,139,250,0.2)",
+    background: "#0B0B10", fontFamily: "inherit",
+    fontSize: 11, fontWeight: 700, color: "#A78BFA", outline: "none",
+  };
+
+  const recurMonthsS: React.CSSProperties = {
+    width: 40, padding: "6px 2px", borderRadius: 8,
+    border: "1px solid rgba(167,139,250,0.2)",
+    background: "#0B0B10", fontFamily: "inherit",
+    fontSize: 11, fontWeight: 700, color: "#e0d6ff", outline: "none",
+    textAlign: "center",
+  };
+
+  // Controle de recorrência: "1×" (este mês), "N×" (por N meses), "∞" (sempre).
+  const recurControl = (key: string) => {
+    const r = recur[key] ?? { mode: "once" as RecurMode, count: 3 };
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }} title="Repetir nos próximos meses">
+        <Repeat size={11} style={{ color: r.mode === "once" ? "#9e96b5" : "#A78BFA" }} />
+        <select
+          value={r.mode}
+          onChange={(e) => setRecur((p) => ({ ...p, [key]: { mode: e.target.value as RecurMode, count: p[key]?.count ?? 3 } }))}
+          style={recurSelectS}
+        >
+          <option value="once">1×</option>
+          <option value="months">N×</option>
+          <option value="forever">∞</option>
+        </select>
+        {r.mode === "months" && (
+          <input
+            type="number"
+            min={2}
+            max={120}
+            value={r.count}
+            onChange={(e) => setRecur((p) => ({ ...p, [key]: { mode: "months", count: Math.max(2, Number(e.target.value) || 2) } }))}
+            style={recurMonthsS}
+          />
+        )}
+      </div>
+    );
   };
 
   return (
@@ -183,6 +280,7 @@ export function BudgetModal({
             const emoji = c.custom && !c.id.startsWith("user_") ? (customCat?.emoji ?? c.emoji) : c.emoji;
             const isOpen = !!expanded[c.id];
             const subMode = hasSubBudget(c);
+            const catHasVal = !!values[c.id] && Number(values[c.id]) > 0;
             return (
               <div key={c.id}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -226,6 +324,12 @@ export function BudgetModal({
                   )}
                 </div>
 
+                {!subMode && catHasVal && (
+                  <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+                    {recurControl(c.id)}
+                  </div>
+                )}
+
                 {isOpen && c.subcats.length > 0 && (
                   <div style={{ marginTop: 6, marginLeft: 50, display: "flex", flexDirection: "column", gap: 6 }}>
                     {c.subcats.map((sc) => {
@@ -243,6 +347,7 @@ export function BudgetModal({
                             placeholder="—"
                             style={inputS}
                           />
+                          {!!values[key] && Number(values[key]) > 0 && recurControl(key)}
                         </div>
                       );
                     })}
@@ -259,6 +364,7 @@ export function BudgetModal({
                         placeholder="—"
                         style={inputS}
                       />
+                      {!!values[`${c.id}::__outros__`] && Number(values[`${c.id}::__outros__`]) > 0 && recurControl(`${c.id}::__outros__`)}
                     </div>
                     <p style={{ margin: "4px 0 0", fontSize: 10, color: "#9e96b5" }}>
                       {subMode

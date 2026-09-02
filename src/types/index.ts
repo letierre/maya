@@ -298,6 +298,21 @@ export interface FinancialBudget {
   monthly_limit: number;
   month: string;      // YYYY-MM
   created_at: string;
+  // Campos opcionais injetados no merge de recorrentes (GET /api/financas/budgets):
+  recurring?: boolean;                                  // true = linha vinda de um template recorrente
+  recurrence?: { start_month: string; end_month: string | null } | null;
+}
+
+export interface FinancialRecurringBudget {
+  id: string;
+  user_id: string;
+  category: string;
+  subcategory: string;       // '' = categoria toda
+  monthly_limit: number;
+  start_month: string;       // YYYY-MM
+  end_month: string | null;  // YYYY-MM (inclusivo); null = "sempre"
+  created_at: string;
+  updated_at: string;
 }
 
 // ── Agenda ─────────────────────────────────────────────────────────────────────

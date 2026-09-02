@@ -2,6 +2,9 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { ensureRecurringSchema } from "@/lib/db/recurring-budgets";
+import type { FinancialBudget, FinancialRecurringBudget } from "@/types";
+import { monthInRange } from "@/lib/financas-budget";
 
 // Garante que a coluna `subcategory` exista (migration 043). Roda de forma
 // idempotente — se a coluna/index já existirem, os comandos viram no-op.
@@ -41,14 +44,56 @@ export async function GET(req: NextRequest) {
 
   const month = req.nextUrl.searchParams.get("month") ?? new Date().toISOString().slice(0, 7);
 
-  const { data, error } = await supabase
-    .from("financial_budgets")
-    .select("*")
-    .eq("user_id", session.user.id)
-    .eq("month", month);
+  await ensureRecurringSchema();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data ?? []);
+  const [explicitRes, recurringRes] = await Promise.all([
+    supabase
+      .from("financial_budgets")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .eq("month", month),
+    supabase
+      .from("recurring_budgets")
+      .select("*")
+      .eq("user_id", session.user.id),
+  ]);
+
+  if (explicitRes.error) return NextResponse.json({ error: explicitRes.error.message }, { status: 500 });
+
+  const explicit = (explicitRes.data ?? []) as FinancialBudget[];
+  const templates = (recurringRes.data ?? []) as FinancialRecurringBudget[];
+
+  // Templates ativos neste mês (start_month <= month <= end_month).
+  const active = templates.filter((t) => monthInRange(t.start_month, month, t.end_month));
+
+  // Chave (category, subcategory) das linhas explícitas → estas vencem sobre o template.
+  const explicitKeys = new Set(explicit.map((b) => `${b.category}::${b.subcategory ?? ""}`));
+
+  // Anota as linhas explícitas: se houver template ativo para a mesma chave, marca como recorrente.
+  const merged: FinancialBudget[] = explicit.map((b) => {
+    const tpl = active.find((t) => t.category === b.category && t.subcategory === (b.subcategory ?? ""));
+    return tpl
+      ? { ...b, recurring: true, recurrence: { start_month: tpl.start_month, end_month: tpl.end_month } }
+      : { ...b, recurring: false, recurrence: null };
+  });
+
+  // Materializa templates ativos que não têm linha explícita no mês.
+  for (const t of active) {
+    if (explicitKeys.has(`${t.category}::${t.subcategory}`)) continue;
+    merged.push({
+      id: `rec_${t.id}`,
+      user_id: t.user_id,
+      category: t.category,
+      subcategory: t.subcategory || null,
+      monthly_limit: t.monthly_limit,
+      month,
+      created_at: t.created_at,
+      recurring: true,
+      recurrence: { start_month: t.start_month, end_month: t.end_month },
+    });
+  }
+
+  return NextResponse.json(merged);
 }
 
 export async function POST(req: NextRequest) {

@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Target, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Settings } from "lucide-react";
-import type { FinancialTransaction, FinancialBudget, Goal } from "@/types";
+import { Plus, Pencil, Trash2, Target, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Settings, Repeat } from "lucide-react";
+import type { FinancialTransaction, FinancialBudget, FinancialRecurringBudget, Goal } from "@/types";
 import { useTranslation } from "@/lib/useTranslation";
 import { t as tFn, type Lang } from "@/lib/i18n";
 import { mergeCats, resolveCat, type FinCat, type CustomCat, type UserCategory, type SubcatOverrides } from "@/lib/financas-categories";
@@ -92,6 +92,7 @@ type BudgetRow = {
   limit: number | null; // null → linha "Outros" derivada (gasto residual, sem orçamento)
   pct: number;
   over: boolean;
+  recurring?: boolean;
 };
 
 // Monta as linhas de orçamento para exibição, incluindo uma linha derivada "Outros"
@@ -133,19 +134,19 @@ function buildBudgetRows(
     if (b.subcategory === "__outros__") {
       const spent = residualByCat.get(b.category) ?? 0;
       const pct = Math.min((spent / b.monthly_limit) * 100, 100);
-      rows.push({ key: b.id, emoji, label: `${baseLabel} › ${outrosLabel}`, spent, limit: b.monthly_limit, pct, over: spent > b.monthly_limit });
+      rows.push({ key: b.id, emoji, label: `${baseLabel} › ${outrosLabel}`, spent, limit: b.monthly_limit, pct, over: spent > b.monthly_limit, recurring: !!b.recurring });
     } else if (b.subcategory) {
       const spent = transactions
         .filter((t) => t.type === "despesa" && t.category === b.category && t.subcategory === b.subcategory)
         .reduce((s, t) => s + t.amount, 0);
       const pct = Math.min((spent / b.monthly_limit) * 100, 100);
-      rows.push({ key: b.id, emoji, label: `${baseLabel} › ${b.subcategory}`, spent, limit: b.monthly_limit, pct, over: spent > b.monthly_limit });
+      rows.push({ key: b.id, emoji, label: `${baseLabel} › ${b.subcategory}`, spent, limit: b.monthly_limit, pct, over: spent > b.monthly_limit, recurring: !!b.recurring });
     } else {
       const spent = transactions
         .filter((t) => t.type === "despesa" && t.category === b.category)
         .reduce((s, t) => s + t.amount, 0);
       const pct = Math.min((spent / b.monthly_limit) * 100, 100);
-      rows.push({ key: b.id, emoji, label: baseLabel, spent, limit: b.monthly_limit, pct, over: spent > b.monthly_limit });
+      rows.push({ key: b.id, emoji, label: baseLabel, spent, limit: b.monthly_limit, pct, over: spent > b.monthly_limit, recurring: !!b.recurring });
     }
   }
 
@@ -256,6 +257,7 @@ export default function FinancasPage() {
   const [monthOffset, setMonthOffset] = useState(0);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [budgets, setBudgets] = useState<FinancialBudget[]>([]);
+  const [recurringBudgets, setRecurringBudgets] = useState<FinancialRecurringBudget[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("overview");
@@ -273,17 +275,19 @@ export default function FinancasPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [prefsRes, txRes, budgetRes, goalsRes, catsRes] = await Promise.all([
+      const [prefsRes, txRes, budgetRes, goalsRes, catsRes, recurRes] = await Promise.all([
         fetch("/api/preferences").then((r) => r.json()),
         fetch(`/api/financas/transactions?month=${currentMonth}`).then((r) => r.json()),
         fetch(`/api/financas/budgets?month=${currentMonth}`).then((r) => r.json()),
         fetch("/api/goals").then((r) => r.json()),
         fetch("/api/financas/categories").then((r) => r.json()).catch(() => ({ categories: [], hiddenFinCats: [], hiddenFinSubcats: {}, customFinSubcats: {} })),
+        fetch("/api/financas/budgets/recurring").then((r) => r.json()).catch(() => []),
       ]);
       if (prefsRes.context?.currency) setCurrency(prefsRes.context.currency);
       if (prefsRes.context?.custom_fin_cat) setCustomCat(prefsRes.context.custom_fin_cat);
       if (Array.isArray(txRes)) setTransactions(txRes);
       if (Array.isArray(budgetRes)) setBudgets(budgetRes);
+      if (Array.isArray(recurRes)) setRecurringBudgets(recurRes);
       if (Array.isArray(goalsRes)) {
         setGoals(goalsRes.filter((g: Goal) => g.area === "financas" && (!g.source || g.source === "financas") && g.status === "ativa"));
       }
@@ -543,11 +547,11 @@ export default function FinancasPage() {
                     </button>
                   </div>
 
-                  {visibleItems.map(({ key, spent, pct, over, label, emoji, limit }) => (
+                  {visibleItems.map(({ key, spent, pct, over, label, emoji, limit, recurring }) => (
                     <div key={key} style={{ marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                         <span style={{ fontSize: 15 }}>{emoji}</span>
-                        <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: TEXT }}>{label}</span>
+                        <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: TEXT }}>{label}{recurring && <Repeat size={11} style={{ color: ACCENT, verticalAlign: -1, marginLeft: 5 }} />}</span>
                         <span style={{ fontSize: 11, fontWeight: 700, color: over ? RED : TEXT_SEC }}>
                           {fmt(spent, currency)}
                           {limit !== null && <span style={{ fontWeight: 500, color: TEXT_SEC }}> / {fmt(limit, currency)}</span>}
@@ -814,11 +818,11 @@ export default function FinancasPage() {
                   const totalOver = totalSpent > totalLimit;
                   return (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                      {items.map(({ key, label, emoji, spent, pct, over, limit }) => (
+                      {items.map(({ key, label, emoji, spent, pct, over, limit, recurring }) => (
                           <div key={key}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                               <span style={{ fontSize: 15 }}>{emoji}</span>
-                              <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: TEXT }}>{label}</span>
+                              <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: TEXT }}>{label}{recurring && <Repeat size={11} style={{ color: ACCENT, verticalAlign: -1, marginLeft: 5 }} />}</span>
                               <span style={{ fontSize: 11, fontWeight: 700, color: over ? RED : TEXT_SEC }}>
                                 {fmt(spent, currency)}
                                 {limit !== null && <span style={{ fontWeight: 500, color: TEXT_SEC }}> / {fmt(limit, currency)}</span>}
@@ -969,6 +973,7 @@ export default function FinancasPage() {
           userCategories={userCategories}
           hiddenCatIds={hiddenCatIds}
           subcatOverrides={subcatOverrides}
+          recurringBudgets={recurringBudgets}
         />
       )}
 
