@@ -22,6 +22,15 @@ export async function ensureRecurringSchema() {
       );
       CREATE UNIQUE INDEX IF NOT EXISTS recurring_budgets_user_category_subcategory_key
         ON recurring_budgets (user_id, category, subcategory);
+
+      ALTER TABLE recurring_budgets ENABLE ROW LEVEL SECURITY;
+
+      DROP POLICY IF EXISTS "Users manage own recurring budgets" ON recurring_budgets;
+      CREATE POLICY "Users manage own recurring budgets"
+        ON recurring_budgets
+        FOR ALL
+        USING (auth.uid() = user_id)
+        WITH CHECK (auth.uid() = user_id);
     `);
   } catch (e) {
     console.error("[financas/budgets] falha ao garantir schema de recorrentes:", e);

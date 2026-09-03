@@ -104,7 +104,7 @@ export function BudgetModal({
 
     const postOps: Promise<{ ok: boolean; error?: string }>[] = [];
     const deleteOps: { category: string; subcategory: string }[] = [];
-    const recurOps: Promise<void>[] = [];
+    const recurOps: Promise<{ ok: boolean; error?: string }>[] = [];
     const recurDeleteOps: { category: string; subcategory: string }[] = [];
 
     for (const c of cats) {
@@ -148,7 +148,11 @@ export function BudgetModal({
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ category: c.id, subcategory: sub, monthly_limit: val, start_month: startMonth, end_month: endMonth }),
-            }).then(() => {})
+            }).then(async (r) => {
+              if (r.ok) return { ok: true };
+              const body = await r.json().catch(() => null);
+              return { ok: false, error: body?.error ?? `HTTP ${r.status}` };
+            })
           );
         } else if (existing) {
           recurDeleteOps.push({ category: c.id, subcategory: sub });
@@ -186,7 +190,13 @@ export function BudgetModal({
     );
 
     // 2) Reconcilia os templates de recorrência (idempotente).
-    await Promise.all(recurOps);
+    const recurResults = await Promise.all(recurOps);
+    const recurFail = recurResults.find((r) => !r.ok);
+    if (recurFail) {
+      setSaving(false);
+      setError(`Orçamento salvo, mas a recorrência falhou: ${recurFail.error ?? "erro desconhecido"}`);
+      return;
+    }
     await Promise.all(
       recurDeleteOps.map(({ category, subcategory }) =>
         fetch("/api/financas/budgets/recurring", {

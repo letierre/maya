@@ -17,3 +17,14 @@ CREATE TABLE IF NOT EXISTS recurring_budgets (
 
 CREATE UNIQUE INDEX IF NOT EXISTS recurring_budgets_user_category_subcategory_key
   ON recurring_budgets (user_id, category, subcategory);
+
+-- RLS: cada usuário gerencia apenas seus próprios orçamentos recorrentes.
+-- (Sem esta policy, o INSERT do usuário autenticado é barrado com 42501.)
+ALTER TABLE recurring_budgets ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users manage own recurring budgets" ON recurring_budgets;
+CREATE POLICY "Users manage own recurring budgets"
+  ON recurring_budgets
+  FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
