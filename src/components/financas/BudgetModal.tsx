@@ -270,7 +270,7 @@ export function BudgetModal({
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90,
         borderRadius: "24px 24px 0 0", background: "#151520",
-        padding: "20px 20px calc(env(safe-area-inset-bottom) + 28px)",
+        padding: "20px 20px 0",
         boxShadow: "0 -8px 40px rgba(0,0,0,0.3)",
         maxHeight: "90dvh", overflowY: "auto",
         border: "1px solid rgba(167,139,250,0.15)",
@@ -388,20 +388,26 @@ export function BudgetModal({
           })}
         </div>
 
-        {error && (
-          <p style={{ margin: "16px 0 0", fontSize: 12, fontWeight: 600, color: "#FF5C5C", textAlign: "center" }}>
-            {error}
-          </p>
-        )}
-        <button type="button" onClick={save} disabled={saving} style={{
-          marginTop: 24, width: "100%", padding: "15px 20px", borderRadius: 14, border: 0,
-          cursor: saving ? "not-allowed" : "pointer",
-          background: saving ? "rgba(124,92,255,0.2)" : "#7C5CFF",
-          fontFamily: "inherit", fontSize: 15, fontWeight: 700,
-          color: saving ? "rgba(167,139,250,0.5)" : "#fff",
+        <div style={{
+          position: "sticky", bottom: 0, background: "#151520",
+          paddingTop: 12, paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)",
+          borderTop: "1px solid rgba(167,139,250,0.15)",
         }}>
-          {saving ? tFn(lang, "salvando") : tFn(lang, "salvar")}
-        </button>
+          {error && (
+            <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 600, color: "#FF5C5C", textAlign: "center" }}>
+              {error}
+            </p>
+          )}
+          <button type="button" onClick={save} disabled={saving} style={{
+            width: "100%", padding: "15px 20px", borderRadius: 14, border: 0,
+            cursor: saving ? "not-allowed" : "pointer",
+            background: saving ? "rgba(124,92,255,0.2)" : "#7C5CFF",
+            fontFamily: "inherit", fontSize: 15, fontWeight: 700,
+            color: saving ? "rgba(167,139,250,0.5)" : "#fff",
+          }}>
+            {saving ? tFn(lang, "salvando") : tFn(lang, "salvar")}
+          </button>
+        </div>
       </div>
     </>
   );
