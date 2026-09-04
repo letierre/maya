@@ -39,6 +39,15 @@ function parseMoney(input: string): string {
   return (input ?? "").replace(/\D/g, "");
 }
 
+function formatTotal(amount: number, currency: string): string {
+  const locale = CURRENCY_LOCALE[currency] ?? "pt-BR";
+  try {
+    return new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+  } catch {
+    return new Intl.NumberFormat(locale).format(amount);
+  }
+}
+
 export function BudgetModal({
   budgets, month, onClose, onSaved, lang, currency, customCat, userCategories, hiddenCatIds, subcatOverrides, recurringBudgets,
 }: {
@@ -97,6 +106,12 @@ export function BudgetModal({
     subcatKeys(c).some((k) => values[k] && Number(values[k]) > 0);
   const subTotal = (c: FinCat) =>
     subcatKeys(c).reduce((s, k) => s + (Number(values[k]) || 0), 0);
+
+  // Total planejado exibido no rodapé: soma das subcategorias (quando há) ou do valor da categoria.
+  const plannedTotal = cats.reduce(
+    (sum, c) => (hasSubBudget(c) ? sum + subTotal(c) : sum + (Number(values[c.id]) || 0)),
+    0,
+  );
 
   const save = async () => {
     setSaving(true);
@@ -393,6 +408,14 @@ export function BudgetModal({
           paddingTop: 12, paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)",
           borderTop: "1px solid rgba(167,139,250,0.15)",
         }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, padding: "0 2px" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#9e96b5" }}>
+              Total planejado
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 800, color: "#e0d6ff" }}>
+              {formatTotal(plannedTotal, currency)}
+            </span>
+          </div>
           {error && (
             <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 600, color: "#FF5C5C", textAlign: "center" }}>
               {error}
