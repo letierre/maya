@@ -250,7 +250,7 @@ export function BudgetModal({
           onClick={() => setRecur((p) => ({ ...p, [key]: { mode, count: p[key]?.count ?? 3 } }))}
           style={{
             padding: "8px 12px", border: 0, cursor: "pointer",
-            fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, lineHeight: 1,
+            fontFamily: "inherit", fontSize: mode === "forever" ? 18 : 12.5, fontWeight: 700, lineHeight: 1,
             background: on ? "rgba(124,92,255,0.24)" : "transparent",
             color: on ? "#A78BFA" : "#9e96b5",
             transition: "all .15s ease",
