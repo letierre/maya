@@ -235,45 +235,63 @@ export function BudgetModal({
     textAlign: "right",
   };
 
-  const recurSelectS: React.CSSProperties = {
-    width: 46, padding: "6px 2px", borderRadius: 8,
-    border: "1px solid rgba(167,139,250,0.2)",
-    background: "#0B0B10", fontFamily: "inherit",
-    fontSize: 11, fontWeight: 700, color: "#A78BFA", outline: "none",
-  };
-
-  const recurMonthsS: React.CSSProperties = {
-    width: 40, padding: "6px 2px", borderRadius: 8,
-    border: "1px solid rgba(167,139,250,0.2)",
-    background: "#0B0B10", fontFamily: "inherit",
-    fontSize: 11, fontWeight: 700, color: "#e0d6ff", outline: "none",
-    textAlign: "center",
-  };
-
   // Controle de recorrência: "1×" (este mês), "N×" (por N meses), "∞" (sempre).
   const recurControl = (key: string) => {
     const r = recur[key] ?? { mode: "once" as RecurMode, count: 3 };
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }} title="Repetir nos próximos meses">
-        <Repeat size={11} style={{ color: r.mode === "once" ? "#9e96b5" : "#A78BFA" }} />
-        <select
-          value={r.mode}
-          onChange={(e) => setRecur((p) => ({ ...p, [key]: { mode: e.target.value as RecurMode, count: p[key]?.count ?? 3 } }))}
-          style={recurSelectS}
+    const active = r.mode !== "once";
+
+    const seg = (mode: RecurMode, label: string, hint: string) => {
+      const on = r.mode === mode;
+      return (
+        <button
+          key={mode}
+          type="button"
+          title={hint}
+          onClick={() => setRecur((p) => ({ ...p, [key]: { mode, count: p[key]?.count ?? 3 } }))}
+          style={{
+            padding: "8px 12px", border: 0, cursor: "pointer",
+            fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, lineHeight: 1,
+            background: on ? "rgba(124,92,255,0.24)" : "transparent",
+            color: on ? "#A78BFA" : "#9e96b5",
+            transition: "all .15s ease",
+          }}
         >
-          <option value="once">1×</option>
-          <option value="months">N×</option>
-          <option value="forever">∞</option>
-        </select>
+          {label}
+        </button>
+      );
+    };
+
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+        <Repeat size={13} style={{ color: active ? "#A78BFA" : "#9e96b5" }} />
+        <div style={{
+          display: "flex", alignItems: "center", background: "#0B0B10",
+          border: "1px solid rgba(167,139,250,0.25)", borderRadius: 10, overflow: "hidden",
+        }}>
+          {seg("once", "1×", "Só este mês")}
+          {seg("months", "N×", "Repetir por N meses")}
+          {seg("forever", "∞", "Sempre")}
+        </div>
         {r.mode === "months" && (
-          <input
-            type="number"
-            min={2}
-            max={120}
-            value={r.count}
-            onChange={(e) => setRecur((p) => ({ ...p, [key]: { mode: "months", count: Math.max(2, Number(e.target.value) || 2) } }))}
-            style={recurMonthsS}
-          />
+          <div title="Número de meses" style={{
+            display: "flex", alignItems: "center", gap: 5,
+            background: "#0B0B10", border: "1px solid rgba(167,139,250,0.25)",
+            borderRadius: 10, padding: "0 9px",
+          }}>
+            <input
+              type="number"
+              min={2}
+              max={120}
+              value={r.count}
+              onChange={(e) => setRecur((p) => ({ ...p, [key]: { mode: "months", count: Math.max(2, Number(e.target.value) || 2) } }))}
+              style={{
+                width: 28, padding: "8px 0", border: 0, outline: "none",
+                background: "transparent", fontFamily: "inherit",
+                fontSize: 12.5, fontWeight: 700, color: "#e0d6ff", textAlign: "center",
+              }}
+            />
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#9e96b5" }}>m</span>
+          </div>
         )}
       </div>
     );
