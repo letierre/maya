@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       monthly_limit: Number(monthly_limit),
       start_month,
       end_month: end_month || null,
-    }, { onConflict: "user_id,category,subcategory" })
+    }, { onConflict: "user_id,category,subcategory,start_month" })
     .select()
     .single();
 

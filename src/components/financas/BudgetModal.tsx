@@ -6,9 +6,10 @@ import type { FinancialBudget, FinancialRecurringBudget } from "@/types";
 import type { Lang } from "@/lib/i18n";
 import { t as tFn } from "@/lib/i18n";
 import { mergeCats, type FinCat, type CustomCat, type UserCategory, type SubcatOverrides } from "@/lib/financas-categories";
-import { addMonths, monthsBetween } from "@/lib/financas-budget";
+import { addMonths, monthsBetween, monthInRange } from "@/lib/financas-budget";
 
 type RecurMode = "once" | "months" | "forever";
+type RecurScope = "this_month" | "future";
 
 function catLabel(c: FinCat, lang: Lang, customCat: CustomCat | null, userCategories: UserCategory[]): string {
   if (c.custom) {
@@ -65,6 +66,13 @@ export function BudgetModal({
 }) {
   const cats = mergeCats("despesa", hiddenCatIds, userCategories, customCat, subcatOverrides);
 
+  // Segmento recorrente ativo no mês que está sendo editado (com segmentos,
+  // pode haver vários por chave; só o ativo importa aqui).
+  const activeSegment = (category: string, subcategory: string): FinancialRecurringBudget | undefined =>
+    recurringBudgets.find((r) =>
+      r.category === category && r.subcategory === subcategory && monthInRange(r.start_month, month, r.end_month)
+    );
+
   // Chaves dos valores:
   //   "categoria"            → orçamento da categoria toda
   //   "categoria::sub"       → orçamento da subcategoria
@@ -85,15 +93,23 @@ export function BudgetModal({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [prompting, setPrompting] = useState(false);
 
   // Recorrência por linha de orçamento. Key = `${cat.id}` (categoria toda) ou
-  // `${cat.id}::${sub}` (subcategoria/outros). Inicializa a partir dos templates.
+  // `${cat.id}::${sub}` (subcategoria/outros). Inicializa a partir do segmento
+  // ativo no mês atual (não do último template da lista).
   const [recur, setRecur] = useState<Record<string, { mode: RecurMode; count: number }>>(() => {
     const init: Record<string, { mode: RecurMode; count: number }> = {};
-    for (const t of recurringBudgets) {
-      const key = t.subcategory === "" ? t.category : `${t.category}::${t.subcategory}`;
-      if (t.end_month === null) init[key] = { mode: "forever", count: 0 };
-      else init[key] = { mode: "months", count: monthsBetween(t.start_month, t.end_month) };
+    for (const c of cats) {
+      const keys = [c.id, ...c.subcats.map((sc) => `${c.id}::${sc.label}`), `${c.id}::__outros__`];
+      for (const key of keys) {
+        const sub = key === c.id ? "" : key.slice(c.id.length + 2);
+        const t = activeSegment(c.id, sub);
+        if (!t) continue;
+        init[key] = t.end_month === null
+          ? { mode: "forever", count: 0 }
+          : { mode: "months", count: monthsBetween(t.start_month, t.end_month) };
+      }
     }
     return init;
   });
@@ -113,14 +129,63 @@ export function BudgetModal({
     0,
   );
 
-  const save = async () => {
-    setSaving(true);
-    setError("");
+  // Linhas recorrentes cujo VALOR foi alterado (para decidir se o prompt aparece).
+  const changedLines = (): { category: string; subcategory: string }[] => {
+    const out: { category: string; subcategory: string }[] = [];
+    for (const c of cats) {
+      const subVals = subcatKeys(c).filter((k) => values[k] && Number(values[k]) > 0);
+      const catVal = values[c.id];
+      const hasCatVal = !!catVal && Number(catVal) > 0;
+      const newSubs = subVals.length > 0
+        ? subVals.map((k) => k.slice(c.id.length + 2))
+        : (hasCatVal ? [""] : []);
+      for (const sub of newSubs) {
+        const key = sub === "" ? c.id : `${c.id}::${sub}`;
+        const rec = recur[key] ?? { mode: "once" as RecurMode, count: 3 };
+        if (rec.mode === "once") continue;
+        const active = activeSegment(c.id, sub);
+        if (!active) continue;
+        const val = sub === "" ? Number(catVal) : Number(values[`${c.id}::${sub}`]);
+        if (Number(active.monthly_limit) !== val) out.push({ category: c.id, subcategory: sub });
+      }
+    }
+    return out;
+  };
 
+  const handleSave = () => {
+    setError("");
+    if (changedLines().length > 0) {
+      setPrompting(true);
+      return;
+    }
+    void doSave("future");
+  };
+
+  const chooseScope = (scope: RecurScope) => {
+    setPrompting(false);
+    void doSave(scope);
+  };
+
+  // Monta o plano de operações (linhas explícitas + templates de recorrência).
+  const buildPlan = (scope: RecurScope) => {
     const postOps: Promise<{ ok: boolean; error?: string }>[] = [];
     const deleteOps: { category: string; subcategory: string }[] = [];
     const recurOps: Promise<{ ok: boolean; error?: string }>[] = [];
     const recurDeleteOps: { category: string; subcategory: string }[] = [];
+
+    const pushRecur = (category: string, subcategory: string, monthlyLimit: number, startMonth: string, endMonth: string | null) => {
+      recurOps.push(
+        fetch("/api/financas/budgets/recurring", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category, subcategory, monthly_limit: monthlyLimit, start_month: startMonth, end_month: endMonth }),
+        }).then(async (r) => {
+          if (r.ok) return { ok: true };
+          const body = await r.json().catch(() => null);
+          return { ok: false, error: body?.error ?? `HTTP ${r.status}` };
+        })
+      );
+    };
 
     for (const c of cats) {
       const subVals = subcatKeys(c).filter((k) => values[k] && Number(values[k]) > 0);
@@ -136,7 +201,6 @@ export function BudgetModal({
         .filter((b) => b.category === c.id)
         .map((b) => b.subcategory ?? "");
 
-      // Upsert das linhas novas (não-destrutivo)
       for (const sub of newSubs) {
         const val = sub === "" ? Number(catVal) : Number(values[`${c.id}::${sub}`]);
         postOps.push(
@@ -151,39 +215,37 @@ export function BudgetModal({
           })
         );
 
-        // Recorrência da linha (template). Preserva o start_month original se já existir.
         const key = sub === "" ? c.id : `${c.id}::${sub}`;
         const rec = recur[key] ?? { mode: "once" as RecurMode, count: 3 };
-        const existing = recurringBudgets.find((r) => r.category === c.id && r.subcategory === sub);
-        if (rec.mode !== "once") {
-          const startMonth = existing?.start_month ?? month;
-          const endMonth = rec.mode === "forever" ? null : addMonths(startMonth, rec.count - 1);
-          recurOps.push(
-            fetch("/api/financas/budgets/recurring", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ category: c.id, subcategory: sub, monthly_limit: val, start_month: startMonth, end_month: endMonth }),
-            }).then(async (r) => {
-              if (r.ok) return { ok: true };
-              const body = await r.json().catch(() => null);
-              return { ok: false, error: body?.error ?? `HTTP ${r.status}` };
-            })
-          );
-        } else if (existing) {
-          // Parar a recorrência ("1×"): fecha a série no mês atual em vez de apagar o
-          // template — preserva o histórico dos meses anteriores (que é derivado do
-          // template) e impede que o orçamento apareça nos meses seguintes.
-          recurOps.push(
-            fetch("/api/financas/budgets/recurring", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ category: c.id, subcategory: sub, monthly_limit: existing.monthly_limit, start_month: existing.start_month, end_month: month }),
-            }).then(async (r) => {
-              if (r.ok) return { ok: true };
-              const body = await r.json().catch(() => null);
-              return { ok: false, error: body?.error ?? `HTTP ${r.status}` };
-            })
-          );
+        const active = activeSegment(c.id, sub);
+
+        if (rec.mode === "once") {
+          if (active) {
+            // Parar a recorrência ("1×"): fecha a série no mês atual, preservando o histórico.
+            pushRecur(c.id, sub, Number(active.monthly_limit), active.start_month, month);
+          }
+        } else {
+          const targetEnd = rec.mode === "forever" ? null : addMonths(month, rec.count - 1);
+          const valueChanged = active !== undefined && Number(active.monthly_limit) !== val;
+
+          if (!active) {
+            pushRecur(c.id, sub, val, month, targetEnd);
+          } else if (!valueChanged) {
+            // Mesmo valor → muda só a duração (mantém o start original do segmento).
+            const startMonth = active.start_month;
+            const endMonth = rec.mode === "forever" ? null : addMonths(startMonth, rec.count - 1);
+            pushRecur(c.id, sub, Number(active.monthly_limit), startMonth, endMonth);
+          } else if (scope === "this_month") {
+            // Valor novo só neste mês: a linha explícita já cobre o mês atual; o
+            // template segue com o valor/duração antigos (sem operação aqui).
+          } else {
+            // "future": divide a série — fecha o trecho antigo no mês anterior e
+            // abre um novo segmento a partir do mês atual com o valor novo.
+            if (active.start_month < month) {
+              pushRecur(c.id, sub, Number(active.monthly_limit), active.start_month, addMonths(month, -1));
+            }
+            pushRecur(c.id, sub, val, month, targetEnd);
+          }
         }
       }
 
@@ -198,8 +260,17 @@ export function BudgetModal({
       }
     }
 
+    return { postOps, deleteOps, recurOps, recurDeleteOps };
+  };
+
+  const executePlan = async (plan: {
+    postOps: Promise<{ ok: boolean; error?: string }>[];
+    deleteOps: { category: string; subcategory: string }[];
+    recurOps: Promise<{ ok: boolean; error?: string }>[];
+    recurDeleteOps: { category: string; subcategory: string }[];
+  }) => {
     // 1) Grava as linhas explícitas; só apaga o que saiu se todos os POST derem certo.
-    const postResults = await Promise.all(postOps);
+    const postResults = await Promise.all(plan.postOps);
     const firstFail = postResults.find((r) => !r.ok);
     if (firstFail) {
       setSaving(false);
@@ -208,7 +279,7 @@ export function BudgetModal({
     }
 
     await Promise.all(
-      deleteOps.map(({ category, subcategory }) =>
+      plan.deleteOps.map(({ category, subcategory }) =>
         fetch("/api/financas/budgets", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
@@ -218,7 +289,7 @@ export function BudgetModal({
     );
 
     // 2) Reconcilia os templates de recorrência (idempotente).
-    const recurResults = await Promise.all(recurOps);
+    const recurResults = await Promise.all(plan.recurOps);
     const recurFail = recurResults.find((r) => !r.ok);
     if (recurFail) {
       setSaving(false);
@@ -226,7 +297,7 @@ export function BudgetModal({
       return;
     }
     await Promise.all(
-      recurDeleteOps.map(({ category, subcategory }) =>
+      plan.recurDeleteOps.map(({ category, subcategory }) =>
         fetch("/api/financas/budgets/recurring", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
@@ -238,6 +309,12 @@ export function BudgetModal({
     setSaving(false);
     onSaved();
     onClose();
+  };
+
+  const doSave = async (scope: RecurScope) => {
+    setSaving(true);
+    setError("");
+    await executePlan(buildPlan(scope));
   };
 
   const inputS: React.CSSProperties = {
@@ -452,7 +529,7 @@ export function BudgetModal({
               {error}
             </p>
           )}
-          <button type="button" onClick={save} disabled={saving} style={{
+          <button type="button" onClick={handleSave} disabled={saving} style={{
             width: "100%", padding: "15px 20px", borderRadius: 14, border: 0,
             cursor: saving ? "not-allowed" : "pointer",
             background: saving ? "rgba(124,92,255,0.2)" : "#7C5CFF",
@@ -463,6 +540,39 @@ export function BudgetModal({
           </button>
         </div>
       </div>
+
+      {prompting && (
+        <>
+          <div onClick={() => setPrompting(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} />
+          <div style={{ position: "fixed", inset: 0, zIndex: 110, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+            <div style={{
+              width: "100%", maxWidth: 340, background: "#151520", borderRadius: 20, padding: 22,
+              border: "1px solid rgba(167,139,250,0.2)", boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
+            }}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>
+                Valor recorrente alterado
+              </h3>
+              <p style={{ margin: "0 0 18px", fontSize: 13, color: "#9e96b5", lineHeight: 1.5 }}>
+                Você mudou o valor de um orçamento que se repete. O novo valor vale para...
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button type="button" onClick={() => chooseScope("this_month")} style={{
+                  padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.3)", cursor: "pointer",
+                  background: "transparent", color: "#e0d6ff", fontFamily: "inherit", fontSize: 13, fontWeight: 600,
+                }}>
+                  Este mês apenas
+                </button>
+                <button type="button" onClick={() => chooseScope("future")} style={{
+                  padding: "12px 14px", borderRadius: 12, border: 0, cursor: "pointer",
+                  background: "#7C5CFF", color: "#fff", fontFamily: "inherit", fontSize: 13, fontWeight: 700,
+                }}>
+                  Este mês em diante
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

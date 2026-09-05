@@ -20,8 +20,10 @@ export async function ensureRecurringSchema() {
         created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
-      CREATE UNIQUE INDEX IF NOT EXISTS recurring_budgets_user_category_subcategory_key
-        ON recurring_budgets (user_id, category, subcategory);
+      DROP INDEX IF EXISTS recurring_budgets_user_category_subcategory_key;
+
+      CREATE UNIQUE INDEX IF NOT EXISTS recurring_budgets_user_category_subcategory_start_key
+        ON recurring_budgets (user_id, category, subcategory, start_month);
 
       ALTER TABLE recurring_budgets ENABLE ROW LEVEL SECURITY;
 
