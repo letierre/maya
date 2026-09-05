@@ -318,7 +318,7 @@ export function BudgetModal({
   };
 
   const inputS: React.CSSProperties = {
-    width: 110, padding: "8px 10px", borderRadius: 10,
+    width: 110, flexShrink: 0, padding: "8px 10px", borderRadius: 10,
     border: "1px solid rgba(167,139,250,0.2)",
     background: "#0B0B10", fontFamily: "inherit",
     fontSize: 13, fontWeight: 700, color: "#e0d6ff", outline: "none",
@@ -424,7 +424,7 @@ export function BudgetModal({
                   }}>
                     {emoji}
                   </div>
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>
+                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>
                     {label}
                   </span>
                   {c.subcats.length > 0 && (
@@ -467,37 +467,50 @@ export function BudgetModal({
                   <div style={{ marginTop: 6, marginLeft: 50, display: "flex", flexDirection: "column", gap: 6 }}>
                     {c.subcats.map((sc) => {
                       const key = `${c.id}::${sc.label}`;
+                      const hasVal = !!values[key] && Number(values[key]) > 0;
                       return (
-                        <div key={sc.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: "#9e96b5" }}>
-                            {sc.label}
-                          </span>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={formatMoney(values[key], currency)}
-                            onChange={(e) => setValues((p) => ({ ...p, [key]: parseMoney(e.target.value) }))}
-                            placeholder="—"
-                            style={inputS}
-                          />
-                          {!!values[key] && Number(values[key]) > 0 && recurControl(key)}
+                        <div key={sc.id}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, fontWeight: 500, color: "#9e96b5" }}>
+                              {sc.label}
+                            </span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={formatMoney(values[key], currency)}
+                              onChange={(e) => setValues((p) => ({ ...p, [key]: parseMoney(e.target.value) }))}
+                              placeholder="—"
+                              style={inputS}
+                            />
+                          </div>
+                          {hasVal && (
+                            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+                              {recurControl(key)}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
                     {/* "Outros" — catch-all próprio de cada categoria (restante sem subcategoria específica) */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 4, borderTop: "1px solid rgba(167,139,250,0.12)" }}>
-                      <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "#A78BFA" }}>
-                        {tFn(lang, "fin_cat_outros")}
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={formatMoney(values[`${c.id}::__outros__`], currency)}
-                        onChange={(e) => setValues((p) => ({ ...p, [`${c.id}::__outros__`]: parseMoney(e.target.value) }))}
-                        placeholder="—"
-                        style={inputS}
-                      />
-                      {!!values[`${c.id}::__outros__`] && Number(values[`${c.id}::__outros__`]) > 0 && recurControl(`${c.id}::__outros__`)}
+                    <div style={{ paddingTop: 4, borderTop: "1px solid rgba(167,139,250,0.12)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, fontWeight: 600, color: "#A78BFA" }}>
+                          {tFn(lang, "fin_cat_outros")}
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={formatMoney(values[`${c.id}::__outros__`], currency)}
+                          onChange={(e) => setValues((p) => ({ ...p, [`${c.id}::__outros__`]: parseMoney(e.target.value) }))}
+                          placeholder="—"
+                          style={inputS}
+                        />
+                      </div>
+                      {!!values[`${c.id}::__outros__`] && Number(values[`${c.id}::__outros__`]) > 0 && (
+                        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+                          {recurControl(`${c.id}::__outros__`)}
+                        </div>
+                      )}
                     </div>
                     <p style={{ margin: "4px 0 0", fontSize: 10, color: "#9e96b5" }}>
                       {subMode
