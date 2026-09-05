@@ -16,3 +16,10 @@ export function monthInRange(start: string, target: string, end: string | null):
   if (end !== null && target > end) return false;
   return true;
 }
+
+/** Número de meses de `start` a `end`, inclusivo (start === end → 1). */
+export function monthsBetween(start: string, end: string): number {
+  const [sy, sm] = start.split("-").map(Number);
+  const [ey, em] = end.split("-").map(Number);
+  return (ey - sy) * 12 + (em - sm) + 1;
+}
