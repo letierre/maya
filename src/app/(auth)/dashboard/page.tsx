@@ -47,7 +47,7 @@ export default function DashboardPage() {
 
   // Finance
   const [todaySpending, setTodaySpending] = useState<number | null>(null);
-  const [spendingLimit] = useState(80);
+  const [monthDailyAvg, setMonthDailyAvg] = useState<number | null>(null);
   const [currency, setCurrency] = useState("BRL");
 
   // Weekly tasks & meals
@@ -137,6 +137,10 @@ export default function DashboardPage() {
           const todayTx = txs.filter((tx) => tx.date === todayStr);
           const total = todayTx.reduce((sum, tx) => sum + (tx.type === "despesa" ? tx.amount : 0), 0);
           setTodaySpending(total);
+
+          const monthExpenses = txs.reduce((sum, tx) => sum + (tx.type === "despesa" ? tx.amount : 0), 0);
+          const daysElapsed = new Date().getDate();
+          setMonthDailyAvg(monthExpenses / Math.max(1, daysElapsed));
         }
       })
       .catch(() => {});
@@ -262,7 +266,7 @@ export default function DashboardPage() {
         todayCheckIn={todayCheckIn}
         userGender={userGender}
         todaySpending={todaySpending}
-        spendingLimit={spendingLimit}
+        monthDailyAvg={monthDailyAvg}
         todayTasks={todayTasks}
         todayMealsCount={todayMealsCount}
         todayMealsKcal={todayMealsKcal}
@@ -285,7 +289,7 @@ export default function DashboardPage() {
           <DiarioPreview loading={loading} />
           <SonoPreview loading={loading} recentSleep={recentSleep} />
           <NutricaoPreview loading={loading} />
-          <FinancasPreview loading={loading} todaySpending={todaySpending} currency={currency} />
+          <FinancasPreview loading={loading} todaySpending={todaySpending} monthDailyAvg={monthDailyAvg} currency={currency} />
           <MetasPreview loading={loading} />
           <PlanejamentoPreview loading={loading} todayTasks={todayTasks} />
         </div>
@@ -407,9 +411,10 @@ const CURRENCY_SYMBOL: Record<string, string> = {
   BRL: "R$", USD: "$", EUR: "€", GBP: "£", ARS: "$", CLP: "$", MXN: "$",
 };
 
-function FinancasPreview({ loading, todaySpending, currency }: {
+function FinancasPreview({ loading, todaySpending, monthDailyAvg, currency }: {
   loading: boolean;
   todaySpending: number | null;
+  monthDailyAvg: number | null;
   currency: string;
 }) {
   const sym = CURRENCY_SYMBOL[currency] ?? "R$";
@@ -418,7 +423,9 @@ function FinancasPreview({ loading, todaySpending, currency }: {
       emoji="💰"
       label="Finanças"
       preview={todaySpending != null ? `${sym} ${todaySpending.toFixed(2)} hoje` : "Sem gastos hoje"}
-      sub={todaySpending != null ? "Gastos de hoje" : "Registre suas despesas"}
+      sub={todaySpending != null
+        ? (monthDailyAvg != null ? `Média ${sym} ${monthDailyAvg.toFixed(2)}/dia` : "Gastos de hoje")
+        : "Registre suas despesas"}
       href="/financas"
       accent="#fbbf24"
       loading={loading}

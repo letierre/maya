@@ -81,7 +81,7 @@ interface TodayStripProps {
   todayCheckIn: CheckIn | null;
   userGender: string;
   todaySpending: number | null;
-  spendingLimit: number;
+  monthDailyAvg: number | null;
   todayTasks: WeeklyTask[];
   todayMealsCount?: number;
   todayMealsKcal?: number | null;
@@ -96,7 +96,7 @@ export function TodayStrip({
   todayCheckIn,
   userGender,
   todaySpending,
-  spendingLimit,
+  monthDailyAvg,
   todayTasks,
   todayMealsCount,
   todayMealsKcal,
@@ -155,11 +155,6 @@ export function TodayStrip({
     : "Registrar";
   const mealSubColor = mealKcal != null && mealKcal > 2200 ? "#FF5C5C" : "#22D18B";
 
-  const spendingPct =
-    todaySpending !== null && spendingLimit > 0
-      ? Math.round((todaySpending / spendingLimit) * 100)
-      : null;
-
   // Format currency according to user preference
   const CURRENCY_CONFIG: Record<string, { locale: string; code: string }> = {
     BRL: { locale: "pt-BR", code: "BRL" },
@@ -180,7 +175,13 @@ export function TodayStrip({
   }
 
   const spendingValue = todaySpending !== null ? fmtCurrency(todaySpending) : "—";
-  const spendingSub = spendingPct !== null ? `${spendingPct}% do limite` : "Sem dados";
+  const spendingSub = todaySpending !== null && monthDailyAvg != null && monthDailyAvg > 0
+    ? `vs média ${fmtCurrency(monthDailyAvg)}`
+    : todaySpending !== null ? "Gasto de hoje" : "Sem dados";
+  const spendingSubColor =
+    todaySpending !== null && monthDailyAvg != null && monthDailyAvg > 0
+      ? todaySpending > monthDailyAvg ? "#FF5C5C" : "#22D18B"
+      : undefined;
 
   const todayDone = todayTasks.filter((t) => t.status === "concluida").length;
   const todayTotal = todayTasks.length;
@@ -228,7 +229,7 @@ export function TodayStrip({
           label="Gastos"
           value={spendingValue}
           sub={spendingSub}
-          subColor={spendingPct && spendingPct > 70 ? "#FF5C5C" : "#22D18B"}
+          subColor={spendingSubColor}
           onClick={() => router.push("/financas")}
         />
         <MiniCard
