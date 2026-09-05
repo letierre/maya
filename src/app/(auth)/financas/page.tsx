@@ -3,11 +3,12 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Target, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Settings, Repeat } from "lucide-react";
+import { Plus, Pencil, Trash2, Target, ChevronLeft, ChevronRight, ChevronDown, TrendingUp, TrendingDown, Wallet, Settings, Repeat } from "lucide-react";
 import type { FinancialTransaction, FinancialBudget, FinancialRecurringBudget, Goal } from "@/types";
 import { useTranslation } from "@/lib/useTranslation";
 import { t as tFn, type Lang } from "@/lib/i18n";
 import { mergeCats, resolveCat, type FinCat, type CustomCat, type UserCategory, type SubcatOverrides } from "@/lib/financas-categories";
+import { addMonths } from "@/lib/financas-budget";
 import { GoalCreateSheet } from "@/components/GoalCreateSheet";
 import { TransactionModal } from "@/components/financas/TransactionModal";
 import { BudgetModal } from "@/components/financas/BudgetModal";
@@ -65,6 +66,22 @@ function groupByDate(txs: FinancialTransaction[]): { date: string; txs: Financia
 function fmtDateShort(dateStr: string, lang: Lang): string {
   const d = new Date(dateStr + "T12:00:00");
   return d.toLocaleDateString(lang === "en" ? "en-US" : lang === "es" ? "es-ES" : "pt-BR", { day: "numeric", month: "short" });
+}
+
+function monthShort(ym: string, lang: Lang): string {
+  const [y, m] = ym.split("-").map(Number);
+  const loc = lang === "en" ? "en-US" : lang === "es" ? "es-ES" : "pt-BR";
+  return new Date(y, m - 1, 1).toLocaleDateString(loc, { month: "short" }).replace(/\.$/, "");
+}
+
+// Dias decorridos do mês (para a média diária): mês corrente usa o dia de hoje,
+// meses passados usam o total de dias do mês.
+function daysElapsed(ym: string): number {
+  const [y, m] = ym.split("-").map(Number);
+  const now = new Date();
+  const cur = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  if (ym === cur) return now.getDate();
+  return new Date(y, m, 0).getDate();
 }
 
 // ── Category label helper ─────────────────────────────────────────────────────
@@ -185,6 +202,8 @@ const AMBER = "#f59e0b";
 
 type Tab = "overview" | "transactions" | "budget";
 
+type MonthStat = { month: string; receitas: number; despesas: number };
+
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const tabBtn = (active: boolean): React.CSSProperties => ({
@@ -242,6 +261,50 @@ function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCance
   );
 }
 
+// ── Trend chart (SVG, sem dependência) ────────────────────────────────────────
+
+function TrendChart({ months, lang }: { months: MonthStat[]; lang: Lang }) {
+  const W = 320, H = 150, PT = 12, PB = 20;
+  const n = months.length;
+  const plotH = H - PT - PB;
+  const max = Math.max(1, ...months.map((m) => Math.max(m.despesas, m.receitas)));
+  const px = (i: number) => (n === 1 ? W / 2 : (i / (n - 1)) * W);
+  const py = (v: number) => PT + (1 - v / max) * plotH;
+  const base = PT + plotH;
+
+  const expPts = months.map((m, i) => `${px(i)},${py(m.despesas)}`);
+  const incPts = months.map((m, i) => `${px(i)},${py(m.receitas)}`);
+  const area = `M ${px(0)},${base} L ${expPts.join(" L ")} L ${px(n - 1)},${base} Z`;
+
+  return (
+    <div style={{ width: "100%", aspectRatio: "320 / 150" }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%", display: "block" }}>
+        <defs>
+          <linearGradient id="trendArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(255,92,92,0.28)" />
+            <stop offset="100%" stopColor="rgba(255,92,92,0)" />
+          </linearGradient>
+        </defs>
+        {[0.25, 0.5, 0.75].map((f) => {
+          const gy = PT + f * plotH;
+          return <line key={f} x1="0" x2={W} y1={gy} y2={gy} stroke="rgba(167,139,250,0.08)" strokeWidth="1" />;
+        })}
+        <path d={area} fill="url(#trendArea)" />
+        <polyline points={expPts.join(" ")} fill="none" stroke={RED} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+        <polyline points={incPts.join(" ")} fill="none" stroke={GREEN} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" opacity="0.75" />
+        {months.map((m, i) => (
+          <circle key={m.month} cx={px(i)} cy={py(m.despesas)} r="2.5" fill={RED} />
+        ))}
+        {months.map((m, i) => (
+          <text key={m.month} x={px(i)} y={H - 6} textAnchor="middle" fontSize="9" fill={TEXT_SEC}>
+            {monthShort(m.month, lang)}
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function FinancasPage() {
@@ -258,6 +321,7 @@ export default function FinancasPage() {
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [budgets, setBudgets] = useState<FinancialBudget[]>([]);
   const [recurringBudgets, setRecurringBudgets] = useState<FinancialRecurringBudget[]>([]);
+  const [stats, setStats] = useState<MonthStat[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("overview");
@@ -267,7 +331,7 @@ export default function FinancasPage() {
   const [showGoalCreate, setShowGoalCreate] = useState(false);
   const [editTx, setEditTx] = useState<FinancialTransaction | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [expandedTxs, setExpandedTxs] = useState(false);
+  const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
   const [budgetExpanded, setBudgetExpanded] = useState(false);
 
   const currentMonth = monthKey(monthOffset);
@@ -275,19 +339,21 @@ export default function FinancasPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [prefsRes, txRes, budgetRes, goalsRes, catsRes, recurRes] = await Promise.all([
+      const [prefsRes, txRes, budgetRes, goalsRes, catsRes, recurRes, statsRes] = await Promise.all([
         fetch("/api/preferences").then((r) => r.json()),
         fetch(`/api/financas/transactions?month=${currentMonth}`).then((r) => r.json()),
         fetch(`/api/financas/budgets?month=${currentMonth}`).then((r) => r.json()),
         fetch("/api/goals").then((r) => r.json()),
         fetch("/api/financas/categories").then((r) => r.json()).catch(() => ({ categories: [], hiddenFinCats: [], hiddenFinSubcats: {}, customFinSubcats: {} })),
         fetch("/api/financas/budgets/recurring").then((r) => r.json()).catch(() => []),
+        fetch(`/api/financas/stats?month=${currentMonth}`).then((r) => r.json()).catch(() => ({ months: [] })),
       ]);
       if (prefsRes.context?.currency) setCurrency(prefsRes.context.currency);
       if (prefsRes.context?.custom_fin_cat) setCustomCat(prefsRes.context.custom_fin_cat);
       if (Array.isArray(txRes)) setTransactions(txRes);
       if (Array.isArray(budgetRes)) setBudgets(budgetRes);
       if (Array.isArray(recurRes)) setRecurringBudgets(recurRes);
+      if (Array.isArray(statsRes?.months)) setStats(statsRes.months);
       if (Array.isArray(goalsRes)) {
         setGoals(goalsRes.filter((g: Goal) => g.area === "financas" && (!g.source || g.source === "financas") && g.status === "ativa"));
       }
@@ -305,6 +371,7 @@ export default function FinancasPage() {
   }, [currentMonth]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setCollapsedDays({}); }, [currentMonth]);
 
   const deleteTx = async (id: string) => {
     try {
@@ -351,7 +418,16 @@ export default function FinancasPage() {
   const visibleBudgets = budgets.filter((b) => !hiddenCatIds.includes(b.category));
 
   const grouped = groupByDate(transactions);
-  const visibleGrouped = expandedTxs ? grouped : grouped.slice(0, 5);
+
+  // Análises da Visão Geral
+  const biggestExpense = transactions
+    .filter((t) => t.type === "despesa")
+    .reduce<FinancialTransaction | null>((max, t) => (!max || t.amount > max.amount ? t : max), null);
+  const prevMonthStat = stats.find((m) => m.month === addMonths(currentMonth, -1));
+  const vsPrevPct = prevMonthStat && prevMonthStat.despesas > 0
+    ? ((totalDespesas - prevMonthStat.despesas) / prevMonthStat.despesas) * 100
+    : null;
+  const mediaDiaria = totalDespesas / Math.max(1, daysElapsed(currentMonth));
 
   if (loading) {
     return (
@@ -479,6 +555,69 @@ export default function FinancasPage() {
         {/* ═══ TAB: VISÃO GERAL ═══ */}
         {tab === "overview" && (
           <>
+            {/* Tendência */}
+            {stats.length > 0 && (
+              <div style={cardStyle}>
+                <div style={{ height: 3, background: `linear-gradient(90deg, ${ACCENT}, #5B3FCF)` }} />
+                <div style={{ padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                    <p style={sectionTitle}>{tFn(lang, "fin_tendencia")}</p>
+                    <span style={{ fontSize: 10, color: TEXT_SEC, fontWeight: 600 }}>{tFn(lang, "fin_ultimos_meses")}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 12, marginBottom: 10, fontSize: 11 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5, color: TEXT_SEC }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: RED }} />
+                      {tFn(lang, "fin_despesas")}
+                    </span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5, color: TEXT_SEC }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: GREEN }} />
+                      {tFn(lang, "fin_receitas")}
+                    </span>
+                  </div>
+                  <TrendChart months={stats} lang={lang} />
+                </div>
+              </div>
+            )}
+
+            {/* Análises rápidas */}
+            {(totalReceitas > 0 || totalDespesas > 0) && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                <div style={{ ...cardStyle, borderRadius: 14, padding: "12px 10px" }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 9, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: TEXT_SEC }}>
+                    {tFn(lang, "fin_media_diaria")}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: TEXT }}>{fmt(mediaDiaria, currency)}</p>
+                </div>
+                <div style={{ ...cardStyle, borderRadius: 14, padding: "12px 10px" }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 9, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: TEXT_SEC }}>
+                    {tFn(lang, "fin_maior_gasto")}
+                  </p>
+                  {biggestExpense ? (
+                    <>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: RED }}>{fmt(biggestExpense.amount, currency)}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 9, color: TEXT_SEC, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {catLabel(resolveCat(biggestExpense.category, "despesa", userCategories), lang, customCat, userCategories)}
+                      </p>
+                    </>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: TEXT_SEC }}>—</p>
+                  )}
+                </div>
+                <div style={{ ...cardStyle, borderRadius: 14, padding: "12px 10px" }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 9, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: TEXT_SEC }}>
+                    {tFn(lang, "fin_vs_mes_anterior")}
+                  </p>
+                  {vsPrevPct === null ? (
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: TEXT_SEC }}>—</p>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: vsPrevPct <= 0 ? GREEN : RED }}>
+                      {vsPrevPct > 0 ? "↑" : "↓"} {Math.abs(vsPrevPct).toFixed(0)}%
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Spending by category */}
             {spendByCategory.length > 0 && (
               <div style={cardStyle}>
@@ -714,66 +853,73 @@ export default function FinancasPage() {
                 </div>
               ) : (
                 <>
-                  {visibleGrouped.map(({ date, txs }) => (
-                    <div key={date} style={{ marginBottom: 12 }}>
-                      <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: TEXT_SEC }}>
-                        {fmtDateShort(date, lang)}
-                      </p>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {txs.map((tx) => {
-                          const conf = resolveCat(tx.category, tx.type, userCategories);
-                          const isIncome = tx.type === "receita";
-                          const catName = catLabel(conf, lang, customCat, userCategories);
-                          const emoji = catEmoji(conf, customCat);
-                          return (
-                            <div key={tx.id} style={{
-                              display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
-                              borderRadius: 13, background: CARD,
-                              border: `1px solid ${BORDER}`,
-                            }}>
-                              <div style={{
-                                width: 36, height: 36, borderRadius: 12, flexShrink: 0,
-                                background: isIncome ? "rgba(34,197,94,0.08)" : ACCENT_SOFT,
-                                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17,
-                              }}>
-                                {emoji}
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: TEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                  {tx.description || tx.subcategory || catName}
-                                </p>
-                                <p style={{ margin: 0, fontSize: 11, color: TEXT_SEC }}>
-                                  {catName}{tx.subcategory ? ` › ${tx.subcategory}` : ""}
-                                </p>
-                              </div>
-                              <span style={{ fontSize: 13, fontWeight: 800, color: isIncome ? GREEN : RED, flexShrink: 0 }}>
-                                {isIncome ? "+" : "-"}{fmt(tx.amount, currency)}
-                              </span>
-                              <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-                                <button type="button" onClick={() => setEditTx(tx)} style={{ border: 0, background: "none", cursor: "pointer", padding: 6, color: TEXT_SEC }}>
-                                  <Pencil size={13} />
-                                </button>
-                                <button type="button" onClick={() => setDeleteId(tx.id)} style={{ border: 0, background: "none", cursor: "pointer", padding: 6, color: RED }}>
-                                  <Trash2 size={13} />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
+                  {grouped.map(({ date, txs }) => {
+                    const dayExpense = txs.filter((t) => t.type === "despesa").reduce((s, t) => s + t.amount, 0);
+                    const dayIncome = txs.filter((t) => t.type === "receita").reduce((s, t) => s + t.amount, 0);
+                    const collapsed = collapsedDays[date] ?? date !== grouped[0]?.date;
+                    return (
+                      <div key={date} style={{ marginBottom: 12 }}>
+                        <button type="button" onClick={() => setCollapsedDays((p) => ({ ...p, [date]: !collapsed }))} style={{
+                          width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "6px 2px",
+                          border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                        }}>
+                          <ChevronDown size={14} color={TEXT_SEC} style={{ transform: collapsed ? "rotate(-90deg)" : "none", transition: "transform .15s ease", flexShrink: 0 }} />
+                          <span style={{ flex: 1, fontSize: 11, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: TEXT }}>
+                            {fmtDateShort(date, lang)}
+                          </span>
+                          <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
+                            {dayExpense > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: RED }}>−{fmt(dayExpense, currency)}</span>}
+                            {dayIncome > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: GREEN }}>+{fmt(dayIncome, currency)}</span>}
+                          </span>
+                        </button>
+                        {!collapsed && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 2 }}>
+                            {txs.map((tx) => {
+                              const conf = resolveCat(tx.category, tx.type, userCategories);
+                              const isIncome = tx.type === "receita";
+                              const catName = catLabel(conf, lang, customCat, userCategories);
+                              const emoji = catEmoji(conf, customCat);
+                              return (
+                                <div key={tx.id} style={{
+                                  display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+                                  borderRadius: 13, background: CARD,
+                                  border: `1px solid ${BORDER}`,
+                                }}>
+                                  <div style={{
+                                    width: 36, height: 36, borderRadius: 12, flexShrink: 0,
+                                    background: isIncome ? "rgba(34,197,94,0.08)" : ACCENT_SOFT,
+                                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17,
+                                  }}>
+                                    {emoji}
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: TEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      {tx.description || tx.subcategory || catName}
+                                    </p>
+                                    <p style={{ margin: 0, fontSize: 11, color: TEXT_SEC }}>
+                                      {catName}{tx.subcategory ? ` › ${tx.subcategory}` : ""}
+                                    </p>
+                                  </div>
+                                  <span style={{ fontSize: 13, fontWeight: 800, color: isIncome ? GREEN : RED, flexShrink: 0 }}>
+                                    {isIncome ? "+" : "-"}{fmt(tx.amount, currency)}
+                                  </span>
+                                  <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                                    <button type="button" onClick={() => setEditTx(tx)} style={{ border: 0, background: "none", cursor: "pointer", padding: 6, color: TEXT_SEC }}>
+                                      <Pencil size={13} />
+                                    </button>
+                                    <button type="button" onClick={() => setDeleteId(tx.id)} style={{ border: 0, background: "none", cursor: "pointer", padding: 6, color: RED }}>
+                                      <Trash2 size={13} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <div style={{ height: 1, background: BORDER, marginTop: 10 }} />
                       </div>
-                      <div style={{ height: 1, background: BORDER, marginTop: 10 }} />
-                    </div>
-                  ))}
-
-                  {grouped.length > 5 && (
-                    <button type="button" onClick={() => setExpandedTxs(!expandedTxs)} style={{
-                      width: "100%", padding: "10px 0", borderRadius: 12, border: 0, cursor: "pointer",
-                      background: "transparent", fontFamily: "inherit",
-                      fontSize: 12, fontWeight: 600, color: ACCENT,
-                    }}>
-                      {expandedTxs ? "Mostrar menos ↑" : `Ver mais ${grouped.length - 5} dias ↓`}
-                    </button>
-                  )}
+                    );
+                  })}
                 </>
               )}
             </div>
