@@ -407,9 +407,24 @@ function SonoPreview({ loading, recentSleep }: { loading: boolean; recentSleep: 
   );
 }
 
-const CURRENCY_SYMBOL: Record<string, string> = {
-  BRL: "R$", USD: "$", EUR: "€", GBP: "£", ARS: "$", CLP: "$", MXN: "$",
+const CURRENCY_CONFIG: Record<string, { locale: string; code: string }> = {
+  BRL: { locale: "pt-BR", code: "BRL" },
+  USD: { locale: "en-US", code: "USD" },
+  EUR: { locale: "de-DE", code: "EUR" },
+  GBP: { locale: "en-GB", code: "GBP" },
+  ARS: { locale: "es-AR", code: "ARS" },
+  CLP: { locale: "es-CL", code: "CLP" },
+  MXN: { locale: "es-MX", code: "MXN" },
 };
+
+function fmtCurrency(amount: number, currency: string): string {
+  const conf = CURRENCY_CONFIG[currency] ?? CURRENCY_CONFIG.BRL;
+  try {
+    return new Intl.NumberFormat(conf.locale, { style: "currency", currency: conf.code, minimumFractionDigits: 0 }).format(amount);
+  } catch {
+    return `${currency} ${Math.round(amount)}`;
+  }
+}
 
 function FinancasPreview({ loading, todaySpending, monthDailyAvg, currency }: {
   loading: boolean;
@@ -417,14 +432,13 @@ function FinancasPreview({ loading, todaySpending, monthDailyAvg, currency }: {
   monthDailyAvg: number | null;
   currency: string;
 }) {
-  const sym = CURRENCY_SYMBOL[currency] ?? "R$";
   return (
     <ModuloPreviewCard
       emoji="💰"
       label="Finanças"
-      preview={todaySpending != null ? `${sym} ${todaySpending.toFixed(2)} hoje` : "Sem gastos hoje"}
+      preview={todaySpending != null ? `${fmtCurrency(todaySpending, currency)} hoje` : "Sem gastos hoje"}
       sub={todaySpending != null
-        ? (monthDailyAvg != null ? `Média ${sym} ${monthDailyAvg.toFixed(2)}/dia` : "Gastos de hoje")
+        ? (monthDailyAvg != null ? `Média ${fmtCurrency(monthDailyAvg, currency)}/dia` : "Gastos de hoje")
         : "Registre suas despesas"}
       href="/financas"
       accent="#fbbf24"
