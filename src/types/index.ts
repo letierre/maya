@@ -121,10 +121,27 @@ export interface MealFormData {
 export interface ShoppingItem {
   id: string;
   user_id: string;
+  list_id: string;
   item_name: string;
   category: string;
+  quantity: string | null;
+  note: string | null;
+  estimated_price: number | null;
+  priority: boolean;
   checked: boolean;
+  position: number;
   created_at: string;
+  updated_at: string;
+}
+
+export interface ShoppingList {
+  id: string;
+  user_id: string;
+  name: string;
+  emoji: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
 }
 
 // ── Sleep ─────────────────────────────────────────────────────────────────────

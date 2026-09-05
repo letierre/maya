@@ -16,7 +16,6 @@ import { FoodMoodCorrelation } from "@/components/FoodMoodCorrelation";
 import { WeeklyMirror } from "@/components/WeeklyMirror";
 import { NutritionQualityCard } from "@/components/NutritionQualityCard";
 import { Plus, Sun, Calendar, Sparkles, Star, X, ShoppingCart } from "lucide-react";
-import { ShoppingList } from "@/components/ShoppingList";
 import type { Meal } from "@/types";
 import { toast } from "sonner";
 
@@ -85,7 +84,6 @@ function NutricaoPage() {
   const [todayDisplay, setTodayDisplay] = useState("");
   const [kcalGoal, setKcalGoal] = useState(DEFAULT_DAILY_KCAL);
   const [showChat, setShowChat] = useState(false);
-  const [showShoppingList, setShowShoppingList] = useState(false);
   const [favoriteMeals, setFavoriteMeals] = useState<Meal[]>([]);
   const [addingFav, setAddingFav] = useState<string | null>(null);
 
@@ -321,7 +319,7 @@ function NutricaoPage() {
             Nutrição
           </h1>
         </div>
-        <button type="button" onClick={() => setShowShoppingList(true)}
+        <button type="button" onClick={() => router.push("/compras")}
           style={{
             width: 44, height: 44, borderRadius: 14, flexShrink: 0,
             background: "oklch(.17 .015 270 / .6)", border: `1px solid ${BORDER}`,
@@ -581,43 +579,6 @@ function NutricaoPage() {
         </div>
       )}
 
-      {/* ── Shopping List Modal ─────────────────────────── */}
-      {showShoppingList && (
-        <div onClick={() => setShowShoppingList(false)}
-          style={{
-            position: "fixed", inset: 0, zIndex: 100,
-            background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
-            display: "flex", alignItems: "flex-end", justifyContent: "center",
-          }}>
-          <div onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%", maxWidth: 480, maxHeight: "85dvh",
-              background: "#151520", borderRadius: "24px 24px 0 0",
-              display: "flex", flexDirection: "column", overflow: "hidden",
-              border: "1px solid rgba(167,139,250,0.15)",
-            }}>
-            {/* Header */}
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "16px 20px", borderBottom: "1px solid rgba(167,139,250,0.1)",
-              flexShrink: 0,
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <ShoppingCart size={18} color="#A78BFA" />
-                <span style={{ fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>{t("lista_compras")}</span>
-              </div>
-              <button type="button" onClick={() => setShowShoppingList(false)}
-                style={{ background: "none", border: 0, color: MUTED, fontSize: 20, cursor: "pointer", padding: "4px 8px" }}>
-                ✕
-              </button>
-            </div>
-            {/* Shopping list body */}
-            <div style={{ flex: 1, overflow: "auto", padding: "16px 20px", paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}>
-              <ShoppingList />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

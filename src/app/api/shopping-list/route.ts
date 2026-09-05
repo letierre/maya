@@ -2,7 +2,41 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 
-// GET /api/shopping-list
+type Admin = ReturnType<typeof getSupabaseAdmin>;
+
+// Resolve a lista de destino: usa o id explícito; senão a primeira lista do usuário;
+// se não houver nenhuma, cria a lista padrão "Mercado".
+async function resolveListId(admin: Admin, userId: string, explicit?: string): Promise<string | null> {
+  if (explicit) return explicit;
+
+  const { data: first } = await admin
+    .from("shopping_lists")
+    .select("id")
+    .eq("user_id", userId)
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (first?.id) return first.id;
+
+  const { data: created, error } = await admin
+    .from("shopping_lists")
+    .insert({ user_id: userId, name: "Mercado", emoji: "🛒", position: 0 })
+    .select()
+    .single();
+
+  if (error || !created) return null;
+  return created.id;
+}
+
+function parsePrice(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+// GET /api/shopping-list?listId=UUID  (sem listId = todos os itens do usuário)
 export async function GET(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
   const { data: { session }, error: authError } = await supabase.auth.getSession();
@@ -13,16 +47,24 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const { searchParams } = new URL(req.url);
+    const listId = searchParams.get("listId") || "";
+
     const admin = getSupabaseAdmin();
-    // Unchecked first, then by position, then by created_at
-    const { data, error } = await admin
+    let query = admin
       .from("shopping_items")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", user.id);
+
+    if (listId) query = query.eq("list_id", listId);
+
+    query = query
+      .order("priority", { ascending: false })
       .order("checked", { ascending: true })
       .order("position", { ascending: true })
       .order("created_at", { ascending: true });
 
+    const { data, error } = await query;
     if (error) throw error;
     return NextResponse.json(data || []);
   } catch (error) {
@@ -34,7 +76,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/shopping-list — single item or bulk array
+// POST /api/shopping-list — single item ou bulk array
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
   const { data: { session }, error: authError } = await supabase.auth.getSession();
@@ -48,24 +90,39 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const admin = getSupabaseAdmin();
 
-    // Get next position (max position + 1) for the user
+    const listId = await resolveListId(admin, user.id, body.list_id);
+    if (!listId) {
+      return NextResponse.json({ error: "Não foi possível resolver a lista" }, { status: 500 });
+    }
+
+    // Posição do próximo item (max + 1) dentro da lista
     const { data: maxRow } = await admin
       .from("shopping_items")
       .select("position")
       .eq("user_id", user.id)
+      .eq("list_id", listId)
       .order("position", { ascending: false })
       .limit(1)
       .maybeSingle();
     const nextPosition = (maxRow?.position ?? -1) + 1;
 
-    // Bulk insert: { items: [{ item_name, category? }] }
+    // Bulk insert: { list_id?, items: [{ item_name, category?, quantity?, note?, estimated_price?, priority? }] }
     if (body.items && Array.isArray(body.items)) {
-      const rows = body.items.map((it: { item_name: string; category?: string }, i: number) => ({
+      const rows = body.items.map((it: Record<string, unknown>, i: number) => ({
         user_id: user.id,
-        item_name: it.item_name,
-        category: it.category || "geral",
+        list_id: listId,
+        item_name: (it.item_name as string) || "",
+        category: (it.category as string) || "geral",
+        quantity: (it.quantity as string) || null,
+        note: (it.note as string) || null,
+        estimated_price: parsePrice(it.estimated_price),
+        priority: Boolean(it.priority),
         position: nextPosition + i,
-      }));
+      })).filter((r: { item_name: string }) => r.item_name.trim().length > 0);
+
+      if (rows.length === 0) {
+        return NextResponse.json({ error: "Nenhum item válido" }, { status: 400 });
+      }
 
       const { data, error } = await admin
         .from("shopping_items")
@@ -76,8 +133,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(data, { status: 201 });
     }
 
-    // Single insert: { item_name, category? }
-    if (!body.item_name || !body.item_name.trim()) {
+    // Single insert: { list_id?, item_name, category?, quantity?, note?, estimated_price?, priority? }
+    if (!body.item_name || !String(body.item_name).trim()) {
       return NextResponse.json({ error: "Nome do item obrigatório" }, { status: 400 });
     }
 
@@ -85,8 +142,13 @@ export async function POST(req: NextRequest) {
       .from("shopping_items")
       .insert({
         user_id: user.id,
-        item_name: body.item_name.trim(),
+        list_id: listId,
+        item_name: String(body.item_name).trim(),
         category: body.category || "geral",
+        quantity: body.quantity || null,
+        note: body.note || null,
+        estimated_price: parsePrice(body.estimated_price),
+        priority: Boolean(body.priority),
         position: nextPosition,
       })
       .select()
@@ -103,7 +165,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PATCH /api/shopping-list  —  partial update OR batch reorder
+// PATCH /api/shopping-list — partial update OU batch reorder
 export async function PATCH(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
   const { data: { session }, error: authError } = await supabase.auth.getSession();
@@ -119,26 +181,17 @@ export async function PATCH(req: NextRequest) {
 
     // Batch reorder: { reorder: [{ id, position }] }
     if (body.reorder && Array.isArray(body.reorder)) {
-      // Build a single UPDATE with CASE WHEN for each id
-      // Use a raw update via upsert or individual updates
-      // For simplicity and reliability, do individual updates in a transaction-like loop
-      const results = [];
+      let count = 0;
       for (const item of body.reorder) {
         if (!item.id) continue;
-        const { data, error } = await admin
+        const { error } = await admin
           .from("shopping_items")
-          .update({ position: item.position })
+          .update({ position: item.position, updated_at: new Date().toISOString() })
           .eq("id", item.id)
-          .eq("user_id", user.id)
-          .select()
-          .single();
-        if (error) {
-          console.error("Reorder error for", item.id, error);
-          continue;
-        }
-        results.push(data);
+          .eq("user_id", user.id);
+        if (!error) count++;
       }
-      return NextResponse.json({ success: true, count: results.length });
+      return NextResponse.json({ success: true, count });
     }
 
     // Single item update
@@ -150,12 +203,18 @@ export async function PATCH(req: NextRequest) {
 
     if (body.item_name !== undefined) updates.item_name = body.item_name;
     if (body.category !== undefined) updates.category = body.category;
+    if (body.quantity !== undefined) updates.quantity = body.quantity || null;
+    if (body.note !== undefined) updates.note = body.note || null;
+    if (body.estimated_price !== undefined) updates.estimated_price = parsePrice(body.estimated_price);
+    if (body.priority !== undefined) updates.priority = Boolean(body.priority);
     if (body.checked !== undefined) updates.checked = body.checked;
     if (body.position !== undefined) updates.position = body.position;
+    if (body.list_id !== undefined) updates.list_id = body.list_id;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: "Nenhum campo para atualizar" }, { status: 400 });
     }
+    updates.updated_at = new Date().toISOString();
 
     const { data, error } = await admin
       .from("shopping_items")
@@ -176,7 +235,7 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
-// DELETE /api/shopping-list?id=UUID  OR  ?clearChecked=true
+// DELETE /api/shopping-list?id=UUID  OU  ?clearChecked=true&listId=UUID
 export async function DELETE(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
   const { data: { session }, error: authError } = await supabase.auth.getSession();
@@ -190,14 +249,12 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const admin = getSupabaseAdmin();
 
-    // Clear all checked items
+    // Clear all checked items (opcionalmente dentro de uma lista)
     if (searchParams.get("clearChecked") === "true") {
-      const { error } = await admin
-        .from("shopping_items")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("checked", true);
-
+      let query = admin.from("shopping_items").delete().eq("user_id", user.id).eq("checked", true);
+      const listId = searchParams.get("listId");
+      if (listId) query = query.eq("list_id", listId);
+      const { error } = await query;
       if (error) throw error;
       return NextResponse.json({ success: true });
     }

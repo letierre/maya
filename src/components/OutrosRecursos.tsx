@@ -128,6 +128,10 @@ export function OutrosRecursos() {
   const [histSub, setHistSub] = useState("");
   const [histReady, setHistReady] = useState(false);
 
+  const [comprasPreview, setComprasPreview] = useState<string | null>(null);
+  const [comprasSub, setComprasSub] = useState("");
+  const [comprasReady, setComprasReady] = useState(false);
+
   useEffect(() => {
     // Corrida — última sessão
     safeCachedFetch<RunningSession[]>("/api/running?limit=1")
@@ -190,6 +194,25 @@ export function OutrosRecursos() {
       })
       .catch(() => {})
       .finally(() => setHistReady(true));
+
+    // Compras — listas + itens pendentes
+    Promise.all([
+      safeCachedFetch<{ id: string }[]>("/api/shopping-lists"),
+      safeCachedFetch<{ checked: boolean }[]>("/api/shopping-list"),
+    ])
+      .then(([lists, items]) => {
+        const listCount = (lists ?? []).length;
+        const pending = (items ?? []).filter((i) => !i.checked).length;
+        if (listCount > 0) {
+          setComprasPreview(`${listCount} lista${listCount !== 1 ? "s" : ""}`);
+          setComprasSub(pending > 0 ? `${pending} pendente${pending !== 1 ? "s" : ""}` : "Tudo em dia");
+        } else {
+          setComprasPreview("Crie suas listas");
+          setComprasSub("Mercado, casa, móveis");
+        }
+      })
+      .catch(() => {})
+      .finally(() => setComprasReady(true));
   }, []);
 
   return (
@@ -237,6 +260,15 @@ export function OutrosRecursos() {
           href="/historico"
           accent="#38bdf8"
           ready={histReady}
+        />
+        <ResourceCard
+          emoji="🛒"
+          label="Compras"
+          preview={comprasPreview}
+          sub={comprasSub}
+          href="/compras"
+          accent="#fbbf24"
+          ready={comprasReady}
         />
       </div>
     </div>
