@@ -170,7 +170,20 @@ export function BudgetModal({
             })
           );
         } else if (existing) {
-          recurDeleteOps.push({ category: c.id, subcategory: sub });
+          // Parar a recorrência ("1×"): fecha a série no mês atual em vez de apagar o
+          // template — preserva o histórico dos meses anteriores (que é derivado do
+          // template) e impede que o orçamento apareça nos meses seguintes.
+          recurOps.push(
+            fetch("/api/financas/budgets/recurring", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ category: c.id, subcategory: sub, monthly_limit: existing.monthly_limit, start_month: existing.start_month, end_month: month }),
+            }).then(async (r) => {
+              if (r.ok) return { ok: true };
+              const body = await r.json().catch(() => null);
+              return { ok: false, error: body?.error ?? `HTTP ${r.status}` };
+            })
+          );
         }
       }
 
