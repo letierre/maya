@@ -67,6 +67,21 @@ async function callTextOnly(description: string, items: string[]): Promise<strin
   return callLLM(SYSTEM_JSON, prompt, { maxTokens: 400, temperature: 0.3 });
 }
 
+const MACROS_SYSTEM = `Você é um nutricionista. Retorne APENAS um JSON válido, sem texto adicional, no formato:
+{
+  "carboidratos_g": 0,
+  "proteinas_g": 0,
+  "gorduras_g": 0,
+  "calorias_kcal": 0
+}
+Estime os 4 valores (números MAIORES QUE ZERO) com base nos alimentos e quantidades informados. Nunca omita um campo nem retorne 0 — use porções típicas quando a quantidade não for especificada.`;
+
+async function callMacrosOnly(items: string[], description: string): Promise<string> {
+  const itemsStr = items.length > 0 ? `Alimentos identificados: ${items.join(", ")}. ` : "";
+  const prompt = `Estime os macros desta refeição. ${itemsStr}${description ? `Descrição do usuário: "${description}". ` : ""}Retorne APENAS o JSON.`;
+  return callLLM(MACROS_SYSTEM, prompt, { maxTokens: 300, temperature: 0.2 });
+}
+
 function extractJson(text: string): string {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}") + 1;
@@ -107,6 +122,17 @@ function parseAnalysis(raw: string) {
     beneficios,
     status_analise: "analisado" as const,
   };
+}
+
+function parseMacrosOnly(raw: string): Macros | null {
+  const jsonStr = extractJson(raw);
+  try {
+    const parsed = JSON.parse(jsonStr);
+    const m = parsed.macros_estimados || parsed.macros || parsed;
+    return normalizeMacros(m);
+  } catch {
+    return null;
+  }
 }
 
 async function markFailed(mealId: string, userId: string) {
@@ -156,6 +182,22 @@ export async function POST(request: Request) {
     if (!analysis) {
       await markFailed(mealId, user.id);
       return NextResponse.json({ error: "Falha ao interpretar resposta da IA", raw }, { status: 422 });
+    }
+
+    // A visão costuma zerar/omitir proteína e gordura; re-estima os macros por
+    // texto a partir dos itens identificados + descrição para garantir os 4 valores.
+    const macrosIncompletos =
+      !analysis.macros ||
+      analysis.macros.proteinas_g <= 0 ||
+      analysis.macros.gorduras_g <= 0;
+    if (macrosIncompletos && (analysis.itens.length > 0 || hasDescription)) {
+      try {
+        const macrosRaw = await callMacrosOnly(analysis.itens.map((i: { nome: string }) => i.nome), description || "");
+        const macrosText = parseMacrosOnly(macrosRaw);
+        if (macrosText) analysis.macros = macrosText;
+      } catch {
+        // mantém os macros estimados pela visão
+      }
     }
 
     const admin = getSupabaseAdmin();
