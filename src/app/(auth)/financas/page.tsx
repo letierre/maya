@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Target, ChevronLeft, ChevronRight, ChevronDown, TrendingUp, TrendingDown, Wallet, Settings, Repeat } from "lucide-react";
+import { Plus, Pencil, Trash2, Target, ChevronLeft, ChevronRight, ChevronDown, TrendingUp, TrendingDown, Wallet, Settings, Repeat, SlidersHorizontal } from "lucide-react";
 import type { FinancialTransaction, FinancialBudget, FinancialRecurringBudget, Goal } from "@/types";
 import { useTranslation } from "@/lib/useTranslation";
 import { t as tFn, type Lang } from "@/lib/i18n";
@@ -221,6 +221,13 @@ const cardStyle: React.CSSProperties = {
   overflow: "hidden",
 };
 
+const dateInputS: React.CSSProperties = {
+  flex: 1, padding: "8px 10px", borderRadius: 10,
+  border: `1px solid ${BORDER}`, background: "#0B0B10",
+  fontFamily: "inherit", fontSize: 12, color: TEXT, outline: "none",
+  colorScheme: "dark",
+};
+
 const sectionTitle: React.CSSProperties = {
   margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em",
   textTransform: "uppercase", color: TEXT_SEC,
@@ -333,6 +340,11 @@ export default function FinancasPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
   const [budgetExpanded, setBudgetExpanded] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const [filterCats, setFilterCats] = useState<string[]>([]);
+  const [filterSubcats, setFilterSubcats] = useState<string[]>([]);
 
   const currentMonth = monthKey(monthOffset);
 
@@ -418,6 +430,29 @@ export default function FinancasPage() {
   const visibleBudgets = budgets.filter((b) => !hiddenCatIds.includes(b.category));
 
   const grouped = groupByDate(transactions);
+
+  // Filtros do hub de transações
+  const filteredTxs = transactions.filter((tx) => {
+    if (filterDateFrom && tx.date < filterDateFrom) return false;
+    if (filterDateTo && tx.date > filterDateTo) return false;
+    if (filterCats.length > 0 && !filterCats.includes(tx.category)) return false;
+    if (filterSubcats.length > 0 && !filterSubcats.includes(tx.subcategory ?? "")) return false;
+    return true;
+  });
+  const filteredGrouped = groupByDate(filteredTxs);
+
+  const allCats = [
+    ...mergeCats("despesa", hiddenCatIds, userCategories, customCat, subcatOverrides).map((c) => ({ ...c, type: "despesa" as const })),
+    ...mergeCats("receita", hiddenCatIds, userCategories, customCat, subcatOverrides).map((c) => ({ ...c, type: "receita" as const })),
+  ];
+  const selectedCats = allCats.filter((c) => filterCats.length === 0 || filterCats.includes(c.id));
+  const uniqueSubcats = Array.from(new Set(selectedCats.flatMap((c) => c.subcats.map((s) => s.label)))).sort();
+
+  const hasActiveFilters = !!(filterDateFrom || filterDateTo || filterCats.length || filterSubcats.length);
+  const clearFilters = () => {
+    setFilterDateFrom(""); setFilterDateTo("");
+    setFilterCats([]); setFilterSubcats([]);
+  };
 
   // Análises da Visão Geral
   const biggestExpense = transactions
@@ -853,73 +888,157 @@ export default function FinancasPage() {
                 </div>
               ) : (
                 <>
-                  {grouped.map(({ date, txs }) => {
-                    const dayExpense = txs.filter((t) => t.type === "despesa").reduce((s, t) => s + t.amount, 0);
-                    const dayIncome = txs.filter((t) => t.type === "receita").reduce((s, t) => s + t.amount, 0);
-                    const collapsed = collapsedDays[date] ?? date !== grouped[0]?.date;
-                    return (
-                      <div key={date} style={{ marginBottom: 12 }}>
-                        <button type="button" onClick={() => setCollapsedDays((p) => ({ ...p, [date]: !collapsed }))} style={{
-                          width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "6px 2px",
-                          border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
-                        }}>
-                          <ChevronDown size={14} color={TEXT_SEC} style={{ transform: collapsed ? "rotate(-90deg)" : "none", transition: "transform .15s ease", flexShrink: 0 }} />
-                          <span style={{ flex: 1, fontSize: 11, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: TEXT }}>
-                            {fmtDateShort(date, lang)}
-                          </span>
-                          <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
-                            {dayExpense > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: RED }}>−{fmt(dayExpense, currency)}</span>}
-                            {dayIncome > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: GREEN }}>+{fmt(dayIncome, currency)}</span>}
-                          </span>
-                        </button>
-                        {!collapsed && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 2 }}>
-                            {txs.map((tx) => {
-                              const conf = resolveCat(tx.category, tx.type, userCategories);
-                              const isIncome = tx.type === "receita";
-                              const catName = catLabel(conf, lang, customCat, userCategories);
-                              const emoji = catEmoji(conf, customCat);
+                  {/* Barra de filtro */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: TEXT_SEC }}>
+                      {filteredGrouped.length} {filteredGrouped.length === 1 ? "dia" : "dias"}
+                    </p>
+                    <button type="button" onClick={() => setShowFilters(!showFilters)} style={{
+                      border: `1px solid ${hasActiveFilters ? ACCENT : BORDER}`, borderRadius: 10, padding: "6px 12px",
+                      background: hasActiveFilters ? "rgba(124,92,255,0.08)" : "transparent", cursor: "pointer",
+                      fontFamily: "inherit", fontSize: 11, fontWeight: 700, color: hasActiveFilters ? ACCENT : TEXT_SEC,
+                      display: "flex", alignItems: "center", gap: 5,
+                    }}>
+                      <SlidersHorizontal size={12} /> Filtrar
+                    </button>
+                  </div>
+
+                  {/* Painel de filtros */}
+                  {showFilters && (
+                    <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 14, background: CARD, border: `1px solid ${BORDER}`, display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div>
+                        <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>Data</p>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} style={dateInputS} />
+                          <span style={{ fontSize: 11, color: TEXT_SEC }}>até</span>
+                          <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} style={dateInputS} />
+                        </div>
+                      </div>
+
+                      <div>
+                        <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>Categorias</p>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {allCats.map((c) => {
+                            const active = filterCats.includes(c.id);
+                            return (
+                              <button key={c.id} type="button" onClick={() => setFilterCats((p) => active ? p.filter((x) => x !== c.id) : [...p, c.id])} style={{
+                                flexShrink: 0, padding: "5px 11px", borderRadius: 20, border: active ? "1.5px solid #7C5CFF" : `1.5px solid ${BORDER}`,
+                                background: active ? "rgba(124,92,255,0.08)" : "#0B0B10", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                                fontSize: 11, fontWeight: 600, color: active ? "#A78BFA" : TEXT_SEC,
+                              }}>
+                                {catEmoji(c, customCat)} {catLabel(c, lang, customCat, userCategories)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>Subcategorias</p>
+                        {uniqueSubcats.length === 0 ? (
+                          <p style={{ margin: 0, fontSize: 11, color: TEXT_SEC, fontStyle: "italic" }}>Nenhuma subcategoria disponível</p>
+                        ) : (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {uniqueSubcats.map((label) => {
+                              const active = filterSubcats.includes(label);
                               return (
-                                <div key={tx.id} style={{
-                                  display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
-                                  borderRadius: 13, background: CARD,
-                                  border: `1px solid ${BORDER}`,
+                                <button key={label} type="button" onClick={() => setFilterSubcats((p) => active ? p.filter((x) => x !== label) : [...p, label])} style={{
+                                  flexShrink: 0, padding: "5px 11px", borderRadius: 20, border: active ? "1.5px solid #7C5CFF" : `1.5px solid ${BORDER}`,
+                                  background: active ? "rgba(124,92,255,0.08)" : "#0B0B10", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                                  fontSize: 11, fontWeight: 600, color: active ? "#A78BFA" : TEXT_SEC,
                                 }}>
-                                  <div style={{
-                                    width: 36, height: 36, borderRadius: 12, flexShrink: 0,
-                                    background: isIncome ? "rgba(34,197,94,0.08)" : ACCENT_SOFT,
-                                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17,
-                                  }}>
-                                    {emoji}
-                                  </div>
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: TEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                      {tx.description || tx.subcategory || catName}
-                                    </p>
-                                    <p style={{ margin: 0, fontSize: 11, color: TEXT_SEC }}>
-                                      {catName}{tx.subcategory ? ` › ${tx.subcategory}` : ""}
-                                    </p>
-                                  </div>
-                                  <span style={{ fontSize: 13, fontWeight: 800, color: isIncome ? GREEN : RED, flexShrink: 0 }}>
-                                    {isIncome ? "+" : "-"}{fmt(tx.amount, currency)}
-                                  </span>
-                                  <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-                                    <button type="button" onClick={() => setEditTx(tx)} style={{ border: 0, background: "none", cursor: "pointer", padding: 6, color: TEXT_SEC }}>
-                                      <Pencil size={13} />
-                                    </button>
-                                    <button type="button" onClick={() => setDeleteId(tx.id)} style={{ border: 0, background: "none", cursor: "pointer", padding: 6, color: RED }}>
-                                      <Trash2 size={13} />
-                                    </button>
-                                  </div>
-                                </div>
+                                  {label}
+                                </button>
                               );
                             })}
                           </div>
                         )}
-                        <div style={{ height: 1, background: BORDER, marginTop: 10 }} />
                       </div>
-                    );
-                  })}
+
+                      {hasActiveFilters && (
+                        <button type="button" onClick={clearFilters} style={{
+                          border: 0, background: "transparent", cursor: "pointer", padding: "4px 0",
+                          fontFamily: "inherit", fontSize: 11, fontWeight: 700, color: RED, textAlign: "left",
+                        }}>
+                          Limpar filtros
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {filteredGrouped.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "24px 0" }}>
+                      <p style={{ margin: 0, fontSize: 13, color: TEXT_SEC, fontStyle: "italic" }}>Nenhuma transação com esses filtros</p>
+                    </div>
+                  ) : (
+                    filteredGrouped.map(({ date, txs }) => {
+                      const dayExpense = txs.filter((t) => t.type === "despesa").reduce((s, t) => s + t.amount, 0);
+                      const dayIncome = txs.filter((t) => t.type === "receita").reduce((s, t) => s + t.amount, 0);
+                      const collapsed = collapsedDays[date] ?? date !== filteredGrouped[0]?.date;
+                      return (
+                        <div key={date} style={{ marginBottom: 12 }}>
+                          <button type="button" onClick={() => setCollapsedDays((p) => ({ ...p, [date]: !collapsed }))} style={{
+                            width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "6px 2px",
+                            border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                          }}>
+                            <ChevronDown size={14} color={TEXT_SEC} style={{ transform: collapsed ? "rotate(-90deg)" : "none", transition: "transform .15s ease", flexShrink: 0 }} />
+                            <span style={{ flex: 1, fontSize: 11, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: TEXT }}>
+                              {fmtDateShort(date, lang)}
+                            </span>
+                            <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
+                              {dayExpense > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: RED }}>−{fmt(dayExpense, currency)}</span>}
+                              {dayIncome > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: GREEN }}>+{fmt(dayIncome, currency)}</span>}
+                            </span>
+                          </button>
+                          {!collapsed && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 2 }}>
+                              {txs.map((tx) => {
+                                const conf = resolveCat(tx.category, tx.type, userCategories);
+                                const isIncome = tx.type === "receita";
+                                const catName = catLabel(conf, lang, customCat, userCategories);
+                                const emoji = catEmoji(conf, customCat);
+                                return (
+                                  <div key={tx.id} style={{
+                                    display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+                                    borderRadius: 13, background: CARD,
+                                    border: `1px solid ${BORDER}`,
+                                  }}>
+                                    <div style={{
+                                      width: 36, height: 36, borderRadius: 12, flexShrink: 0,
+                                      background: isIncome ? "rgba(34,197,94,0.08)" : ACCENT_SOFT,
+                                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17,
+                                    }}>
+                                      {emoji}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: TEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        {tx.description || tx.subcategory || catName}
+                                      </p>
+                                      <p style={{ margin: 0, fontSize: 11, color: TEXT_SEC }}>
+                                        {catName}{tx.subcategory ? ` › ${tx.subcategory}` : ""}
+                                      </p>
+                                    </div>
+                                    <span style={{ fontSize: 13, fontWeight: 800, color: isIncome ? GREEN : RED, flexShrink: 0 }}>
+                                      {isIncome ? "+" : "-"}{fmt(tx.amount, currency)}
+                                    </span>
+                                    <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                                      <button type="button" onClick={() => setEditTx(tx)} style={{ border: 0, background: "none", cursor: "pointer", padding: 6, color: TEXT_SEC }}>
+                                        <Pencil size={13} />
+                                      </button>
+                                      <button type="button" onClick={() => setDeleteId(tx.id)} style={{ border: 0, background: "none", cursor: "pointer", padding: 6, color: RED }}>
+                                        <Trash2 size={13} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <div style={{ height: 1, background: BORDER, marginTop: 10 }} />
+                        </div>
+                      );
+                    })
+                  )}
                 </>
               )}
             </div>

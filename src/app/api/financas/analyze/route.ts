@@ -5,6 +5,17 @@ import { callLLM, toImageBlock } from "@/lib/llm";
 const EXPENSE_IDS = ["moradia", "alimentacao", "transporte", "saude_beleza", "educacao", "lazer", "pessoal", "servicos_fin", "comunicacao", "doacoes", "pet", "personalizada"];
 const INCOME_IDS = ["salario", "freelance", "investimentos", "presente", "outros"];
 
+type CatGuide = { id: string; label: string; subcats?: string[] }[];
+
+// Monta a lista de categorias/subcategorias do usuário para instruir a IA a
+// escolher apenas opções existentes (nunca inventar subcategoria nova).
+function buildCatGuide(cats?: CatGuide): string {
+  if (!cats?.length) return "";
+  return cats
+    .map((c) => `- ${c.id}${c.label ? ` (${c.label})` : ""}${c.subcats?.length ? ` → subcategorias: ${c.subcats.join(", ")}` : " (sem subcategorias)"}`)
+    .join("\n");
+}
+
 function extractJson(text: string): string {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}") + 1;
@@ -60,8 +71,13 @@ export async function POST(req: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const { photoBase64, mediaType } = await req.json();
+  const { photoBase64, mediaType, categories } = await req.json();
   if (!photoBase64) return NextResponse.json({ error: "Foto obrigatória" }, { status: 400 });
+
+  const expenseGuide = buildCatGuide((categories as { despesa?: CatGuide })?.despesa);
+  const incomeGuide = buildCatGuide((categories as { receita?: CatGuide })?.receita);
+  const expenseCats = expenseGuide || `Categorias de despesa (ids): ${EXPENSE_IDS.join(", ")}`;
+  const incomeCats = incomeGuide || `Categorias de receita (ids): ${INCOME_IDS.join(", ")}`;
 
   const today = new Date().toISOString().slice(0, 10);
   const safeMediaType = (mediaType as string) || "image/jpeg";
@@ -91,16 +107,17 @@ Formato exato:
 
 Se a imagem tiver apenas UMA transação, retorne uma lista com um único item.
 
-Categorias de despesa: ${EXPENSE_IDS.join(", ")}
-Categorias de receita: ${INCOME_IDS.join(", ")}
+${expenseCats}
+
+${incomeCats}
 
 Regras:
 - type: "despesa" para compras/pagamentos, "receita" para recebimentos
 - amount: o valor total como NÚMERO PURO, sem símbolo de moeda e SEM separador de milhar.
   Escreva 4000 (quatro mil), NUNCA "4.000" nem "4,000" nem "4.000,00".
   Para centavos, use ponto decimal: 1250.50
-- category: escolha a mais adequada das listas acima, exatamente como escrita (minúscula)
-- subcategory: nome curto do estabelecimento ou tipo de gasto
+- category: escolha a id mais adequada da lista de despesa/receita, exatamente como escrita (minúscula)
+- subcategory: escolha UM dos rótulos de subcategoria listados para a categoria escolhida, EXATAMENTE como escrito. Se nenhum corresponder (ou a categoria não tiver subcategorias), use string vazia "". NUNCA invente uma subcategoria nova nem use o nome do estabelecimento como subcategoria.
 - description: nome do estabelecimento (máximo 60 caracteres)
 - date: data da transação em YYYY-MM-DD; se não encontrar, use hoje: ${today}
 

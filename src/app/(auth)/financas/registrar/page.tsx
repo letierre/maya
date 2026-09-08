@@ -7,11 +7,12 @@ import { Camera, ImageIcon, X, ArrowLeft } from "lucide-react";
 import { compressImage } from "@/lib/photo-storage";
 import { useTranslation } from "@/lib/useTranslation";
 import { t as tFn, type Lang } from "@/lib/i18n";
-import { mergeCats, type CustomCat, type UserCategory, type SubcatOverrides } from "@/lib/financas-categories";
+import { mergeCats, type CustomCat, type UserCategory, type SubcatOverrides, type FinCat } from "@/lib/financas-categories";
 import { CategoryPicker } from "@/components/financas/CategoryPicker";
 import { TransactionModal } from "@/components/financas/TransactionModal";
 import { CustomCatModal } from "@/components/financas/CustomCatModal";
 import { CategoryManager } from "@/components/financas/CategoryManager";
+import { MayaAvatar } from "@/components/MayaAvatar";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -37,6 +38,57 @@ type Draft = {
   description: string;
   date: string;
 };
+
+// ── Guide + normalização da IA ──────────────────────────────────────────────
+
+// Monta a lista de categorias/subcategorias do usuário (para instruir a IA a
+// escolher apenas opções existentes).
+function buildCategoryGuide(
+  lang: Lang,
+  hiddenCatIds: string[],
+  userCategories: UserCategory[],
+  customCat: CustomCat | null,
+  subcatOverrides: SubcatOverrides,
+) {
+  const catLabel = (c: FinCat) => c.custom
+    ? (c.id.startsWith("user_")
+        ? userCategories.find((u) => `user_${u.id}` === c.id)?.name ?? c.id
+        : customCat?.name ?? tFn(lang, "fin_cat_personalizada"))
+    : tFn(lang, `fin_cat_${c.id}`);
+  const map = (cats: FinCat[]) => cats.map((c) => ({ id: c.id, label: catLabel(c), subcats: c.subcats.map((s) => s.label) }));
+  return {
+    despesa: map(mergeCats("despesa", hiddenCatIds, userCategories, customCat, subcatOverrides)),
+    receita: map(mergeCats("receita", hiddenCatIds, userCategories, customCat, subcatOverrides)),
+  };
+}
+
+// Ajusta o retorno da IA para o modelo do app: categoria válida (ou "outros")
+// e subcategoria existente (ou ""). Evita subcategoria inventada e drop silencioso.
+function normalizeDraft(
+  d: Draft,
+  hiddenCatIds: string[],
+  userCategories: UserCategory[],
+  customCat: CustomCat | null,
+  subcatOverrides: SubcatOverrides,
+): Draft {
+  const cats = mergeCats(d.type, hiddenCatIds, userCategories, customCat, subcatOverrides);
+  const cat = cats.find((c) => c.id === d.category);
+  const category = cat ? d.category : "outros";
+  const subcats = (cat?.subcats ?? []).map((s) => s.label);
+  let subcategory = d.subcategory ?? "";
+  if (subcategory) {
+    const exact = subcats.find((s) => s.toLowerCase() === subcategory.toLowerCase());
+    if (exact) {
+      subcategory = exact;
+    } else {
+      const includes = subcats.find((s) =>
+        subcategory.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(subcategory.toLowerCase())
+      );
+      subcategory = includes ?? "";
+    }
+  }
+  return { ...d, category, subcategory };
+}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -93,23 +145,24 @@ export default function FinancasRegistrarPage() {
     try {
       const cleanBase64 = photo.replace(/^data:image\/\w+;base64,/, "");
       const mime = photo.match(/^data:(image\/\w+);base64,/)?.[1] ?? "image/jpeg";
+      const guide = buildCategoryGuide(lang, hiddenCatIds, userCategories, customCat, subcatOverrides);
       const res = await fetch("/api/financas/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ photoBase64: cleanBase64, mediaType: mime }),
+        body: JSON.stringify({ photoBase64: cleanBase64, mediaType: mime, categories: guide }),
       });
       if (res.ok) {
         const data = await res.json();
         const txs = Array.isArray(data.transactions) ? data.transactions : [];
         if (txs.length > 0) {
-          setDrafts(txs.map((t: Partial<Draft>) => ({
-            type: t.type ?? "despesa",
+          setDrafts(txs.map((t: Partial<Draft>) => normalizeDraft({
+            type: (t.type ?? "despesa") as "receita" | "despesa",
             amount: t.amount ? String(t.amount) : "",
             category: t.category ?? "",
             subcategory: t.subcategory ?? "",
             description: t.description ?? "",
             date: t.date ?? new Date().toISOString().slice(0, 10),
-          })));
+          }, hiddenCatIds, userCategories, customCat, subcatOverrides)));
         } else {
           toast.error("Não consegui ler os dados da foto. Preencha manualmente abaixo.");
         }
@@ -123,10 +176,7 @@ export default function FinancasRegistrarPage() {
   };
 
   const isDraftValid = (d: Draft) => {
-    if (d.amount === "" || Number(d.amount) <= 0 || d.category.length === 0) return false;
-    const cats = mergeCats(d.type, hiddenCatIds, userCategories, customCat, subcatOverrides);
-    const subcats = d.category ? (cats.find((c) => c.id === d.category)?.subcats ?? []) : [];
-    return subcats.length === 0 || d.subcategory.length > 0;
+    return !(d.amount === "" || Number(d.amount) <= 0 || d.category.length === 0);
   };
 
   const save = async () => {
@@ -194,24 +244,51 @@ export default function FinancasRegistrarPage() {
   // ── Analyzing ─────────────────────────────────────────────────────────────
   if (stage === "analyzing") {
     return (
-      <div style={{
-        minHeight: "100dvh", background: BG, overflowX: "hidden",
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24,
-      }}>
-        {photo && (
-          <img src={photo} alt="Recibo" style={{
-            width: 180, height: 135, objectFit: "cover", borderRadius: 20, opacity: 0.45,
-          }} />
-        )}
-        <div style={{
-          width: 42, height: 42, borderRadius: "50%",
-          border: `3px solid ${ACCENT}`, borderTopColor: "transparent",
-          animation: "spin .8s linear infinite",
-        }} />
-        <p style={{ fontSize: 14, color: TEXT_SEC, fontWeight: 600 }}>
-          {tFn(lang, "fin_analisando")}
-        </p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <div style={{ minHeight: "100dvh", background: BG, overflowX: "hidden", display: "flex", flexDirection: "column" }}>
+        <Header onBack={() => setStage("capture")} title="Analisando" />
+        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{
+            width: "100%", borderRadius: 16, overflow: "hidden", position: "relative",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: `linear-gradient(135deg, rgba(124,92,255,0.15), rgba(124,92,255,0.05))`,
+            padding: "40px 0",
+          }}>
+            {photo && (
+              <img
+                src={photo}
+                alt=""
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, filter: "blur(8px) saturate(1.3)" }}
+              />
+            )}
+            <div style={{
+              position: "absolute", inset: 0,
+              background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)",
+              animation: "shimmer 1.6s linear infinite",
+            }} />
+            <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+              <MayaAvatar state="processing" size={92} />
+              <div style={{ textAlign: "center" }}>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.35)", margin: 0 }}>
+                  Maya está olhando…
+                </p>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.78)", textShadow: "0 1px 3px rgba(0,0,0,0.3)", margin: "4px 0 0" }}>
+                  Lendo o recibo e identificando os valores
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+            {[1, 2, 3].map((i) => (
+              <div key={i} style={{
+                height: 56, borderRadius: 14,
+                background: "linear-gradient(120deg, #151520, #1d1830, #151520)",
+                backgroundSize: "200% 100%",
+                animation: "shimmerBg 1.6s linear infinite",
+              }} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
