@@ -420,10 +420,10 @@ export default function RegistrarRefeicaoPage() {
 
             {/* Description */}
             <textarea
-              placeholder="Detalhe ingredientes e quantidades — ex: 1 filé de frango grelhado (~120g), 1 concha de arroz, salada de alface e tomate. Quanto mais detalhe, melhor a análise."
+              placeholder="Detalhe ingredientes e quantidades — ex: 1 filé de frango (~120g), 1 concha de arroz, salada. Mais detalhe, melhor a análise."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={2}
+              rows={3}
               style={{
                 width: "100%", borderRadius: 14, border: `1px solid ${BORDER}`,
                 background: DARK_CARD, color: FOREGROUND, fontSize: 14, fontFamily: "inherit",
