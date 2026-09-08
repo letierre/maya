@@ -652,7 +652,7 @@ export default function ComprasListaPage() {
 
       {/* Footer — total */}
       {!loading && items.length > 0 && (
-        <div style={{ position: "sticky", bottom: 76, margin: "12px 20px 0", padding: "12px 16px", borderRadius: 14, background: "#1a1530", border: "1px solid rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ margin: "12px 20px 0", padding: "12px 16px", borderRadius: 14, background: "#1a1530", border: "1px solid rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: 12, color: MUTED }}>Total estimado ({uncheckedCount} pendente{uncheckedCount !== 1 ? "s" : ""})</span>
           <span style={{ fontSize: 15, fontWeight: 700, color: "#5EEAD4" }}>{fmtBRL(totalEstimated)}</span>
         </div>
