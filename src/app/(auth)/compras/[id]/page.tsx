@@ -473,9 +473,9 @@ export default function ComprasListaPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
             <div style={{ display: "flex", gap: 8 }}>
               <input type="text" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Quantidade (ex.: 2x, 1kg)"
-                style={{ flex: 1, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
+                style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
               <input type="text" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Preço (R$)"
-                style={{ flex: 1, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
+                style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
             </div>
             <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nota (marca, cor, link...)"
               style={{ height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
@@ -729,7 +729,7 @@ export default function ComprasListaPage() {
 }
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12,
+  width: "100%", minWidth: 0, boxSizing: "border-box", padding: "12px 14px", borderRadius: 12,
   border: "1px solid rgba(167,139,250,0.25)", background: "#0B0B10", color: "#e0d6ff",
   fontSize: 14, fontFamily: "inherit", outline: "none",
 };
