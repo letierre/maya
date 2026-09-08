@@ -79,12 +79,12 @@ export function Paywall({ beforeCheckout }: { beforeCheckout?: () => Promise<voi
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 15, fontWeight: 800, color: TEXT }}>Anual</span>
-            <span style={{ background: ACCENT, color: "#fff", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>economize 30%</span>
+            <span style={{ background: ACCENT, color: "#fff", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>economize 33%</span>
           </div>
           <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
-            US$ 83,99<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/ano</span>
+            R$ 399,90<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/ano</span>
           </p>
-          <p style={{ margin: "2px 0 0", fontSize: 12.5, color: MUTED }}>≈ US$ 7,00/mês · cancele quando quiser</p>
+          <p style={{ margin: "2px 0 0", fontSize: 12.5, color: MUTED }}>≈ R$ 33,33/mês · cancele quando quiser</p>
         </div>
 
         {/* Plano mensal */}
@@ -101,7 +101,7 @@ export function Paywall({ beforeCheckout }: { beforeCheckout?: () => Promise<voi
         >
           <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>Mensal</span>
           <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
-            US$ 9,99<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/mês</span>
+            R$ 49,90<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/mês</span>
           </p>
         </div>
       </div>
