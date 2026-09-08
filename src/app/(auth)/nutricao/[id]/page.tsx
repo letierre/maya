@@ -779,6 +779,18 @@ export default function MealDetailPage() {
               </div>
             )}
 
+            {/* Benefits */}
+            {meal.beneficios && meal.beneficios.length > 0 && (
+              <div style={cardStyle}>
+                <p style={sectionTitle}>✨ Benefícios</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {meal.beneficios.map((b, i) => (
+                    <p key={i} style={{ fontSize: 13, color: FOREGROUND, lineHeight: 1.5, margin: 0 }}>{b}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Description */}
             {meal.texto_livre && (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

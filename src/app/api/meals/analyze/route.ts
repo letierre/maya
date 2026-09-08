@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { callLLM, toImageBlock } from "@/lib/llm";
+import type { Macros } from "@/types";
 
 const SYSTEM_JSON = `Você é um analisador nutricional. Retorne APENAS um JSON válido, sem texto adicional.
 
@@ -15,8 +16,11 @@ Formato exato:
     "calorias_kcal": 0
   },
   "classificacao": "equilibrada",
-  "observacao_curta": "breve observação em português"
+  "observacao_curta": "breve observação em português",
+  "beneficios": ["benefício 1", "benefício 2"]
 }
+
+Regras de macros: SEMPRE estime os 4 valores (carboidratos_g, proteinas_g, gorduras_g, calorias_kcal) com números MAIORES QUE ZERO. Nunca omita um macro nem retorne 0 — se não conseguir medir com precisão pela foto, estime com base na porção típica dos alimentos identificados.
 
 Regras de classificação (escolha UMA):
 - "equilibrada": refeição balanceada com proteína, carboidrato e gordura em proporções razoáveis.
@@ -27,6 +31,7 @@ Regras de classificação (escolha UMA):
 - "vegetais_baixo": predominantemente vegetais e/ou muito baixa caloria.
 Identifique cada alimento com cuidado e NÃO invente itens. Se um alimento não estiver claro na foto, não chute um nome: inclua apenas o que consegue ver com confiança. Se não conseguir identificar com confiança, use "nao_identificada".
 Observação em português, 1-2 frases, tom POSITIVO e encorajador — celebre algo bom da refeição (proteína presente, variedade, escolha consciente, etc.). Não critique nem liste o que faltou.
+Benefícios: liste 1-3 frases curtas em português, cada uma destacando um benefício real de um alimento CLARAMENTE identificado na refeição (ex: "A cenoura é rica em betacaroteno, boa para a visão"). Cite apenas alimentos que você realmente viu. Se não houver benefício claro, retorne lista vazia [].
 NUNCA use markdown (**), travessão (—) ou caracteres especiais na observação — apenas texto plano com vírgula e ponto final.`;
 
 async function callVision(photos: string[], description: string): Promise<string> {
@@ -69,6 +74,18 @@ function extractJson(text: string): string {
   return text;
 }
 
+function normalizeMacros(m: unknown): Macros | null {
+  if (!m || typeof m !== "object") return null;
+  const obj = m as Record<string, unknown>;
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  return {
+    carboidratos_g: num(obj.carboidratos_g),
+    proteinas_g: num(obj.proteinas_g),
+    gorduras_g: num(obj.gorduras_g),
+    calorias_kcal: num(obj.calorias_kcal),
+  };
+}
+
 function parseAnalysis(raw: string) {
   const jsonStr = extractJson(raw);
   let parsed;
@@ -78,11 +95,16 @@ function parseAnalysis(raw: string) {
     return null;
   }
 
+  const beneficios = Array.isArray(parsed.beneficios)
+    ? parsed.beneficios.filter((b: unknown) => typeof b === "string" && b.trim().length > 0)
+    : [];
+
   return {
     itens: (parsed.itens_identificados || []).map((nome: string) => ({ nome })),
-    macros: parsed.macros_estimados || null,
+    macros: normalizeMacros(parsed.macros_estimados),
     classificacao: parsed.classificacao || "nao_identificada",
     observacao: parsed.observacao_curta || "",
+    beneficios,
     status_analise: "analisado" as const,
   };
 }
@@ -144,6 +166,7 @@ export async function POST(request: Request) {
         macros: analysis.macros,
         classificacao: analysis.classificacao,
         observacao: analysis.observacao,
+        beneficios: analysis.beneficios,
         status_analise: "analisado",
       })
       .eq("id", mealId)

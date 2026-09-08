@@ -27,7 +27,7 @@ export function mealTypeLabel(type: MealType): string {
     cafe_da_manha: "Café da manhã",
     lanche_manha: "Lanche da manhã",
     almoco: "Almoço",
-    lanche: "Lanche",
+    lanche: "Lanche da tarde",
     jantar: "Jantar",
     lanche_noturno: "Lanche noturno",
   };

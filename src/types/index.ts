@@ -99,6 +99,7 @@ export interface Meal {
   macros: Macros | null;
   classificacao: MealClassification | null;
   observacao: string;
+  beneficios?: string[] | null;
   texto_livre: string;
   status_analise: MealAnalysisStatus;
   favorited?: boolean;

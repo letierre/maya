@@ -129,6 +129,7 @@ export async function POST(req: NextRequest) {
       if (body.macros !== undefined) row.macros = body.macros;
       if (body.classificacao !== undefined) row.classificacao = body.classificacao;
       if (body.observacao !== undefined) row.observacao = body.observacao;
+      if (body.beneficios !== undefined) row.beneficios = body.beneficios;
       if (body.texto_livre !== undefined) row.texto_livre = body.texto_livre;
       if (body.status_analise !== undefined) row.status_analise = body.status_analise;
       if (body.favorited !== undefined) row.favorited = body.favorited;
@@ -159,6 +160,7 @@ export async function POST(req: NextRequest) {
       macros: body.macros ?? null,
       classificacao: body.classificacao ?? null,
       observacao: body.observacao ?? "",
+      beneficios: body.beneficios ?? null,
       texto_livre: body.texto_livre ?? "",
       status_analise: body.status_analise ?? "pendente",
       favorited: body.favorited ?? false,

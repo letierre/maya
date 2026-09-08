@@ -240,7 +240,7 @@ const translations: Record<Lang, Record<string, string>> = {
     cafe_da_manha: "Café da manhã",
     lanche_manha: "Lanche da manhã",
     almoco: "Almoço",
-    lanche: "Lanche",
+    lanche: "Lanche da tarde",
     jantar: "Jantar",
     lanche_noturno: "Lanche noturno",
 
@@ -881,7 +881,7 @@ const translations: Record<Lang, Record<string, string>> = {
     cafe_da_manha: "Desayuno",
     lanche_manha: "Merienda matinal",
     almoco: "Almuerzo",
-    lanche: "Merienda",
+    lanche: "Merienda de la tarde",
     jantar: "Cena",
     lanche_noturno: "Snack nocturno",
 
@@ -1520,7 +1520,7 @@ const translations: Record<Lang, Record<string, string>> = {
     cafe_da_manha: "Breakfast",
     lanche_manha: "Morning snack",
     almoco: "Lunch",
-    lanche: "Snack",
+    lanche: "Afternoon snack",
     jantar: "Dinner",
     lanche_noturno: "Late snack",
 

@@ -83,6 +83,7 @@ export default function RegistrarRefeicaoPage() {
   const [analysisMacros, setAnalysisMacros] = useState<Macros | null>(null);
   const [analysisClass, setAnalysisClass] = useState<MealClassification | null>(null);
   const [analysisObs, setAnalysisObs] = useState("");
+  const [analysisBenefits, setAnalysisBenefits] = useState<string[]>([]);
   const [favorited, setFavorited] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [addingItem, setAddingItem] = useState(false);
@@ -158,6 +159,7 @@ export default function RegistrarRefeicaoPage() {
             setAnalysisMacros(analyzed.macros || null);
             setAnalysisClass(analyzed.classificacao || "nao_identificada");
             setAnalysisObs(analyzed.observacao || "");
+            setAnalysisBenefits(analyzed.beneficios || []);
             setStage("results");
           } else {
             setAnalysisItems([]);
@@ -401,7 +403,7 @@ export default function RegistrarRefeicaoPage() {
                       style={{
                         borderRadius: 14, border: `1.5px dashed ${BORDER}`,
                         background: `${PURPLE_OKLCH} / .04`,
-                        cursor: "pointer", fontFamily: "inherit", aspectRatio: "4/3",
+                        cursor: "pointer", fontFamily: "inherit", minHeight: 84,
                         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
                       }}
                     >
@@ -418,7 +420,7 @@ export default function RegistrarRefeicaoPage() {
 
             {/* Description */}
             <textarea
-              placeholder="Ex: salada com frango grelhado, arroz integral e abacate…"
+              placeholder="Detalhe ingredientes e quantidades — ex: 1 filé de frango grelhado (~120g), 1 concha de arroz, salada de alface e tomate. Quanto mais detalhe, melhor a análise."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
@@ -631,6 +633,28 @@ export default function RegistrarRefeicaoPage() {
                     {analysisObs}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Benefits */}
+            {analysisBenefits.length > 0 && (
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: MUTED, margin: "0 0 6px 4px" }}>
+                  Benefícios
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {analysisBenefits.map((b, i) => (
+                    <div key={i} style={{
+                      display: "flex", gap: 8, alignItems: "flex-start",
+                      fontSize: 12, color: FOREGROUND, lineHeight: 1.5,
+                      background: "oklch(0.45 0.15 160 / .08)", border: "1px solid oklch(0.45 0.15 160 / .16)",
+                      borderRadius: 12, padding: "8px 12px",
+                    }}>
+                      <span style={{ fontSize: 14, lineHeight: 1.2 }}>✨</span>
+                      <span>{b}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

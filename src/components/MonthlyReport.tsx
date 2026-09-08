@@ -184,7 +184,7 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
                   cafe_da_manha: "Café da manhã",
                   lanche_manha: "Lanche da manhã",
                   almoco: "Almoço",
-                  lanche: "Lanche",
+                  lanche: "Lanche da tarde",
                   jantar: "Jantar",
                   lanche_noturno: "Lanche noturno",
                 };
