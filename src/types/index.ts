@@ -63,7 +63,7 @@ export interface DiaryEntry {
   updated_at: string;
 }
 
-export type MealType = "cafe_da_manha" | "almoco" | "lanche" | "jantar" | "lanche_noturno";
+export type MealType = "cafe_da_manha" | "lanche_manha" | "almoco" | "lanche" | "jantar" | "lanche_noturno";
 
 export type MealClassification =
   | "equilibrada"

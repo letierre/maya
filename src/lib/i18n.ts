@@ -238,6 +238,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Tipos de refeição
     cafe_da_manha: "Café da manhã",
+    lanche_manha: "Lanche da manhã",
     almoco: "Almoço",
     lanche: "Lanche",
     jantar: "Jantar",
@@ -878,6 +879,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Tipos de comida
     cafe_da_manha: "Desayuno",
+    lanche_manha: "Merienda matinal",
     almoco: "Almuerzo",
     lanche: "Merienda",
     jantar: "Cena",
@@ -1516,6 +1518,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Meal types
     cafe_da_manha: "Breakfast",
+    lanche_manha: "Morning snack",
     almoco: "Lunch",
     lanche: "Snack",
     jantar: "Dinner",

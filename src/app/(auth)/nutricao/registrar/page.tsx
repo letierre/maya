@@ -6,11 +6,12 @@ import { useTranslation } from "@/lib/useTranslation";
 import { getMealTypeFromHour, mealTypeLabel, mealTypeEmoji } from "@/lib/meal-utils";
 import { compressImage, uploadToCloud } from "@/lib/photo-storage";
 import { invalidateFetchCache } from "@/lib/fetch-cache";
-import { Camera, ImageIcon, X, Plus, Check, ChevronLeft, ChevronDown, Sparkles, Star } from "lucide-react";
+import { Camera, ImageIcon, X, Plus, Check, ChevronLeft, ChevronDown, Sparkles, Star, Trash2 } from "lucide-react";
 import type { MealType, MealItem, Macros, MealClassification } from "@/types";
 import { toast } from "sonner";
+import { MayaAvatar } from "@/components/MayaAvatar";
 
-const MEAL_TYPES: MealType[] = ["cafe_da_manha", "almoco", "lanche", "jantar", "lanche_noturno"];
+const MEAL_TYPES: MealType[] = ["cafe_da_manha", "lanche_manha", "almoco", "lanche", "jantar", "lanche_noturno"];
 const MAX_PHOTOS = 3;
 
 type Stage = "capture" | "analyzing" | "results";
@@ -192,6 +193,12 @@ export default function RegistrarRefeicaoPage() {
     setAnalysisItems((prev) => prev.map((item, i) => (i === idx ? { ...item, nome } : item)));
   };
 
+  const updateMacro = (key: keyof Macros, raw: string) => {
+    const base = analysisMacros ?? { calorias_kcal: 0, carboidratos_g: 0, proteinas_g: 0, gorduras_g: 0 };
+    const n = Number(raw);
+    setAnalysisMacros({ ...base, [key]: raw.trim() === "" || Number.isNaN(n) ? 0 : n });
+  };
+
   const confirmAnalysis = async () => {
     if (!mealId) return;
     setSaving(true);
@@ -227,6 +234,22 @@ export default function RegistrarRefeicaoPage() {
   const skipAnalysis = () => {
     invalidateFetchCache("/api/meals");
     router.push("/nutricao");
+  };
+
+  const discardMeal = async () => {
+    if (!mealId) return;
+    if (!window.confirm("Excluir esta refeição e recomeçar?")) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/meals?id=${mealId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      toast.success("Refeição excluída");
+      invalidateFetchCache("/api/meals");
+      router.push("/nutricao");
+    } catch {
+      toast.error("Erro ao excluir refeição");
+      setSaving(false);
+    }
   };
 
   const classInfo = analysisClass ? (CLASSIFICATION_STYLE[analysisClass] ?? CLASSIFICATION_STYLE.nao_identificada) : null;
@@ -376,8 +399,9 @@ export default function RegistrarRefeicaoPage() {
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       style={{
-                        borderRadius: 14, border: `1.5px dashed ${BORDER}`, background: "transparent",
-                        cursor: "pointer", fontFamily: "inherit",
+                        borderRadius: 14, border: `1.5px dashed ${BORDER}`,
+                        background: `${PURPLE_OKLCH} / .04`,
+                        cursor: "pointer", fontFamily: "inherit", aspectRatio: "4/3",
                         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
                       }}
                     >
@@ -428,27 +452,18 @@ export default function RegistrarRefeicaoPage() {
                 background: "linear-gradient(90deg, transparent 0%, oklch(1 0 0 / .35) 50%, transparent 100%)",
                 animation: "shimmer 1.6s linear infinite",
               }} />
-              <div style={{ position: "relative", textAlign: "center" }}>
-                <div style={{
-                  width: 56, height: 56, borderRadius: "50%", margin: "0 auto 12px",
-                  background: "rgba(255,255,255,0.9)", backdropFilter: "blur(8px)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: "0 4px 16px rgba(0,0,0,0.15)", overflow: "hidden",
-                }}>
-                  <img
-                    src="/maya-avatar.webp" alt="Maya"
-                    style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", border: "2px solid white" }}
-                  />
+              <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+                <MayaAvatar state="processing" size={92} />
+                <div style={{ textAlign: "center" }}>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.35)", margin: 0 }}>
+                    Maya está olhando…
+                  </p>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.78)", textShadow: "0 1px 3px rgba(0,0,0,0.3)", margin: "4px 0 0" }}>
+                    Identificando ingredientes e estimando os macros
+                  </p>
                 </div>
-                <p style={{ fontSize: 14, fontWeight: 600, color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.35)", margin: 0 }}>
-                  Maya está olhando…
-                </p>
               </div>
             </div>
-
-            <p style={{ fontSize: 13, color: MUTED, fontStyle: "italic", margin: 0 }}>
-              Identificando ingredientes e estimando os macros
-            </p>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6, width: "100%" }}>
               {[1, 2, 3, 4].map((i) => (
@@ -486,23 +501,38 @@ export default function RegistrarRefeicaoPage() {
 
             {/* Macro tiles */}
             <div>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: MUTED, margin: "0 0 8px 4px" }}>
-                Macros estimados
-              </p>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", margin: "0 0 8px 4px" }}>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: MUTED, margin: 0 }}>
+                  Macros estimados
+                </p>
+                <span style={{ fontSize: 10, color: MUTED }}>toque para corrigir</span>
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6 }}>
                 {([
-                  { label: "Kcal", value: analysisMacros?.calorias_kcal ?? "—", color: "oklch(0.60 0.12 70)" },
-                  { label: "Carb", value: analysisMacros?.carboidratos_g != null ? `${analysisMacros.carboidratos_g}g` : "—", color: "oklch(0.55 0.15 45)" },
-                  { label: "Prot", value: analysisMacros?.proteinas_g != null ? `${analysisMacros.proteinas_g}g` : "—", color: "oklch(0.50 0.15 15)" },
-                  { label: "Gord", value: analysisMacros?.gorduras_g != null ? `${analysisMacros.gorduras_g}g` : "—", color: PURPLE_OKLCH },
-                ]).map(({ label, value, color }) => (
-                  <div key={label} style={{
+                  { key: "calorias_kcal" as keyof Macros, label: "Kcal", color: "oklch(0.60 0.12 70)" },
+                  { key: "carboidratos_g" as keyof Macros, label: "Carb", color: "oklch(0.55 0.15 45)", suffix: "g" },
+                  { key: "proteinas_g" as keyof Macros, label: "Prot", color: "oklch(0.50 0.15 15)", suffix: "g" },
+                  { key: "gorduras_g" as keyof Macros, label: "Gord", color: PURPLE_OKLCH, suffix: "g" },
+                ]).map(({ key, label, color, suffix }) => (
+                  <div key={key} style={{
                     borderRadius: 14, textAlign: "center", padding: "8px 4px",
                     background: `${color} / 0.10`, border: `1px solid ${color} / 0.18`,
                   }}>
-                    <p style={{ fontSize: 16, fontWeight: 800, color: FOREGROUND, margin: 0, fontVariantNumeric: "tabular-nums" }}>
-                      {value}
-                    </p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        value={analysisMacros?.[key] ?? ""}
+                        onChange={(e) => updateMacro(key, e.target.value)}
+                        placeholder="—"
+                        style={{
+                          flex: 1, minWidth: 0, textAlign: "center", background: "transparent", border: "none", outline: "none",
+                          fontSize: 16, fontWeight: 800, color: FOREGROUND, fontFamily: "inherit",
+                          fontVariantNumeric: "tabular-nums", padding: 0,
+                        }}
+                      />
+                      {suffix && <span style={{ fontSize: 11, fontWeight: 700, color }}>{suffix}</span>}
+                    </div>
                     <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color, margin: "2px 0 0" }}>
                       {label}
                     </p>
@@ -672,6 +702,20 @@ export default function RegistrarRefeicaoPage() {
 
         {stage === "results" && (
           <>
+            <button
+              onClick={discardMeal}
+              disabled={saving}
+              title="Excluir refeição"
+              style={{
+                width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                border: `1px solid oklch(0.50 0.15 15 / .3)`,
+                cursor: "pointer", fontFamily: "inherit",
+                background: "oklch(0.50 0.15 15 / .08)", color: "oklch(0.55 0.15 20)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <Trash2 style={{ width: 16, height: 16 }} />
+            </button>
             <button
               onClick={skipAnalysis}
               style={{

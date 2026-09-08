@@ -1,4 +1,4 @@
-import type { MealType, MealClassification, Macros, MealItem } from "@/types";
+import type { Meal, MealType, MealClassification, Macros, MealItem } from "@/types";
 
 // Meta diária padrão de calorias (personalizável via preferences.context.kcal_goal)
 export const DEFAULT_DAILY_KCAL = 2000;
@@ -13,7 +13,8 @@ export function getDailyKcalGoal(context?: Record<string, unknown>): number {
 
 // Mapeamento horário → tipo de refeição
 export function getMealTypeFromHour(hour: number): MealType {
-  if (hour >= 5 && hour < 11) return "cafe_da_manha";
+  if (hour >= 5 && hour < 9) return "cafe_da_manha";
+  if (hour >= 9 && hour < 11) return "lanche_manha";
   if (hour >= 11 && hour < 14) return "almoco";
   if (hour >= 14 && hour < 17) return "lanche";
   if (hour >= 17 && hour < 21) return "jantar";
@@ -24,6 +25,7 @@ export function getMealTypeFromHour(hour: number): MealType {
 export function mealTypeLabel(type: MealType): string {
   const map: Record<MealType, string> = {
     cafe_da_manha: "Café da manhã",
+    lanche_manha: "Lanche da manhã",
     almoco: "Almoço",
     lanche: "Lanche",
     jantar: "Jantar",
@@ -36,6 +38,7 @@ export function mealTypeLabel(type: MealType): string {
 export function mealTypeEmoji(type: MealType): string {
   const map: Record<MealType, string> = {
     cafe_da_manha: "🌅",
+    lanche_manha: "🥐",
     almoco: "☀️",
     lanche: "🍪",
     jantar: "🌙",

@@ -16,6 +16,7 @@ import type { MealType, MealItem, Macros, MealClassification, Meal } from "@/typ
 
 const MEAL_TYPES: MealType[] = [
   "cafe_da_manha",
+  "lanche_manha",
   "almoco",
   "lanche",
   "jantar",

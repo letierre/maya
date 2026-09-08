@@ -182,6 +182,7 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
               .map(([type, data]) => {
                 const typeLabels: Record<string, string> = {
                   cafe_da_manha: "Café da manhã",
+                  lanche_manha: "Lanche da manhã",
                   almoco: "Almoço",
                   lanche: "Lanche",
                   jantar: "Jantar",
@@ -189,6 +190,7 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
                 };
                 const typeEmojis: Record<string, string> = {
                   cafe_da_manha: "🌅",
+                  lanche_manha: "🥐",
                   almoco: "☀️",
                   lanche: "🍪",
                   jantar: "🌙",
