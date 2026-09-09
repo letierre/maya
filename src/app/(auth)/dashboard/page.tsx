@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { cachedFetch, safeCachedFetch } from "@/lib/fetch-cache";
 import { habitProgress } from "@/lib/checkin-answered";
 import { useTranslation } from "@/lib/useTranslation";
+import { toast } from "sonner";
 import { MayaHero } from "@/components/MayaHero";
 import { TodayStrip } from "@/components/TodayStrip";
 import { RecentThread, type ThreadDay } from "@/components/RecentThread";
@@ -23,6 +24,15 @@ import type { CheckIn, SleepLog, WeeklyTask } from "@/types";
 export default function DashboardPage() {
   const router = useRouter();
   const { t } = useTranslation();
+
+  // Confirmação pós-checkout (volta de /dashboard?checkout=success)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "success") {
+      toast.success("Assinatura ativa! 🎉 Seu plano já está liberado.");
+      router.replace("/dashboard");
+    }
+  }, [router]);
 
   // Core state
   const [loading, setLoading] = useState(true);

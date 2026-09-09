@@ -19,12 +19,6 @@ export function priceIdFor(plan: Plan): string {
     : process.env.STRIPE_PRICE_MONTHLY_ID || "";
 }
 
-/** true durante o trial ou com assinatura ativa. Trial local (sem cartão) expira quando `trial_ends_at` passa. */
-export function isSubscriptionActive(status: string | null | undefined, trialEndsAt?: string | null): boolean {
-  if (status === "active") return true;
-  if (status === "trialing") {
-    if (!trialEndsAt) return true; // trialing sem data (legado) permanece ativo
-    return new Date(trialEndsAt).getTime() > Date.now();
-  }
-  return false;
-}
+// isSubscriptionActive vive em módulo puro (sem importar o SDK Stripe) para poder
+// ser usado no middleware (edge). Reexportado aqui para manter a compatibilidade.
+export { isSubscriptionActive } from "./subscription-status";

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   try {
     const portal = await getStripe().billingPortal.sessions.create({
       customer: sub.stripe_customer_id,
-      return_url: `${origin}/dashboard`,
+      return_url: `${origin}/perfil`,
     });
     return NextResponse.json({ url: portal.url });
   } catch (error) {
