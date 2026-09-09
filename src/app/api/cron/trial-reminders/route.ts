@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push-send";
 
 // GET /api/cron/trial-reminders — avisa (push) quem está nas últimas 24h do trial sem cartão.
-// Agendado via pg_cron (Supabase) — ver migration 046_trial_reminder.sql.
+// Agendado via pg_cron (Supabase) — ver migration 050_trial_reminder.sql.
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (secret) {
