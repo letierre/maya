@@ -32,6 +32,6 @@ export async function GET() {
     status: sub.status,
     trialEndsAt: sub.trial_ends_at,
     currentPeriodEnd: sub.current_period_end,
-    isActive: isSubscriptionActive(sub.status),
+    isActive: isSubscriptionActive(sub.status, sub.trial_ends_at),
   });
 }

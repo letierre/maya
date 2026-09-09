@@ -8,7 +8,6 @@ import { defaultAnswers, WaterCupSelector, WATER_GOAL, ML_PER_CUP } from "@/comp
 import { requestPushSubscription } from "@/lib/push-utils";
 import { invalidateFetchCache } from "@/lib/fetch-cache";
 import { useInstallPrompt, IosGuide } from "@/components/InstallAppCard";
-import { Paywall } from "@/components/Paywall";
 import { LANG_OPTIONS, t as translate, type Lang } from "@/lib/i18n";
 
 // ── Design tokens (mesmos do check-in) ────────────────────────────────────────
@@ -86,7 +85,7 @@ const CONTEXT_QUESTIONS = [
 
 const STEPS = [
   "welcome", "goal", "pain", "social", "tinder", "solution", "comparison",
-  "preferences", "about", "processing", "demo", "value", "notifications", "install", "paywall",
+  "preferences", "about", "processing", "demo", "value", "notifications", "install",
 ] as const;
 
 // ── Shared UI ─────────────────────────────────────────────────────────────────
@@ -788,7 +787,7 @@ export default function OnboardingFlow() {
     }).catch(() => {});
   }, [demo, waterCups]);
 
-  // Completa o onboarding (antes do redirect pro Checkout do Stripe).
+  // Completa o onboarding: salva, inicia o trial local (7 dias, sem cartão) e entra no dashboard.
   const handleFinish = async () => {
     // 1. Garante o check-in da demo salvo
     saveDemoCheckIn();
@@ -834,15 +833,19 @@ export default function OnboardingFlow() {
 
     if (!res.ok) throw new Error("save");
 
+    // 3. Inicia o trial local (sem cartão) — best-effort: se falhar, o gate mostra o paywall.
+    try {
+      await fetch("/api/subscription/trial", { method: "POST" });
+    } catch {}
+
     invalidateFetchCache("/api/check-ins");
-    // O redirect pro Checkout do Stripe é feito pelo componente Paywall,
-    // que chama este beforeCheckout antes de criar a sessão.
+    router.push("/dashboard");
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  const showProgress = step !== "welcome" && step !== "paywall";
-  const showBack = stepIdx > 0 && step !== "processing" && step !== "value" && step !== "paywall" && step !== "notifications" && step !== "install";
+  const showProgress = step !== "welcome";
+  const showBack = stepIdx > 0 && step !== "processing" && step !== "value" && step !== "notifications" && step !== "install";
 
   return (
     <main style={{
@@ -877,8 +880,7 @@ export default function OnboardingFlow() {
         {step === "demo" && <DemoStep selected={demo} toggle={toggleDemo} waterCups={waterCups} setWaterCups={setWaterCups} onNext={() => { saveDemoCheckIn(); goNext(); }} onPrev={goPrev} />}
         {step === "value" && <ValueStep selected={demo} waterCups={waterCups} onNext={goNext} />}
         {step === "notifications" && <NotificationsStep onEnable={handleEnableNotifications} onSkip={goNext} loading={notifLoading} />}
-        {step === "install" && <InstallStep onNext={goNext} />}
-        {step === "paywall" && <Paywall beforeCheckout={handleFinish} />}
+        {step === "install" && <InstallStep onNext={handleFinish} />}
       </div>
     </main>
   );

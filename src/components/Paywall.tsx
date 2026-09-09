@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 const ACCENT = "#7C5CFF";
@@ -10,18 +10,63 @@ const BORDER = "oklch(0.28 0.02 270 / 0.5)";
 const MUTED = "oklch(0.55 0.03 270)";
 const TEXT = "#e0d6ff";
 
+type Variant = "none" | "expired" | "past_due" | "canceled";
+
+const COPY: Record<Variant, { headline: string; sub: string; cta: string }> = {
+  none: {
+    headline: "Seu equilíbrio, com a Maya ao seu lado.",
+    sub: "Continue sua jornada com uma companheira que entende você.",
+    cta: "Assinar agora",
+  },
+  expired: {
+    headline: "Seu período grátis terminou.",
+    sub: "Assine agora para continuar sua jornada com a Maya.",
+    cta: "Assinar agora",
+  },
+  past_due: {
+    headline: "Falta só o pagamento.",
+    sub: "Atualize seu cartão para continuar sem interrupção.",
+    cta: "Atualizar pagamento",
+  },
+  canceled: {
+    headline: "Que bom ter você de volta.",
+    sub: "Reative seu plano e continue de onde parou.",
+    cta: "Reativar plano",
+  },
+};
+
 /**
- * Paywall reutilizável (onboarding e /assinar). `beforeCheckout` é opcional:
- * no onboarding, completa o cadastro antes de redirecionar pro Checkout.
+ * Paywall reutilizável (/assinar). Adapta a mensagem ao estado da assinatura:
+ * novo (sem trial ainda), período grátis expirado, pagamento pendente ou cancelado.
  */
-export function Paywall({ beforeCheckout }: { beforeCheckout?: () => Promise<void> }) {
+export function Paywall() {
   const [plan, setPlan] = useState<"monthly" | "annual">("annual");
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/subscription")
+      .then((r) => r.json())
+      .then((d) => {
+        setStatus(d.status ?? null);
+        setTrialEndsAt(d.trialEndsAt ?? null);
+      })
+      .catch(() => {});
+  }, []);
+
+  const variant: Variant = (() => {
+    if (status === "past_due") return "past_due";
+    if (status === "canceled") return "canceled";
+    if (status === "trialing" && trialEndsAt && new Date(trialEndsAt).getTime() <= Date.now()) return "expired";
+    return "none";
+  })();
+
+  const copy = COPY[variant];
 
   const handleCheckout = async () => {
     setLoading(true);
     try {
-      if (beforeCheckout) await beforeCheckout();
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -51,10 +96,10 @@ export function Paywall({ beforeCheckout }: { beforeCheckout?: () => Promise<voi
     <div style={{ textAlign: "center" }}>
       <div style={{ fontSize: 56, lineHeight: 1, marginBottom: 10 }}>💜</div>
       <h1 style={{ margin: "0 0 6px", fontSize: 27, fontWeight: 700, letterSpacing: "-0.025em", color: TEXT }}>
-        Seu equilíbrio, com a Maya ao seu lado.
+        {copy.headline}
       </h1>
       <p style={{ margin: "0 0 20px", fontSize: 14, color: MUTED, lineHeight: 1.5 }}>
-        Continue sua jornada com uma companheira que entende você.
+        {copy.sub}
       </p>
 
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px", marginBottom: 20 }}>
@@ -63,8 +108,6 @@ export function Paywall({ beforeCheckout }: { beforeCheckout?: () => Promise<voi
       </div>
 
       <div style={{ marginBottom: 20 }}>
-        <p style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 800, color: TEXT }}>7 dias grátis</p>
-
         {/* Plano anual (destaque) */}
         <div
           role="button"
@@ -106,14 +149,14 @@ export function Paywall({ beforeCheckout }: { beforeCheckout?: () => Promise<voi
         </div>
       </div>
 
-      <button type="button" onClick={handleCheckout} disabled={loading} style={{
+      <button type="button" onClick={variant === "past_due" ? handleRestore : handleCheckout} disabled={loading} style={{
         width: "100%", height: 54, borderRadius: 16, border: 0, cursor: "pointer",
         background: `linear-gradient(135deg, ${ACCENT}, ${ACCENT_2})`, color: "#fff",
         fontFamily: "inherit", fontSize: 15.5, fontWeight: 700,
         opacity: loading ? 0.7 : 1,
         boxShadow: "0 4px 18px -4px oklch(.55 .2 270 / .5)",
       }}>
-        {loading ? "Preparando…" : "Começar meus 7 dias grátis"}
+        {loading ? "Preparando…" : copy.cta}
       </button>
 
       <button type="button" onClick={handleRestore} style={{

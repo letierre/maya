@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getStripe, priceIdFor, type Plan } from "@/lib/stripe";
 
-// POST /api/stripe/checkout — cria uma sessão de Checkout (assinatura com 7 dias de trial).
+// POST /api/stripe/checkout — cria uma sessão de Checkout (cobrança imediata, sem trial).
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
   const { data: { session } } = await supabase.auth.getSession();
@@ -22,7 +22,6 @@ export async function POST(req: NextRequest) {
       mode: "subscription",
       line_items: [{ price: priceIdFor(plan as Plan), quantity: 1 }],
       subscription_data: {
-        trial_period_days: 7,
         metadata: { user_id: user.id, plan },
       },
       customer_email: user.email || undefined,
