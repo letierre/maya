@@ -11,6 +11,7 @@ import { getUserTimezone } from "@/lib/utils";
 import { LogoutButton } from "@/components/LogoutButton";
 import { InstallAppCard } from "@/components/InstallAppCard";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
+import { PlanCard } from "@/components/SubscriptionStatus";
 import { APP_VERSION } from "@/lib/version";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -228,6 +229,9 @@ export default function PerfilPage() {
             Perfil
           </h1>
         </div>
+
+        {/* Meu plano */}
+        <PlanCard />
 
         {/* Avatar + Name + Email */}
         <div style={card}>

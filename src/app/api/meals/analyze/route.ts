@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
 import { callLLM, toImageBlock } from "@/lib/llm";
 import type { Macros } from "@/types";
@@ -150,6 +151,8 @@ export async function POST(request: Request) {
   if (authError || !user) {
     return NextResponse.json({ error: "Nao autorizado" }, { status: 401 });
   }
+
+  if (!(await hasActiveSubscription(user.id))) return subscriptionRequired();
 
   let mealId = "";
 

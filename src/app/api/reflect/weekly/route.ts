@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
 import { getReflectionWeek } from "@/lib/utils";
 import { sumMacros } from "@/lib/meal-utils";
@@ -125,6 +126,8 @@ export async function POST(request: Request) {
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
+
+  if (!(await hasActiveSubscription(user.id))) return subscriptionRequired();
 
   try {
     const body = await request.json().catch(() => ({}));

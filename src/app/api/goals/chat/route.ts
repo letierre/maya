@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
 import { getWeekMondayDate } from "@/lib/utils";
 import { callLLM } from "@/lib/llm";
@@ -114,6 +115,8 @@ export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
+  if (!(await hasActiveSubscription(session.user.id))) return subscriptionRequired();
 
   const body = await req.json();
   const messages: { role: string; content: string }[] = body.messages || [];

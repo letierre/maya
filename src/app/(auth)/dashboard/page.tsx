@@ -15,6 +15,7 @@ import { CheckinProgress } from "@/components/CheckinProgress";
 import { InsightsCarousel } from "@/components/InsightsCarousel";
 import { EvolucaoSpark } from "@/components/EvolucaoSpark";
 import { CareList } from "@/components/CareList";
+import { TrialBanner } from "@/components/SubscriptionStatus";
 import type { CheckIn, SleepLog, WeeklyTask } from "@/types";
 
 // ── Page ────────────────────────────────────────────────────────
@@ -248,6 +249,9 @@ export default function DashboardPage() {
       className="relative min-h-screen pb-28"
       style={{ background: "oklch(0.12 0.012 270)" }}
     >
+      {/* ═══ TRIAL BANNER ═══ */}
+      <TrialBanner />
+
       {/* ═══ MAYA HERO ═══ */}
       <MayaHero
         firstName={firstName}

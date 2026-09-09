@@ -5,15 +5,22 @@ import { getStripe } from "@/lib/stripe";
 
 // Mapeia uma Stripe.Subscription para a linha da tabela `subscriptions`.
 function subscriptionRow(sub: Stripe.Subscription, plan: string) {
+  // A API "dahlia" (2026-08) removeu current_period_end do objeto Subscription;
+  // o fim do período agora vem em billing_schedules[].bill_until.computed_timestamp.
+  const schedules = (sub as Stripe.Subscription & {
+    billing_schedules?: Array<{ bill_until?: { computed_timestamp?: number } }>;
+  }).billing_schedules ?? [];
+  const periodEndTs = schedules.length > 0
+    ? Math.max(...schedules.map((s) => s.bill_until?.computed_timestamp ?? 0))
+    : 0;
+
   return {
     stripe_customer_id: typeof sub.customer === "string" ? sub.customer : (sub.customer?.id ?? null),
     stripe_subscription_id: sub.id,
     plan,
     status: sub.status,
     trial_ends_at: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
-    // A API "dahlia" (2026-08) removeu current_period_end do objeto Subscription
-    // (o período agora vem em `billing_schedules`). Deixamos null por ora — o gate usa só `status`.
-    current_period_end: null,
+    current_period_end: periodEndTs ? new Date(periodEndTs * 1000).toISOString() : null,
     cancel_at_period_end: sub.cancel_at_period_end,
     updated_at: new Date().toISOString(),
   };
@@ -69,6 +76,27 @@ export async function POST(req: NextRequest) {
           { user_id: userId, ...subscriptionRow(sub, plan) },
           { onConflict: "user_id" }
         );
+        break;
+      }
+      case "invoice.payment_failed": {
+        // Sinal direto de cobrança recusada → marca past_due (mesmo que a sub
+        // ainda não tenha disparado customer.subscription.updated).
+        const invoice = event.data.object as Stripe.Invoice;
+        // API "dahlia" removeu invoice.subscription; a sub vem em parent.subscription_details.
+        const subRef = invoice.parent?.subscription_details?.subscription ?? null;
+        const subId = typeof subRef === "string" ? subRef : (subRef?.id ?? null);
+        if (!subId) break;
+        const { data: existing } = await admin
+          .from("subscriptions")
+          .select("user_id")
+          .eq("stripe_subscription_id", subId)
+          .maybeSingle();
+        if (existing?.user_id) {
+          await admin
+            .from("subscriptions")
+            .update({ status: "past_due", updated_at: new Date().toISOString() })
+            .eq("user_id", existing.user_id);
+        }
         break;
       }
       default:

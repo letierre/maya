@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { buildHomeMessagePrompt } from "@/lib/maya";
 import { fetchMayaContext, toMayaInput, buildRecentChatTopics } from "@/lib/maya-context";
 import { computeCareSignals } from "@/lib/care-signals";
@@ -42,6 +43,8 @@ export async function GET(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
+
+  if (!(await hasActiveSubscription(user.id))) return subscriptionRequired();
 
   const admin = getSupabaseAdmin();
   const userTz = req.nextUrl.searchParams.get("tz") || getUserTimezone();

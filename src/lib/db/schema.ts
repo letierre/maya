@@ -180,6 +180,7 @@ export const subscriptions = pgTable("subscriptions", {
   plan: text("plan").notNull().default("monthly"),
   status: text("status").notNull().default("none"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  trialRemindedAt: timestamp("trial_reminded_at", { withTimezone: true }),
   currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
   cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

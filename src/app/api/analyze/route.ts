@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { buildAnalysisPrompt, buildFactExtractionPrompt } from "@/lib/analyzer";
 import { calculateStreak } from "@/lib/utils";
 import { habitProgress } from "@/lib/checkin-answered";
@@ -14,6 +15,8 @@ export async function POST() {
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
+
+  if (!(await hasActiveSubscription(user.id))) return subscriptionRequired();
 
   try {
     const admin = getSupabaseAdmin();

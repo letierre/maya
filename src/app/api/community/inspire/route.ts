@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { callLLM } from "@/lib/llm";
 import { getLocalDate } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
@@ -11,6 +12,8 @@ export async function GET() {
 
   const admin = getSupabaseAdmin();
   const userId = session.user.id;
+
+  if (!(await hasActiveSubscription(userId))) return subscriptionRequired();
 
   // Get user context
   const { data: recentCI } = await admin.from("check_ins").select("mood_tags, feeling, slept_well").eq("user_id", userId).order("date", { ascending: false }).limit(2);

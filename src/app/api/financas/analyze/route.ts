@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { NextRequest, NextResponse } from "next/server";
 import { callLLM, toImageBlock } from "@/lib/llm";
 
@@ -70,6 +71,8 @@ export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
+  if (!(await hasActiveSubscription(session.user.id))) return subscriptionRequired();
 
   const { photoBase64, mediaType, categories } = await req.json();
   if (!photoBase64) return NextResponse.json({ error: "Foto obrigatória" }, { status: 400 });
