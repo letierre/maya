@@ -326,7 +326,7 @@ export default function RegistrarRefeicaoPage() {
       </div>
 
       {/* ── Content (scrollable if needed) ─────────────────── */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "0 16px", minHeight: 0 }}>
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "0 16px", minHeight: 0 }}>
 
         {/* ── STAGE: capture ── */}
         {stage === "capture" && (
@@ -566,7 +566,7 @@ export default function RegistrarRefeicaoPage() {
                       style={{
                         background: "transparent", border: "none", outline: "none",
                         fontSize: 12, color: FOREGROUND, fontFamily: "inherit",
-                        minWidth: 60, width: Math.max(60, item.nome.length * 8),
+                        minWidth: 60, width: Math.min(180, Math.max(60, item.nome.length * 8)),
                       }}
                     />
                     <button
@@ -650,8 +650,8 @@ export default function RegistrarRefeicaoPage() {
                       background: "oklch(0.45 0.15 160 / .08)", border: "1px solid oklch(0.45 0.15 160 / .16)",
                       borderRadius: 12, padding: "8px 12px",
                     }}>
-                      <span style={{ fontSize: 14, lineHeight: 1.2 }}>✨</span>
-                      <span>{b}</span>
+                      <span style={{ fontSize: 14, lineHeight: 1.2, flexShrink: 0 }}>✨</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>{b}</span>
                     </div>
                   ))}
                 </div>

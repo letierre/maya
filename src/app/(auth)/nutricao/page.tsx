@@ -15,7 +15,7 @@ import { MonthlyReport } from "@/components/MonthlyReport";
 import { FoodMoodCorrelation } from "@/components/FoodMoodCorrelation";
 import { WeeklyMirror } from "@/components/WeeklyMirror";
 import { NutritionQualityCard } from "@/components/NutritionQualityCard";
-import { Plus, Sun, Calendar, Sparkles, Star, X, ShoppingCart } from "lucide-react";
+import { Plus, Sun, Calendar, Sparkles, Star, X, ShoppingCart, Clock } from "lucide-react";
 import type { Meal } from "@/types";
 import { toast } from "sonner";
 
@@ -85,7 +85,7 @@ function NutricaoPage() {
   const [kcalGoal, setKcalGoal] = useState(DEFAULT_DAILY_KCAL);
   const [showChat, setShowChat] = useState(false);
   const [favoriteMeals, setFavoriteMeals] = useState<Meal[]>([]);
-  const [addingFav, setAddingFav] = useState<string | null>(null);
+  const [addingMeal, setAddingMeal] = useState<string | null>(null);
 
   // Sync tab when URL param changes
   useEffect(() => {
@@ -158,8 +158,8 @@ function NutricaoPage() {
     }
   };
 
-  const handleFavoriteQuickAdd = async (fav: Meal) => {
-    setAddingFav(fav.id);
+  const handleQuickAdd = async (fav: Meal) => {
+    setAddingMeal(fav.id);
     try {
       const res = await fetch("/api/meals", {
         method: "POST",
@@ -189,7 +189,7 @@ function NutricaoPage() {
     } catch {
       toast.error("Erro ao adicionar");
     }
-    setAddingFav(null);
+    setAddingMeal(null);
   };
 
   const handleAddToShoppingList = async (items: { item_name: string; category: string }[]) => {
@@ -269,6 +269,29 @@ function NutricaoPage() {
     }
     return { total: analyzed.length, avgKcal, classCount };
   }, [monthMeals]);
+
+  const recentMeals = useMemo(() => {
+    const today = getLocalDate();
+    const seen = new Set<string>();
+    const favIds = new Set(favoriteMeals.map((m) => m.id));
+    const result: Meal[] = [];
+    const sorted = [...meals].sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime());
+    for (const m of sorted) {
+      const dia = getLocalDateFromISO(m.data_hora);
+      if (dia === today) continue;
+      if (favIds.has(m.id)) continue;
+      if (!m.itens || m.itens.length === 0) continue;
+      const dayDiff = Math.round(
+        (new Date(today + "T12:00:00").getTime() - new Date(dia + "T12:00:00").getTime()) / 86400000
+      );
+      if (dayDiff > 7 || dayDiff < 0) continue;
+      const key = `${m.tipo_refeicao}:${m.itens.map((i) => i.nome.trim().toLowerCase()).sort().join("|")}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(m);
+    }
+    return result.slice(0, 8);
+  }, [meals, favoriteMeals]);
 
   // ── Loading ─────────────────────────────────────────────────
 
@@ -379,7 +402,7 @@ function NutricaoPage() {
                 scrollbarWidth: "none", msOverflowStyle: "none",
               }}>
                 {favoriteMeals.map((fav) => {
-                  const isLoading = addingFav === fav.id;
+                  const isLoading = addingMeal === fav.id;
                   return (
                     <div
                       key={fav.id}
@@ -416,7 +439,7 @@ function NutricaoPage() {
                       <button
                         type="button"
                         disabled={isLoading}
-                        onClick={() => handleFavoriteQuickAdd(fav)}
+                        onClick={() => handleQuickAdd(fav)}
                         style={{
                           width: "100%", textAlign: "left", padding: 0,
                           background: "none", border: 0,
@@ -444,6 +467,51 @@ function NutricaoPage() {
                         </div>
                       </button>
                     </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Recentes ─────────────────────────────────── */}
+          {recentMeals.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "#e0d6ff", display: "flex", alignItems: "center", gap: 6 }}>
+                <Clock style={{ width: 16, height: 16, color: "#A78BFA" }} />
+                Recentes
+              </p>
+              <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none", msOverflowStyle: "none" }}>
+                {recentMeals.map((m) => {
+                  const isLoading = addingMeal === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => handleQuickAdd(m)}
+                      style={{
+                        flexShrink: 0, textAlign: "left", minWidth: 150, maxWidth: 200,
+                        borderRadius: 14, padding: 12,
+                        background: "oklch(.17 .015 270 / .6)", border: `1px solid ${BORDER}`,
+                        opacity: isLoading ? 0.5 : 1,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                        <span style={{ fontSize: 14 }}>{mealTypeEmoji(m.tipo_refeicao)}</span>
+                        <span style={{ fontSize: 11, fontWeight: 500, color: "#e0d6ff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {m.itens?.length ? m.itens.map((i) => i.nome).join(", ") : mealTypeLabel(m.tipo_refeicao)}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: 11, color: MUTED }}>
+                          {m.macros ? `${m.macros.calorias_kcal} kcal` : "Sem macros"}
+                        </span>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: "#A78BFA", display: "inline-flex", alignItems: "center", gap: 2 }}>
+                          <Plus style={{ width: 12, height: 12 }} />
+                          {isLoading ? "..." : "Add"}
+                        </span>
+                      </div>
+                    </button>
                   );
                 })}
               </div>
