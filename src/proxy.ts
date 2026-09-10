@@ -10,6 +10,7 @@ const API_ALLOW = [
   "/api/stripe",
   "/api/preferences",
   "/api/check-ins",
+  "/api/geo",
   "/api/push",
   "/api/profile",
   "/api/upload",

@@ -48,8 +48,21 @@ export function Paywall() {
   const [isBrazil, setIsBrazil] = useState(true);
 
   useEffect(() => {
-    const lang = (navigator.language || "").toLowerCase();
-    setIsBrazil(lang.startsWith("pt-br"));
+    // País preciso por IP (Vercel). Fallback: idioma do navegador (dev/local).
+    fetch("/api/geo")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { country?: string } | null) => {
+        if (d?.country) {
+          setIsBrazil(d.country === "BR");
+        } else {
+          const lang = (navigator.language || "").toLowerCase();
+          setIsBrazil(lang.startsWith("pt-br"));
+        }
+      })
+      .catch(() => {
+        const lang = (navigator.language || "").toLowerCase();
+        setIsBrazil(lang.startsWith("pt-br"));
+      });
   }, []);
 
   const px = isBrazil
