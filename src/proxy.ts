@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isSubscriptionActive } from "@/lib/subscription-status";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 // Rotas de API que NÃO exigem assinatura ativa: onboarding, infra e rotas com auth própria.
 // Tudo o que não está aqui fica protegido (403 se o usuário não tiver trial/assinatura ativa).
@@ -66,7 +67,11 @@ export async function proxy(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
-    const { data: sub } = await supabase
+    // Service role: `subscriptions` tem RLS ligado (sem policy), então o papel
+    // authenticated (anon) não enxerga a linha — usar admin é consistente com o
+    // subscription-guard e /api/subscription.
+    const admin = getSupabaseAdmin();
+    const { data: sub } = await admin
       .from("subscriptions")
       .select("status, trial_ends_at")
       .eq("user_id", user.id)
