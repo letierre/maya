@@ -26,6 +26,8 @@ export function QuarterlyOKRPanel() {
   const [newKRTitle, setNewKRTitle] = useState("");
   const [newKRUnit, setNewKRUnit] = useState("%");
   const [newKRTarget, setNewKRTarget] = useState(100);
+  const [newKRGoalId, setNewKRGoalId] = useState<string>("");
+  const [goals, setGoals] = useState<any[]>([]);
 
   // Edit KR progress
   const [editingKR, setEditingKR] = useState<string | null>(null);
@@ -49,6 +51,12 @@ export function QuarterlyOKRPanel() {
   };
 
   useEffect(() => { fetchCycles(); }, []);
+
+  useEffect(() => {
+    fetch("/api/goals").then(r => r.json()).then(d => {
+      if (Array.isArray(d)) setGoals(d.filter((g: any) => g.status === "ativa"));
+    }).catch(() => {});
+  }, []);
 
   // Auto-expand active cycle
   useEffect(() => {
@@ -96,17 +104,18 @@ export function QuarterlyOKRPanel() {
     const res = await fetch(`/api/quarterly-cycles/${cycleId}/key-results`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: newKRTitle.trim(), unit: newKRUnit, target: newKRTarget }),
+      body: JSON.stringify({ title: newKRTitle.trim(), unit: newKRUnit, target: newKRTarget, linked_goal_id: newKRGoalId || null }),
     });
     if (res.ok) {
-      toast.success("Key Result adicionado!");
+      toast.success("Resultado adicionado!");
       setAddingKRFor(null);
       setNewKRTitle("");
       setNewKRUnit("%");
       setNewKRTarget(100);
+      setNewKRGoalId("");
       fetchCycles();
     } else {
-      toast.error("Erro ao adicionar KR");
+      toast.error("Erro ao adicionar resultado");
     }
   };
 
@@ -200,9 +209,9 @@ export function QuarterlyOKRPanel() {
       {/* ── Header ─────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>OKRs Trimestrais</h2>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>Resultados do trimestre</h2>
           <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6a657a" }}>
-            A ponte entre suas metas de longo prazo e a semana
+            A ponte entre suas metas e a semana
           </p>
         </div>
         {!activeCycle && (
@@ -259,7 +268,7 @@ export function QuarterlyOKRPanel() {
                     {prog.pct}%
                   </p>
                   <p style={{ margin: 0, fontSize: 9, color: "#6a657a" }}>
-                    {prog.done}/{prog.total} KRs
+                    {prog.done}/{prog.total} resultados
                   </p>
                 </div>
               );
@@ -376,43 +385,56 @@ export function QuarterlyOKRPanel() {
           {/* Empty KRs state */}
           {(!activeCycle.key_results || activeCycle.key_results.length === 0) && (
             <p style={{ margin: "10px 0", fontSize: 12, color: "#5a5470", textAlign: "center" }}>
-              Nenhum Key Result definido ainda.
+              Nenhum resultado definido ainda.
             </p>
           )}
 
           {/* Actions row */}
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             {addingKRFor === activeCycle.id ? (
-              <div style={{ flex: 1, display: "flex", gap: 6, alignItems: "center" }}>
-                <input value={newKRTitle} onChange={e => setNewKRTitle(e.target.value)} placeholder="Key Result..." autoFocus
+              <div style={{ flex: 1 }}>
+                <select value={newKRGoalId} onChange={e => setNewKRGoalId(e.target.value)}
                   style={{
-                    flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
-                    background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
-                  }} />
-                <select value={newKRUnit} onChange={e => setNewKRUnit(e.target.value)}
-                  style={{
-                    padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
-                    background: "#0B0B10", color: "#e0d6ff", fontSize: 11, fontFamily: "inherit",
+                    width: "100%", marginBottom: 6, padding: "8px 10px", borderRadius: 10,
+                    border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10",
+                    color: "#e0d6ff", fontSize: 11, fontFamily: "inherit", boxSizing: "border-box",
                   }}>
-                  {Object.entries(UNIT_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>{v}</option>
+                  <option value="">Sem meta vinculada</option>
+                  {goals.map((g) => (
+                    <option key={g.id} value={g.id}>{g.title}</option>
                   ))}
                 </select>
-                <input type="number" value={newKRTarget} onChange={e => setNewKRTarget(Number(e.target.value))}
-                  style={{
-                    width: 60, padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
-                    background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
-                  }} />
-                <button type="button" onClick={() => addKR(activeCycle.id)}
-                  style={{
-                    padding: "8px 12px", borderRadius: 10, border: 0, background: "#7C5CFF", color: "#fff",
-                    fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
-                  }}>Adicionar</button>
-                <button type="button" onClick={() => setAddingKRFor(null)}
-                  style={{
-                    padding: "8px", borderRadius: 10, border: 0, background: "transparent", color: "#9e96b5",
-                    fontSize: 14, cursor: "pointer", fontFamily: "inherit",
-                  }}>✕</button>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input value={newKRTitle} onChange={e => setNewKRTitle(e.target.value)} placeholder="Resultado..." autoFocus
+                    style={{
+                      flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
+                      background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
+                    }} />
+                  <select value={newKRUnit} onChange={e => setNewKRUnit(e.target.value)}
+                    style={{
+                      padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
+                      background: "#0B0B10", color: "#e0d6ff", fontSize: 11, fontFamily: "inherit",
+                    }}>
+                    {Object.entries(UNIT_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                  <input type="number" value={newKRTarget} onChange={e => setNewKRTarget(Number(e.target.value))}
+                    style={{
+                      width: 60, padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
+                      background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
+                    }} />
+                  <button type="button" onClick={() => addKR(activeCycle.id)}
+                    style={{
+                      padding: "8px 12px", borderRadius: 10, border: 0, background: "#7C5CFF", color: "#fff",
+                      fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                    }}>Adicionar</button>
+                  <button type="button" onClick={() => setAddingKRFor(null)}
+                    style={{
+                      padding: "8px", borderRadius: 10, border: 0, background: "transparent", color: "#9e96b5",
+                      fontSize: 14, cursor: "pointer", fontFamily: "inherit",
+                    }}>✕</button>
+                </div>
               </div>
             ) : (
               <button type="button" onClick={() => setAddingKRFor(activeCycle.id)}
@@ -422,7 +444,7 @@ export function QuarterlyOKRPanel() {
                   background: "rgba(124,92,255,0.03)", cursor: "pointer", color: "#A78BFA",
                   fontSize: 12, fontWeight: 600, fontFamily: "inherit",
                 }}>
-                <Plus size={14} /> Adicionar Key Result
+                <Plus size={14} /> Adicionar resultado
               </button>
             )}
 
@@ -498,7 +520,7 @@ export function QuarterlyOKRPanel() {
             Nenhum ciclo ainda
           </p>
           <p style={{ margin: "0 0 16px", fontSize: 12, color: "#6a657a", maxWidth: 280, marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>
-            Crie seu primeiro ciclo trimestral com OKRs para conectar suas metas de longo prazo com sua semana.
+            Crie seu primeiro ciclo trimestral com resultados para conectar suas metas com sua semana.
           </p>
           <button type="button" onClick={() => setShowCreate(true)}
             style={{

@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const VALID_AREAS = [
   "saude", "carreira", "financas", "relacionamentos",
@@ -17,14 +17,15 @@ export async function GET() {
     .from("area_visions")
     .select("*")
     .eq("user_id", session.user.id)
-    .order("area", { ascending: true });
+    .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json(data || []);
 }
 
-export async function PUT(request: Request) {
+// POST — cria uma nova visão (múltiplas visões por área são permitidas).
+export async function POST(request: Request) {
   const supabase = await createServerSupabaseClient();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -35,46 +36,41 @@ export async function PUT(request: Request) {
   if (!area || typeof area !== "string" || !VALID_AREAS.includes(area)) {
     return NextResponse.json(
       { error: `Área inválida. Use uma das 8 áreas: ${VALID_AREAS.join(", ")}` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  if (statement == null || typeof statement !== "string") {
-    return NextResponse.json({ error: "statement é obrigatório (string)" }, { status: 400 });
+  if (typeof statement !== "string" || statement.trim().length === 0) {
+    return NextResponse.json({ error: "statement é obrigatório (string não vazia)" }, { status: 400 });
   }
 
   const admin = getSupabaseAdmin();
-
-  // Upsert: try update first, insert if not exists
-  const { data: existing } = await admin
-    .from("area_visions")
-    .select("id")
-    .eq("user_id", session.user.id)
-    .eq("area", area)
-    .maybeSingle();
-
-  if (existing) {
-    const { data, error } = await admin
-      .from("area_visions")
-      .update({ statement, updated_at: new Date().toISOString() })
-      .eq("id", existing.id)
-      .select()
-      .single();
-
-    if (error || !data) return NextResponse.json({ error: error?.message }, { status: 500 });
-    return NextResponse.json(data);
-  }
-
   const { data, error } = await admin
     .from("area_visions")
-    .insert({
-      user_id: session.user.id,
-      area,
-      statement,
-    })
+    .insert({ user_id: session.user.id, area, statement: statement.trim() })
     .select()
     .single();
 
   if (error || !data) return NextResponse.json({ error: error?.message }, { status: 500 });
   return NextResponse.json(data, { status: 201 });
+}
+
+// DELETE /api/area-visions?id=... — remove uma visão específica.
+export async function DELETE(request: NextRequest) {
+  const supabase = await createServerSupabaseClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
+  const id = new URL(request.url).searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "id é obrigatório" }, { status: 400 });
+
+  const admin = getSupabaseAdmin();
+  const { error } = await admin
+    .from("area_visions")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", session.user.id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
 }

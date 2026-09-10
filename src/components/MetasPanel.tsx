@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { GoalCreateSheet } from "@/components/GoalCreateSheet";
 import { GoalDetailSheet } from "@/components/GoalDetailSheet";
+import { QuarterlyOKRPanel } from "@/components/QuarterlyOKRPanel";
 import {
   AREA_CONFIG, AREA_LABELS, LIFE_AREAS,
 } from "@/lib/planejamento-constants";
@@ -62,7 +63,8 @@ export function MetasPanel() {
   const [showCreate, setShowCreate] = useState(false);
   const [detailGoalId, setDetailGoalId] = useState<string | null>(null);
   const [showMayaPick, setShowMayaPick] = useState(false);
-  const [editingVision, setEditingVision] = useState<string | null>(null);
+  const [showVisionModal, setShowVisionModal] = useState(false);
+  const [visionArea, setVisionArea] = useState("");
   const [visionDraft, setVisionDraft] = useState("");
   const [savingVision, setSavingVision] = useState(false);
 
@@ -158,26 +160,31 @@ export function MetasPanel() {
   };
 
   const saveVision = async () => {
-    if (!editingVision) return;
+    if (!visionArea || !visionDraft.trim()) return;
     setSavingVision(true);
     try {
       await fetch("/api/area-visions", {
-        method: "PUT",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ area: editingVision, statement: visionDraft }),
+        body: JSON.stringify({ area: visionArea, statement: visionDraft }),
       });
-      setEditingVision(null);
+      setShowVisionModal(false);
+      setVisionArea("");
+      setVisionDraft("");
       refresh();
     } catch {}
     setSavingVision(false);
   };
 
+  const deleteVision = async (id: string) => {
+    try {
+      await fetch(`/api/area-visions?id=${id}`, { method: "DELETE" });
+      refresh();
+    } catch {}
+  };
+
   const activeGoals = goals.filter((g) => g.status === "ativa" || g.status === "pausada");
   const completedGoals = goals.filter((g) => g.status === "concluida");
-
-  const visionByArea: Record<string, AreaVision> = {};
-  for (const v of visions) visionByArea[v.area] = v;
-  const definedAreas = LIFE_AREAS.filter((a) => (visionByArea[a]?.statement ?? "").trim().length > 0);
 
   const statusByGoal = new Map<string, any>();
   for (const s of statuses) statusByGoal.set(s.goal_id, s);
@@ -213,44 +220,57 @@ export function MetasPanel() {
         background: "linear-gradient(160deg, rgba(124,92,255,0.14), rgba(167,139,250,0.05))",
         border: "1px solid rgba(124,92,255,0.16)",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
           <span style={{ fontSize: 20 }}>🌳</span>
           <div style={{ flex: 1 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>Visão 5 anos</p>
             <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6a657a" }}>O norte que unifica suas metas</p>
           </div>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>{definedAreas.length}/8</span>
+          <button type="button" onClick={() => { setVisionArea(""); setVisionDraft(""); setShowVisionModal(true); }}
+            style={{
+              padding: "6px 12px", borderRadius: 9999, border: "1px solid rgba(167,139,250,0.25)",
+              background: "rgba(124,92,255,0.08)", color: "#A78BFA", fontSize: 11, fontWeight: 600,
+              cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+            }}>
+            + Adicionar
+          </button>
         </div>
 
-        {definedAreas.length === 0 ? (
-          <button type="button" onClick={() => { setEditingVision("carreira"); setVisionDraft(""); }}
+        {visions.length === 0 ? (
+          <button type="button" onClick={() => { setVisionArea(""); setVisionDraft(""); setShowVisionModal(true); }}
             style={{
-              marginTop: 8, padding: "8px 14px", borderRadius: 10, border: "1px dashed rgba(167,139,250,0.3)",
-              background: "transparent", color: "#A78BFA", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+              marginTop: 4, width: "100%", padding: "10px 14px", borderRadius: 10,
+              border: "1px dashed rgba(167,139,250,0.3)", background: "transparent",
+              color: "#A78BFA", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
             }}>
-            + Escrever minha visão
+            + Escrever minha visão de 5 anos
           </button>
         ) : (
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", marginTop: 10, paddingBottom: 2 }}>
-            {definedAreas.map((a) => (
-              <button key={a} type="button"
-                onClick={() => { setEditingVision(a); setVisionDraft(visionByArea[a]?.statement ?? ""); }}
-                style={{
-                  flexShrink: 0, maxWidth: 200, textAlign: "left", padding: "8px 10px", borderRadius: 12,
-                  border: "1px solid rgba(167,139,250,0.12)", background: "#0f0e1a", cursor: "pointer", fontFamily: "inherit",
-                }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#e0d6ff" }}>
-                  {AREA_CONFIG[a as keyof typeof AREA_CONFIG]?.emoji} {AREA_FULL_LABELS[a]}
-                </span>
-                <span style={{ display: "block", fontSize: 10, color: "#9e96b5", lineHeight: 1.3, marginTop: 2,
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {visionByArea[a]?.statement}
-                </span>
-              </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+            {visions.map((v) => (
+              <div key={v.id} style={{
+                display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px", borderRadius: 12,
+                border: "1px solid rgba(167,139,250,0.12)", background: "#0f0e1a",
+              }}>
+                <span style={{ fontSize: 14, flexShrink: 0, lineHeight: 1.3 }}>{AREA_CONFIG[v.area as keyof typeof AREA_CONFIG]?.emoji}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#A78BFA", letterSpacing: ".06em", textTransform: "uppercase" }}>
+                    {AREA_FULL_LABELS[v.area]}
+                  </span>
+                  <span style={{ display: "block", fontSize: 12, color: "#c9c2e0", lineHeight: 1.45, marginTop: 1 }}>{v.statement}</span>
+                </div>
+                <button type="button" onClick={() => deleteVision(v.id)}
+                  style={{ flexShrink: 0, background: "none", border: 0, color: "#6a657a", cursor: "pointer", fontSize: 14, padding: 2, lineHeight: 1, fontFamily: "inherit" }}>
+                  ×
+                </button>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* ── Resultados do trimestre (onde você gerencia seus OKRs) ── */}
+      <QuarterlyOKRPanel />
 
       {/* ── Cascata conectada ────────────────────────────────── */}
       {activeGoals.length === 0 && completedGoals.length === 0 ? (
@@ -316,7 +336,7 @@ export function MetasPanel() {
                           }}>
                           <span style={{ fontSize: 22, flexShrink: 0 }}>{conf.emoji}</span>
                           <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e0d6ff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e0d6ff", ...(isOpen ? {} : { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }) }}>
                               {goal.title}
                             </p>
                             <p style={{ margin: "2px 0 0", fontSize: 10, color: "#9e96b5" }}>
@@ -343,10 +363,10 @@ export function MetasPanel() {
                             {/* OKR do trimestre */}
                             <div style={{ padding: "8px 0 6px", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
                               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>
-                                📊 Trimestre {krPct != null ? `· ${krPct}%` : ""}
+                                📊 Resultados do trimestre {krPct != null ? `· ${krPct}%` : ""}
                               </p>
                               {krList.length === 0 ? (
-                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#5a5470" }}>Sem OKR ligado a esta meta</p>
+                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#5a5470" }}>Sem resultado ligado a esta meta</p>
                               ) : (
                                 krList.map((kr) => {
                                   const pct = kr.target > 0 ? Math.min(100, Math.round((kr.current / kr.target) * 100)) : 0;
@@ -475,30 +495,38 @@ export function MetasPanel() {
         </div>
       )}
 
-      {/* Edit visão modal */}
-      {editingVision && (
+      {/* Adicionar visão modal */}
+      {showVisionModal && (
         <div onTouchMove={(e) => e.stopPropagation()} style={{
           position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
           display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
         }}>
           <div style={{ width: "100%", maxWidth: 420, maxHeight: "85dvh", overflowY: "auto", background: "#151520", borderRadius: 24, padding: 24, border: "1px solid rgba(167,139,250,0.15)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-              <span style={{ fontSize: 28 }}>{AREA_CONFIG[editingVision as keyof typeof AREA_CONFIG]?.emoji || "🎯"}</span>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>{AREA_FULL_LABELS[editingVision] || editingVision}</h3>
-                <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6a657a" }}>Onde você quer estar em 5 anos nesta área?</p>
-              </div>
-            </div>
+            <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>Nova visão</h3>
+            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#6a657a" }}>Onde você quer estar em 5 anos?</p>
+
+            <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#6a657a", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 6 }}>
+              Área da vida
+            </label>
+            <select value={visionArea} onChange={(e) => setVisionArea(e.target.value)}
+              style={{ width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box", marginBottom: 14 }}>
+              <option value="" disabled>Escolha uma área…</option>
+              {LIFE_AREAS.map((a) => (
+                <option key={a} value={a}>{AREA_CONFIG[a as keyof typeof AREA_CONFIG]?.emoji} {AREA_FULL_LABELS[a]}</option>
+              ))}
+            </select>
+
             <textarea value={visionDraft} onChange={(e) => setVisionDraft(e.target.value)} rows={6} autoFocus
               placeholder="Descreva sua visão de 5 anos para esta área..."
               style={{ width: "100%", padding: "14px", borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none", resize: "vertical", boxSizing: "border-box", lineHeight: 1.6 }} />
+
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-              <button type="button" onClick={() => setEditingVision(null)}
+              <button type="button" onClick={() => setShowVisionModal(false)}
                 style={{ flex: 1, padding: "14px 0", borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                 Cancelar
               </button>
-              <button type="button" onClick={saveVision} disabled={savingVision}
-                style={{ flex: 2, padding: "14px 0", borderRadius: 14, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: savingVision ? 0.7 : 1 }}>
+              <button type="button" onClick={saveVision} disabled={savingVision || !visionArea || !visionDraft.trim()}
+                style={{ flex: 2, padding: "14px 0", borderRadius: 14, border: 0, background: (!visionArea || !visionDraft.trim()) ? "#1e1840" : "#7C5CFF", color: (!visionArea || !visionDraft.trim()) ? "#9e96b5" : "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: savingVision ? 0.7 : 1 }}>
                 Salvar visão
               </button>
             </div>
