@@ -345,6 +345,8 @@ export default function FinancasPage() {
   const [filterDateTo, setFilterDateTo] = useState("");
   const [filterCats, setFilterCats] = useState<string[]>([]);
   const [filterSubcats, setFilterSubcats] = useState<string[]>([]);
+  const [filterCatsOpen, setFilterCatsOpen] = useState(true);
+  const [filterSubcatsOpen, setFilterSubcatsOpen] = useState(true);
 
   const currentMonth = monthKey(monthOffset);
 
@@ -916,44 +918,72 @@ export default function FinancasPage() {
                       </div>
 
                       <div>
-                        <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>Categorias</p>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                          {allCats.map((c) => {
-                            const active = filterCats.includes(c.id);
-                            return (
-                              <button key={c.id} type="button" onClick={() => setFilterCats((p) => active ? p.filter((x) => x !== c.id) : [...p, c.id])} style={{
-                                flexShrink: 0, padding: "5px 11px", borderRadius: 20, border: active ? "1.5px solid #7C5CFF" : `1.5px solid ${BORDER}`,
-                                background: active ? "rgba(124,92,255,0.08)" : "#0B0B10", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
-                                fontSize: 11, fontWeight: 600, color: active ? "#A78BFA" : TEXT_SEC,
-                              }}>
-                                {catEmoji(c, customCat)} {catLabel(c, lang, customCat, userCategories)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div>
-                        <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>Subcategorias</p>
-                        {uniqueSubcats.length === 0 ? (
-                          <p style={{ margin: 0, fontSize: 11, color: TEXT_SEC, fontStyle: "italic" }}>Nenhuma subcategoria disponível</p>
-                        ) : (
+                        <button type="button" onClick={() => setFilterCatsOpen(!filterCatsOpen)} style={{
+                          width: "100%", display: "flex", alignItems: "center", gap: 6, padding: 0, margin: "0 0 8px",
+                          border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                        }}>
+                          <ChevronDown size={12} color={TEXT_SEC} style={{ transform: filterCatsOpen ? "none" : "rotate(-90deg)", transition: "transform .15s ease" }} />
+                          <span style={{ flex: 1, fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>Categorias</span>
+                          {filterCats.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: ACCENT }}>{filterCats.length}</span>}
+                        </button>
+                        {filterCatsOpen && (
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                            {uniqueSubcats.map((label) => {
-                              const active = filterSubcats.includes(label);
+                            {allCats.map((c) => {
+                              const active = filterCats.includes(c.id);
                               return (
-                                <button key={label} type="button" onClick={() => setFilterSubcats((p) => active ? p.filter((x) => x !== label) : [...p, label])} style={{
+                                <button key={c.id} type="button" onClick={() => {
+                                  if (active) {
+                                    const next = filterCats.filter((x) => x !== c.id);
+                                    setFilterCats(next);
+                                    if (next.length === 0) setFilterSubcats([]);
+                                  } else {
+                                    setFilterCats([...filterCats, c.id]);
+                                  }
+                                }} style={{
                                   flexShrink: 0, padding: "5px 11px", borderRadius: 20, border: active ? "1.5px solid #7C5CFF" : `1.5px solid ${BORDER}`,
                                   background: active ? "rgba(124,92,255,0.08)" : "#0B0B10", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
                                   fontSize: 11, fontWeight: 600, color: active ? "#A78BFA" : TEXT_SEC,
                                 }}>
-                                  {label}
+                                  {catEmoji(c, customCat)} {catLabel(c, lang, customCat, userCategories)}
                                 </button>
                               );
                             })}
                           </div>
                         )}
                       </div>
+
+                      {filterCats.length === 0 ? (
+                        <p style={{ margin: 0, fontSize: 11, color: TEXT_SEC, fontStyle: "italic" }}>Selecione uma categoria para ver as subcategorias</p>
+                      ) : (
+                        <div>
+                          <button type="button" onClick={() => setFilterSubcatsOpen(!filterSubcatsOpen)} style={{
+                            width: "100%", display: "flex", alignItems: "center", gap: 6, padding: 0, margin: "0 0 8px",
+                            border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                          }}>
+                            <ChevronDown size={12} color={TEXT_SEC} style={{ transform: filterSubcatsOpen ? "none" : "rotate(-90deg)", transition: "transform .15s ease" }} />
+                            <span style={{ flex: 1, fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>Subcategorias</span>
+                            {filterSubcats.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: ACCENT }}>{filterSubcats.length}</span>}
+                          </button>
+                          {filterSubcatsOpen && (uniqueSubcats.length === 0 ? (
+                            <p style={{ margin: 0, fontSize: 11, color: TEXT_SEC, fontStyle: "italic" }}>Nenhuma subcategoria disponível</p>
+                          ) : (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                              {uniqueSubcats.map((label) => {
+                                const active = filterSubcats.includes(label);
+                                return (
+                                  <button key={label} type="button" onClick={() => setFilterSubcats((p) => active ? p.filter((x) => x !== label) : [...p, label])} style={{
+                                    flexShrink: 0, padding: "5px 11px", borderRadius: 20, border: active ? "1.5px solid #7C5CFF" : `1.5px solid ${BORDER}`,
+                                    background: active ? "rgba(124,92,255,0.08)" : "#0B0B10", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                                    fontSize: 11, fontWeight: 600, color: active ? "#A78BFA" : TEXT_SEC,
+                                  }}>
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       {hasActiveFilters && (
                         <button type="button" onClick={clearFilters} style={{
