@@ -39,7 +39,7 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
     if (!el) return;
     const obs = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold: 0.08 },
+      { threshold: 0.05, rootMargin: "0px 0px 60px 0px" },
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -48,8 +48,8 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   return (
     <div ref={ref} style={{
       opacity: visible ? 1 : 0,
-      transform: visible ? "translateY(0)" : "translateY(16px)",
-      transition: `opacity .5s ease ${delay}ms, transform .5s ease ${delay}ms`,
+      transform: visible ? "translateY(0) scale(1)" : "translateY(24px) scale(0.98)",
+      transition: `opacity .55s cubic-bezier(.22,.61,.36,1) ${delay}ms, transform .55s cubic-bezier(.22,.61,.36,1) ${delay}ms`,
     }}>
       {children}
     </div>
@@ -79,6 +79,7 @@ export function MetasPanel() {
 
   // Scroll: progresso do fio conector + parallax da visão
   const cascadeRef = useRef<HTMLDivElement>(null);
+  const visaoRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [visaoOffset, setVisaoOffset] = useState(0);
 
@@ -125,13 +126,18 @@ export function MetasPanel() {
   useEffect(() => {
     const onScroll = () => {
       const el = cascadeRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight;
-      const total = rect.height - vh;
-      const p = total <= 0 ? 1 : Math.max(0, Math.min(1, -rect.top / total));
-      setScrollProgress(p);
-      setVisaoOffset(Math.max(0, Math.min(36, -rect.top * 0.1)));
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const vh = window.innerHeight;
+        const total = rect.height - vh;
+        const p = total <= 0 ? 1 : Math.max(0, Math.min(1, -rect.top / total));
+        setScrollProgress(p);
+      }
+      const visao = visaoRef.current;
+      if (visao) {
+        const rect = visao.getBoundingClientRect();
+        setVisaoOffset(Math.max(0, Math.min(40, -rect.top * 0.14)));
+      }
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -222,13 +228,21 @@ export function MetasPanel() {
   return (
     <div style={{ marginBottom: 20 }}>
       {/* ── Visão (norte) ─────────────────────────────────────── */}
-      <div style={{
-        position: "relative", transform: `translateY(-${visaoOffset}px)`,
-        transition: "transform .1s linear",
-        padding: "16px 16px 14px", borderRadius: 18, marginBottom: 14,
+      <div ref={visaoRef} style={{
+        position: "relative", overflow: "hidden",
+        borderRadius: 18, marginBottom: 14,
         background: "linear-gradient(160deg, rgba(124,92,255,0.14), rgba(167,139,250,0.05))",
         border: "1px solid rgba(124,92,255,0.16)",
       }}>
+        {/* Camada de parallax (desliza suavemente com o scroll) */}
+        <div style={{
+          position: "absolute", left: "-20%", top: "-60%", width: "140%", height: "220%",
+          transform: `translateY(${visaoOffset}px)`,
+          transition: "transform .1s linear",
+          background: "radial-gradient(circle at 30% 25%, rgba(124,92,255,0.20), transparent 55%)",
+          pointerEvents: "none",
+        }} />
+        <div style={{ position: "relative", padding: "16px 16px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
           <span style={{ fontSize: 20 }}>🌳</span>
           <div style={{ flex: 1 }}>
@@ -276,6 +290,7 @@ export function MetasPanel() {
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {/* ── Resultados do trimestre (onde você gerencia seus OKRs) ── */}
@@ -294,14 +309,24 @@ export function MetasPanel() {
         <div ref={cascadeRef} style={{ position: "relative", paddingLeft: 18 }}>
           {/* Fio conector (desenha conforme rola) */}
           <div style={{
-            position: "absolute", left: 5, top: 6, bottom: 6, width: 2,
-            background: "oklch(0.28 0.02 270 / 0.5)", borderRadius: 9999, overflow: "hidden",
+            position: "absolute", left: 5, top: 6, bottom: 6, width: 2.5,
+            background: "oklch(0.28 0.02 270 / 0.5)", borderRadius: 9999,
           }}>
             <div style={{
               position: "absolute", top: 0, left: 0, right: 0,
               height: `${scrollProgress * 100}%`,
               background: "linear-gradient(180deg, #7C5CFF, #A78BFA)",
+              borderRadius: 9999,
+              boxShadow: "0 0 12px rgba(124,92,255,0.55)",
               transition: "height .15s linear",
+            }} />
+            <span style={{
+              position: "absolute", top: `${scrollProgress * 100}%`, left: "50%",
+              width: 11, height: 11, borderRadius: "50%",
+              transform: "translate(-50%, -50%)",
+              background: "#A78BFA",
+              boxShadow: "0 0 14px 3px rgba(167,139,250,0.7)",
+              transition: "top .15s linear",
             }} />
           </div>
 
