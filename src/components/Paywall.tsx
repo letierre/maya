@@ -44,6 +44,17 @@ export function Paywall() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  // Brasil → R$; fora do Brasil → US$ (público LATAM já está acostumado a ver em dólar).
+  const [isBrazil, setIsBrazil] = useState(true);
+
+  useEffect(() => {
+    const lang = (navigator.language || "").toLowerCase();
+    setIsBrazil(lang.startsWith("pt-br"));
+  }, []);
+
+  const px = isBrazil
+    ? { monthly: "R$ 49,90", annual: "R$ 399,90", note: "≈ R$ 33,33/mês" }
+    : { monthly: "$ 9,99", annual: "$ 79,99", note: "≈ $ 6,67/mês" };
 
   useEffect(() => {
     fetch("/api/subscription")
@@ -125,9 +136,9 @@ export function Paywall() {
             <span style={{ background: ACCENT, color: "#fff", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>economize 33%</span>
           </div>
           <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
-            R$ 399,90<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/ano</span>
+            {px.annual}<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/ano</span>
           </p>
-          <p style={{ margin: "2px 0 0", fontSize: 12.5, color: MUTED }}>≈ R$ 33,33/mês · cancele quando quiser</p>
+          <p style={{ margin: "2px 0 0", fontSize: 12.5, color: MUTED }}>{px.note} · cancele quando quiser</p>
         </div>
 
         {/* Plano mensal */}
@@ -144,7 +155,7 @@ export function Paywall() {
         >
           <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>Mensal</span>
           <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
-            R$ 49,90<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/mês</span>
+            {px.monthly}<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/mês</span>
           </p>
         </div>
       </div>

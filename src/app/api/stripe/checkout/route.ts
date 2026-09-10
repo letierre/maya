@@ -30,6 +30,9 @@ export async function POST(req: NextRequest) {
   try {
     const checkout = await stripe.checkout.sessions.create({
       mode: "subscription",
+      // Adaptive Pricing: cobra cada cartão na moeda local do cliente (CLP, GTQ, USD…)
+      // e você segue liquidando em BRL. Elimina a falha de "moeda não suportada".
+      adaptive_pricing: { enabled: true },
       line_items: [{ price: priceIdFor(plan as Plan), quantity: 1 }],
       subscription_data: {
         metadata: { user_id: user.id, plan },
