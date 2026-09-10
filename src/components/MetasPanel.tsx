@@ -22,6 +22,13 @@ const AREA_FULL_LABELS: Record<string, string> = {
   familia: "Família", lazer: "Lazer", espiritualidade: "Espiritualidade",
 };
 
+const fabItemStyle: React.CSSProperties = {
+  width: "100%", display: "flex", alignItems: "center", gap: 12,
+  padding: "14px 16px", border: 0, background: "transparent",
+  cursor: "pointer", fontFamily: "inherit",
+  borderBottom: "1px solid rgba(167,139,250,0.06)",
+};
+
 // ── Reveal on scroll (fade + leve subida ao entrar na tela) ──────────────────
 function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -63,6 +70,8 @@ export function MetasPanel() {
   const [showCreate, setShowCreate] = useState(false);
   const [detailGoalId, setDetailGoalId] = useState<string | null>(null);
   const [showMayaPick, setShowMayaPick] = useState(false);
+  const [fabMenuOpen, setFabMenuOpen] = useState(false);
+  const [cycleCreateTrigger, setCycleCreateTrigger] = useState(0);
   const [showVisionModal, setShowVisionModal] = useState(false);
   const [visionArea, setVisionArea] = useState("");
   const [visionDraft, setVisionDraft] = useState("");
@@ -270,7 +279,7 @@ export function MetasPanel() {
       </div>
 
       {/* ── Resultados do trimestre (onde você gerencia seus OKRs) ── */}
-      <QuarterlyOKRPanel />
+      <QuarterlyOKRPanel autoOpenCreate={cycleCreateTrigger} />
 
       {/* ── Cascata conectada ────────────────────────────────── */}
       {activeGoals.length === 0 && completedGoals.length === 0 ? (
@@ -537,16 +546,56 @@ export function MetasPanel() {
       {showCreate && <GoalCreateSheet onClose={() => setShowCreate(false)} onCreated={refresh} />}
       {detailGoalId && <GoalDetailSheet goalId={detailGoalId} onClose={() => setDetailGoalId(null)} onUpdated={refresh} />}
 
-      {/* FAB */}
-      <button type="button" onClick={() => setShowCreate(true)}
+      {/* FAB — menu de criação */}
+      {fabMenuOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)",
+          display: "flex", flexDirection: "column", justifyContent: "flex-end",
+        }} onClick={() => setFabMenuOpen(false)}>
+          <div style={{ padding: "0 16px 104px" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ background: "#151520", borderRadius: 22, border: "1px solid rgba(167,139,250,0.15)", overflow: "hidden", marginBottom: 12 }}>
+              <button type="button" onClick={() => { setFabMenuOpen(false); setShowCreate(true); }} style={fabItemStyle}>
+                <span style={{ fontSize: 22, flexShrink: 0 }}>🎯</span>
+                <span style={{ flex: 1, textAlign: "left" }}>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>Meta anual</span>
+                  <span style={{ display: "block", fontSize: 11, color: "#6a657a" }}>Um objetivo grande para o ano</span>
+                </span>
+              </button>
+              <button type="button" onClick={() => { setFabMenuOpen(false); setVisionArea(""); setVisionDraft(""); setShowVisionModal(true); }} style={fabItemStyle}>
+                <span style={{ fontSize: 22, flexShrink: 0 }}>🌳</span>
+                <span style={{ flex: 1, textAlign: "left" }}>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>Visão 5 anos</span>
+                  <span style={{ display: "block", fontSize: 11, color: "#6a657a" }}>Onde você quer estar no futuro</span>
+                </span>
+              </button>
+              <button type="button" onClick={() => { setFabMenuOpen(false); setCycleCreateTrigger((n) => n + 1); }} style={fabItemStyle}>
+                <span style={{ fontSize: 22, flexShrink: 0 }}>📊</span>
+                <span style={{ flex: 1, textAlign: "left" }}>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>Resultados do trimestre</span>
+                  <span style={{ display: "block", fontSize: 11, color: "#6a657a" }}>Ciclo e resultados mensuráveis</span>
+                </span>
+              </button>
+            </div>
+            <button type="button" onClick={() => setFabMenuOpen(false)}
+              style={{ width: "100%", padding: "14px 0", borderRadius: 22, border: 0, background: "#1a1a26", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      <button type="button" onClick={() => setFabMenuOpen((v) => !v)}
         style={{
-          position: "fixed", bottom: 84, right: 20, zIndex: 40,
+          position: "fixed", bottom: 84, right: 20, zIndex: 60,
           width: 56, height: 56, borderRadius: "50%",
-          background: "#7C5CFF", border: 0, cursor: "pointer",
+          background: fabMenuOpen ? "#1a1a26" : "#7C5CFF",
+          border: fabMenuOpen ? "1px solid rgba(167,139,250,0.3)" : 0, cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: "0 4px 20px rgba(124,92,255,0.4)",
+          transition: "transform .15s ease, background .15s ease",
+          transform: fabMenuOpen ? "rotate(45deg)" : "rotate(0deg)",
         }}>
-        <Plus size={24} color="#fff" />
+        <Plus size={24} color={fabMenuOpen ? "#A78BFA" : "#fff"} />
       </button>
     </div>
   );

@@ -10,7 +10,7 @@ const UNIT_LABELS: Record<string, string> = {
   "%": "%", "count": "x", "kg": "kg", "min": "min", "km": "km", "R$": "R$",
 };
 
-export function QuarterlyOKRPanel() {
+export function QuarterlyOKRPanel({ autoOpenCreate }: { autoOpenCreate?: number }) {
   const [cycles, setCycles] = useState<QuarterlyCycle[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -63,6 +63,11 @@ export function QuarterlyOKRPanel() {
     const active = cycles.find(c => c.status === "active");
     if (active) setExpandedCycles(prev => new Set(prev).add(active.id));
   }, [cycles]);
+
+  // Aberto de fora (FAB do hub): quando o contador muda, abre o form de novo ciclo.
+  useEffect(() => {
+    if (autoOpenCreate && autoOpenCreate > 0) setShowCreate(true);
+  }, [autoOpenCreate]);
 
   const activeCycle = useMemo(() => cycles.find(c => c.status === "active"), [cycles]);
   const completedCycles = useMemo(() => cycles.filter(c => c.status === "completed"), [cycles]);
@@ -462,8 +467,8 @@ export function QuarterlyOKRPanel() {
         </div>
       )}
 
-      {/* ── Create Cycle (when no active) ──────────────────── */}
-      {!activeCycle && showCreate && (
+      {/* ── Create Cycle ───────────────────────────────────── */}
+      {showCreate && (
         <div style={{
           background: "#151520", borderRadius: 20, border: "1px solid rgba(124,92,255,0.12)",
           padding: "18px 18px 14px", marginBottom: 16,
