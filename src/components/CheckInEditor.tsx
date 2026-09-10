@@ -6,6 +6,7 @@ import { getLocalDate } from "@/lib/utils";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { MOOD_CHIPS, getMoodLabel } from "@/lib/checkin-moods";
 import { DEFAULT_DAILY_KCAL } from "@/lib/meal-utils";
+import { MetaCheckinCard } from "@/components/MetaCheckinCard";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -698,6 +699,9 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                 </div>
               )}
             </div>
+
+            {/* Metas — reflexão diária por meta (a voz do crescimento) */}
+            <MetaCheckinCard date={answers.date} />
           </div>
         </section>
 

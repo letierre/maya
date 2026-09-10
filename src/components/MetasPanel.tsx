@@ -1,250 +1,525 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Target, Eye } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { GoalCreateSheet } from "@/components/GoalCreateSheet";
 import { GoalDetailSheet } from "@/components/GoalDetailSheet";
-import { QuarterlyOKRPanel } from "@/components/QuarterlyOKRPanel";
-import { VisionPanel } from "@/components/VisionPanel";
+import {
+  AREA_CONFIG, AREA_LABELS, LIFE_AREAS,
+} from "@/lib/planejamento-constants";
+import { getLocalDate, getWeekMondayDate, getWeekSundayDate } from "@/lib/utils";
+import type { QuarterlyCycle, AreaVision } from "@/types";
 
-const AREA_CONFIG: Record<string, { emoji: string; hue: number }> = {
-  saude: { emoji: "💚", hue: 160 }, carreira: { emoji: "💼", hue: 220 },
-  financas: { emoji: "💰", hue: 85 }, relacionamentos: { emoji: "❤️", hue: 15 },
-  desenvolvimento: { emoji: "🧠", hue: 270 }, familia: { emoji: "🏡", hue: 40 },
-  lazer: { emoji: "🌊", hue: 185 }, espiritualidade: { emoji: "✨", hue: 300 },
+const CADENCE: Record<string, string> = {
+  daily: "diário", weekly: "semanal", weekdays: "dias úteis", monthly: "mensal", yearly: "anual",
 };
 
-type MetasTab = "metas" | "okrs" | "visao";
+const AREA_FULL_LABELS: Record<string, string> = {
+  saude: "Saúde", carreira: "Carreira", financas: "Finanças",
+  relacionamentos: "Relacionamentos", desenvolvimento: "Mente",
+  familia: "Família", lazer: "Lazer", espiritualidade: "Espiritualidade",
+};
+
+// ── Reveal on scroll (fade + leve subida ao entrar na tela) ──────────────────
+function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.08 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} style={{
+      opacity: visible ? 1 : 0,
+      transform: visible ? "translateY(0)" : "translateY(16px)",
+      transition: `opacity .5s ease ${delay}ms, transform .5s ease ${delay}ms`,
+    }}>
+      {children}
+    </div>
+  );
+}
 
 export function MetasPanel() {
   const router = useRouter();
   const [goals, setGoals] = useState<any[]>([]);
+  const [visions, setVisions] = useState<AreaVision[]>([]);
+  const [cycles, setCycles] = useState<QuarterlyCycle[]>([]);
+  const [statuses, setStatuses] = useState<any[]>([]);
+  const [motors, setMotors] = useState<any[]>([]);
+  const [weekTasks, setWeekTasks] = useState<any[]>([]);
+  const [weekFocus, setWeekFocus] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showCreate, setShowCreate] = useState(false);
   const [detailGoalId, setDetailGoalId] = useState<string | null>(null);
   const [showMayaPick, setShowMayaPick] = useState(false);
-  const [activeTab, setActiveTab] = useState<MetasTab>("metas");
+  const [editingVision, setEditingVision] = useState<string | null>(null);
+  const [visionDraft, setVisionDraft] = useState("");
+  const [savingVision, setSavingVision] = useState(false);
 
-  const talkToMaya = () => {
-    const active = goals.filter((g: any) => g.status === "ativa");
-    if (active.length === 1) {
-      router.push(`/insights?draft=Quero falar sobre minha meta: ${active[0].title}`);
-    } else if (active.length > 1) {
-      setShowMayaPick(true);
-    }
-  };
+  // Scroll: progresso do fio conector + parallax da visão
+  const cascadeRef = useRef<HTMLDivElement>(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [visaoOffset, setVisaoOffset] = useState(0);
 
   const refresh = async () => {
+    const today = getLocalDate();
+    const monday = getWeekMondayDate();
+    const sunday = getWeekSundayDate();
     try {
-      const r = await fetch("/api/goals");
-      const data = await r.json();
-      if (Array.isArray(data)) setGoals(data);
+      const [g, v, c, s, m, w] = await Promise.all([
+        fetch("/api/goals").then((r) => r.json()).catch(() => []),
+        fetch("/api/area-visions").then((r) => r.json()).catch(() => []),
+        fetch("/api/quarterly-cycles").then((r) => r.json()).catch(() => []),
+        fetch(`/api/goal-daily-status?date=${today}`).then((r) => r.json()).catch(() => ({ statuses: [] })),
+        fetch("/api/goal-motor").then((r) => r.json()).catch(() => ({ motors: [] })),
+        fetch(`/api/weekly-plans?from=${monday}&to=${sunday}`).then((r) => r.json()).catch(() => ({ plans: [] })),
+      ]);
+      setGoals(Array.isArray(g) ? g : []);
+      setVisions(Array.isArray(v) ? v : []);
+      setCycles(Array.isArray(c) ? c : []);
+      setStatuses(Array.isArray(s?.statuses) ? s.statuses : []);
+      setMotors(Array.isArray(m?.motors) ? m.motors : []);
+
+      const plans = Array.isArray(w?.plans) ? w.plans : [];
+      const tasks: any[] = [];
+      const focus: Record<string, string[]> = {};
+      for (const p of plans) {
+        for (const t of p.weekly_tasks ?? []) tasks.push(t);
+        for (const f of p.weekly_focus_goals ?? []) {
+          if (f.goal_id) {
+            if (!focus[f.goal_id]) focus[f.goal_id] = [];
+            if (p.main_focus) focus[f.goal_id].push(p.main_focus);
+          }
+        }
+      }
+      setWeekTasks(tasks);
+      setWeekFocus(focus);
     } catch {}
     setLoading(false);
   };
 
   useEffect(() => { refresh(); }, []);
 
-  const activeGoals = goals.filter((g: any) => g.status === "ativa" || g.status === "pausada");
-  const completedGoals = goals.filter((g: any) => g.status === "concluida");
+  // Scroll effects: fio conector + parallax da visão
+  useEffect(() => {
+    const onScroll = () => {
+      const el = cascadeRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const total = rect.height - vh;
+      const p = total <= 0 ? 1 : Math.max(0, Math.min(1, -rect.top / total));
+      setScrollProgress(p);
+      setVisaoOffset(Math.max(0, Math.min(36, -rect.top * 0.1)));
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => { window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); };
+  }, [loading]);
+
+  // Default-expand o "foco" (metas ligadas ao ciclo ativo), senão a 1ª meta ativa
+  useEffect(() => {
+    if (cycles.length === 0 || goals.length === 0) return;
+    const active = cycles.find((c) => c.status === "active");
+    const focusIds = new Set<string>();
+    if (active) {
+      for (const kr of active.key_results ?? []) if (kr.linked_goal_id) focusIds.add(kr.linked_goal_id);
+    }
+    if (focusIds.size === 0) {
+      const first = goals.filter((g) => g.status === "ativa")[0];
+      if (first) focusIds.add(first.id);
+    }
+    setExpanded(focusIds);
+  }, [cycles, goals]);
+
+  const toggleExpand = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const talkToMaya = () => {
+    const active = goals.filter((g) => g.status === "ativa");
+    if (active.length === 1) router.push(`/insights?draft=Quero falar sobre minha meta: ${active[0].title}`);
+    else if (active.length > 1) setShowMayaPick(true);
+  };
+
+  const saveVision = async () => {
+    if (!editingVision) return;
+    setSavingVision(true);
+    try {
+      await fetch("/api/area-visions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ area: editingVision, statement: visionDraft }),
+      });
+      setEditingVision(null);
+      refresh();
+    } catch {}
+    setSavingVision(false);
+  };
+
+  const activeGoals = goals.filter((g) => g.status === "ativa" || g.status === "pausada");
+  const completedGoals = goals.filter((g) => g.status === "concluida");
+
+  const visionByArea: Record<string, AreaVision> = {};
+  for (const v of visions) visionByArea[v.area] = v;
+  const definedAreas = LIFE_AREAS.filter((a) => (visionByArea[a]?.statement ?? "").trim().length > 0);
+
+  const statusByGoal = new Map<string, any>();
+  for (const s of statuses) statusByGoal.set(s.goal_id, s);
+
+  const motorByGoal = new Map<string, any[]>();
+  for (const m of motors) {
+    if (!motorByGoal.has(m.goal_id)) motorByGoal.set(m.goal_id, []);
+    motorByGoal.get(m.goal_id)!.push(m);
+  }
+
+  // OKRs ligados a cada meta (do ciclo ativo)
+  const activeCycle = cycles.find((c) => c.status === "active");
+  const krByGoal = new Map<string, any[]>();
+  if (activeCycle) {
+    for (const kr of activeCycle.key_results ?? []) {
+      if (!kr.linked_goal_id) continue;
+      if (!krByGoal.has(kr.linked_goal_id)) krByGoal.set(kr.linked_goal_id, []);
+      krByGoal.get(kr.linked_goal_id)!.push(kr);
+    }
+  }
+
+  const areasWithGoals = LIFE_AREAS.filter((a) => activeGoals.some((g) => g.area === a));
 
   if (loading) return <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center", padding: 20 }}>Carregando...</p>;
 
   return (
     <div style={{ marginBottom: 20 }}>
-      {/* ── Sub-tabs: Metas | OKRs | Visão ────────────────── */}
+      {/* ── Visão (norte) ─────────────────────────────────────── */}
       <div style={{
-        display: "flex", background: "#0f0e1a", borderRadius: 14, padding: 3,
-        border: "1px solid rgba(167,139,250,0.08)", marginBottom: 16,
+        position: "relative", transform: `translateY(-${visaoOffset}px)`,
+        transition: "transform .1s linear",
+        padding: "16px 16px 14px", borderRadius: 18, marginBottom: 14,
+        background: "linear-gradient(160deg, rgba(124,92,255,0.14), rgba(167,139,250,0.05))",
+        border: "1px solid rgba(124,92,255,0.16)",
       }}>
-        {(["metas", "okrs", "visao"] as MetasTab[]).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <span style={{ fontSize: 20 }}>🌳</span>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>Visão 5 anos</p>
+            <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6a657a" }}>O norte que unifica suas metas</p>
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>{definedAreas.length}/8</span>
+        </div>
+
+        {definedAreas.length === 0 ? (
+          <button type="button" onClick={() => { setEditingVision("carreira"); setVisionDraft(""); }}
             style={{
-              flex: 1,
-              padding: "10px 0",
-              borderRadius: 12,
-              border: 0,
-              background: activeTab === tab
-                ? "linear-gradient(135deg, rgba(124,92,255,0.18), rgba(167,139,250,0.08))"
-                : "transparent",
-              color: activeTab === tab ? "#e0d6ff" : "#5a5470",
-              fontSize: 13,
-              fontWeight: activeTab === tab ? 700 : 500,
-              fontFamily: "inherit",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              transition: "all .2s",
-            }}
-          >
-            {tab === "metas" ? (
-              <>🎯 Metas</>
-            ) : tab === "okrs" ? (
-              <><Target size={14} /> OKRs</>
-            ) : (
-              <><Eye size={14} /> Visão</>
-            )}
+              marginTop: 8, padding: "8px 14px", borderRadius: 10, border: "1px dashed rgba(167,139,250,0.3)",
+              background: "transparent", color: "#A78BFA", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+            }}>
+            + Escrever minha visão
           </button>
-        ))}
+        ) : (
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", marginTop: 10, paddingBottom: 2 }}>
+            {definedAreas.map((a) => (
+              <button key={a} type="button"
+                onClick={() => { setEditingVision(a); setVisionDraft(visionByArea[a]?.statement ?? ""); }}
+                style={{
+                  flexShrink: 0, maxWidth: 200, textAlign: "left", padding: "8px 10px", borderRadius: 12,
+                  border: "1px solid rgba(167,139,250,0.12)", background: "#0f0e1a", cursor: "pointer", fontFamily: "inherit",
+                }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#e0d6ff" }}>
+                  {AREA_CONFIG[a as keyof typeof AREA_CONFIG]?.emoji} {AREA_FULL_LABELS[a]}
+                </span>
+                <span style={{ display: "block", fontSize: 10, color: "#9e96b5", lineHeight: 1.3, marginTop: 2,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {visionByArea[a]?.statement}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ── Content ─────────────────────────────────────────── */}
-      {activeTab === "visao" ? (
-        <VisionPanel />
-      ) : activeTab === "okrs" ? (
-        <QuarterlyOKRPanel />
+      {/* ── Cascata conectada ────────────────────────────────── */}
+      {activeGoals.length === 0 && completedGoals.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 32, background: "#1a1530", borderRadius: 18, border: "1px dashed rgba(167,139,250,0.15)" }}>
+          <p style={{ color: "#9e96b5", fontSize: 13, margin: "0 0 12px" }}>Nenhuma meta ainda</p>
+          <button type="button" onClick={() => setShowCreate(true)}
+            style={{ padding: "8px 16px", borderRadius: 10, border: 0, cursor: "pointer", background: "#7C5CFF", color: "#fff", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
+            + Criar primeira meta
+          </button>
+        </div>
       ) : (
-        <>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>
-              {activeGoals.length} meta{activeGoals.length !== 1 ? "s" : ""} ativa{activeGoals.length !== 1 ? "s" : ""}
-            </h2>
+        <div ref={cascadeRef} style={{ position: "relative", paddingLeft: 18 }}>
+          {/* Fio conector (desenha conforme rola) */}
+          <div style={{
+            position: "absolute", left: 5, top: 6, bottom: 6, width: 2,
+            background: "oklch(0.28 0.02 270 / 0.5)", borderRadius: 9999, overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute", top: 0, left: 0, right: 0,
+              height: `${scrollProgress * 100}%`,
+              background: "linear-gradient(180deg, #7C5CFF, #A78BFA)",
+              transition: "height .15s linear",
+            }} />
           </div>
 
-          {activeGoals.length === 0 && completedGoals.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 32, background: "#1a1530", borderRadius: 18, border: "1px dashed rgba(167,139,250,0.15)" }}>
-              <p style={{ color: "#9e96b5", fontSize: 13, margin: "0 0 12px" }}>Nenhuma meta ainda</p>
-              <button type="button" onClick={() => setShowCreate(true)}
-                style={{ padding: "8px 16px", borderRadius: 10, border: 0, cursor: "pointer", background: "#7C5CFF", color: "#fff", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
-                + Criar primeira meta
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {activeGoals.slice(0, 5).map((goal: any) => {
-                const area = AREA_CONFIG[goal.area] || { emoji: "🎯", hue: 270 };
-                const totalStages = goal.goal_stages?.length || 0;
-                const doneStages = goal.goal_stages?.filter((s: any) => s.status === "concluida").length || 0;
-                const pct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
-                const daysInactive = goal.daysInactive || 0;
+          {areasWithGoals.map((area) => {
+            const areaGoals = activeGoals.filter((g) => g.area === area);
+            const conf = AREA_CONFIG[area as keyof typeof AREA_CONFIG] || { emoji: "🎯", hue: 270 };
+            return (
+              <div key={area} style={{ marginBottom: 12 }}>
+                <Reveal>
+                  <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "#5a5470" }}>
+                    {conf.emoji} {AREA_FULL_LABELS[area] || AREA_LABELS[area as keyof typeof AREA_LABELS]}
+                  </p>
+                </Reveal>
 
-                return (
-                  <button key={goal.id} type="button" onClick={() => setDetailGoalId(goal.id)}
-                    style={{
-                      textAlign: "left", padding: "14px 16px", borderRadius: 14,
-                      border: "1px solid rgba(167,139,250,0.15)", background: "#1a1530", cursor: "pointer",
-                      display: "flex", alignItems: "center", gap: 12,
-                    }}>
-                    <span style={{ fontSize: 24, flexShrink: 0 }}>{area.emoji}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>{goal.title}</p>
-                        {daysInactive >= 7 && (
-                          <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 9999, background: "rgba(255,92,92,0.15)", color: "#FF5C5C", fontWeight: 600 }}>
-                            {daysInactive}d parada
-                          </span>
+                {areaGoals.map((goal, gi) => {
+                  const isOpen = expanded.has(goal.id);
+                  const st = statusByGoal.get(goal.id);
+                  const streak = st?.streak ?? 0;
+                  const motorList = motorByGoal.get(goal.id) ?? [];
+                  const krList = krByGoal.get(goal.id) ?? [];
+                  const wkTasks = weekTasks.filter((t) => t.linked_goal_id === goal.id);
+                  const wkFocus = weekFocus[goal.id] ?? [];
+                  const effective = st?.effective ?? null;
+
+                  const krPct = krList.length
+                    ? Math.round(krList.reduce((s, kr) => s + (kr.target > 0 ? Math.min(100, (kr.current / kr.target) * 100) : 0), 0) / krList.length)
+                    : null;
+
+                  return (
+                    <Reveal key={goal.id} delay={gi * 40}>
+                      <div style={{
+                        borderRadius: 14, marginBottom: 8, overflow: "hidden",
+                        border: isOpen ? "1px solid rgba(124,92,255,0.22)" : "1px solid rgba(167,139,250,0.12)",
+                        background: isOpen ? "#171329" : "#14121f",
+                      }}>
+                        {/* Header */}
+                        <button type="button" onClick={() => toggleExpand(goal.id)}
+                          style={{
+                            width: "100%", display: "flex", alignItems: "center", gap: 10,
+                            padding: "13px 14px", border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit",
+                          }}>
+                          <span style={{ fontSize: 22, flexShrink: 0 }}>{conf.emoji}</span>
+                          <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e0d6ff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {goal.title}
+                            </p>
+                            <p style={{ margin: "2px 0 0", fontSize: 10, color: "#9e96b5" }}>
+                              {effective === "avançou" ? "✓ avançou hoje" : effective === "parcial" ? "~ parcial hoje" : effective === "nao" ? "✗ não avançou" : "sem registro hoje"}
+                              {streak >= 1 ? ` · 🔥 ${streak} ${streak === 1 ? "dia" : "dias"}` : ""}
+                            </p>
+                          </div>
+                          {isOpen ? <ChevronDown size={16} color="#9e96b5" /> : <ChevronRight size={16} color="#9e96b5" />}
+                        </button>
+
+                        {/* Corpo (cascata) */}
+                        {isOpen && (
+                          <div style={{ padding: "2px 14px 14px", borderTop: "1px solid rgba(167,139,250,0.06)" }}>
+                            {/* Porquê */}
+                            {goal.why_it_matters ? (
+                              <div style={{ padding: "8px 0 6px", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
+                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>Por quê</p>
+                                <p style={{ margin: "3px 0 0", fontSize: 12, color: "#9e96b5", fontStyle: "italic", lineHeight: 1.45 }}>
+                                  “{goal.why_it_matters}”
+                                </p>
+                              </div>
+                            ) : null}
+
+                            {/* OKR do trimestre */}
+                            <div style={{ padding: "8px 0 6px", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
+                              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>
+                                📊 Trimestre {krPct != null ? `· ${krPct}%` : ""}
+                              </p>
+                              {krList.length === 0 ? (
+                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#5a5470" }}>Sem OKR ligado a esta meta</p>
+                              ) : (
+                                krList.map((kr) => {
+                                  const pct = kr.target > 0 ? Math.min(100, Math.round((kr.current / kr.target) * 100)) : 0;
+                                  return (
+                                    <div key={kr.id} style={{ marginTop: 4 }}>
+                                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                        <span style={{ flex: 1, fontSize: 11.5, color: "#c9c2e0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{kr.title}</span>
+                                        <span style={{ fontSize: 10, fontWeight: 700, color: "#A78BFA", flexShrink: 0 }}>{pct}%</span>
+                                      </div>
+                                      <div style={{ height: 3, borderRadius: 9999, background: "rgba(167,139,250,0.1)", overflow: "hidden", marginTop: 3 }}>
+                                        <div style={{ height: "100%", width: `${pct}%`, background: "#7C5CFF", borderRadius: 9999 }} />
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+
+                            {/* Motor (hábitos recorrentes) */}
+                            <div style={{ padding: "8px 0 6px", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
+                              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>🔁 Motor (hábitos)</p>
+                              {motorList.length === 0 ? (
+                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#5a5470" }}>Sem hábito recorrente ligado a esta meta</p>
+                              ) : (
+                                motorList.slice(0, 4).map((m, i) => (
+                                  <p key={i} style={{ margin: "3px 0 0", fontSize: 11.5, color: "#c9c2e0" }}>
+                                    🔁 {m.title} <span style={{ color: "#6a657a" }}>· {CADENCE[m.repeat_type] ?? m.repeat_type}</span>
+                                  </p>
+                                ))
+                              )}
+                            </div>
+
+                            {/* Semana atual */}
+                            <div style={{ padding: "8px 0 6px" }}>
+                              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>📅 Semana</p>
+                              {wkTasks.length === 0 && wkFocus.length === 0 ? (
+                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#5a5470" }}>Sem atividades ligadas esta semana</p>
+                              ) : (
+                                <>
+                                  {wkFocus.slice(0, 2).map((f, i) => (
+                                    <p key={i} style={{ margin: "3px 0 0", fontSize: 11.5, color: "#e0d6ff", fontWeight: 600 }}>🎯 {f}</p>
+                                  ))}
+                                  {wkTasks.slice(0, 4).map((t) => (
+                                    <p key={t.id} style={{ margin: "3px 0 0", fontSize: 11.5, color: t.status === "concluida" ? "#5EEAD4" : "#9e96b5" }}>
+                                      {t.status === "concluida" ? "✓" : "○"} {t.title}
+                                    </p>
+                                  ))}
+                                </>
+                              )}
+                            </div>
+
+                            {/* Ações */}
+                            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                              <button type="button" onClick={() => setDetailGoalId(goal.id)}
+                                style={{
+                                  flex: 1, padding: "8px 0", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
+                                  background: "rgba(124,92,255,0.06)", color: "#A78BFA", fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+                                }}>
+                                Editar meta
+                              </button>
+                              <button type="button" onClick={() => router.push("/agenda")}
+                                style={{
+                                  flex: 1, padding: "8px 0", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
+                                  background: "transparent", color: "#9e96b5", fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+                                }}>
+                                Ver na agenda
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
-                      <div style={{ marginTop: 5, height: 3, borderRadius: 9999, background: "rgba(167,139,250,0.1)", overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${pct}%`, background: "#7C5CFF", borderRadius: 9999, transition: "width .3s" }} />
-                      </div>
-                      <p style={{ margin: "3px 0 0", fontSize: 10, color: "#9e96b5" }}>
-                        {doneStages}/{totalStages} etapas · {pct}%
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-              {activeGoals.length > 5 && (
-                <button type="button" onClick={() => router.push("/agenda")}
-                  style={{ width: "100%", padding: "10px 0", borderRadius: 12, border: 0, cursor: "pointer", background: "rgba(124,92,255,0.08)", color: "#A78BFA", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}
-                  disabled>
-                  {activeGoals.length} metas ativas
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Completed goals */}
-          {completedGoals.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "#5a5470" }}>
-                Concluídas ({completedGoals.length})
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {completedGoals.slice(0, 3).map((goal: any) => {
-                  const area = AREA_CONFIG[goal.area] || { emoji: "🎯", hue: 270 };
-                  return (
-                    <div key={goal.id} style={{
-                      display: "flex", alignItems: "center", gap: 10,
-                      padding: "10px 14px", borderRadius: 12,
-                      background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.1)",
-                      opacity: 0.6,
-                    }}>
-                      <span style={{ fontSize: 18 }}>{area.emoji}</span>
-                      <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: "#9e96b5", textDecoration: "line-through" }}>
-                        {goal.title}
-                      </span>
-                      <button type="button" onClick={async () => {
-                        await fetch(`/api/goals/${goal.id}`, {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ status: "arquivada" }),
-                        });
-                        refresh();
-                      }}
-                        style={{ background: "none", border: 0, color: "#5a5470", cursor: "pointer", fontSize: 10, fontWeight: 600, fontFamily: "inherit" }}>
-                        Arquivar
-                      </button>
-                    </div>
+                    </Reveal>
                   );
                 })}
-                {completedGoals.length > 3 && (
-                  <p style={{ margin: 0, fontSize: 10, color: "#5a5470", textAlign: "center" }}>
-                    +{completedGoals.length - 3} concluídas
-                  </p>
-                )}
               </div>
-            </div>
-          )}
-
-          {/* Maya button */}
-          {goals.filter((g: any) => g.status === "ativa").length > 0 && (
-            <button type="button" onClick={talkToMaya}
-              style={{ width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 14, border: "1px solid rgba(167,139,250,0.15)", background: "rgba(124,92,255,0.06)", cursor: "pointer", color: "#A78BFA", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
-              💜 Conversar com Maya sobre uma meta
-            </button>
-          )}
-
-          {/* Maya goal picker */}
-          {showMayaPick && (
-            <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-              <div style={{ width: "100%", maxWidth: 380, maxHeight: "70dvh", overflowY: "auto", background: "#151520", borderRadius: 24, padding: 24, border: "1px solid rgba(167,139,250,0.15)" }}>
-                <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>Qual meta?</h3>
-                {goals.filter((g: any) => g.status === "ativa").map((g: any) => (
-                  <button key={g.id} type="button" onClick={() => { setShowMayaPick(false); router.push(`/insights?draft=Quero falar sobre minha meta: ${g.title}`); }}
-                    style={{ width: "100%", textAlign: "left", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.15)", background: "#0B0B10", cursor: "pointer", color: "#e0d6ff", fontSize: 13, fontWeight: 600, fontFamily: "inherit", marginBottom: 8 }}>
-                    {g.title}
-                  </button>
-                ))}
-                <button type="button" onClick={() => setShowMayaPick(false)}
-                  style={{ width: "100%", marginTop: 8, padding: 12, borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
-              </div>
-            </div>
-          )}
-
-          {showCreate && <GoalCreateSheet onClose={() => setShowCreate(false)} onCreated={refresh} />}
-          {detailGoalId && <GoalDetailSheet goalId={detailGoalId} onClose={() => setDetailGoalId(null)} onUpdated={refresh} />}
-
-          {/* FAB — only on metas tab */}
-          <button type="button" onClick={() => setShowCreate(true)}
-            style={{
-              position: "fixed", bottom: 84, right: 20, zIndex: 40,
-              width: 56, height: 56, borderRadius: "50%",
-              background: "#7C5CFF", border: 0, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 4px 20px rgba(124,92,255,0.4)",
-            }}>
-            <Plus size={24} color="#fff" />
-          </button>
-        </>
+            );
+          })}
+        </div>
       )}
+
+      {/* Concluídas */}
+      {completedGoals.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "#5a5470" }}>
+            Concluídas ({completedGoals.length})
+          </p>
+          {completedGoals.slice(0, 3).map((goal) => (
+            <div key={goal.id} style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 12,
+              background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.1)", opacity: 0.6, marginBottom: 6,
+            }}>
+              <span style={{ flex: 1, fontSize: 12, color: "#9e96b5", textDecoration: "line-through" }}>{goal.title}</span>
+              <button type="button" onClick={async () => {
+                await fetch(`/api/goals/${goal.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "arquivada" }) });
+                refresh();
+              }} style={{ background: "none", border: 0, color: "#5a5470", cursor: "pointer", fontSize: 10, fontWeight: 600, fontFamily: "inherit" }}>
+                Arquivar
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Maya */}
+      {goals.filter((g) => g.status === "ativa").length > 0 && (
+        <button type="button" onClick={talkToMaya}
+          style={{ width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 14, border: "1px solid rgba(167,139,250,0.15)", background: "rgba(124,92,255,0.06)", cursor: "pointer", color: "#A78BFA", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
+          💜 Conversar com Maya sobre uma meta
+        </button>
+      )}
+
+      {/* Maya goal picker */}
+      {showMayaPick && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ width: "100%", maxWidth: 380, maxHeight: "70dvh", overflowY: "auto", background: "#151520", borderRadius: 24, padding: 24, border: "1px solid rgba(167,139,250,0.15)" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>Qual meta?</h3>
+            {goals.filter((g) => g.status === "ativa").map((g) => (
+              <button key={g.id} type="button" onClick={() => { setShowMayaPick(false); router.push(`/insights?draft=Quero falar sobre minha meta: ${g.title}`); }}
+                style={{ width: "100%", textAlign: "left", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.15)", background: "#0B0B10", cursor: "pointer", color: "#e0d6ff", fontSize: 13, fontWeight: 600, fontFamily: "inherit", marginBottom: 8 }}>
+                {g.title}
+              </button>
+            ))}
+            <button type="button" onClick={() => setShowMayaPick(false)}
+              style={{ width: "100%", marginTop: 8, padding: 12, borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit visão modal */}
+      {editingVision && (
+        <div onTouchMove={(e) => e.stopPropagation()} style={{
+          position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+        }}>
+          <div style={{ width: "100%", maxWidth: 420, maxHeight: "85dvh", overflowY: "auto", background: "#151520", borderRadius: 24, padding: 24, border: "1px solid rgba(167,139,250,0.15)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+              <span style={{ fontSize: 28 }}>{AREA_CONFIG[editingVision as keyof typeof AREA_CONFIG]?.emoji || "🎯"}</span>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>{AREA_FULL_LABELS[editingVision] || editingVision}</h3>
+                <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6a657a" }}>Onde você quer estar em 5 anos nesta área?</p>
+              </div>
+            </div>
+            <textarea value={visionDraft} onChange={(e) => setVisionDraft(e.target.value)} rows={6} autoFocus
+              placeholder="Descreva sua visão de 5 anos para esta área..."
+              style={{ width: "100%", padding: "14px", borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none", resize: "vertical", boxSizing: "border-box", lineHeight: 1.6 }} />
+            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+              <button type="button" onClick={() => setEditingVision(null)}
+                style={{ flex: 1, padding: "14px 0", borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                Cancelar
+              </button>
+              <button type="button" onClick={saveVision} disabled={savingVision}
+                style={{ flex: 2, padding: "14px 0", borderRadius: 14, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: savingVision ? 0.7 : 1 }}>
+                Salvar visão
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreate && <GoalCreateSheet onClose={() => setShowCreate(false)} onCreated={refresh} />}
+      {detailGoalId && <GoalDetailSheet goalId={detailGoalId} onClose={() => setDetailGoalId(null)} onUpdated={refresh} />}
+
+      {/* FAB */}
+      <button type="button" onClick={() => setShowCreate(true)}
+        style={{
+          position: "fixed", bottom: 84, right: 20, zIndex: 40,
+          width: 56, height: 56, borderRadius: "50%",
+          background: "#7C5CFF", border: 0, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 4px 20px rgba(124,92,255,0.4)",
+        }}>
+        <Plus size={24} color="#fff" />
+      </button>
     </div>
   );
 }
