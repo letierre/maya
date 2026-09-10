@@ -332,7 +332,10 @@ export default function NovoDiarioPage() {
 
   // ── Auto-draft ────────────────────────────────────────────
   const DRAFT_KEY = "diary_draft";
+  // Impede que o auto-save (intervalo) regrave o rascunho depois de concluir.
+  const savedRef = useRef(false);
   const saveDraft = () => {
+    if (savedRef.current) return;
     const htmlContent = contentRef.current?.innerHTML || "";
     const d = latestRef.current;
     // Always save if there's any content, title, mood, or photos
@@ -363,6 +366,7 @@ export default function NovoDiarioPage() {
   latestRef.current = { title, mood, photos, entryDate };
   useEffect(() => {
     const interval = setInterval(() => {
+      if (savedRef.current) return;
       const htmlContent = contentRef.current?.innerHTML || "";
       const { title, mood, photos, entryDate } = latestRef.current;
       if (!htmlContent.trim() && !title.trim() && !mood) return;
@@ -414,6 +418,7 @@ export default function NovoDiarioPage() {
         setSaving(false);
         return;
       }
+      savedRef.current = true;
       clearDraft();
       toast.success(t("entrada_salva"), { duration: 3000, dismissible: true });
       router.push("/diario");
