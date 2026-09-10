@@ -1778,13 +1778,18 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   const todayDow = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
   const currentWeekMonday = getCurrentWeekMonday();
   const dayPlanTasks = allWeekTasks.filter((t: any) => t.day_of_week === selDow && t._weekStart === weekStartOf(selectedDate) && t.status !== "pulada");
-  // Tasks without a specific day (Em aberto) — from all loaded weeks
-  const openWeekTasks = allWeekTasks.filter((t: any) => t.day_of_week == null && t.status !== "pulada");
-  // Overdue tasks: from previous days this week OR past weeks, not completed/skipped
+  // Tarefas sem dia específico ("Em aberto") — pertencem à SEMANA ATUAL. As de
+  // semanas anteriores não rolam para cá: viram "atrasadas".
+  const openWeekTasks = allWeekTasks.filter((t: any) =>
+    t.day_of_week == null && t.status !== "pulada" && t._weekStart === currentWeekMonday
+  );
+  // Overdue tasks: from previous days this week OR past weeks, not completed/skipped.
+  // Inclui "em aberto" de semanas passadas (pertenciam àquela semana e já passou).
   const overdueTasks = allWeekTasks.filter((t: any) => {
     if (t.status === "concluida" || t.status === "pulada") return false;
-    if (t.day_of_week == null || t.day_of_week < 0) return false;
     const taskWeek = t._weekStart;
+    // "Em aberto" de semana passada → atrasada.
+    if (t.day_of_week == null) return !!taskWeek && taskWeek < currentWeekMonday;
     // From a past week (always overdue)
     if (taskWeek && taskWeek < currentWeekMonday) return true;
     // From this week but earlier day
@@ -2052,6 +2057,10 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
               const mon = new Date(t._weekStart + "T12:00:00");
               mon.setDate(mon.getDate() + t.day_of_week);
               dateLabel = `${String(mon.getDate()).padStart(2, "0")}/${String(mon.getMonth() + 1).padStart(2, "0")}`;
+            } else if (t._weekStart && t.day_of_week == null) {
+              // "Em aberto" de semana passada: indica a semana de origem.
+              const [, m, d] = t._weekStart.split("-");
+              dateLabel = `sem. ${d}/${m}`;
             }
             return (
               <div key={t.id} style={{
