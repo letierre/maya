@@ -61,6 +61,35 @@ function PriorityBadge({ priority }: { priority: EisenhowerPriority }) {
   );
 }
 
+// ── Timeline skeleton (carregando) ───────────────────────────────
+
+function TimelineSkeleton() {
+  const shimmer: React.CSSProperties = {
+    background: "linear-gradient(90deg, #1a1530 25%, #241d45 50%, #1a1530 75%)",
+    backgroundSize: "200% 100%",
+    animation: "shimmerBg 1.4s ease-in-out infinite",
+  };
+  return (
+    <div style={{ position: "absolute", inset: 0, zIndex: 30, background: "#1a1530", padding: "14px 16px", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <div style={{ ...shimmer, width: 96, height: 15, borderRadius: 7 }} />
+        <div style={{ ...shimmer, width: 48, height: 12, borderRadius: 6 }} />
+      </div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+        {[84, 116, 72].map((w, i) => (
+          <div key={i} style={{ ...shimmer, width: w, height: 30, borderRadius: 8 }} />
+        ))}
+      </div>
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+          <div style={{ ...shimmer, width: 42, height: 11, borderRadius: 6 }} />
+          <div style={{ ...shimmer, flex: 1, height: 48, borderRadius: 8 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────
 
 type ViewMode = "dia" | "semana" | "lista" | "metas";
@@ -119,6 +148,9 @@ function AgendaPage() {
   };
   const [items, setItems] = useState<AgendaItem[]>([]);
   const [loading, setLoading] = useState(true);
+  // Data para a qual `items` já foi carregado — evita renderizar itens de uma data
+  // anterior (stale) no instante em que o usuário troca de dia (frame antes do fetch).
+  const [loadedDate, setLoadedDate] = useState<string | null>(null);
   const [weekLoading, setWeekLoading] = useState(true);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showNewItem, setShowNewItem] = useState(false);
@@ -277,6 +309,7 @@ function AgendaPage() {
 
   const fetchItems = useCallback(async (date: string) => {
     setLoading(true);
+    setLoadedDate(date);
     try {
       // Fetch a window around the selected date to catch repeats and midnight-crossings
       const from = shiftDate(date, -30);
@@ -813,6 +846,8 @@ function AgendaPage() {
               }
             }}
           >
+            {(loading || weekLoading || loadedDate !== selectedDate) && <TimelineSkeleton />}
+
             {/* ── Collapsible task strip ── */}
             <div style={{
               background: "#1a1530", borderRadius: tasksOpen ? "18px 18px 0 0" : 0,
