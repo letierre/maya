@@ -781,6 +781,10 @@ function AgendaPage() {
     ? timeToPx(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`)
     : -1;
 
+  const currentTimeLabel = now
+    ? `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+    : "";
+
   const HALF_HOUR_LABELS = Array.from({ length: TOTAL_SLOTS + 1 }, (_, i) => {
     const totalMins = (TIMELINE_START * 60) + i * SLOT_MINUTES;
     const h = Math.floor(totalMins / 60);
@@ -1075,10 +1079,16 @@ function AgendaPage() {
                     pointerEvents: "none",
                   }}>
                     <div style={{
-                      position: "absolute", left: -5, top: -4,
-                      width: 10, height: 10, borderRadius: "50%",
+                      position: "absolute", left: -3, top: -9,
+                      height: 20, padding: "0 6px",
+                      borderRadius: 9999,
                       background: "#FF4D4D", boxShadow: "0 0 6px rgba(255,77,77,0.6)",
-                    }} />
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 10, fontWeight: 700, color: "#fff", lineHeight: 1,
+                      whiteSpace: "nowrap",
+                    }}>
+                      {currentTimeLabel}
+                    </div>
                   </div>
                 )}
 
