@@ -93,7 +93,7 @@ function buildDayItems(all: AgendaItem[], date: string): AgendaItem[] {
       }
     }
   }
-  for (const item of yesterdayCrossItems) {
+  for (const item of dedupeByDateTitle(yesterdayCrossItems)) {
     const [sh, sm] = (item.start_time || "00:00").split(":").map(Number);
     const [eh, em] = (item.end_time || "00:00").split(":").map(Number);
     if (eh * 60 + em <= sh * 60 + sm) {
@@ -595,14 +595,19 @@ function AgendaPage() {
     // (`_cross`) de um item avulso é o MESMO item do dia anterior: deve
     // atualizar o registro original, não criar um standalone.
     const isRepeating = isRepeatingItem(item);
+    const isCross = item.id.includes("_cross");
+    // A continuação pós-meia-noite pertence à ocorrência que começou ONTEM —
+    // o standalone deve usar a data/horário originais, não a exibição (00:00).
+    const occDate = isCross ? shiftDate(item.date, -1) : item.date;
+    const occStart = isCross ? ((item as any)._origStartTime || item.start_time) : item.start_time;
 
     if (isRepeating) {
       if (newStatus === "pendente") {
         // Desmarcar: remove a ocorrência avulsa (concluída) — o item volta ao
         // "pendente" da série, sem acumular registros concorrentes.
         setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: "pendente" } : i));
-        const params = new URLSearchParams({ title: item.title, date: item.date });
-        if (item.start_time) params.set("start_time", item.start_time);
+        const params = new URLSearchParams({ title: item.title, date: occDate });
+        if (occStart) params.set("start_time", occStart);
         if (item.end_time) params.set("end_time", item.end_time);
         const res = await fetch(`/api/agenda?scope=occurrence&${params.toString()}`, { method: "DELETE" });
         if (res.ok) {
@@ -622,8 +627,8 @@ function AgendaPage() {
           body: JSON.stringify({
             title: item.title,
             item_type: item.item_type,
-            date: item.date,
-            start_time: item.start_time,
+            date: occDate,
+            start_time: occStart,
             end_time: item.end_time,
             priority: item.priority,
             emoji: item.emoji || null,
@@ -1910,11 +1915,11 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   };
 
   // Corpo de um registro avulso (repeat_type none) derivado de um item da agenda.
-  const standaloneBody = (item: any, over: { title?: string; date?: string; status?: string; excluded?: boolean } = {}) => ({
+  const standaloneBody = (item: any, over: { title?: string; date?: string; status?: string; excluded?: boolean; start_time?: string | null } = {}) => ({
     title: over.title ?? item.title,
     item_type: item.item_type,
     date: over.date ?? item.date,
-    start_time: item.start_time || null,
+    start_time: over.start_time !== undefined ? over.start_time : (item.start_time || null),
     end_time: item.end_time || null,
     priority: item.priority,
     emoji: item.emoji || null,
@@ -1932,15 +1937,20 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
 
   // Marca/desmarca "Concluído" numa única ocorrência (nunca na regra da série).
   const toggleOccurrenceDone = async (item: any, done: boolean) => {
+    // Continuação pós-meia-noite pertence à ocorrência de ontem — usa a
+    // data/horário originais no standalone/delete.
+    const isCross = (item.id || "").includes("_cross");
+    const occDate = isCross ? shiftDate(item.date, -1) : item.date;
+    const occStart = isCross ? (item._origStartTime || item.start_time) : item.start_time;
     if (done) {
       await fetch("/api/agenda", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(standaloneBody(item, { status: "concluida" })),
+        body: JSON.stringify(standaloneBody(item, { status: "concluida", date: occDate, start_time: occStart })),
       });
     } else {
-      const params = new URLSearchParams({ title: item.title, date: item.date });
-      if (item.start_time) params.set("start_time", item.start_time);
+      const params = new URLSearchParams({ title: item.title, date: occDate });
+      if (occStart) params.set("start_time", occStart);
       if (item.end_time) params.set("end_time", item.end_time);
       await fetch(`/api/agenda?scope=occurrence&${params.toString()}`, { method: "DELETE" });
     }
