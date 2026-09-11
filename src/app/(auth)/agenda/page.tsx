@@ -700,17 +700,29 @@ function AgendaPage() {
   const SLOT_PX = 24; // pixel height per 30-min slot
   const TRACK_HEIGHT = TOTAL_SLOTS * SLOT_PX; // 1152px
 
-  // ── Smart scroll: snap to 2h before current time ────────────
+  // ── Smart scroll: agulha do horário atual ~28% do topo ──────
   const timelineScrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!timelineScrollRef.current) return;
-    const now = new Date();
-    const currentMins = now.getHours() * 60 + now.getMinutes();
-    // Scroll to 2 hours before current time, but never before 06:00
-    const targetMins = Math.max(6 * 60, currentMins - 120);
-    const px = (targetMins / SLOT_MINUTES) * SLOT_PX;
-    timelineScrollRef.current.scrollTop = Math.max(0, px - 60);
-  }, []);
+    if (activeModule !== "agenda" || viewMode !== "dia") return;
+    const id = requestAnimationFrame(() => {
+      const el = timelineScrollRef.current;
+      if (!el) return;
+      let top = 0;
+      if (selectedDate === today) {
+        const now = new Date();
+        const currentMins = now.getHours() * 60 + now.getMinutes();
+        const currentPx = (currentMins / SLOT_MINUTES) * SLOT_PX;
+        const viewH = el.clientHeight;
+        const max = el.scrollHeight - el.clientHeight;
+        top = Math.max(0, Math.min(currentPx - viewH * 0.28, max));
+      }
+      const prev = el.style.scrollBehavior;
+      el.style.scrollBehavior = "auto";
+      el.scrollTop = top;
+      el.style.scrollBehavior = prev;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [activeModule, viewMode, selectedDate, today]);
 
   /** Convert HH:MM to pixel offset from top of track */
   const timeToPx = (time: string): number => {
@@ -749,8 +761,19 @@ function AgendaPage() {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   });
 
+  // No hub "dia" o cabeçalho fica fixo e só a seção da agenda rola internamente.
+  const isDayHub = activeModule === "agenda" && viewMode === "dia";
+
   return (
-    <div style={{ minHeight: "100dvh", background: "#0B0B10", paddingBottom: 100, display: "flex", flexDirection: "column" }}>
+    <div style={{
+      minHeight: isDayHub ? undefined : "100dvh",
+      height: isDayHub ? "100dvh" : undefined,
+      overflow: isDayHub ? "hidden" : undefined,
+      background: "#0B0B10",
+      paddingBottom: isDayHub ? 0 : 100,
+      display: "flex",
+      flexDirection: "column",
+    }}>
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 20px", width: "100%", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
         {/* ── Title + Date navigation ─────────────────────────── */}
@@ -955,6 +978,7 @@ function AgendaPage() {
               overflowY: "auto", overflowX: "hidden",
               scrollBehavior: "smooth",
               WebkitOverflowScrolling: "touch",
+              paddingBottom: 100,
             }}>
               {/* Time labels */}
               <div style={{ width: 52, flexShrink: 0, paddingLeft: 6 }}>
