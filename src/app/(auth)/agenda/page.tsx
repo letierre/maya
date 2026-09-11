@@ -374,14 +374,15 @@ function AgendaPage() {
 
   const fetchItems = useCallback(async (date: string, force = false) => {
     setLoadedDate(date);
-    const from = shiftDate(date, -30);
-    const to = shiftDate(date, 30);
+    // Janela larga (~6 meses) para que navegar dia a dia (e voltar) nunca
+    // estoure a borda do cache — refetch só acontece ao saltar muito longe
+    // ou após uma mutação (force).
+    const from = shiftDate(date, -90);
+    const to = shiftDate(date, 90);
 
-    // Cache hit: reusa a janela já carregada (navegação instantânea entre dias).
-    // Só refaz o fetch quando `force` (após uma mutação) ou quando a janela em
-    // cache não cobre o range pedido.
     const cached = windowCacheRef.current;
-    if (!force && cached && cached.from <= from && cached.to >= to) {
+    if (!force && cached && date >= cached.from && date <= cached.to) {
+      // Data já coberta pela janela em cache — constrói o dia sem refetch.
       setItems(buildDayItems(cached.all, date));
       setLoading(false);
       return;
