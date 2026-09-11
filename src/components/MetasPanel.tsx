@@ -22,12 +22,27 @@ const AREA_FULL_LABELS: Record<string, string> = {
   familia: "Família", lazer: "Lazer", espiritualidade: "Espiritualidade",
 };
 
+const HINT_RESULTADOS = "💡 Resultados nascem no ciclo do trimestre: crie um resultado (R$, %, x…) e vincule a esta meta para acompanhar o avanço.";
+const HINT_MOTOR = "💡 Hábitos nascem na agenda: adicione um compromisso/tarefa com repetição (diário, semanal…) e vincule a esta meta.";
+const HINT_SEMANA = "💡 Sua semana nasce no planejador: vincule tarefas do plano semanal a esta meta (ou adicione um compromisso/tarefa na agenda).";
+
 const fabItemStyle: React.CSSProperties = {
   width: "100%", display: "flex", alignItems: "center", gap: 12,
   padding: "14px 16px", border: 0, background: "transparent",
   cursor: "pointer", fontFamily: "inherit",
   borderBottom: "1px solid rgba(167,139,250,0.06)",
 };
+
+function InfoIcon() {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      width: 15, height: 15, borderRadius: "50%",
+      border: "1px solid rgba(167,139,250,0.4)", color: "#A78BFA",
+      fontSize: 10, fontWeight: 700, lineHeight: 1, flexShrink: 0, userSelect: "none",
+    }}>i</span>
+  );
+}
 
 export function MetasPanel() {
   const router = useRouter();
@@ -49,6 +64,7 @@ export function MetasPanel() {
   const [visionArea, setVisionArea] = useState("");
   const [visionDraft, setVisionDraft] = useState("");
   const [savingVision, setSavingVision] = useState(false);
+  const [infoOpen, setInfoOpen] = useState<Set<string>>(new Set());
 
   // Scroll: efeitos atualizados via ref (sem re-render) para rolagem suave
   const cascadeRef = useRef<HTMLDivElement>(null);
@@ -153,6 +169,14 @@ export function MetasPanel() {
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleInfo = (key: string) => {
+    setInfoOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
   };
@@ -388,13 +412,24 @@ export function MetasPanel() {
 
                             {/* OKR do trimestre */}
                             <div style={{ padding: "8px 0 6px", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
-                              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>
-                                📊 Resultados do trimestre {krPct != null ? `· ${krPct}%` : ""}
-                              </p>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>
+                                  📊 Resultados do trimestre {krPct != null ? `· ${krPct}%` : ""}
+                                </p>
+                                {krList.length > 0 && (
+                                  <button type="button" aria-label="O que é isso?" onClick={() => toggleInfo(`${goal.id}:kr`)} style={{ background: "none", border: 0, padding: 0, cursor: "pointer", display: "inline-flex" }}>
+                                    <InfoIcon />
+                                  </button>
+                                )}
+                              </div>
                               {krList.length === 0 ? (
-                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#5a5470" }}>Sem resultado ligado a esta meta</p>
+                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{HINT_RESULTADOS}</p>
                               ) : (
-                                krList.map((kr) => {
+                                <>
+                                  {infoOpen.has(`${goal.id}:kr`) && (
+                                    <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{HINT_RESULTADOS}</p>
+                                  )}
+                                  {krList.map((kr) => {
                                   const pct = kr.target > 0 ? Math.min(100, Math.round((kr.current / kr.target) * 100)) : 0;
                                   return (
                                     <div key={kr.id} style={{ marginTop: 4 }}>
@@ -407,33 +442,54 @@ export function MetasPanel() {
                                       </div>
                                     </div>
                                   );
-                                })
+                                  })}
+                                </>
                               )}
                             </div>
 
                             {/* Motor (hábitos recorrentes) */}
                             <div style={{ padding: "8px 0 6px", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
-                              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>🔁 Motor (hábitos)</p>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>🔁 Motor (hábitos)</p>
+                                {motorList.length > 0 && (
+                                  <button type="button" aria-label="O que é isso?" onClick={() => toggleInfo(`${goal.id}:motor`)} style={{ background: "none", border: 0, padding: 0, cursor: "pointer", display: "inline-flex" }}>
+                                    <InfoIcon />
+                                  </button>
+                                )}
+                              </div>
                               {motorList.length === 0 ? (
-                                <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>
-                                  💡 Hábitos nascem na agenda: adicione um compromisso/tarefa com repetição (diário, semanal…) e vincule a esta meta.
-                                </p>
+                                <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{HINT_MOTOR}</p>
                               ) : (
-                                motorList.slice(0, 4).map((m, i) => (
-                                  <p key={i} style={{ margin: "3px 0 0", fontSize: 11.5, color: "#c9c2e0" }}>
-                                    🔁 {m.title} <span style={{ color: "#6a657a" }}>· {CADENCE[m.repeat_type] ?? m.repeat_type}</span>
-                                  </p>
-                                ))
+                                <>
+                                  {infoOpen.has(`${goal.id}:motor`) && (
+                                    <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{HINT_MOTOR}</p>
+                                  )}
+                                  {motorList.slice(0, 4).map((m, i) => (
+                                    <p key={i} style={{ margin: "3px 0 0", fontSize: 11.5, color: "#c9c2e0" }}>
+                                      🔁 {m.title} <span style={{ color: "#6a657a" }}>· {CADENCE[m.repeat_type] ?? m.repeat_type}</span>
+                                    </p>
+                                  ))}
+                                </>
                               )}
                             </div>
 
                             {/* Semana atual */}
                             <div style={{ padding: "8px 0 6px" }}>
-                              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>📅 Semana</p>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>📅 Semana</p>
+                                {(wkTasks.length > 0 || wkFocus.length > 0) && (
+                                  <button type="button" aria-label="O que é isso?" onClick={() => toggleInfo(`${goal.id}:semana`)} style={{ background: "none", border: 0, padding: 0, cursor: "pointer", display: "inline-flex" }}>
+                                    <InfoIcon />
+                                  </button>
+                                )}
+                              </div>
                               {wkTasks.length === 0 && wkFocus.length === 0 ? (
-                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#5a5470" }}>Sem atividades ligadas esta semana</p>
+                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{HINT_SEMANA}</p>
                               ) : (
                                 <>
+                                  {infoOpen.has(`${goal.id}:semana`) && (
+                                    <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{HINT_SEMANA}</p>
+                                  )}
                                   {wkFocus.slice(0, 2).map((f, i) => (
                                     <p key={i} style={{ margin: "3px 0 0", fontSize: 11.5, color: "#e0d6ff", fontWeight: 600 }}>🎯 {f}</p>
                                   ))}
