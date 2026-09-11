@@ -717,14 +717,17 @@ function AgendaPage() {
     const id = requestAnimationFrame(() => {
       const el = timelineScrollRef.current;
       if (!el) return;
+      const max = el.scrollHeight - el.clientHeight;
       let top = 0;
       if (selectedDate === today) {
         const now = new Date();
         const currentMins = now.getHours() * 60 + now.getMinutes();
         const currentPx = (currentMins / SLOT_MINUTES) * SLOT_PX;
         const viewH = el.clientHeight;
-        const max = el.scrollHeight - el.clientHeight;
         top = Math.max(0, Math.min(currentPx - viewH * 0.28, max));
+      } else {
+        // Dias que não são hoje: começa às 07:00 em vez da meia-noite (horário morto).
+        top = Math.min((7 * 60 / SLOT_MINUTES) * SLOT_PX, max);
       }
       const prev = el.style.scrollBehavior;
       el.style.scrollBehavior = "auto";
