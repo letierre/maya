@@ -317,7 +317,7 @@ export function MetasPanel() {
       </div>
 
       {/* ── Resultados do trimestre (onde você gerencia seus OKRs) ── */}
-      <QuarterlyOKRPanel autoOpenCreate={cycleCreateTrigger} />
+      <QuarterlyOKRPanel autoOpenCreate={cycleCreateTrigger} initialCycles={cycles} initialGoals={activeGoals} />
 
       {/* ── Cascata conectada ────────────────────────────────── */}
       {activeGoals.length === 0 && completedGoals.length === 0 ? (

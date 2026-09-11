@@ -10,9 +10,9 @@ const UNIT_LABELS: Record<string, string> = {
   "%": "%", "count": "x", "kg": "kg", "min": "min", "km": "km", "R$": "R$",
 };
 
-export function QuarterlyOKRPanel({ autoOpenCreate }: { autoOpenCreate?: number }) {
-  const [cycles, setCycles] = useState<QuarterlyCycle[]>([]);
-  const [loading, setLoading] = useState(true);
+export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals }: { autoOpenCreate?: number; initialCycles?: QuarterlyCycle[]; initialGoals?: any[] }) {
+  const [cycles, setCycles] = useState<QuarterlyCycle[]>(initialCycles ?? []);
+  const [loading, setLoading] = useState(initialCycles === undefined);
   const [showCreate, setShowCreate] = useState(false);
   const [expandedCycles, setExpandedCycles] = useState<Set<string>>(new Set());
 
@@ -27,7 +27,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate }: { autoOpenCreate?: number 
   const [newKRUnit, setNewKRUnit] = useState("%");
   const [newKRTarget, setNewKRTarget] = useState(100);
   const [newKRGoalId, setNewKRGoalId] = useState<string>("");
-  const [goals, setGoals] = useState<any[]>([]);
+  const [goals, setGoals] = useState<any[]>(initialGoals ?? []);
 
   // Edit KR progress
   const [editingKR, setEditingKR] = useState<string | null>(null);
@@ -50,13 +50,17 @@ export function QuarterlyOKRPanel({ autoOpenCreate }: { autoOpenCreate?: number 
     setLoading(false);
   };
 
-  useEffect(() => { fetchCycles(); }, []);
+  useEffect(() => {
+    if (initialCycles !== undefined) { setLoading(false); return; }
+    fetchCycles();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (initialGoals !== undefined) return;
     fetch("/api/goals").then(r => r.json()).then(d => {
       if (Array.isArray(d)) setGoals(d.filter((g: any) => g.status === "ativa"));
     }).catch(() => {});
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-expand active cycle
   useEffect(() => {
