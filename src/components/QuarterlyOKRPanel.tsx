@@ -395,53 +395,54 @@ export function QuarterlyOKRPanel({ autoOpenCreate }: { autoOpenCreate?: number 
           )}
 
           {/* Actions row */}
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            {addingKRFor === activeCycle.id ? (
-              <div style={{ flex: 1 }}>
-                <select value={newKRGoalId} onChange={e => setNewKRGoalId(e.target.value)}
+          {addingKRFor === activeCycle.id ? (
+            <div style={{ marginTop: 8 }}>
+              <select value={newKRGoalId} onChange={e => setNewKRGoalId(e.target.value)}
+                style={{
+                  width: "100%", marginBottom: 6, padding: "8px 10px", borderRadius: 10,
+                  border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10",
+                  color: "#e0d6ff", fontSize: 11, fontFamily: "inherit", boxSizing: "border-box",
+                }}>
+                <option value="">Sem meta vinculada</option>
+                {goals.map((g) => (
+                  <option key={g.id} value={g.id}>{g.title}</option>
+                ))}
+              </select>
+              <input value={newKRTitle} onChange={e => setNewKRTitle(e.target.value)} placeholder="Resultado..." autoFocus
+                style={{
+                  width: "100%", padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
+                  background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
+                  boxSizing: "border-box", marginBottom: 6,
+                }} />
+              <div style={{ display: "flex", gap: 6 }}>
+                <select value={newKRUnit} onChange={e => setNewKRUnit(e.target.value)}
                   style={{
-                    width: "100%", marginBottom: 6, padding: "8px 10px", borderRadius: 10,
-                    border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10",
-                    color: "#e0d6ff", fontSize: 11, fontFamily: "inherit", boxSizing: "border-box",
+                    flexShrink: 0, padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
+                    background: "#0B0B10", color: "#e0d6ff", fontSize: 11, fontFamily: "inherit",
                   }}>
-                  <option value="">Sem meta vinculada</option>
-                  {goals.map((g) => (
-                    <option key={g.id} value={g.id}>{g.title}</option>
+                  {Object.entries(UNIT_LABELS).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
                   ))}
                 </select>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <input value={newKRTitle} onChange={e => setNewKRTitle(e.target.value)} placeholder="Resultado..." autoFocus
-                    style={{
-                      flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
-                      background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
-                    }} />
-                  <select value={newKRUnit} onChange={e => setNewKRUnit(e.target.value)}
-                    style={{
-                      padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
-                      background: "#0B0B10", color: "#e0d6ff", fontSize: 11, fontFamily: "inherit",
-                    }}>
-                    {Object.entries(UNIT_LABELS).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                  </select>
-                  <input type="number" value={newKRTarget} onChange={e => setNewKRTarget(Number(e.target.value))}
-                    style={{
-                      width: 60, padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
-                      background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
-                    }} />
-                  <button type="button" onClick={() => addKR(activeCycle.id)}
-                    style={{
-                      padding: "8px 12px", borderRadius: 10, border: 0, background: "#7C5CFF", color: "#fff",
-                      fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
-                    }}>Adicionar</button>
-                  <button type="button" onClick={() => setAddingKRFor(null)}
-                    style={{
-                      padding: "8px", borderRadius: 10, border: 0, background: "transparent", color: "#9e96b5",
-                      fontSize: 14, cursor: "pointer", fontFamily: "inherit",
-                    }}>✕</button>
-                </div>
+                <input type="number" value={newKRTarget} onChange={e => setNewKRTarget(Number(e.target.value))}
+                  style={{
+                    width: 64, flexShrink: 0, padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
+                    background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
+                  }} />
+                <button type="button" onClick={() => addKR(activeCycle.id)}
+                  style={{
+                    flex: 1, padding: "8px 12px", borderRadius: 10, border: 0, background: "#7C5CFF", color: "#fff",
+                    fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                  }}>Adicionar</button>
+                <button type="button" onClick={() => setAddingKRFor(null)}
+                  style={{
+                    flexShrink: 0, padding: "8px", borderRadius: 10, border: 0, background: "transparent", color: "#9e96b5",
+                    fontSize: 14, cursor: "pointer", fontFamily: "inherit",
+                  }}>✕</button>
               </div>
-            ) : (
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               <button type="button" onClick={() => setAddingKRFor(activeCycle.id)}
                 style={{
                   flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
@@ -451,19 +452,19 @@ export function QuarterlyOKRPanel({ autoOpenCreate }: { autoOpenCreate?: number 
                 }}>
                 <Plus size={14} /> Adicionar resultado
               </button>
-            )}
 
-            {/* Complete cycle */}
-            <button type="button" onClick={() => completeCycle(activeCycle.id)}
-              style={{
-                padding: "9px 14px", borderRadius: 12, border: "1px solid rgba(94,234,212,0.2)",
-                background: "rgba(94,234,212,0.04)", cursor: "pointer", color: "#5EEAD4",
-                fontSize: 12, fontWeight: 600, fontFamily: "inherit", whiteSpace: "nowrap",
-              }}>
-              <Check size={14} style={{ marginRight: 4, verticalAlign: "middle" }} />
-              Concluir ciclo
-            </button>
-          </div>
+              {/* Complete cycle */}
+              <button type="button" onClick={() => completeCycle(activeCycle.id)}
+                style={{
+                  padding: "9px 14px", borderRadius: 12, border: "1px solid rgba(94,234,212,0.2)",
+                  background: "rgba(94,234,212,0.04)", cursor: "pointer", color: "#5EEAD4",
+                  fontSize: 12, fontWeight: 600, fontFamily: "inherit", whiteSpace: "nowrap",
+                }}>
+                <Check size={14} style={{ marginRight: 4, verticalAlign: "middle" }} />
+                Concluir ciclo
+              </button>
+            </div>
+          )}
         </div>
       )}
 
