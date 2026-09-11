@@ -600,7 +600,7 @@ export function MetasPanel() {
           position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)",
           display: "flex", flexDirection: "column", justifyContent: "flex-end",
         }} onClick={() => setFabMenuOpen(false)}>
-          <div style={{ padding: "0 16px 104px" }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ padding: "0 16px 152px" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ background: "#151520", borderRadius: 22, border: "1px solid rgba(167,139,250,0.15)", overflow: "hidden" }}>
               <button type="button" onClick={() => { setFabMenuOpen(false); setShowCreate(true); }} style={fabItemStyle}>
                 <span style={{ fontSize: 22, flexShrink: 0 }}>🎯</span>
