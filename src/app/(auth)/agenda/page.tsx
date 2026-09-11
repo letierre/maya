@@ -64,28 +64,9 @@ function PriorityBadge({ priority }: { priority: EisenhowerPriority }) {
 // ── Timeline skeleton (carregando) ───────────────────────────────
 
 function TimelineSkeleton() {
-  const shimmer: React.CSSProperties = {
-    background: "linear-gradient(90deg, #1a1530 25%, #241d45 50%, #1a1530 75%)",
-    backgroundSize: "200% 100%",
-    animation: "shimmerBg 1.4s ease-in-out infinite",
-  };
   return (
-    <div style={{ position: "absolute", inset: 0, zIndex: 30, background: "#1a1530", padding: "14px 16px", display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <div style={{ ...shimmer, width: 96, height: 15, borderRadius: 7 }} />
-        <div style={{ ...shimmer, width: 48, height: 12, borderRadius: 6 }} />
-      </div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-        {[84, 116, 72].map((w, i) => (
-          <div key={i} style={{ ...shimmer, width: w, height: 30, borderRadius: 8 }} />
-        ))}
-      </div>
-      {[0, 1, 2, 3].map((i) => (
-        <div key={i} style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-          <div style={{ ...shimmer, width: 42, height: 11, borderRadius: 6 }} />
-          <div style={{ ...shimmer, flex: 1, height: 48, borderRadius: 8 }} />
-        </div>
-      ))}
+    <div style={{ position: "absolute", inset: 0, zIndex: 30, background: "#1a1530", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <p style={{ color: "#9e96b5", fontSize: 13 }}>Carregando...</p>
     </div>
   );
 }
@@ -770,7 +751,7 @@ function AgendaPage() {
       height: isDayHub ? "100dvh" : undefined,
       overflow: isDayHub ? "hidden" : undefined,
       background: "#0B0B10",
-      paddingBottom: isDayHub ? 0 : 100,
+      paddingBottom: isDayHub ? 84 : 100,
       display: "flex",
       flexDirection: "column",
     }}>
@@ -978,7 +959,7 @@ function AgendaPage() {
               overflowY: "auto", overflowX: "hidden",
               scrollBehavior: "smooth",
               WebkitOverflowScrolling: "touch",
-              paddingBottom: 100,
+              paddingBottom: 20,
             }}>
               {/* Time labels */}
               <div style={{ width: 52, flexShrink: 0, paddingLeft: 6 }}>
