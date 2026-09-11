@@ -82,6 +82,7 @@ export function MetasPanel() {
   const visaoRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [visaoOffset, setVisaoOffset] = useState(0);
+  const [pageProgress, setPageProgress] = useState(0);
 
   const refresh = async () => {
     const today = getLocalDate();
@@ -124,7 +125,7 @@ export function MetasPanel() {
 
   // Scroll effects: fio conector + parallax da visão
   useEffect(() => {
-    const onScroll = () => {
+    const onScroll = (ev?: Event) => {
       const el = cascadeRef.current;
       if (el) {
         const rect = el.getBoundingClientRect();
@@ -138,11 +139,22 @@ export function MetasPanel() {
         const rect = visao.getBoundingClientRect();
         setVisaoOffset(Math.max(0, Math.min(40, -rect.top * 0.14)));
       }
+      // Progresso da rolagem da tela inteira. O scroller é o <main> (body é
+      // overflow-hidden), não o window — então medimos via ev.target/main.
+      const target = ev && ev.target instanceof HTMLElement ? ev.target : null;
+      const scroller = target || (document.querySelector("main") as HTMLElement | null) || document.documentElement;
+      const totalDoc = scroller.scrollHeight - scroller.clientHeight;
+      setPageProgress(totalDoc > 0 ? Math.min(1, Math.max(0, scroller.scrollTop / totalDoc)) : 0);
     };
     onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    // capture:true — o evento de scroll não propaga por bubbling, então capturamos
+    // no document para pegar o scroll do <main>.
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
     window.addEventListener("resize", onScroll);
-    return () => { window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); };
+    return () => {
+      document.removeEventListener("scroll", onScroll, { capture: true });
+      window.removeEventListener("resize", onScroll);
+    };
   }, [loading]);
 
   // Default-expand o "foco" (metas ligadas ao ciclo ativo), senão a 1ª meta ativa
@@ -227,6 +239,17 @@ export function MetasPanel() {
 
   return (
     <div style={{ marginBottom: 20 }}>
+      {/* Barra de progresso da rolagem (tela inteira) */}
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 3, zIndex: 200, pointerEvents: "none" }}>
+        <div style={{
+          width: `${pageProgress * 100}%`, height: "100%",
+          background: "linear-gradient(90deg, #7C5CFF, #A78BFA, #5EEAD4)",
+          boxShadow: "0 0 12px rgba(124,92,255,0.7)",
+          borderRadius: "0 9999px 9999px 0",
+          transition: "width .1s linear",
+        }} />
+      </div>
+
       {/* ── Visão (norte) ─────────────────────────────────────── */}
       <div ref={visaoRef} style={{
         position: "relative", overflow: "hidden",
