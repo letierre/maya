@@ -590,12 +590,13 @@ function AgendaPage() {
   const toggleTask = async (item: AgendaItem, coords?: { x: number; y: number }) => {
     const newStatus = item.status === "concluida" ? "pendente" : "concluida";
     if (newStatus === "concluida") celebrate(coords?.x, coords?.y);
-    // Ocorrência avulsa (repetida ou continuação pós-meia-noite) nunca altera a
-    // regra original — cria um registro standalone só para esta data.
-    const isSynthetic = item.id.includes("_r_") || item.id.includes("_cross");
+    // Ocorrência de série (repetida) nunca altera a regra original — cria um
+    // registro standalone só para esta data. Já a continuação pós-meia-noite
+    // (`_cross`) de um item avulso é o MESMO item do dia anterior: deve
+    // atualizar o registro original, não criar um standalone.
     const isRepeating = isRepeatingItem(item);
 
-    if (isRepeating || isSynthetic) {
+    if (isRepeating) {
       if (newStatus === "pendente") {
         // Desmarcar: remove a ocorrência avulsa (concluída) — o item volta ao
         // "pendente" da série, sem acumular registros concorrentes.
@@ -652,6 +653,14 @@ function AgendaPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: realId(item), status: newStatus }),
       });
+      // Sincroniza o cache (sem refetch) para que a continuação pós-meia-noite
+      // e o dia original reflitam o novo status ao navegar.
+      if (windowCacheRef.current) {
+        windowCacheRef.current = {
+          ...windowCacheRef.current,
+          all: windowCacheRef.current.all.map(a => a.id === realId(item) ? { ...a, status: newStatus } : a),
+        };
+      }
     }
   };
 
