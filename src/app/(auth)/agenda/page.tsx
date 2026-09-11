@@ -1163,36 +1163,37 @@ function AgendaPage() {
                           <span onClick={(e) => { e.stopPropagation(); toggleTask(item, { x: e.clientX, y: e.clientY }); }}
                             style={{ flexShrink: 0, cursor: "pointer", display: "flex", marginLeft: "auto", animation: done ? "checkPop 0.3s ease" : "none" }}>
                             {done
-                              ? <CheckCircle2 size={12} color="#7C5CFF" />
-                              : <div style={{ width: 12, height: 12, borderRadius: "50%", border: isTask ? "1.5px solid rgba(167,139,250,0.35)" : "1.5px solid rgba(167,139,250,0.2)" }} />
+                              ? <CheckCircle2 size={13} color="#7C5CFF" />
+                              : <div style={{ width: 13, height: 13, borderRadius: "50%", border: isTask ? "1.5px solid rgba(167,139,250,0.35)" : "1.5px solid rgba(167,139,250,0.2)" }} />
                             }
                           </span>
                         </div>
                       ) : (
-                        /* Tall mode: stacked layout */
+                        /* Tall mode: stacked layout — título, horário, prioridade */
                         <>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <span style={{ fontSize: 9, color: isTask ? "#9e96b5" : (item.color || "#A78BFA"), flexShrink: 0, lineHeight: 1 }}>
-                              {item.start_time?.slice(0, 5)}{item.end_time ? ` – ${item.end_time.slice(0, 5)}` : ""}
-                              {crossesMidnight && " ↗"}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                            <span style={{
+                              flex: 1, minWidth: 0,
+                              fontSize: 12.5, fontWeight: done ? 400 : 700,
+                              color: done ? "#5a5470" : "#e0d6ff",
+                              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                              textDecoration: done ? "line-through" : "none",
+                              lineHeight: 1.2,
+                            }}>
+                              {item.emoji && <span style={{ marginRight: 3 }}>{item.emoji}</span>}
+                              {item.title}
                             </span>
                             <span onClick={(e) => { e.stopPropagation(); toggleTask(item, { x: e.clientX, y: e.clientY }); }}
                               style={{ flexShrink: 0, cursor: "pointer", display: "flex", animation: done ? "checkPop 0.3s ease" : "none" }}>
                               {done
-                                ? <CheckCircle2 size={12} color="#7C5CFF" />
-                                : <div style={{ width: 12, height: 12, borderRadius: "50%", border: isTask ? "1.5px solid rgba(167,139,250,0.35)" : "1.5px solid rgba(167,139,250,0.2)" }} />
+                                ? <CheckCircle2 size={14} color="#7C5CFF" />
+                                : <div style={{ width: 14, height: 14, borderRadius: "50%", border: isTask ? "1.5px solid rgba(167,139,250,0.35)" : "1.5px solid rgba(167,139,250,0.2)" }} />
                               }
                             </span>
                           </div>
-                          <span style={{
-                            fontSize: 11, fontWeight: done ? 400 : 600,
-                            color: done ? "#5a5470" : "#e0d6ff",
-                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                            textDecoration: done ? "line-through" : "none",
-                            lineHeight: 1.3,
-                          }}>
-                            {item.emoji && <span style={{ marginRight: 3 }}>{item.emoji}</span>}
-                            {item.title}
+                          <span style={{ fontSize: 9, color: isTask ? "#9e96b5" : (item.color || "#A78BFA"), flexShrink: 0, lineHeight: 1 }}>
+                            {item.start_time?.slice(0, 5)}{item.end_time ? ` – ${item.end_time.slice(0, 5)}` : ""}
+                            {crossesMidnight && " ↗"}
                           </span>
                           {!isTask && roomy && (
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 8, color: priorityCfg.color, whiteSpace: "nowrap", lineHeight: 1 }}>
