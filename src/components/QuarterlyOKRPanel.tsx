@@ -10,6 +10,11 @@ const UNIT_LABELS: Record<string, string> = {
   "%": "%", "count": "x", "kg": "kg", "min": "min", "km": "km", "R$": "R$",
 };
 
+// Dica de alvo por unidade (para % o alvo é sempre 100).
+const TARGET_HINT: Record<string, string> = {
+  "%": "100", "count": "ex: 20", "kg": "ex: 10", "min": "ex: 30", "km": "ex: 5", "R$": "ex: 1000",
+};
+
 export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals }: { autoOpenCreate?: number; initialCycles?: QuarterlyCycle[]; initialGoals?: any[] }) {
   const [cycles, setCycles] = useState<QuarterlyCycle[]>(initialCycles ?? []);
   const [loading, setLoading] = useState(initialCycles === undefined);
@@ -108,8 +113,17 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
     }
   };
 
+  const handleUnitChange = (u: string) => {
+    setNewKRUnit(u);
+    setNewKRTarget(u === "%" ? 100 : 0);
+  };
+
   const addKR = async (cycleId: string) => {
     if (!newKRTitle.trim()) return;
+    if (newKRUnit !== "%" && (!newKRTarget || newKRTarget <= 0)) {
+      toast.error("Defina um alvo para este resultado");
+      return;
+    }
     const res = await fetch(`/api/quarterly-cycles/${cycleId}/key-results`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -418,29 +432,37 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                   background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
                   boxSizing: "border-box", marginBottom: 6,
                 }} />
-              <div style={{ display: "flex", gap: 6 }}>
-                <select value={newKRUnit} onChange={e => setNewKRUnit(e.target.value)}
+              <div style={{ display: "flex", gap: 8 }}>
+                <select value={newKRUnit} onChange={e => handleUnitChange(e.target.value)}
                   style={{
-                    flexShrink: 0, padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
-                    background: "#0B0B10", color: "#e0d6ff", fontSize: 11, fontFamily: "inherit",
+                    flex: 1, padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
+                    background: "#0B0B10", color: "#e0d6ff", fontSize: 11, fontFamily: "inherit", textAlign: "center",
                   }}>
                   {Object.entries(UNIT_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>{v}</option>
                   ))}
                 </select>
-                <input type="number" value={newKRTarget} onChange={e => setNewKRTarget(Number(e.target.value))}
+                <input type="number"
+                  value={newKRUnit === "%" ? 100 : (newKRTarget || "")}
+                  onChange={e => setNewKRTarget(Number(e.target.value))}
+                  disabled={newKRUnit === "%"}
+                  placeholder={TARGET_HINT[newKRUnit] ?? "alvo"}
                   style={{
-                    width: 64, flexShrink: 0, padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
+                    flex: 1, padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
                     background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
+                    textAlign: "center", opacity: newKRUnit === "%" ? 0.55 : 1,
                   }} />
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 <button type="button" onClick={() => addKR(activeCycle.id)}
                   style={{
-                    flex: 1, padding: "8px 12px", borderRadius: 10, border: 0, background: "#7C5CFF", color: "#fff",
-                    fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                    flex: 1, padding: "10px 12px", borderRadius: 10, border: 0, background: "#7C5CFF", color: "#fff",
+                    fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
                   }}>Adicionar</button>
                 <button type="button" onClick={() => setAddingKRFor(null)}
                   style={{
-                    flexShrink: 0, padding: "8px", borderRadius: 10, border: 0, background: "transparent", color: "#9e96b5",
+                    flexShrink: 0, width: 44, padding: "10px 0", borderRadius: 10,
+                    border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5",
                     fontSize: 14, cursor: "pointer", fontFamily: "inherit",
                   }}>✕</button>
               </div>
