@@ -415,7 +415,9 @@ export function MetasPanel() {
                             <div style={{ padding: "8px 0 6px", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
                               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>🔁 Motor (hábitos)</p>
                               {motorList.length === 0 ? (
-                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#5a5470" }}>Sem hábito recorrente ligado a esta meta</p>
+                                <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>
+                                  💡 Hábitos nascem na agenda: adicione um compromisso/tarefa com repetição (diário, semanal…) e vincule a esta meta.
+                                </p>
                               ) : (
                                 motorList.slice(0, 4).map((m, i) => (
                                   <p key={i} style={{ margin: "3px 0 0", fontSize: 11.5, color: "#c9c2e0" }}>
