@@ -404,13 +404,15 @@ function AgendaPage() {
   useEffect(() => { fetchItems(selectedDate); }, [selectedDate, fetchItems]);
 
   // Fetch weekly plan tasks + goals + pedras for the current week
+  const goalsCacheRef = useRef<any[] | null>(null);
+
   const refreshWeekData = useCallback(async (date: string) => {
     setWeekLoading(true);
     try {
-      const [, goalsData] = await Promise.all([
+      const [allTasks, goalsData] = await Promise.all([
         // Fetch current + 3 past weeks for overdue/open detection
         (async () => {
-          const allTasks: any[] = [];
+          const tasks: any[] = [];
           for (let offset = 0; offset <= 3; offset++) {
             const mon = new Date(date + "T12:00:00");
             mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7) - (offset * 7));
@@ -420,24 +422,26 @@ function AgendaPage() {
               if (res.ok) {
                 const data = await res.json();
                 if (data.current?.weekly_tasks) {
-                  allTasks.push(...data.current.weekly_tasks.map((t: any) => ({ ...t, _weekStart: ws })));
+                  tasks.push(...data.current.weekly_tasks.map((t: any) => ({ ...t, _weekStart: ws })));
                 }
               }
             } catch {}
           }
-          setAllWeekTasks(allTasks);
-          return allTasks;
+          return tasks;
         })(),
-        fetch("/api/goals").then(r => r.json()).catch(() => []),
+        // Metas são globais — busca uma vez e reusa no restante da sessão.
+        goalsCacheRef.current
+          ? Promise.resolve(goalsCacheRef.current)
+          : fetch("/api/goals").then(r => r.json()).catch(() => []),
       ]);
+      setAllWeekTasks(allTasks);
       if (Array.isArray(goalsData)) {
+        if (!goalsCacheRef.current) goalsCacheRef.current = goalsData;
         setActiveGoals(goalsData.filter((g: any) => g.status === "ativa"));
       }
     } catch { /* silent */ }
     setWeekLoading(false);
   }, []);
-
-  useEffect(() => { refreshWeekData(selectedDate); }, [selectedDate, refreshWeekData]);
 
   // Weekly plan tasks filtered for the selected day
   const selectedDayOfWeek = useMemo(() => {
@@ -452,6 +456,11 @@ function AgendaPage() {
     mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
     return `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
   }, [selectedDate]);
+
+  // Refaz o plano semanal só ao trocar de semana — navegar entre dias da mesma
+  // semana não deve refazer os fetches de weekly-plans (é isso que deixava a
+  // navegação lenta mesmo com a agenda já em cache).
+  useEffect(() => { refreshWeekData(selectedDate); }, [selectedWeekMonday, refreshWeekData]);
 
   const dayPlanTasks = useMemo(() =>
     allWeekTasks.filter((t: any) =>
@@ -870,7 +879,7 @@ function AgendaPage() {
               }
             }}
           >
-            {(loading || weekLoading || loadedDate !== selectedDate) && <TimelineSkeleton />}
+            {(loading || loadedDate !== selectedDate) && <TimelineSkeleton />}
 
             {/* ── Collapsible task strip ── */}
             <div style={{
