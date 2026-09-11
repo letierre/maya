@@ -65,6 +65,7 @@ export function MetasPanel() {
   const [visionDraft, setVisionDraft] = useState("");
   const [savingVision, setSavingVision] = useState(false);
   const [infoOpen, setInfoOpen] = useState<Set<string>>(new Set());
+  const [showAllCompleted, setShowAllCompleted] = useState(false);
 
   // Scroll: efeitos atualizados via ref (sem re-render) para rolagem suave
   const cascadeRef = useRef<HTMLDivElement>(null);
@@ -205,6 +206,7 @@ export function MetasPanel() {
   };
 
   const deleteVision = async (id: string) => {
+    if (!window.confirm("Excluir esta visão? Essa ação não pode ser desfeita.")) return;
     try {
       await fetch(`/api/area-visions?id=${id}`, { method: "DELETE" });
       refresh();
@@ -536,13 +538,14 @@ export function MetasPanel() {
           <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "#5a5470" }}>
             Concluídas ({completedGoals.length})
           </p>
-          {completedGoals.slice(0, 3).map((goal) => (
+          {(showAllCompleted ? completedGoals : completedGoals.slice(0, 3)).map((goal) => (
             <div key={goal.id} style={{
               display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 12,
               background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.1)", opacity: 0.6, marginBottom: 6,
             }}>
               <span style={{ flex: 1, fontSize: 12, color: "#9e96b5", textDecoration: "line-through" }}>{goal.title}</span>
               <button type="button" onClick={async () => {
+                if (!window.confirm("Arquivar esta meta?")) return;
                 await fetch(`/api/goals/${goal.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "arquivada" }) });
                 refresh();
               }} style={{ background: "none", border: 0, color: "#5a5470", cursor: "pointer", fontSize: 10, fontWeight: 600, fontFamily: "inherit" }}>
@@ -550,6 +553,12 @@ export function MetasPanel() {
               </button>
             </div>
           ))}
+          {completedGoals.length > 3 && (
+            <button type="button" onClick={() => setShowAllCompleted((v) => !v)}
+              style={{ width: "100%", padding: "8px 0", borderRadius: 10, border: "1px solid rgba(167,139,250,0.12)", background: "transparent", cursor: "pointer", color: "#9e96b5", fontSize: 11, fontWeight: 600, fontFamily: "inherit" }}>
+              {showAllCompleted ? "Ver menos" : `Ver todas (${completedGoals.length})`}
+            </button>
+          )}
         </div>
       )}
 

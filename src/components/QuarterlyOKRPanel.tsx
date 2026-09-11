@@ -37,6 +37,9 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
   // Edit KR progress
   const [editingKR, setEditingKR] = useState<string | null>(null);
   const [editKRValue, setEditKRValue] = useState(0);
+  const [editKRTitle, setEditKRTitle] = useState("");
+  const [editKRUnit, setEditKRUnit] = useState("%");
+  const [editKRTarget, setEditKRTarget] = useState(100);
 
   // Review form
   const [reviewingCycle, setReviewingCycle] = useState<string | null>(null);
@@ -143,16 +146,35 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
   };
 
   const updateKRProgress = async (cycleId: string, kr: KeyResult) => {
+    const target = editKRUnit === "%" ? 100 : editKRTarget;
+    if (!editKRTitle.trim()) { toast.error("Dê um título ao resultado"); return; }
+    if (editKRUnit !== "%" && (!target || target <= 0)) { toast.error("Defina um alvo para este resultado"); return; }
     const res = await fetch(`/api/quarterly-cycles/${cycleId}/key-results/${kr.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ current: editKRValue }),
+      body: JSON.stringify({ title: editKRTitle.trim(), unit: editKRUnit, target, current: editKRValue }),
     });
     if (res.ok) {
       setEditingKR(null);
       fetchCycles();
     } else {
-      toast.error("Erro ao atualizar progresso");
+      toast.error("Erro ao salvar resultado");
+    }
+  };
+
+  const handleEditUnitChange = (u: string) => {
+    setEditKRUnit(u);
+    setEditKRTarget(u === "%" ? 100 : 0);
+  };
+
+  const deleteKR = async (cycleId: string, krId: string) => {
+    if (!window.confirm("Excluir este resultado? Essa ação não pode ser desfeita.")) return;
+    const res = await fetch(`/api/quarterly-cycles/${cycleId}/key-results/${krId}`, { method: "DELETE" });
+    if (res.ok) {
+      setEditingKR(null);
+      fetchCycles();
+    } else {
+      toast.error("Erro ao excluir resultado");
     }
   };
 
@@ -192,6 +214,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
   };
 
   const completeCycle = async (cycleId: string) => {
+    if (!window.confirm("Concluir este ciclo? Ele vai para o histórico (você pode reabrir depois).")) return;
     const res = await fetch(`/api/quarterly-cycles/${cycleId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -199,6 +222,18 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
     });
     if (res.ok) {
       toast.success("Ciclo concluído!");
+      fetchCycles();
+    }
+  };
+
+  const reopenCycle = async (cycleId: string) => {
+    const res = await fetch(`/api/quarterly-cycles/${cycleId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "active" }),
+    });
+    if (res.ok) {
+      toast.success("Ciclo reaberto!");
       fetchCycles();
     }
   };
@@ -361,26 +396,62 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
 
                       {/* Inline edit */}
                       {isEditing && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
-                          <input type="number" value={editKRValue} onChange={e => setEditKRValue(Number(e.target.value))}
-                            autoFocus style={{
-                              flex: 1, padding: "6px 10px", borderRadius: 8,
-                              border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10",
-                              color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
-                              maxWidth: 100,
+                        <div style={{ marginTop: 8, padding: "10px", borderRadius: 10, background: "#0f0e1a", border: "1px solid rgba(167,139,250,0.12)" }}>
+                          <input value={editKRTitle} onChange={e => setEditKRTitle(e.target.value)} placeholder="Resultado..." autoFocus
+                            style={{
+                              width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)",
+                              background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
+                              boxSizing: "border-box", marginBottom: 6,
                             }} />
-                          <button type="button" onClick={() => updateKRProgress(activeCycle.id, kr)}
-                            style={{
-                              padding: "5px 10px", borderRadius: 8, border: 0,
-                              background: "#7C5CFF", color: "#fff", fontSize: 10, fontWeight: 600,
-                              cursor: "pointer", fontFamily: "inherit",
-                            }}>OK</button>
-                          <button type="button" onClick={() => setEditingKR(null)}
-                            style={{
-                              padding: "5px 8px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)",
-                              background: "transparent", color: "#9e96b5", fontSize: 10, cursor: "pointer",
-                              fontFamily: "inherit",
-                            }}>✕</button>
+                          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                            <select value={editKRUnit} onChange={e => handleEditUnitChange(e.target.value)}
+                              style={{
+                                flex: 1, padding: "8px 6px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)",
+                                background: "#0B0B10", color: "#e0d6ff", fontSize: 11, fontFamily: "inherit",
+                                textAlign: "center", textAlignLast: "center",
+                              }}>
+                              {Object.entries(UNIT_LABELS).map(([k, v]) => (
+                                <option key={k} value={k}>{v}</option>
+                              ))}
+                            </select>
+                            <input type="number"
+                              value={editKRUnit === "%" ? 100 : (editKRTarget || "")}
+                              onChange={e => setEditKRTarget(Number(e.target.value))}
+                              disabled={editKRUnit === "%"}
+                              placeholder="alvo"
+                              style={{
+                                flex: 1, padding: "8px 6px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)",
+                                background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
+                                textAlign: "center", opacity: editKRUnit === "%" ? 0.55 : 1,
+                              }} />
+                            <input type="number" value={editKRValue} onChange={e => setEditKRValue(Number(e.target.value))}
+                              placeholder="atual"
+                              style={{
+                                flex: 1, padding: "8px 6px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)",
+                                background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
+                                textAlign: "center",
+                              }} />
+                          </div>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button type="button" onClick={() => updateKRProgress(activeCycle.id, kr)}
+                              style={{
+                                flex: 1, padding: "8px 0", borderRadius: 8, border: 0,
+                                background: "#7C5CFF", color: "#fff", fontSize: 11, fontWeight: 600,
+                                cursor: "pointer", fontFamily: "inherit",
+                              }}>Salvar</button>
+                            <button type="button" onClick={() => setEditingKR(null)}
+                              style={{
+                                flexShrink: 0, width: 40, padding: "8px 0", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)",
+                                background: "transparent", color: "#9e96b5", fontSize: 13, cursor: "pointer",
+                                fontFamily: "inherit",
+                              }}>✕</button>
+                            <button type="button" onClick={() => deleteKR(activeCycle.id, kr.id)}
+                              style={{
+                                flexShrink: 0, width: 40, padding: "8px 0", borderRadius: 8, border: "1px solid rgba(255,112,112,0.2)",
+                                background: "transparent", color: "#FF7070", fontSize: 13, cursor: "pointer",
+                                fontFamily: "inherit",
+                              }}>🗑</button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -390,6 +461,9 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                       onClick={() => {
                         setEditingKR(kr.id);
                         setEditKRValue(kr.current);
+                        setEditKRTitle(kr.title);
+                        setEditKRUnit(kr.unit);
+                        setEditKRTarget(kr.target);
                       }}
                       style={{
                         width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
@@ -656,6 +730,16 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                         <Star size={14} /> Fazer review do ciclo
                       </button>
                     )}
+
+                    <button type="button" onClick={() => reopenCycle(cycle.id)}
+                      style={{
+                        width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 12,
+                        border: "1px solid rgba(167,139,250,0.2)", background: "transparent",
+                        cursor: "pointer", color: "#A78BFA", fontSize: 11, fontWeight: 600,
+                        fontFamily: "inherit",
+                      }}>
+                      Reabrir ciclo
+                    </button>
                   </div>
                 )}
               </div>
