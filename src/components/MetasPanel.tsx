@@ -50,12 +50,13 @@ export function MetasPanel() {
   const [visionDraft, setVisionDraft] = useState("");
   const [savingVision, setSavingVision] = useState(false);
 
-  // Scroll: progresso do fio conector + parallax da visão
+  // Scroll: efeitos atualizados via ref (sem re-render) para rolagem suave
   const cascadeRef = useRef<HTMLDivElement>(null);
   const visaoRef = useRef<HTMLDivElement>(null);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [visaoOffset, setVisaoOffset] = useState(0);
-  const [pageProgress, setPageProgress] = useState(0);
+  const parallaxRef = useRef<HTMLDivElement>(null);
+  const fioFillRef = useRef<HTMLDivElement>(null);
+  const fioDotRef = useRef<HTMLSpanElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
 
   const refresh = async () => {
     const today = getLocalDate();
@@ -96,7 +97,7 @@ export function MetasPanel() {
 
   useEffect(() => { refresh(); }, []);
 
-  // Scroll effects: fio conector + parallax da visão
+  // Scroll effects: atualiza o DOM direto (sem re-render) para rolagem suave.
   useEffect(() => {
     const onScroll = (ev?: Event) => {
       const el = cascadeRef.current;
@@ -105,19 +106,22 @@ export function MetasPanel() {
         const vh = window.innerHeight;
         const total = rect.height - vh;
         const p = total <= 0 ? 1 : Math.max(0, Math.min(1, -rect.top / total));
-        setScrollProgress(p);
+        if (fioFillRef.current) fioFillRef.current.style.height = `${p * 100}%`;
+        if (fioDotRef.current) fioDotRef.current.style.top = `${p * 100}%`;
       }
       const visao = visaoRef.current;
-      if (visao) {
+      if (visao && parallaxRef.current) {
         const rect = visao.getBoundingClientRect();
-        setVisaoOffset(Math.max(0, Math.min(40, -rect.top * 0.14)));
+        const offset = Math.max(0, Math.min(40, -rect.top * 0.14));
+        parallaxRef.current.style.transform = `translateY(${offset}px)`;
       }
       // Progresso da rolagem da tela inteira. O scroller é o <main> (body é
       // overflow-hidden), não o window — então medimos via ev.target/main.
       const target = ev && ev.target instanceof HTMLElement ? ev.target : null;
       const scroller = target || (document.querySelector("main") as HTMLElement | null) || document.documentElement;
       const totalDoc = scroller.scrollHeight - scroller.clientHeight;
-      setPageProgress(totalDoc > 0 ? Math.min(1, Math.max(0, scroller.scrollTop / totalDoc)) : 0);
+      const prog = totalDoc > 0 ? Math.min(1, Math.max(0, scroller.scrollTop / totalDoc)) : 0;
+      if (progressBarRef.current) progressBarRef.current.style.width = `${prog * 100}%`;
     };
     onScroll();
     // capture:true — o evento de scroll não propaga por bubbling, então capturamos
@@ -214,12 +218,11 @@ export function MetasPanel() {
     <div style={{ marginBottom: 20 }}>
       {/* Barra de progresso da rolagem (tela inteira) */}
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 3, zIndex: 200, pointerEvents: "none" }}>
-        <div style={{
-          width: `${pageProgress * 100}%`, height: "100%",
+        <div ref={progressBarRef} style={{
+          width: "0%", height: "100%",
           background: "linear-gradient(90deg, #7C5CFF, #A78BFA, #5EEAD4)",
           boxShadow: "0 0 12px rgba(124,92,255,0.7)",
           borderRadius: "0 9999px 9999px 0",
-          transition: "width .1s linear",
         }} />
       </div>
 
@@ -231,10 +234,8 @@ export function MetasPanel() {
         border: "1px solid rgba(124,92,255,0.16)",
       }}>
         {/* Camada de parallax (desliza suavemente com o scroll) */}
-        <div style={{
+        <div ref={parallaxRef} style={{
           position: "absolute", left: "-20%", top: "-60%", width: "140%", height: "220%",
-          transform: `translateY(${visaoOffset}px)`,
-          transition: "transform .1s linear",
           background: "radial-gradient(circle at 30% 25%, rgba(124,92,255,0.20), transparent 55%)",
           pointerEvents: "none",
         }} />
@@ -308,21 +309,19 @@ export function MetasPanel() {
             position: "absolute", left: 5, top: 6, bottom: 6, width: 2.5,
             background: "oklch(0.28 0.02 270 / 0.5)", borderRadius: 9999,
           }}>
-            <div style={{
+            <div ref={fioFillRef} style={{
               position: "absolute", top: 0, left: 0, right: 0,
-              height: `${scrollProgress * 100}%`,
+              height: "0%",
               background: "linear-gradient(180deg, #7C5CFF, #A78BFA)",
               borderRadius: 9999,
               boxShadow: "0 0 12px rgba(124,92,255,0.55)",
-              transition: "height .15s linear",
             }} />
-            <span style={{
-              position: "absolute", top: `${scrollProgress * 100}%`, left: "50%",
+            <span ref={fioDotRef} style={{
+              position: "absolute", top: "0%", left: "50%",
               width: 11, height: 11, borderRadius: "50%",
               transform: "translate(-50%, -50%)",
               background: "#A78BFA",
               boxShadow: "0 0 14px 3px rgba(167,139,250,0.7)",
-              transition: "top .15s linear",
             }} />
           </div>
 

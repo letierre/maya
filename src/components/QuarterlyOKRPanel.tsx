@@ -436,7 +436,8 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                 <select value={newKRUnit} onChange={e => handleUnitChange(e.target.value)}
                   style={{
                     flex: 1, padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
-                    background: "#0B0B10", color: "#e0d6ff", fontSize: 11, fontFamily: "inherit", textAlign: "center",
+                    background: "#0B0B10", color: "#e0d6ff", fontSize: 11, fontFamily: "inherit",
+                    textAlign: "center", textAlignLast: "center",
                   }}>
                   {Object.entries(UNIT_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>{v}</option>
