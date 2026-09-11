@@ -29,33 +29,6 @@ const fabItemStyle: React.CSSProperties = {
   borderBottom: "1px solid rgba(167,139,250,0.06)",
 };
 
-// ── Reveal on scroll (fade + leve subida ao entrar na tela) ──────────────────
-function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold: 0.05, rootMargin: "0px 0px 60px 0px" },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  return (
-    <div ref={ref} style={{
-      opacity: visible ? 1 : 0,
-      transform: visible ? "translateY(0) scale(1)" : "translateY(24px) scale(0.98)",
-      transition: `opacity .55s cubic-bezier(.22,.61,.36,1) ${delay}ms, transform .55s cubic-bezier(.22,.61,.36,1) ${delay}ms`,
-    }}>
-      {children}
-    </div>
-  );
-}
-
 export function MetasPanel() {
   const router = useRouter();
   const [goals, setGoals] = useState<any[]>([]);
@@ -358,13 +331,11 @@ export function MetasPanel() {
             const conf = AREA_CONFIG[area as keyof typeof AREA_CONFIG] || { emoji: "🎯", hue: 270 };
             return (
               <div key={area} style={{ marginBottom: 12 }}>
-                <Reveal>
-                  <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "#5a5470" }}>
-                    {conf.emoji} {AREA_FULL_LABELS[area] || AREA_LABELS[area as keyof typeof AREA_LABELS]}
-                  </p>
-                </Reveal>
+                <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "#5a5470" }}>
+                  {conf.emoji} {AREA_FULL_LABELS[area] || AREA_LABELS[area as keyof typeof AREA_LABELS]}
+                </p>
 
-                {areaGoals.map((goal, gi) => {
+                {areaGoals.map((goal) => {
                   const isOpen = expanded.has(goal.id);
                   const st = statusByGoal.get(goal.id);
                   const streak = st?.streak ?? 0;
@@ -379,8 +350,7 @@ export function MetasPanel() {
                     : null;
 
                   return (
-                    <Reveal key={goal.id} delay={gi * 40}>
-                      <div style={{
+                    <div key={goal.id} style={{
                         borderRadius: 14, marginBottom: 8, overflow: "hidden",
                         border: isOpen ? "1px solid rgba(124,92,255,0.22)" : "1px solid rgba(167,139,250,0.12)",
                         background: isOpen ? "#171329" : "#14121f",
@@ -495,7 +465,6 @@ export function MetasPanel() {
                           </div>
                         )}
                       </div>
-                    </Reveal>
                   );
                 })}
               </div>

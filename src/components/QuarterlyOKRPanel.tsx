@@ -462,10 +462,9 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                 style={{
                   padding: "9px 14px", borderRadius: 12, border: "1px solid rgba(94,234,212,0.2)",
                   background: "rgba(94,234,212,0.04)", cursor: "pointer", color: "#5EEAD4",
-                  fontSize: 12, fontWeight: 600, fontFamily: "inherit", whiteSpace: "nowrap",
+                  fontSize: 12, fontWeight: 700, fontFamily: "inherit", whiteSpace: "nowrap",
                 }}>
-                <Check size={14} style={{ marginRight: 4, verticalAlign: "middle" }} />
-                Concluir ciclo
+                CONCLUIR CICLO
               </button>
             </div>
           )}
