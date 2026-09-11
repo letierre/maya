@@ -38,6 +38,88 @@ function shiftDate(dateStr: string, days: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// Constrói a lista de itens de um único dia a partir de uma janela já carregada
+// (dedup + ocorrências de repetição + crossing de meia-noite). Extraído de
+// fetchItems para poder reutilizar a janela em cache sem refazer o fetch.
+function buildDayItems(all: AgendaItem[], date: string): AgendaItem[] {
+  const result: AgendaItem[] = [];
+
+  // Track which (date, title, horários) combos already exist as real items.
+  // Ocorrências avulsas (concluídas/excluídas) sombreiam a regra de repetição na mesma data.
+  // `exactOccKeys` usa horários (dois compromissos de mesmo título em horas diferentes
+  // são distintos); `exactTitleKeys` (só data+título) é para o crossing de meia-noite.
+  const exactOccKeys = new Set<string>();
+  const exactTitleKeys = new Set<string>();
+  const exactItems: AgendaItem[] = [];
+  for (const item of all) {
+    // Exact date match
+    if (item.date === date) {
+      exactItems.push(item);
+      exactOccKeys.add(occKey(item));
+      exactTitleKeys.add(item.date + "|" + item.title.toLowerCase().trim());
+      continue;
+    }
+  }
+  for (const item of dedupeByDateTitle(exactItems)) {
+    if (item.excluded) continue; // ocorrência excluída não aparece
+    result.push(item);
+  }
+
+  for (const item of all) {
+    // Skip if already processed as exact match
+    if (item.date === date) continue;
+    // Repeating item
+    if (repeatMatches(item, date)) {
+      const key = occKey({ date, title: item.title, start_time: item.start_time, end_time: item.end_time });
+      // Skip if a standalone item already exists for this date+title+horários
+      if (exactOccKeys.has(key)) continue;
+      result.push({ ...item, date, id: item.id + "_r_" + date, _origId: item.id } as AgendaItem & { _origId?: string });
+    }
+  }
+
+  // ── Midnight-crossing: items from YESTERDAY that cross into today ──
+  const yesterday = shiftDate(date, -1);
+  // Collect ALL items that appeared yesterday (real + synthetic repeats)
+  const yesterdayCrossItems: AgendaItem[] = [];
+  for (const item of all) {
+    // Real item on yesterday
+    if (item.date === yesterday && item.item_type === "compromisso" && item.start_time && item.end_time) {
+      yesterdayCrossItems.push(item);
+    }
+    // Repeating item that would appear on yesterday
+    if (item.repeat_type && item.repeat_type !== "none" && item.item_type === "compromisso" && item.start_time && item.end_time) {
+      if (repeatMatches(item, yesterday)) {
+        yesterdayCrossItems.push({ ...item, date: yesterday });
+      }
+    }
+  }
+  for (const item of yesterdayCrossItems) {
+    const [sh, sm] = (item.start_time || "00:00").split(":").map(Number);
+    const [eh, em] = (item.end_time || "00:00").split(":").map(Number);
+    if (eh * 60 + em <= sh * 60 + sm) {
+      const crossKey = date + "|" + item.title.toLowerCase().trim();
+      if (!exactTitleKeys.has(crossKey)) {
+        result.push({
+          ...item,
+          date,
+          id: (item as any)._origId ? (item as any)._origId + "_cross" : item.id + "_cross",
+          start_time: "00:00",
+          _origStartTime: item.start_time,
+          _origId: (item as any)._origId || item.id,
+        } as any);
+      }
+    }
+  }
+
+  // Sort: compromissos by start_time, then tarefas
+  result.sort((a, b) => {
+    if (a.item_type !== b.item_type) return a.item_type === "compromisso" ? -1 : 1;
+    return (a.start_time || "").localeCompare(b.start_time || "");
+  });
+
+  return result;
+}
+
 const PRIORITY_CONFIG: Record<EisenhowerPriority, { icon: typeof AlertCircle; color: string; label: string; shortLabel: string }> = {
   importante_urgente:          { icon: AlertCircle, color: "#FF4D4D", label: "Urgente e importante", shortLabel: "Crítico" },
   importante_nao_urgente:      { icon: Star, color: "#FF9F43", label: "Importante, não urgente", shortLabel: "Importante" },
@@ -245,7 +327,7 @@ function AgendaPage() {
       closeNewItemModal();
       // Refetch para reaplicar dedup/repetição (editar ocorrência sintética não
       // casa pelo id manual — precisa reconstruir a lista da data).
-      fetchItems(selectedDate);
+      fetchItems(selectedDate, true);
     }
     setSaving(false);
   };
@@ -288,95 +370,32 @@ function AgendaPage() {
     setShowNewItem(true);
   };
 
-  const fetchItems = useCallback(async (date: string) => {
-    setLoading(true);
+  const windowCacheRef = useRef<{ from: string; to: string; all: AgendaItem[] } | null>(null);
+
+  const fetchItems = useCallback(async (date: string, force = false) => {
     setLoadedDate(date);
+    const from = shiftDate(date, -30);
+    const to = shiftDate(date, 30);
+
+    // Cache hit: reusa a janela já carregada (navegação instantânea entre dias).
+    // Só refaz o fetch quando `force` (após uma mutação) ou quando a janela em
+    // cache não cobre o range pedido.
+    const cached = windowCacheRef.current;
+    if (!force && cached && cached.from <= from && cached.to >= to) {
+      setItems(buildDayItems(cached.all, date));
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     try {
       // Fetch a window around the selected date to catch repeats and midnight-crossings
-      const from = shiftDate(date, -30);
-      const to = shiftDate(date, 30);
       const res = await fetch(`/api/agenda?from=${from}&to=${to}`);
       if (!res.ok) { setItems([]); setLoading(false); return; }
       const all: AgendaItem[] = await res.json();
       if (!Array.isArray(all)) { setItems([]); setLoading(false); return; }
-
-      // ── Build result: items that belong to `date` ──
-      const result: AgendaItem[] = [];
-
-      // Track which (date, title, horários) combos already exist as real items.
-      // Ocorrências avulsas (concluídas/excluídas) sombreiam a regra de repetição na mesma data.
-      // `exactOccKeys` usa horários (dois compromissos de mesmo título em horas diferentes
-      // são distintos); `exactTitleKeys` (só data+título) é para o crossing de meia-noite.
-      const exactOccKeys = new Set<string>();
-      const exactTitleKeys = new Set<string>();
-      const exactItems: AgendaItem[] = [];
-      for (const item of all) {
-        // Exact date match
-        if (item.date === date) {
-          exactItems.push(item);
-          exactOccKeys.add(occKey(item));
-          exactTitleKeys.add(item.date + "|" + item.title.toLowerCase().trim());
-          continue;
-        }
-      }
-      for (const item of dedupeByDateTitle(exactItems)) {
-        if (item.excluded) continue; // ocorrência excluída não aparece
-        result.push(item);
-      }
-
-      for (const item of all) {
-        // Skip if already processed as exact match
-        if (item.date === date) continue;
-        // Repeating item
-        if (repeatMatches(item, date)) {
-          const key = occKey({ date, title: item.title, start_time: item.start_time, end_time: item.end_time });
-          // Skip if a standalone item already exists for this date+title+horários
-          if (exactOccKeys.has(key)) continue;
-          result.push({ ...item, date, id: item.id + "_r_" + date, _origId: item.id } as AgendaItem & { _origId?: string });
-        }
-      }
-
-      // ── Midnight-crossing: items from YESTERDAY that cross into today ──
-      const yesterday = shiftDate(date, -1);
-      // Collect ALL items that appeared yesterday (real + synthetic repeats)
-      const yesterdayCrossItems: AgendaItem[] = [];
-      for (const item of all) {
-        // Real item on yesterday
-        if (item.date === yesterday && item.item_type === "compromisso" && item.start_time && item.end_time) {
-          yesterdayCrossItems.push(item);
-        }
-        // Repeating item that would appear on yesterday
-        if (item.repeat_type && item.repeat_type !== "none" && item.item_type === "compromisso" && item.start_time && item.end_time) {
-          if (repeatMatches(item, yesterday)) {
-            yesterdayCrossItems.push({ ...item, date: yesterday });
-          }
-        }
-      }
-      for (const item of yesterdayCrossItems) {
-        const [sh, sm] = (item.start_time || "00:00").split(":").map(Number);
-        const [eh, em] = (item.end_time || "00:00").split(":").map(Number);
-        if (eh * 60 + em <= sh * 60 + sm) {
-          const crossKey = date + "|" + item.title.toLowerCase().trim();
-          if (!exactTitleKeys.has(crossKey)) {
-            result.push({
-              ...item,
-              date,
-              id: (item as any)._origId ? (item as any)._origId + "_cross" : item.id + "_cross",
-              start_time: "00:00",
-              _origStartTime: item.start_time,
-              _origId: (item as any)._origId || item.id,
-            } as any);
-          }
-        }
-      }
-
-      // Sort: compromissos by start_time, then tarefas
-      result.sort((a, b) => {
-        if (a.item_type !== b.item_type) return a.item_type === "compromisso" ? -1 : 1;
-        return (a.start_time || "").localeCompare(b.start_time || "");
-      });
-
-      setItems(result);
+      windowCacheRef.current = { from, to, all };
+      setItems(buildDayItems(all, date));
     } catch { /* silent */ }
     setLoading(false);
   }, []);
@@ -577,7 +596,7 @@ function AgendaPage() {
         const res = await fetch(`/api/agenda?scope=occurrence&${params.toString()}`, { method: "DELETE" });
         if (res.ok) {
           // Refetch to get clean data instead of manually patching state
-          fetchItems(selectedDate);
+          fetchItems(selectedDate, true);
         } else {
           // Revert on failure so the UI doesn't show a state that wasn't saved.
           setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: "concluida" } : i));
@@ -610,7 +629,7 @@ function AgendaPage() {
         });
         if (res.ok) {
           // Refetch to get clean data instead of manually patching state
-          fetchItems(selectedDate);
+          fetchItems(selectedDate, true);
         } else {
           // Revert on failure so the UI doesn't show a state that wasn't saved.
           setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: item.status } : i));
@@ -647,7 +666,7 @@ function AgendaPage() {
         excluded: true,
       }),
     });
-    setDeleteDialog(null); setEditingItem(null); fetchItems(selectedDate);
+    setDeleteDialog(null); setEditingItem(null); fetchItems(selectedDate, true);
   };
 
   const deleteThisAndFuture = async (item: AgendaItem) => {
@@ -664,12 +683,12 @@ function AgendaPage() {
         body: JSON.stringify({ id: realId(item), repeat_until: prev }),
       });
     }
-    setDeleteDialog(null); setEditingItem(null); fetchItems(selectedDate);
+    setDeleteDialog(null); setEditingItem(null); fetchItems(selectedDate, true);
   };
 
   const deleteAllOccurrences = async (item: AgendaItem) => {
     await fetch(`/api/agenda?id=${realId(item)}&scope=all&${seriesDeleteParams(item)}`, { method: "DELETE" });
-    setDeleteDialog(null); setEditingItem(null); fetchItems(selectedDate);
+    setDeleteDialog(null); setEditingItem(null); fetchItems(selectedDate, true);
   };
 
   // ── Timeline calculations ──────────────────────────────────────
@@ -1167,7 +1186,7 @@ function AgendaPage() {
 
       {/* ── LISTA ───────────────────────────────────────────── */}
       {viewMode === "lista" && (
-        <ListView allWeekTasks={allWeekTasks} compromissos={items} selectedDate={selectedDate} setAllWeekTasks={setAllWeekTasks} refreshItems={() => fetchItems(selectedDate)} loading={loading || weekLoading} toggleAgendaTask={toggleTask} />
+        <ListView allWeekTasks={allWeekTasks} compromissos={items} selectedDate={selectedDate} setAllWeekTasks={setAllWeekTasks} refreshItems={() => fetchItems(selectedDate, true)} loading={loading || weekLoading} toggleAgendaTask={toggleTask} />
       )}
 
       {/* ── Detail popup for compromisso ────────────────────── */}
@@ -1216,7 +1235,7 @@ function AgendaPage() {
                 } else {
                   showConfirm("Excluir este compromisso?", () => {
                     fetch(`/api/agenda?id=${realId(editingItem)}`, { method: "DELETE" }).then(() => {
-                      setEditingItem(null); fetchItems(selectedDate);
+                      setEditingItem(null); fetchItems(selectedDate, true);
                     });
                   });
                 }
