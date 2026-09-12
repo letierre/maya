@@ -34,6 +34,7 @@ export function invalidateFetchCache(pattern: string) {
 export async function cachedFetch<T = unknown>(
   url: string,
   options?: RequestInit,
+  ttlMs?: number,
 ): Promise<T> {
   // Só cacheia GET
   const method = (options?.method || "GET").toUpperCase();
@@ -43,8 +44,9 @@ export async function cachedFetch<T = unknown>(
     return res.json();
   }
 
+  const ttl = ttlMs ?? TTL;
   const cached = cache.get(url);
-  if (cached && Date.now() - cached.timestamp < TTL) {
+  if (cached && Date.now() - cached.timestamp < ttl) {
     return cached.data as T;
   }
 
@@ -64,9 +66,10 @@ export async function cachedFetch<T = unknown>(
 export async function safeCachedFetch<T = unknown>(
   url: string,
   options?: RequestInit,
+  ttlMs?: number,
 ): Promise<T | null> {
   try {
-    return await cachedFetch<T>(url, options);
+    return await cachedFetch<T>(url, options, ttlMs);
   } catch {
     return null;
   }

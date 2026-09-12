@@ -19,6 +19,10 @@ import { CareList } from "@/components/CareList";
 import { TrialBanner } from "@/components/SubscriptionStatus";
 import type { CheckIn, SleepLog, WeeklyTask } from "@/types";
 
+// LLM endpoints já são cacheados no servidor 1x/dia; cacheamos no cliente por
+// mais tempo para a volta à home não re-disparar a geração/consulta do LLM.
+const MAYA_TTL = 10 * 60 * 1000; // 10 minutos
+
 // ── Page ────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -79,7 +83,7 @@ export default function DashboardPage() {
         enabled_questions?: string[];
         context?: Record<string, unknown>;
       }>("/api/preferences"),
-      fetch("/api/profile").then((r) => r.json()).catch(() => ({})),
+      cachedFetch<{ name?: string; gender?: string }>("/api/profile").catch(() => ({}) as { name?: string; gender?: string }),
       cachedFetch<SleepLog[]>("/api/sleep?limit=7"),
     ])
       .then(([checkInsData, prefsData, profileData, sleepData]) => {
@@ -111,24 +115,31 @@ export default function DashboardPage() {
       })
       .catch(() => setLoading(false));
 
-    // Maya home message — independent (LLM-generated, cached 1x/day)
-    fetch(`/api/maya/home-message?tz=${encodeURIComponent(userTz)}`)
-      .then((r) => r.json())
+    // Maya home message — independent (LLM-generated, cached 1x/day no servidor;
+    // cacheamos no cliente por mais tempo para a volta à home não re-disparar o LLM)
+    cachedFetch<{ message: string; state?: string }>(
+      `/api/maya/home-message?tz=${encodeURIComponent(userTz)}`,
+      undefined,
+      MAYA_TTL,
+    )
       .then((data) => {
         if (data.message) setHomeMessage({ message: data.message, state: data.state });
       })
       .catch(() => setHomeMessage(null));
 
     // Maya nudge — independent (gives extra CTA if a trigger fired)
-    fetch("/api/maya/nudge")
-      .then((r) => r.json())
+    cachedFetch<{ nudges?: Array<{ message?: string; action?: { label: string; href: string } }> }>(
+      "/api/maya/nudge",
+      undefined,
+      MAYA_TTL,
+    )
       .then((data) => {
         const n = data.nudges?.[0];
         if (n?.action) setMayaNudgeAction(n.action);
         // If nudge has a message different from home message, use it
         if (n?.message) {
           setHomeMessage((prev) => ({
-            message: n.message,
+            message: n.message!,
             state: prev?.state,
             action: n.action || prev?.action,
           }));
@@ -157,8 +168,7 @@ export default function DashboardPage() {
       .catch(() => {});
 
     // Weekly tasks — independent
-    fetch("/api/weekly-plans")
-      .then((r) => r.json())
+    cachedFetch<{ current?: { weekly_tasks?: WeeklyTask[] } }>("/api/weekly-plans")
       .then((weeklyPlanData) => {
         const todayDow = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
         const allTasks: WeeklyTask[] = weeklyPlanData?.current?.weekly_tasks ?? [];
