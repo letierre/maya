@@ -9,6 +9,7 @@ import { requestPushSubscription } from "@/lib/push-utils";
 import { invalidateFetchCache } from "@/lib/fetch-cache";
 import { useInstallPrompt, IosGuide } from "@/components/InstallAppCard";
 import { LANG_OPTIONS, t as translate, type Lang } from "@/lib/i18n";
+import { setLanguage } from "@/lib/language";
 
 // ── Design tokens (mesmos do check-in) ────────────────────────────────────────
 
@@ -20,60 +21,58 @@ const BORDER = "oklch(0.28 0.02 270 / 0.5)";
 const MUTED = "oklch(0.55 0.03 270)";
 const TEXT = "#e0d6ff";
 
+const tr = (lang: string, key: string, vars?: Record<string, string>) =>
+  translate(lang as Lang, key, vars);
+
 // ── Conteúdo do questionário ──────────────────────────────────────────────────
 
 const GOALS = [
-  { id: "sono", emoji: "😴", label: "Dormir melhor" },
-  { id: "leveza", emoji: "😌", label: "Me sentir mais leve" },
-  { id: "alimentacao", emoji: "🥗", label: "Comer melhor" },
-  { id: "meta", emoji: "🎯", label: "Alcançar uma meta" },
-  { id: "dinheiro", emoji: "💰", label: "Organizar meu dinheiro" },
-  { id: "movimento", emoji: "🏃", label: "Me movimentar mais" },
-  { id: "equilibrio", emoji: "🌱", label: "Equilíbrio no geral" },
+  { id: "sono", emoji: "😴", labelKey: "ob_goal_sono" },
+  { id: "leveza", emoji: "😌", labelKey: "ob_goal_leveza" },
+  { id: "alimentacao", emoji: "🥗", labelKey: "ob_goal_alimentacao" },
+  { id: "meta", emoji: "🎯", labelKey: "ob_goal_meta" },
+  { id: "dinheiro", emoji: "💰", labelKey: "ob_goal_dinheiro" },
+  { id: "movimento", emoji: "🏃", labelKey: "ob_goal_movimento" },
+  { id: "equilibrio", emoji: "🌱", labelKey: "ob_goal_equilibrio" },
 ];
 
 const PAINS = [
-  { id: "nao_sei", emoji: "🤷", label: "Não sei o que funciona pra mim" },
-  { id: "espalhado", emoji: "🧩", label: "Minha vida está espalhada" },
-  { id: "sem_tempo", emoji: "⏰", label: "Sem tempo / esqueço de me cuidar" },
-  { id: "desisto", emoji: "🔁", label: "Começo e desisto na 1ª semana" },
-  { id: "sem_rumo", emoji: "🧭", label: "Me sinto sem rumo" },
-  { id: "sem_progresso", emoji: "📉", label: "Não vejo meu progresso" },
-  { id: "sozinho", emoji: "🕳️", label: "Me sinto sozinho(a) nessa" },
+  { id: "nao_sei", emoji: "🤷", labelKey: "ob_pain_nao_sei" },
+  { id: "espalhado", emoji: "🧩", labelKey: "ob_pain_espalhado" },
+  { id: "sem_tempo", emoji: "⏰", labelKey: "ob_pain_sem_tempo" },
+  { id: "desisto", emoji: "🔁", labelKey: "ob_pain_desisto" },
+  { id: "sem_rumo", emoji: "🧭", labelKey: "ob_pain_sem_rumo" },
+  { id: "sem_progresso", emoji: "📉", labelKey: "ob_pain_sem_progresso" },
+  { id: "sozinho", emoji: "🕳️", labelKey: "ob_pain_sozinho" },
 ];
 
-const TINDER_CARDS = [
-  "Eu começo a me cuidar e largo na primeira semana.",
-  "Eu não sei se o que eu faço está funcionando.",
-  "Tenho tanta coisa pra acompanhar que não acompanho nada.",
-  "Eu queria alguém que prestasse atenção em mim.",
-];
+const TINDER_CARDS = ["ob_tinder_1", "ob_tinder_2", "ob_tinder_3", "ob_tinder_4"];
 
 const AREAS = [
-  { id: "sono", emoji: "😴", label: "Sono" },
-  { id: "humor", emoji: "😊", label: "Humor" },
-  { id: "habitos", emoji: "✅", label: "Hábitos" },
-  { id: "metas", emoji: "🎯", label: "Metas" },
-  { id: "dinheiro", emoji: "💰", label: "Dinheiro" },
-  { id: "alimentacao", emoji: "🥗", label: "Alimentação" },
-  { id: "movimento", emoji: "🏃", label: "Movimento" },
-  { id: "leitura", emoji: "📖", label: "Leitura" },
+  { id: "sono", emoji: "😴", labelKey: "ob_area_sono" },
+  { id: "humor", emoji: "😊", labelKey: "ob_area_humor" },
+  { id: "habitos", emoji: "✅", labelKey: "ob_area_habitos" },
+  { id: "metas", emoji: "🎯", labelKey: "ob_area_metas" },
+  { id: "dinheiro", emoji: "💰", labelKey: "ob_area_dinheiro" },
+  { id: "alimentacao", emoji: "🥗", labelKey: "ob_area_alimentacao" },
+  { id: "movimento", emoji: "🏃", labelKey: "ob_area_movimento" },
+  { id: "leitura", emoji: "📖", labelKey: "ob_area_leitura" },
 ];
 
 // Hábitos do check-in de demonstração (mapeiam para campos reais do CheckInAnswers).
 const DEMO_HABITS = [
-  { key: "slept_well", emoji: "😴", label: "Dormi bem" },
-  { key: "meditation", emoji: "🧘", label: "Meditei" },
-  { key: "walked", emoji: "🏃", label: "Me exercitei" },
-  { key: "creative_activity", emoji: "🎨", label: "Fiz algo criativo" },
-  { key: "read", emoji: "📖", label: "Li hoje" },
-  { key: "did_something_enjoyable", emoji: "😊", label: "Fiz algo que gosto" },
+  { key: "slept_well", emoji: "😴", labelKey: "ob_demo_slept_well" },
+  { key: "meditation", emoji: "🧘", labelKey: "ob_demo_meditation" },
+  { key: "walked", emoji: "🏃", labelKey: "ob_demo_walked" },
+  { key: "creative_activity", emoji: "🎨", labelKey: "ob_demo_creative" },
+  { key: "read", emoji: "📖", labelKey: "ob_demo_read" },
+  { key: "did_something_enjoyable", emoji: "😊", labelKey: "ob_demo_enjoyable" },
 ];
 
 const GENDER_OPTIONS = [
-  { id: "masculino", label: "Masculino", emoji: "⚡" },
-  { id: "feminino", label: "Feminino", emoji: "🌸" },
-  { id: "nao_dizer", label: "Prefiro não dizer", emoji: "🌱" },
+  { id: "masculino", labelKey: "ob_gender_masc", emoji: "⚡" },
+  { id: "feminino", labelKey: "ob_gender_fem", emoji: "🌸" },
+  { id: "nao_dizer", labelKey: "ob_gender_nao_dizer", emoji: "🌱" },
 ] as const;
 
 const CONTEXT_QUESTIONS = [
@@ -90,7 +89,7 @@ const STEPS = [
 
 // ── Shared UI ─────────────────────────────────────────────────────────────────
 
-function ProgressBar({ stepIdx, total }: { stepIdx: number; total: number }) {
+function ProgressBar({ stepIdx, total, lang }: { stepIdx: number; total: number; lang: string }) {
   return (
     <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 30, padding: "16px 24px 0" }}>
       <div style={{ display: "flex", gap: 4, alignItems: "center", maxWidth: 460, margin: "0 auto" }}>
@@ -106,15 +105,15 @@ function ProgressBar({ stepIdx, total }: { stepIdx: number; total: number }) {
         margin: "8px 0 0", textAlign: "center", fontSize: 10,
         color: MUTED, letterSpacing: ".16em", textTransform: "uppercase",
       }}>
-        {String(stepIdx + 1).padStart(2, "0")} de {String(total).padStart(2, "0")}
+        {String(stepIdx + 1).padStart(2, "0")} {tr(lang, "ob_de")} {String(total).padStart(2, "0")}
       </p>
     </div>
   );
 }
 
-function BackButton({ onClick }: { onClick: () => void }) {
+function BackButton({ lang, onClick }: { lang: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} aria-label="Voltar" style={{
+    <button type="button" onClick={onClick} aria-label={tr(lang, "ob_back")} style={{
       position: "fixed", top: 44, left: 16, zIndex: 31,
       width: 36, height: 36, borderRadius: 9999, border: 0, cursor: "pointer",
       background: "oklch(0.16 0.012 270 / 0.85)", backdropFilter: "blur(12px)",
@@ -128,7 +127,8 @@ function BackButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-function Footer({ onPrev, onNext, nextLabel, nextDisabled, secondary }: {
+function Footer({ lang, onPrev, onNext, nextLabel, nextDisabled, secondary }: {
+  lang: string;
   onPrev?: () => void;
   onNext?: () => void;
   nextLabel?: string;
@@ -146,7 +146,7 @@ function Footer({ onPrev, onNext, nextLabel, nextDisabled, secondary }: {
           <button type="button" onClick={onPrev} style={{
             background: "transparent", border: 0, cursor: "pointer",
             fontFamily: "inherit", fontSize: 13, color: MUTED, padding: "8px 0", flexShrink: 0,
-          }}>← Voltar</button>
+          }}>{tr(lang, "voltar")}</button>
         )}
         {secondary}
         <div style={{ flex: 1 }} />
@@ -158,7 +158,7 @@ function Footer({ onPrev, onNext, nextLabel, nextDisabled, secondary }: {
             color: nextDisabled ? MUTED : "#fff",
             fontFamily: "inherit", fontSize: 14, fontWeight: 700, flexShrink: 0,
             boxShadow: nextDisabled ? "none" : "0 4px 14px -4px oklch(0.5 0.12 270 / .45)",
-          }}>{nextLabel ?? "Continuar"}</button>
+          }}>{nextLabel ?? tr(lang, "ob_continue")}</button>
         )}
       </div>
     </div>
@@ -215,10 +215,10 @@ function WelcomeScreen({ lang, setLang, onNext }: {
       <div style={{ fontSize: 84, lineHeight: 1 }}>🪷</div>
       <h1 style={{ margin: "4px 0 0", fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1,
         background: `linear-gradient(135deg, ${ACCENT_2}, #5EEAD4)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-        Sua vida inteira,<br />conectada.
+        {tr(lang, "ob_welcome_title_a")}<br />{tr(lang, "ob_welcome_title_b")}
       </h1>
       <p style={{ margin: "0", fontSize: 15, color: TEXT, lineHeight: 1.65 }}>
-        A Maya cruza seu sono, humor, hábitos, metas e dinheiro — e mostra o que você sozinho não enxerga.
+        {tr(lang, "ob_welcome_sub")}
       </p>
 
       <div style={{ display: "flex", gap: 8, marginTop: 22 }}>
@@ -238,30 +238,31 @@ function WelcomeScreen({ lang, setLang, onNext }: {
         fontFamily: "inherit", fontSize: 15.5, fontWeight: 700,
         background: `linear-gradient(135deg, ${ACCENT}, ${ACCENT_2})`, color: "#fff",
         boxShadow: "0 4px 18px -4px oklch(.55 .2 270 / .5)",
-      }}>Começar</button>
+      }}>{tr(lang, "comecar")}</button>
     </div>
   );
 }
 
-function GoalScreen({ goal, setGoal, onNext, onPrev }: {
-  goal: string; setGoal: (g: string) => void; onNext: () => void; onPrev: () => void;
+function GoalScreen({ lang, goal, setGoal, onNext, onPrev }: {
+  lang: string; goal: string; setGoal: (g: string) => void; onNext: () => void; onPrev: () => void;
 }) {
   return (
     <>
-      <Section title="O que você quer trabalhar primeiro?" sub="A gente começa por aqui." />
+      <Section title={tr(lang, "ob_goal_title")} sub={tr(lang, "ob_goal_sub")} />
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {GOALS.map((g) => (
           <OptionButton key={g.id} active={goal === g.id} onClick={() => setGoal(g.id)}>
-            <span style={{ fontSize: 20 }}>{g.emoji}</span>{g.label}
+            <span style={{ fontSize: 20 }}>{g.emoji}</span>{tr(lang, g.labelKey)}
           </OptionButton>
         ))}
       </div>
-      <Footer onPrev={onPrev} onNext={goal ? onNext : undefined} nextDisabled={!goal} />
+      <Footer lang={lang} onPrev={onPrev} onNext={goal ? onNext : undefined} nextDisabled={!goal} />
     </>
   );
 }
 
-function PainScreen({ pains, togglePain, onNext, onPrev }: {
+function PainScreen({ lang, pains, togglePain, onNext, onPrev }: {
+  lang: string;
   pains: string[];
   togglePain: (id: string) => void;
   onNext: () => void;
@@ -269,28 +270,28 @@ function PainScreen({ pains, togglePain, onNext, onPrev }: {
 }) {
   return (
     <>
-      <Section title="O que mais te atrapalha hoje?" sub="Marque tudo que fizer sentido." />
+      <Section title={tr(lang, "ob_pain_title")} sub={tr(lang, "ob_pain_sub")} />
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {PAINS.map((p) => (
           <OptionButton key={p.id} active={pains.includes(p.id)} onClick={() => togglePain(p.id)}>
-            <span style={{ fontSize: 20 }}>{p.emoji}</span>{p.label}
+            <span style={{ fontSize: 20 }}>{p.emoji}</span>{tr(lang, p.labelKey)}
           </OptionButton>
         ))}
       </div>
-      <Footer onPrev={onPrev} onNext={onNext} />
+      <Footer lang={lang} onPrev={onPrev} onNext={onNext} />
     </>
   );
 }
 
-function SocialScreen({ onNext, onPrev }: { onNext: () => void; onPrev: () => void }) {
+function SocialScreen({ lang, onNext, onPrev }: { lang: string; onNext: () => void; onPrev: () => void }) {
   const testimonials = [
-    { text: "Pela primeira vez eu entendo o que me derruba.", name: "Marina, 34", tag: "equilibrando a rotina" },
-    { text: "Dois minutos por dia e eu sinto que estou no controle.", name: "Diego, 41", tag: "pai e empreendedor" },
-    { text: "É como ter alguém que presta atenção em mim de verdade.", name: "Camila, 27", tag: "buscando leveza" },
+    { text: tr(lang, "ob_social_t1_text"), name: "Marina, 34", tag: tr(lang, "ob_social_t1_tag") },
+    { text: tr(lang, "ob_social_t2_text"), name: "Diego, 41", tag: tr(lang, "ob_social_t2_tag") },
+    { text: tr(lang, "ob_social_t3_text"), name: "Camila, 27", tag: tr(lang, "ob_social_t3_tag") },
   ];
   return (
     <>
-      <Section title="Milhares já encontraram o próprio caminho." />
+      <Section title={tr(lang, "ob_social_title")} />
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {testimonials.map((t) => (
           <div key={t.name} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "16px 18px" }}>
@@ -300,12 +301,13 @@ function SocialScreen({ onNext, onPrev }: { onNext: () => void; onPrev: () => vo
           </div>
         ))}
       </div>
-      <Footer onPrev={onPrev} onNext={onNext} />
+      <Footer lang={lang} onPrev={onPrev} onNext={onNext} />
     </>
   );
 }
 
-function TinderScreen({ idx, onAgree, onDismiss, onPrev }: {
+function TinderScreen({ lang, idx, onAgree, onDismiss, onPrev }: {
+  lang: string;
   idx: number;
   onAgree: () => void;
   onDismiss: () => void;
@@ -316,13 +318,13 @@ function TinderScreen({ idx, onAgree, onDismiss, onPrev }: {
   return (
     <>
       <Section
-        eyebrow={`${idx + 1} de ${total}`}
-        title="Com quais frases você se identifica?"
-        sub="Toque ✓ se for você, ✗ se não for."
+        eyebrow={`${idx + 1} ${tr(lang, "ob_de")} ${total}`}
+        title={tr(lang, "ob_tinder_title")}
+        sub={tr(lang, "ob_tinder_sub")}
       />
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 20, padding: "28px 24px", minHeight: 160, display: "flex", alignItems: "center" }}>
         <p style={{ margin: 0, fontSize: 19, fontWeight: 600, color: TEXT, lineHeight: 1.5 }}>
-          “{TINDER_CARDS[idx]}”
+          “{tr(lang, TINDER_CARDS[idx])}”
         </p>
       </div>
       <div style={{ display: "flex", gap: 14, marginTop: 22 }}>
@@ -336,77 +338,79 @@ function TinderScreen({ idx, onAgree, onDismiss, onPrev }: {
           boxShadow: "0 4px 14px -4px oklch(0.5 0.12 270 / .45)",
         }}>✓</button>
       </div>
-      <Footer onPrev={onPrev} />
+      <Footer lang={lang} onPrev={onPrev} />
     </>
   );
 }
 
-function SolutionScreen({ pains, onNext, onPrev }: {
+function SolutionScreen({ lang, pains, onNext, onPrev }: {
+  lang: string;
   pains: string[];
   onNext: () => void;
   onPrev: () => void;
 }) {
   const solutions: Record<string, { emoji: string; pain: string; fix: string }> = {
-    nao_sei: { emoji: "🤷", pain: "Não sei o que funciona", fix: "A Maya cruza sono, humor e hábitos e mostra o que te faz bem — e o que te derruba." },
-    desisto: { emoji: "🔁", pain: "Começo e desisto", fix: "Um check-in de 2 minutos que vira rotina, não obrigação." },
-    espalhado: { emoji: "🧩", pain: "Vida espalhada", fix: "Sono, hábitos, metas e dinheiro num só lugar, conectados." },
-    sem_rumo: { emoji: "🧭", pain: "Sem rumo", fix: "Metas e planejamento que tiram você da intenção e mostram pra onde ir." },
-    sem_tempo: { emoji: "⏰", pain: "Sem tempo", fix: "Dois minutos por dia bastam — é rotina mínima, não mais uma tarefa." },
-    sem_progresso: { emoji: "📉", pain: "Não vejo progresso", fix: "Sua evolução fica visível, dia a dia, em um só lugar." },
-    sozinho: { emoji: "🕳️", pain: "Me sinto só", fix: "A Maya lembra de você e te acompanha — sem cobrança." },
+    nao_sei: { emoji: "🤷", pain: "ob_sol_nao_sei_pain", fix: "ob_sol_nao_sei_fix" },
+    desisto: { emoji: "🔁", pain: "ob_sol_desisto_pain", fix: "ob_sol_desisto_fix" },
+    espalhado: { emoji: "🧩", pain: "ob_sol_espalhado_pain", fix: "ob_sol_espalhado_fix" },
+    sem_rumo: { emoji: "🧭", pain: "ob_sol_sem_rumo_pain", fix: "ob_sol_sem_rumo_fix" },
+    sem_tempo: { emoji: "⏰", pain: "ob_sol_sem_tempo_pain", fix: "ob_sol_sem_tempo_fix" },
+    sem_progresso: { emoji: "📉", pain: "ob_sol_sem_progresso_pain", fix: "ob_sol_sem_progresso_fix" },
+    sozinho: { emoji: "🕳️", pain: "ob_sol_sozinho_pain", fix: "ob_sol_sozinho_fix" },
   };
   const keys = pains.length > 0 ? pains : ["nao_sei", "desisto", "espalhado", "sem_rumo"];
   return (
     <>
-      <Section title="A Maya foi feita pra isso." sub="Você nos contou o que sente. Veja como a gente resolve." />
+      <Section title={tr(lang, "ob_solution_title")} sub={tr(lang, "ob_solution_sub")} />
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {keys.filter((k) => solutions[k]).map((k) => {
           const s = solutions[k];
           return (
             <div key={k} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "16px 18px" }}>
-              <p style={{ margin: "0 0 4px", fontSize: 12, color: MUTED }}>{s.emoji} {s.pain}</p>
-              <p style={{ margin: 0, fontSize: 14.5, color: TEXT, fontWeight: 600, lineHeight: 1.45 }}>{s.fix}</p>
+              <p style={{ margin: "0 0 4px", fontSize: 12, color: MUTED }}>{s.emoji} {tr(lang, s.pain)}</p>
+              <p style={{ margin: 0, fontSize: 14.5, color: TEXT, fontWeight: 600, lineHeight: 1.45 }}>{tr(lang, s.fix)}</p>
             </div>
           );
         })}
       </div>
-      <Footer onPrev={onPrev} onNext={onNext} />
+      <Footer lang={lang} onPrev={onPrev} onNext={onNext} />
     </>
   );
 }
 
-function ComparisonScreen({ onNext, onPrev }: { onNext: () => void; onPrev: () => void }) {
+function ComparisonScreen({ lang, onNext, onPrev }: { lang: string; onNext: () => void; onPrev: () => void }) {
   const rows = [
-    { withMaya: "Você vê o que funciona", without: "Achismo" },
-    { withMaya: "2 minutos por dia", without: "Horas em planilhas" },
-    { withMaya: "Tudo num só lugar", without: "Espalhado em apps" },
-    { withMaya: "Progresso claro", without: "Sensação de não sair do lugar" },
+    { withMaya: "ob_compare_r1_with", without: "ob_compare_r1_without" },
+    { withMaya: "ob_compare_r2_with", without: "ob_compare_r2_without" },
+    { withMaya: "ob_compare_r3_with", without: "ob_compare_r3_without" },
+    { withMaya: "ob_compare_r4_with", without: "ob_compare_r4_without" },
   ];
   return (
     <>
-      <Section title="A diferença é visível." />
+      <Section title={tr(lang, "ob_compare_title")} />
       <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-        <div style={{ flex: 1, textAlign: "center", fontSize: 12.5, fontWeight: 700, color: "#5EEAD4" }}>Com Maya</div>
-        <div style={{ flex: 1, textAlign: "center", fontSize: 12.5, fontWeight: 700, color: MUTED }}>Sem Maya</div>
+        <div style={{ flex: 1, textAlign: "center", fontSize: 12.5, fontWeight: 700, color: "#5EEAD4" }}>{tr(lang, "ob_compare_with")}</div>
+        <div style={{ flex: 1, textAlign: "center", fontSize: 12.5, fontWeight: 700, color: MUTED }}>{tr(lang, "ob_compare_without")}</div>
       </div>
       {rows.map((r) => (
         <div key={r.withMaya} style={{ display: "flex", gap: 10, marginBottom: 8 }}>
           <div style={{ flex: 1, background: "oklch(0.5 0.12 270 / .12)", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ color: "#5EEAD4", fontWeight: 800 }}>✓</span>
-            <span style={{ fontSize: 13.5, color: TEXT }}>{r.withMaya}</span>
+            <span style={{ fontSize: 13.5, color: TEXT }}>{tr(lang, r.withMaya)}</span>
           </div>
           <div style={{ flex: 1, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ color: "oklch(0.72 0.1 30)", fontWeight: 800 }}>✗</span>
-            <span style={{ fontSize: 13.5, color: MUTED }}>{r.without}</span>
+            <span style={{ fontSize: 13.5, color: MUTED }}>{tr(lang, r.without)}</span>
           </div>
         </div>
       ))}
-      <Footer onPrev={onPrev} onNext={onNext} />
+      <Footer lang={lang} onPrev={onPrev} onNext={onNext} />
     </>
   );
 }
 
-function PreferencesScreen({ areas, toggleArea, onNext, onPrev }: {
+function PreferencesScreen({ lang, areas, toggleArea, onNext, onPrev }: {
+  lang: string;
   areas: string[];
   toggleArea: (id: string) => void;
   onNext: () => void;
@@ -414,7 +418,7 @@ function PreferencesScreen({ areas, toggleArea, onNext, onPrev }: {
 }) {
   return (
     <>
-      <Section title="Quais áreas você quer acompanhar?" sub="A Maya personaliza seu espaço a partir daqui." />
+      <Section title={tr(lang, "ob_prefs_title")} sub={tr(lang, "ob_prefs_sub")} />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {AREAS.map((a) => (
           <button key={a.id} type="button" onClick={() => toggleArea(a.id)} style={{
@@ -427,11 +431,11 @@ function PreferencesScreen({ areas, toggleArea, onNext, onPrev }: {
             outline: areas.includes(a.id) ? `2px solid oklch(0.5 0.12 270 / .5)` : `1px solid ${BORDER}`,
           }}>
             <span style={{ fontSize: 26, lineHeight: 1 }}>{a.emoji}</span>
-            <span>{a.label}</span>
+            <span>{tr(lang, a.labelKey)}</span>
           </button>
         ))}
       </div>
-      <Footer onPrev={onPrev} onNext={onNext} nextDisabled={areas.length === 0} />
+      <Footer lang={lang} onPrev={onPrev} onNext={onNext} nextDisabled={areas.length === 0} />
     </>
   );
 }
@@ -447,9 +451,9 @@ function AboutScreen({ gender, setGender, ctx, setCtxValue, lang, onNext, onPrev
 }) {
   return (
     <>
-      <Section title="Pra te conhecer melhor." sub="Isso ajuda a Maya a falar com você do jeito certo." />
+      <Section title={tr(lang, "ob_about_title")} sub={tr(lang, "ob_about_sub")} />
 
-      <p style={{ margin: "0 0 8px", fontSize: 13.5, fontWeight: 700, color: TEXT }}>Como você quer que a Maya se refira a você?</p>
+      <p style={{ margin: "0 0 8px", fontSize: 13.5, fontWeight: 700, color: TEXT }}>{tr(lang, "ob_about_gender")}</p>
       <div style={{ display: "flex", gap: 8, marginBottom: 22 }}>
         {GENDER_OPTIONS.map((opt) => (
           <button key={opt.id} type="button" onClick={() => setGender(opt.id)} style={{
@@ -459,7 +463,7 @@ function AboutScreen({ gender, setGender, ctx, setCtxValue, lang, onNext, onPrev
             color: gender === opt.id ? "#fff" : MUTED,
             outline: gender === opt.id ? "none" : `1px solid ${BORDER}`,
             transition: "all .15s ease",
-          }}>{opt.emoji} {opt.label}</button>
+          }}>{opt.emoji} {tr(lang, opt.labelKey)}</button>
         ))}
       </div>
 
@@ -486,12 +490,12 @@ function AboutScreen({ gender, setGender, ctx, setCtxValue, lang, onNext, onPrev
           </div>
         ))}
       </div>
-      <Footer onPrev={onPrev} onNext={onNext} />
+      <Footer lang={lang} onPrev={onPrev} onNext={onNext} />
     </>
   );
 }
 
-function ProcessingScreen() {
+function ProcessingScreen({ lang }: { lang: string }) {
   return (
     <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
       <div style={{
@@ -503,14 +507,15 @@ function ProcessingScreen() {
       }}>
         <span style={{ fontSize: 38 }}>✨</span>
       </div>
-      <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: TEXT }}>Preparando seu espaço…</h1>
-      <p style={{ margin: 0, fontSize: 14, color: MUTED }}>Só um instante.</p>
+      <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: TEXT }}>{tr(lang, "ob_processing_title")}</h1>
+      <p style={{ margin: 0, fontSize: 14, color: MUTED }}>{tr(lang, "ob_processing_sub")}</p>
       <style>{`@keyframes obPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }`}</style>
     </div>
   );
 }
 
-function DemoStep({ selected, toggle, waterCups, setWaterCups, onNext, onPrev }: {
+function DemoStep({ lang, selected, toggle, waterCups, setWaterCups, onNext, onPrev }: {
+  lang: string;
   selected: Set<string>;
   toggle: (key: string) => void;
   waterCups: number;
@@ -521,13 +526,13 @@ function DemoStep({ selected, toggle, waterCups, setWaterCups, onNext, onPrev }:
   const n = selected.size;
   return (
     <>
-      <Section title="Vamos fazer seu primeiro check-in." sub="Toque no que você fez hoje." />
+      <Section title={tr(lang, "ob_demo_title")} sub={tr(lang, "ob_demo_sub")} />
 
       {/* Água em copos */}
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
           <span style={{ fontSize: 21, flexShrink: 0, lineHeight: 1 }}>🥛</span>
-          <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: TEXT }}>Copos de água hoje</span>
+          <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: TEXT }}>{tr(lang, "ob_demo_water_label")}</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: waterCups >= WATER_GOAL ? "#5EEAD4" : MUTED }}>
             {waterCups * ML_PER_CUP}ml{waterCups >= WATER_GOAL ? " ✓" : ""}
           </span>
@@ -549,39 +554,40 @@ function DemoStep({ selected, toggle, waterCups, setWaterCups, onNext, onPrev }:
               outline: active ? `2px solid oklch(0.5 0.12 270 / .5)` : `1px solid ${BORDER}`,
             }}>
               <span style={{ fontSize: 24, lineHeight: 1 }}>{h.emoji}</span>
-              <span>{h.label}</span>
+              <span>{tr(lang, h.labelKey)}</span>
             </button>
           );
         })}
       </div>
       <p style={{ margin: "14px 0 0", textAlign: "center", fontSize: 13, color: MUTED }}>
-        {n > 0 || waterCups > 0 ? "Prontinho! ✨" : "Toque no que você fez hoje."}
+        {n > 0 || waterCups > 0 ? tr(lang, "ob_demo_ready") : tr(lang, "ob_demo_sub")}
       </p>
-      <Footer onPrev={onPrev} onNext={onNext} nextLabel="Concluir" />
+      <Footer lang={lang} onPrev={onPrev} onNext={onNext} nextLabel={tr(lang, "ob_demo_done")} />
     </>
   );
 }
 
-function ValueStep({ selected, waterCups, onNext }: {
+function ValueStep({ lang, selected, waterCups, onNext }: {
+  lang: string;
   selected: Set<string>;
   waterCups: number;
   onNext: () => void;
 }) {
   const items = DEMO_HABITS.filter((h) => selected.has(h.key));
-  if (waterCups > 0) items.unshift({ key: "drank_water", emoji: "🥛", label: "Bebi água" });
+  if (waterCups > 0) items.unshift({ key: "drank_water", emoji: "🥛", labelKey: "ob_demo_water" });
   return (
     <div style={{ textAlign: "center" }}>
       <div style={{ fontSize: 64, lineHeight: 1, marginBottom: 12 }}>🎉</div>
       <h1 style={{ margin: "0 0 6px", fontSize: 27, fontWeight: 700, letterSpacing: "-0.025em", color: TEXT }}>
-        Você cuidou de {items.length} {items.length === 1 ? "coisa" : "coisas"} hoje.
+        {tr(lang, items.length === 1 ? "ob_value_one" : "ob_value_many", { n: String(items.length) })}
       </h1>
       <p style={{ margin: "0 0 20px", fontSize: 14, color: MUTED, lineHeight: 1.5 }}>
-        A partir de agora, a Maya conecta esses pontos com seu sono, humor e metas.
+        {tr(lang, "ob_value_sub")}
       </p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 24 }}>
         {items.map((h) => (
           <span key={h.key} style={{ padding: "8px 14px", borderRadius: 9999, background: CARD, border: `1px solid ${BORDER}`, fontSize: 13.5, color: TEXT }}>
-            {h.emoji} {h.label}
+            {h.emoji} {tr(lang, h.labelKey)}
           </span>
         ))}
       </div>
@@ -591,48 +597,50 @@ function ValueStep({ selected, waterCups, onNext }: {
           background: `linear-gradient(135deg, ${ACCENT}, ${ACCENT_2})`, color: "#fff",
           fontFamily: "inherit", fontSize: 15.5, fontWeight: 700,
           boxShadow: "0 4px 18px -4px oklch(.55 .2 270 / .5)",
-        }}>Continuar</button>
+        }}>{tr(lang, "ob_continue")}</button>
       </div>
     </div>
   );
 }
 
-function NotificationsStep({ onEnable, onSkip, loading }: {
+function NotificationsStep({ lang, onEnable, onSkip, loading }: {
+  lang: string;
   onEnable: () => void;
   onSkip: () => void;
   loading: boolean;
 }) {
   return (
     <>
-      <Section title="Nunca perca o momento de se cuidar." />
+      <Section title={tr(lang, "ob_notif_title")} />
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 6 }}>
         {[
-          ["🔔", "A Maya te lembra do check-in na hora que você escolher."],
-          ["💛", "Um toque gentil quando você mais precisa."],
-          ["🚫", "Sem spam — só o que importa."],
+          ["🔔", "ob_notif_1"],
+          ["💛", "ob_notif_2"],
+          ["🚫", "ob_notif_3"],
         ].map(([e, txt]) => (
           <div key={txt} style={{ display: "flex", alignItems: "flex-start", gap: 12, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px" }}>
             <span style={{ fontSize: 22, lineHeight: 1 }}>{e}</span>
-            <span style={{ fontSize: 14, color: TEXT, lineHeight: 1.5 }}>{txt}</span>
+            <span style={{ fontSize: 14, color: TEXT, lineHeight: 1.5 }}>{tr(lang, txt)}</span>
           </div>
         ))}
       </div>
       <Footer
+        lang={lang}
         onNext={onEnable}
-        nextLabel={loading ? "Ativando…" : "Ativar lembretes"}
+        nextLabel={loading ? tr(lang, "ob_notif_activating") : tr(lang, "ob_notif_enable")}
         nextDisabled={loading}
         secondary={
           <button type="button" onClick={onSkip} style={{
             background: "transparent", border: 0, cursor: "pointer",
             fontFamily: "inherit", fontSize: 13, color: MUTED, padding: "8px 0", flexShrink: 0,
-          }}>Agora não</button>
+          }}>{tr(lang, "ob_now_not")}</button>
         }
       />
     </>
   );
 }
 
-function InstallStep({ onNext }: { onNext: () => void }) {
+function InstallStep({ lang, onNext }: { lang: string; onNext: () => void }) {
   const { deferred, ios, installed, handleInstall } = useInstallPrompt();
   const [showGuide, setShowGuide] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -654,32 +662,33 @@ function InstallStep({ onNext }: { onNext: () => void }) {
     onNext();
   };
 
-  const label = ios ? "Como instalar" : deferred ? "Instalar app" : "Continuar";
+  const label = ios ? tr(lang, "ob_install_how") : deferred ? tr(lang, "ob_install_app") : tr(lang, "ob_continue");
 
   return (
     <>
-      <Section title="Tenha a Maya na sua tela de início." />
+      <Section title={tr(lang, "ob_install_title")} />
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 6 }}>
         {[
-          ["📱", "A Maya fica como um app, ao lado dos seus outros."],
-          ["⚡", "Abre em um toque, sem digitar endereço."],
-          ["🔔", "Roda junto com os lembretes que você ativou."],
+          ["📱", "ob_install_1"],
+          ["⚡", "ob_install_2"],
+          ["🔔", "ob_install_3"],
         ].map(([e, txt]) => (
           <div key={txt} style={{ display: "flex", alignItems: "flex-start", gap: 12, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px" }}>
             <span style={{ fontSize: 22, lineHeight: 1 }}>{e}</span>
-            <span style={{ fontSize: 14, color: TEXT, lineHeight: 1.5 }}>{txt}</span>
+            <span style={{ fontSize: 14, color: TEXT, lineHeight: 1.5 }}>{tr(lang, txt)}</span>
           </div>
         ))}
       </div>
       <Footer
+        lang={lang}
         onNext={primary}
-        nextLabel={loading ? "Instalando…" : label}
+        nextLabel={loading ? tr(lang, "ob_install_installing") : label}
         nextDisabled={loading}
         secondary={
           <button type="button" onClick={onNext} style={{
             background: "transparent", border: 0, cursor: "pointer",
             fontFamily: "inherit", fontSize: 13, color: MUTED, padding: "8px 0", flexShrink: 0,
-          }}>Agora não</button>
+          }}>{tr(lang, "ob_now_not")}</button>
         }
       />
       {showGuide && <IosGuide onClose={() => setShowGuide(false)} onDone={onNext} />}
@@ -838,6 +847,7 @@ export default function OnboardingFlow() {
       await fetch("/api/subscription/trial", { method: "POST" });
     } catch {}
 
+    setLanguage(lang as Lang);
     invalidateFetchCache("/api/check-ins");
     router.push("/dashboard");
   };
@@ -852,8 +862,8 @@ export default function OnboardingFlow() {
       minHeight: "100dvh", background: BG, color: TEXT,
       fontFamily: "var(--font-sans)", overflowX: "hidden", position: "relative",
     }}>
-      {showProgress && <ProgressBar stepIdx={stepIdx} total={STEPS.length} />}
-      {showBack && <BackButton onClick={goPrev} />}
+      {showProgress && <ProgressBar stepIdx={stepIdx} total={STEPS.length} lang={lang} />}
+      {showBack && <BackButton lang={lang} onClick={goPrev} />}
 
       <div style={{
         minHeight: "100dvh", boxSizing: "border-box", maxWidth: 460, margin: "0 auto",
@@ -861,26 +871,26 @@ export default function OnboardingFlow() {
         display: "flex", flexDirection: "column", justifyContent: "center",
       }}>
         {step === "welcome" && <WelcomeScreen lang={lang} setLang={setLang} onNext={goNext} />}
-        {step === "goal" && <GoalScreen goal={goal} setGoal={setGoal} onNext={goNext} onPrev={goPrev} />}
-        {step === "pain" && <PainScreen pains={pains} togglePain={togglePain} onNext={goNext} onPrev={goPrev} />}
-        {step === "social" && <SocialScreen onNext={goNext} onPrev={goPrev} />}
+        {step === "goal" && <GoalScreen lang={lang} goal={goal} setGoal={setGoal} onNext={goNext} onPrev={goPrev} />}
+        {step === "pain" && <PainScreen lang={lang} pains={pains} togglePain={togglePain} onNext={goNext} onPrev={goPrev} />}
+        {step === "social" && <SocialScreen lang={lang} onNext={goNext} onPrev={goPrev} />}
         {step === "tinder" && (
-          <TinderScreen idx={tinderIdx} onAgree={handleTinderAgree} onDismiss={handleTinderDismiss} onPrev={goPrev} />
+          <TinderScreen lang={lang} idx={tinderIdx} onAgree={handleTinderAgree} onDismiss={handleTinderDismiss} onPrev={goPrev} />
         )}
-        {step === "solution" && <SolutionScreen pains={pains} onNext={goNext} onPrev={goPrev} />}
-        {step === "comparison" && <ComparisonScreen onNext={goNext} onPrev={goPrev} />}
-        {step === "preferences" && <PreferencesScreen areas={areas} toggleArea={toggleArea} onNext={goNext} onPrev={goPrev} />}
+        {step === "solution" && <SolutionScreen lang={lang} pains={pains} onNext={goNext} onPrev={goPrev} />}
+        {step === "comparison" && <ComparisonScreen lang={lang} onNext={goNext} onPrev={goPrev} />}
+        {step === "preferences" && <PreferencesScreen lang={lang} areas={areas} toggleArea={toggleArea} onNext={goNext} onPrev={goPrev} />}
         {step === "about" && (
           <AboutScreen
             gender={gender} setGender={setGender} ctx={ctx} setCtxValue={setCtxValue}
             lang={lang} onNext={goNext} onPrev={goPrev}
           />
         )}
-        {step === "processing" && <ProcessingScreen />}
-        {step === "demo" && <DemoStep selected={demo} toggle={toggleDemo} waterCups={waterCups} setWaterCups={setWaterCups} onNext={() => { saveDemoCheckIn(); goNext(); }} onPrev={goPrev} />}
-        {step === "value" && <ValueStep selected={demo} waterCups={waterCups} onNext={goNext} />}
-        {step === "notifications" && <NotificationsStep onEnable={handleEnableNotifications} onSkip={goNext} loading={notifLoading} />}
-        {step === "install" && <InstallStep onNext={handleFinish} />}
+        {step === "processing" && <ProcessingScreen lang={lang} />}
+        {step === "demo" && <DemoStep lang={lang} selected={demo} toggle={toggleDemo} waterCups={waterCups} setWaterCups={setWaterCups} onNext={() => { saveDemoCheckIn(); goNext(); }} onPrev={goPrev} />}
+        {step === "value" && <ValueStep lang={lang} selected={demo} waterCups={waterCups} onNext={goNext} />}
+        {step === "notifications" && <NotificationsStep lang={lang} onEnable={handleEnableNotifications} onSkip={goNext} loading={notifLoading} />}
+        {step === "install" && <InstallStep lang={lang} onNext={handleFinish} />}
       </div>
     </main>
   );

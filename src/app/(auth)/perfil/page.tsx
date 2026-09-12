@@ -56,7 +56,7 @@ const label11 = (text: string) => (
 
 export default function PerfilPage() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, setLang } = useTranslation();
 
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -321,7 +321,7 @@ export default function PerfilPage() {
             {label11("Idioma")}
             <div style={{ display: "flex", gap: 8 }}>
               {LANG_OPTIONS.map((opt) => (
-                <button key={opt.id} type="button" onClick={() => { userEdited.current = true; setLanguage(opt.id); }}
+                <button key={opt.id} type="button" onClick={() => { userEdited.current = true; setLanguage(opt.id); setLang(opt.id); }}
                   style={{
                     flex: 1, height: 40, borderRadius: 11, border: 0,
                     cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700,
