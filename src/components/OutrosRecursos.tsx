@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { safeCachedFetch } from "@/lib/fetch-cache";
+import { cachedFetch, safeCachedFetch } from "@/lib/fetch-cache";
 import { calculateStreak } from "@/lib/utils";
 
 interface RunningSession {
@@ -170,8 +170,7 @@ export function OutrosRecursos() {
       .finally(() => setReadReady(true));
 
     // Porquês — contagem de "porquês" escritos
-    fetch("/api/profile")
-      .then((r) => r.json())
+    cachedFetch<{ porques?: unknown[] }>("/api/profile")
       .then((data) => {
         const count = (data.porques ?? []).length;
         if (count > 0) {

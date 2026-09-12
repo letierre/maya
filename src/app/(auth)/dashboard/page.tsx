@@ -23,6 +23,30 @@ import type { CheckIn, SleepLog, WeeklyTask } from "@/types";
 // mais tempo para a volta à home não re-disparar a geração/consulta do LLM.
 const MAYA_TTL = 10 * 60 * 1000; // 10 minutos
 
+// ── Snapshot da home (stale-while-revalidate) ───────────────────
+// Mantém o último estado renderizado em memória (módulo) para a volta à home
+// ser instantânea entre navegações, sem flash de skeleton. Os fetches rodam
+// em background e atualizam os valores assim que resolvem.
+type DashboardSnapshot = {
+  checkIns: CheckIn[];
+  todayCheckIn: CheckIn | null;
+  enabledKeys: string[];
+  sleepLogs: SleepLog[];
+  recentSleep: SleepLog | null;
+  userName: string;
+  userGender: string;
+  currency: string;
+  mayaNudgeAction: { label: string; href: string } | null;
+  homeMessage: { message: string; state?: string; action?: { label: string; href: string } } | null;
+  todaySpending: number | null;
+  monthDailyAvg: number | null;
+  todayTasks: WeeklyTask[];
+  todayMealsKcal: number | null;
+  todayMealsCount: number;
+};
+
+let dashboardSnapshot: DashboardSnapshot | null = null;
+
 // ── Page ────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -38,37 +62,79 @@ export default function DashboardPage() {
     }
   }, [router]);
 
+  // Restaura o último estado renderizado (se houver) para a volta ser instantânea.
+  const snap = dashboardSnapshot;
+
   // Core state
-  const [loading, setLoading] = useState(true);
-  const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
-  const [todayCheckIn, setTodayCheckIn] = useState<CheckIn | null>(null);
-  const [enabledKeys, setEnabledKeys] = useState<string[]>([]);
-  const [sleepLogs, setSleepLogs] = useState<SleepLog[]>([]);
-  const [recentSleep, setRecentSleep] = useState<SleepLog | null>(null);
+  const [loading, setLoading] = useState(snap == null);
+  const [checkIns, setCheckIns] = useState<CheckIn[]>(snap?.checkIns ?? []);
+  const [todayCheckIn, setTodayCheckIn] = useState<CheckIn | null>(snap?.todayCheckIn ?? null);
+  const [enabledKeys, setEnabledKeys] = useState<string[]>(snap?.enabledKeys ?? []);
+  const [sleepLogs, setSleepLogs] = useState<SleepLog[]>(snap?.sleepLogs ?? []);
+  const [recentSleep, setRecentSleep] = useState<SleepLog | null>(snap?.recentSleep ?? null);
 
   // Profile
-  const [userName, setUserName] = useState("");
-  const [userGender, setUserGender] = useState("");
+  const [userName, setUserName] = useState(snap?.userName ?? "");
+  const [userGender, setUserGender] = useState(snap?.userGender ?? "");
 
   // Maya nudge (for CTA action)
-  const [mayaNudgeAction, setMayaNudgeAction] = useState<{ label: string; href: string } | null>(null);
+  const [mayaNudgeAction, setMayaNudgeAction] = useState<{ label: string; href: string } | null>(snap?.mayaNudgeAction ?? null);
 
   // Maya home message (from LLM, via /api/maya/home-message)
   const [homeMessage, setHomeMessage] = useState<{
     message: string;
     state?: string;
     action?: { label: string; href: string };
-  } | null>(null);
+  } | null>(snap?.homeMessage ?? null);
 
   // Finance
-  const [todaySpending, setTodaySpending] = useState<number | null>(null);
-  const [monthDailyAvg, setMonthDailyAvg] = useState<number | null>(null);
-  const [currency, setCurrency] = useState("BRL");
+  const [todaySpending, setTodaySpending] = useState<number | null>(snap?.todaySpending ?? null);
+  const [monthDailyAvg, setMonthDailyAvg] = useState<number | null>(snap?.monthDailyAvg ?? null);
+  const [currency, setCurrency] = useState(snap?.currency ?? "BRL");
 
   // Weekly tasks & meals
-  const [todayTasks, setTodayTasks] = useState<WeeklyTask[]>([]);
-  const [todayMealsKcal, setTodayMealsKcal] = useState<number | null>(null);
-  const [todayMealsCount, setTodayMealsCount] = useState<number>(0);
+  const [todayTasks, setTodayTasks] = useState<WeeklyTask[]>(snap?.todayTasks ?? []);
+  const [todayMealsKcal, setTodayMealsKcal] = useState<number | null>(snap?.todayMealsKcal ?? null);
+  const [todayMealsCount, setTodayMealsCount] = useState<number>(snap?.todayMealsCount ?? 0);
+
+  // Salva o estado renderizado para a próxima montagem da home ser instantânea.
+  useEffect(() => {
+    if (loading) return; // só salva depois que a home renderizou dados reais
+    dashboardSnapshot = {
+      checkIns,
+      todayCheckIn,
+      enabledKeys,
+      sleepLogs,
+      recentSleep,
+      userName,
+      userGender,
+      currency,
+      mayaNudgeAction,
+      homeMessage,
+      todaySpending,
+      monthDailyAvg,
+      todayTasks,
+      todayMealsKcal,
+      todayMealsCount,
+    };
+  }, [
+    loading,
+    checkIns,
+    todayCheckIn,
+    enabledKeys,
+    sleepLogs,
+    recentSleep,
+    userName,
+    userGender,
+    currency,
+    mayaNudgeAction,
+    homeMessage,
+    todaySpending,
+    monthDailyAvg,
+    todayTasks,
+    todayMealsKcal,
+    todayMealsCount,
+  ]);
 
   // ── Fetch core data ──────────────────────────────────────────
 

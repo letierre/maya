@@ -6,15 +6,24 @@ import { ArrowRight, X } from "lucide-react";
 import type { CareSignal } from "@/lib/care-signals";
 import { getLocalDate } from "@/lib/utils";
 import { onCareDataChanged } from "@/lib/care-events";
+import { cachedFetch } from "@/lib/fetch-cache";
 
 export function CareList() {
   const router = useRouter();
   const [items, setItems] = useState<CareSignal[]>([]);
   const [dismissed, setDismissed] = useState(false);
 
-  const loadItems = useCallback(() => {
-    fetch("/api/maya/care-list")
-      .then((r) => r.json())
+  const loadItems = useCallback((fresh = false) => {
+    if (fresh) {
+      // Dados mudaram (evento de care-data): busca fresca, sem cache.
+      fetch("/api/maya/care-list")
+        .then((r) => r.json())
+        .then((data) => setItems(data.items?.length ? data.items : []))
+        .catch(() => {});
+      return;
+    }
+    // Montagem/volta à home: usa cache para não recomputar os sinais toda vez.
+    cachedFetch<{ items?: CareSignal[] }>("/api/maya/care-list")
       .then((data) => setItems(data.items?.length ? data.items : []))
       .catch(() => {});
   }, []);
@@ -33,7 +42,7 @@ export function CareList() {
   useEffect(() => {
     return onCareDataChanged(() => {
       if (localStorage.getItem(`care_list_dismissed_${getLocalDate()}`)) return;
-      loadItems();
+      loadItems(true);
     });
   }, [loadItems]);
 
