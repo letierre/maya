@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { t, type Lang } from "@/lib/i18n";
-import { useGlobalLanguage, setLanguage } from "@/lib/language";
+import { getLanguage, setLanguage, subscribe } from "@/lib/language";
+
+function useGlobalLanguage(): Lang {
+  return useSyncExternalStore(subscribe, getLanguage, getLanguage);
+}
 
 export function useTranslation() {
   const lang = useGlobalLanguage();

@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -93,7 +94,7 @@ function NutricaoPage() {
   }, [rawTab]);
 
   useEffect(() => {
-    setTodayDisplay(new Date().toLocaleDateString("pt-BR", {
+    setTodayDisplay(new Date().toLocaleDateString(getLocale(), {
       weekday: "long", day: "numeric", month: "long",
     }));
   }, []);
@@ -240,7 +241,7 @@ function NutricaoPage() {
       const analyzed = dayMeals.filter((m) => m.macros && m.status_analise === "analisado");
       days.push({
         date: dateStr,
-        label: d.toLocaleDateString("pt-BR", { weekday: "short" }),
+        label: d.toLocaleDateString(getLocale(), { weekday: "short" }),
         meals: dayMeals,
         kcal: sumMacros(dayMeals.filter((m) => m.macros)).calorias_kcal,
         score: nutritionScore(analyzed),
@@ -584,7 +585,7 @@ function NutricaoPage() {
                 .map((day) => (
                   <div key={day.date} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <p style={mutedText}>
-                      {new Date(day.date + "T12:00:00").toLocaleDateString("pt-BR", {
+                      {new Date(day.date + "T12:00:00").toLocaleDateString(getLocale(), {
                         weekday: "long", day: "numeric", month: "short",
                       })}
                     </p>

@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -522,7 +523,7 @@ export default function CorridaPage() {
       ctx.fillText(titulo, W / 2, titleY);
 
       // 4. Data da corrida
-      const dateStr = new Date(s.start_time).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      const dateStr = new Date(s.start_time).toLocaleDateString(getLocale(), { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
       ctx.fillStyle = "#A0A0B3"; ctx.font = "400 28px Inter, system-ui, sans-serif";
       ctx.fillText(dateStr, W / 2, titleY + 50);
 
@@ -635,7 +636,7 @@ export default function CorridaPage() {
                   <span style={{ fontSize: 13, fontWeight: 700, color: "#e0d6ff", display: "block" }}>{(s.distance_meters / 1000).toFixed(2)} km</span>
                   <span style={{ fontSize: 11, color: "#9e96b5" }}>{formatDuration(s.duration_seconds)} · {formatPace(s.avg_pace || 0)}</span>
                 </div>
-                <span style={{ fontSize: 10, color: "#5a5470" }}>{new Date(s.start_time).toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}</span>
+                <span style={{ fontSize: 10, color: "#5a5470" }}>{new Date(s.start_time).toLocaleDateString(getLocale(), { day: "numeric", month: "short" })}</span>
               </button>
             ))}
           </div>
@@ -672,7 +673,7 @@ export default function CorridaPage() {
               <div>
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>Corrida</h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#9e96b5" }}>
-                  {new Date(selectedSession.start_time).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  {new Date(selectedSession.start_time).toLocaleDateString(getLocale(), { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>
               <button type="button" onClick={() => setSelectedSession(null)} style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(167,139,250,0.1)", border: 0, color: "#A78BFA", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>✕</button>

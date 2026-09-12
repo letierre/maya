@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, use, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -200,7 +201,7 @@ export default function EditCheckInPage({
     );
   }
 
-  const dateLabel = new Date(answers.date + "T12:00:00").toLocaleDateString("pt-BR", {
+  const dateLabel = new Date(answers.date + "T12:00:00").toLocaleDateString(getLocale(), {
     weekday: "long",
     day: "numeric",
     month: "long",

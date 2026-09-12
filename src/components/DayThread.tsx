@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,7 +66,7 @@ export function DayThread() {
 
       nodes.push({
         date: dateStr,
-        label: d.toLocaleDateString("pt-BR", { weekday: "short" }),
+        label: d.toLocaleDateString(getLocale(), { weekday: "short" }),
         energy: ci?.energy_level ?? null,
         sleptWell: ci?.slept_well ?? null,
         kcal: Math.round(total.calorias_kcal),

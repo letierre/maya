@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -98,7 +99,7 @@ export default function AdminPage() {
             <div key={r.id} style={{ background: "#1a1530", borderRadius: 14, padding: 14, marginBottom: 8, border: "1px solid rgba(167,139,250,0.1)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                 <span style={{ fontSize: 11, color: "#FF4D4D", fontWeight: 600 }}>🚩 Denunciado</span>
-                <span style={{ fontSize: 10, color: "#5a5470" }}>{new Date(r.created_at).toLocaleDateString("pt-BR")}</span>
+                <span style={{ fontSize: 10, color: "#5a5470" }}>{new Date(r.created_at).toLocaleDateString(getLocale())}</span>
               </div>
               <p style={{ margin: "0 0 6px", fontSize: 13, color: "#e0d6ff", lineHeight: 1.4 }}>
                 {r.community_posts?.content?.slice(0, 200) || "Post excluído"}

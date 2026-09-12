@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
@@ -48,7 +49,7 @@ const CAT_LABEL: Record<string, string> = {
 
 function monthShort(key: string): string {
   const [y, m] = key.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+  return new Date(y, m - 1, 1).toLocaleDateString(getLocale(), { month: "short" }).replace(".", "");
 }
 
 // ── Date helpers (local timezone) ─────────────────────────────────────────────
@@ -60,7 +61,7 @@ function daysAgo(n: number): string {
 }
 
 function weekdayShort(ds: string): string {
-  return new Date(ds + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+  return new Date(ds + "T12:00:00").toLocaleDateString(getLocale(), { weekday: "short" }).replace(".", "");
 }
 
 function weekStartOf(ds: string): string {

@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -1283,7 +1284,7 @@ export default function SonoPage() {
       const d = new Date(log.date + "T12:00:00");
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       if (!groups.has(key)) {
-        const raw = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+        const raw = d.toLocaleDateString(getLocale(), { month: "long", year: "numeric" });
         groups.set(key, { label: raw.charAt(0).toUpperCase() + raw.slice(1), logs: [], key });
       }
       groups.get(key)!.logs.push(log);

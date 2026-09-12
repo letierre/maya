@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState } from "react";
 import { mealTypeEmoji, mealTypeLabel, classificationLabel } from "@/lib/meal-utils";
@@ -42,7 +43,7 @@ export function MealCard({ meal, onClick, onToggleFavorite }: MealCardProps) {
     }
   }, [primaryPhoto]);
 
-  const hora = new Date(meal.data_hora).toLocaleTimeString("pt-BR", {
+  const hora = new Date(meal.data_hora).toLocaleTimeString(getLocale(), {
     hour: "2-digit",
     minute: "2-digit",
   });

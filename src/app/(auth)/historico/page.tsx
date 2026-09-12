@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -39,7 +40,7 @@ function groupByMonth(checkIns: CheckIn[]) {
     const d = new Date(ci.date + "T12:00:00");
     const key = `${d.getFullYear()}-${d.getMonth()}`;
     if (!groups.has(key)) {
-      const raw = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+      const raw = d.toLocaleDateString(getLocale(), { month: "long", year: "numeric" });
       groups.set(key, { label: raw.charAt(0).toUpperCase() + raw.slice(1), entries: [], key });
     }
     groups.get(key)!.entries.push(ci);
@@ -198,7 +199,7 @@ export default function HistoricoPage() {
               {group.entries.map((ci) => {
                 const d = new Date(ci.date + "T12:00:00");
                 const day = d.getDate().toString().padStart(2, "0");
-                const wk = d.toLocaleDateString("pt-BR", { weekday: "short" }).toUpperCase().replace(".", "");
+                const wk = d.toLocaleDateString(getLocale(), { weekday: "short" }).toUpperCase().replace(".", "");
                 const isToday = ci.date === today;
                 const answered = effectiveHabitKeys(ci, scoreKeys);
                 const score = getScore(ci, answered);

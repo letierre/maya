@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useMemo } from "react";
 import { Plus, Check, Loader2, ChevronDown, ChevronRight, Target, TrendingUp, Award, Star, Edit3 } from "lucide-react";
@@ -303,7 +304,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                     {activeCycle.label}
                   </p>
                   <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6a657a" }}>
-                    {quarterLabel(activeCycle.quarter)} · {new Date(activeCycle.start_date + "T00:00:00").toLocaleDateString("pt-BR", { day: "numeric", month: "short" })} – {new Date(activeCycle.end_date + "T00:00:00").toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}
+                    {quarterLabel(activeCycle.quarter)} · {new Date(activeCycle.start_date + "T00:00:00").toLocaleDateString(getLocale(), { day: "numeric", month: "short" })} – {new Date(activeCycle.end_date + "T00:00:00").toLocaleDateString(getLocale(), { day: "numeric", month: "short" })}
                   </p>
                 </div>
               </div>

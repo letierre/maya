@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -30,7 +31,7 @@ function timeAgo(dateStr: string): string {
   if (hrs < 24) return `${hrs}h`;
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days}d`;
-  return new Date(dateStr).toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+  return new Date(dateStr).toLocaleDateString(getLocale(), { day: "numeric", month: "short" });
 }
 
 const modalInputStyle: React.CSSProperties = {

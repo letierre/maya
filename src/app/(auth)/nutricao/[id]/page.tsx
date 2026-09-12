@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -102,7 +103,7 @@ const mutedText: React.CSSProperties = {
 
 function formatDateTime(isoStr: string): string {
   const d = new Date(isoStr);
-  return d.toLocaleDateString("pt-BR", {
+  return d.toLocaleDateString(getLocale(), {
     weekday: "long",
     day: "numeric",
     month: "long",

@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -37,7 +38,7 @@ function formatDate(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" });
+  return d.toLocaleDateString(getLocale(), { day: "numeric", month: "long", year: "numeric" });
 }
 
 const ACCENT = "#7C5CFF";

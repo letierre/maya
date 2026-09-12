@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Plus, Star, ChevronDown, Clock, X, Check } from "lucide-react";
@@ -544,7 +545,7 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
           {selectedDay === clientTodayDow && now && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, padding: "5px 10px", borderRadius: 8, background: "rgba(255,80,80,0.06)", border: "1px solid rgba(255,80,80,0.15)" }}>
               <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#FF5050", flexShrink: 0, boxShadow: "0 0 0 3px rgba(255,80,80,0.25)", animation: "pulse 2s ease-in-out infinite" }} />
-              <span style={{ fontSize: 10, fontWeight: 600, color: "#FF7070" }}>Agora · {now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: "#FF7070" }}>Agora · {now.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" })}</span>
             </div>
           )}
           {selectedDayTasks.length === 0 ? (

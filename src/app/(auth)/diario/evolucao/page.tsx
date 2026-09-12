@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -19,7 +20,7 @@ const QUESTIONS = [
 ];
 
 function formatDisplayDate(dateStr: string): string {
-  return new Date(dateStr + "T12:00:00").toLocaleDateString("pt-BR", {
+  return new Date(dateStr + "T12:00:00").toLocaleDateString(getLocale(), {
     weekday: "long", day: "numeric", month: "long",
   });
 }

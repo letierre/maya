@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -22,14 +23,14 @@ const DAY_NAMES = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "
 
 function formatDateLabel(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
-  return `${DAY_NAMES[d.getDay()]}, ${d.getDate()} de ${d.toLocaleDateString("pt-BR", { month: "long" })}`;
+  return `${DAY_NAMES[d.getDay()]}, ${d.getDate()} de ${d.toLocaleDateString(getLocale(), { month: "long" })}`;
 }
 
 function weekRangeLabel(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
   const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-  return `${mon.getDate()} de ${mon.toLocaleDateString("pt-BR", { month: "long" })} – ${sun.getDate()} de ${sun.toLocaleDateString("pt-BR", { month: "long" })}`;
+  return `${mon.getDate()} de ${mon.toLocaleDateString(getLocale(), { month: "long" })} – ${sun.getDate()} de ${sun.toLocaleDateString(getLocale(), { month: "long" })}`;
 }
 
 function shiftDate(dateStr: string, days: number): string {

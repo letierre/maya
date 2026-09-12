@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useMemo } from "react";
 import { getLocalDate, getUserTimezone } from "@/lib/utils";
@@ -298,7 +299,7 @@ export default function DashboardPage() {
       const progress = ci ? habitProgress(ci, habitKeys) : null;
       days.push({
         date: ds,
-        label: d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", ""),
+        label: d.toLocaleDateString(getLocale(), { weekday: "short" }).replace(".", ""),
         sleepQuality: sl?.quality ?? null,
         sleepHrs: sl?.duration_min ? Math.floor((sl.duration_min / 60) * 10) / 10 : null,
         cuidados: progress?.done ?? null,
@@ -448,7 +449,7 @@ function DiarioPreview({ loading }: { loading: boolean }) {
           const isToday = e.date === today;
           const text = e.content?.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
           setPreview(text ? text.slice(0, 60) + (text.length > 60 ? "…" : "") : e.title || "Entrada do dia");
-          setSub(isToday ? "Hoje" : new Date(e.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "numeric", month: "short" }));
+          setSub(isToday ? "Hoje" : new Date(e.date + "T12:00:00").toLocaleDateString(getLocale(), { day: "numeric", month: "short" }));
         } else {
           setPreview("Escreva seu dia");
           setSub("Nova entrada");

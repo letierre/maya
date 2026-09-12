@@ -1,4 +1,6 @@
 "use client";
+import { getLocale } from "@/lib/language";
+
 
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -19,9 +21,9 @@ function getBrowserDate(): string {
 
 function formatLongDate(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
-  const wk = d.toLocaleDateString("pt-BR", { weekday: "long" });
+  const wk = d.toLocaleDateString(getLocale(), { weekday: "long" });
   const day = d.getDate();
-  const month = d.toLocaleDateString("pt-BR", { month: "long" });
+  const month = d.toLocaleDateString(getLocale(), { month: "long" });
   return `${wk.charAt(0).toUpperCase() + wk.slice(1)}, ${day} de ${month}`;
 }
 
@@ -188,7 +190,7 @@ export default function NovoDiarioPage() {
       }
       slashPhotoInputRef.current?.click();
     } },
-    { id: "hora", label: "Inserir horário", emoji: "🕐", action: () => insertHtmlAtCursor(`<span contenteditable="false" style="color:#A78BFA;font-weight:700;font-size:13px;background:rgba(167,139,250,0.12);padding:1px 6px;border-radius:6px;white-space:nowrap;user-select:none">🕐 ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>&#8203;`) },
+    { id: "hora", label: "Inserir horário", emoji: "🕐", action: () => insertHtmlAtCursor(`<span contenteditable="false" style="color:#A78BFA;font-weight:700;font-size:13px;background:rgba(167,139,250,0.12);padding:1px 6px;border-radius:6px;white-space:nowrap;user-select:none">🕐 ${new Date().toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" })}</span>&#8203;`) },
     { id: "emoji", label: "Inserir emoji", emoji: "😊", action: () => { setEmojiPos(computeMenuPos(contentWrapperRef.current, 190, 320)); setEmojiPickerOpen(true); } },
     { id: "link", label: "Vincular registro", emoji: "🔗", action: () => {
       setSlashOpen(false);
@@ -653,7 +655,7 @@ export default function NovoDiarioPage() {
             <div style={{ maxHeight: 240, overflowY: "auto" }}>
               {linkResults.map((entry: any) => {
                 const d = new Date(entry.date + "T12:00:00");
-                const dateStr = d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+                const dateStr = d.toLocaleDateString(getLocale(), { day: "numeric", month: "short" });
                 return (
                   <button key={entry.id} type="button"
                     onClick={() => {

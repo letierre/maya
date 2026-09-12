@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -19,7 +20,7 @@ function groupByMonth(entries: DiaryEntry[]) {
     const d = new Date(e.date + "T12:00:00");
     const key = `${d.getFullYear()}-${d.getMonth()}`;
     if (!groups.has(key)) {
-      const raw = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+      const raw = d.toLocaleDateString(getLocale(), { month: "long", year: "numeric" });
       groups.set(key, {
         label: raw.charAt(0).toUpperCase() + raw.slice(1),
         entries: [], key,
@@ -276,7 +277,7 @@ export default function DiarioPage() {
                 {group.entries.map((entry) => {
                   const d = new Date(entry.date + "T12:00:00");
                   const day = d.getDate().toString().padStart(2, "0");
-                  const wk = d.toLocaleDateString("pt-BR", { weekday: "short" }).toUpperCase().replace(".", "");
+                  const wk = d.toLocaleDateString(getLocale(), { weekday: "short" }).toUpperCase().replace(".", "");
                   const photoCount = entry.photos?.length ?? 0;
                   const isEmpty = !entry.title && !entry.content;
                   const moodEmoji = entry.mood ? MOOD_EMOJIS[entry.mood] : null;

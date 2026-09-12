@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -17,9 +18,9 @@ import { APP_VERSION } from "@/lib/version";
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const GENDER_OPTIONS = [
-  { id: "masculino",  label: "Masculino"        },
-  { id: "feminino",   label: "Feminino"         },
-  { id: "nao_dizer",  label: "Prefiro não dizer"},
+  { id: "masculino",  labelKey: "ob_gender_masc" },
+  { id: "feminino",   labelKey: "ob_gender_fem" },
+  { id: "nao_dizer",  labelKey: "ob_gender_nao_dizer" },
 ] as const;
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -98,7 +99,7 @@ export default function PerfilPage() {
         setPushState("denied");
       } else {
         setPushState("unknown");
-        toast.error(error ?? "Erro ao ativar notificações");
+        toast.error(error ?? t("perfil_erro_notif"));
       }
       return;
     }
@@ -110,7 +111,7 @@ export default function PerfilPage() {
       });
     } catch { /* retry next visit */ }
     setPushState("granted");
-    toast.success("Notificações ativadas!");
+    toast.success(t("perfil_notif_on"));
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -130,7 +131,7 @@ export default function PerfilPage() {
         if (data.created_at) {
           const d = new Date(data.created_at);
           if (!isNaN(d.getTime())) {
-            setMemberSince(d.toLocaleDateString("pt-BR", {
+            setMemberSince(d.toLocaleDateString(getLocale(), {
               day: "numeric", month: "long", year: "numeric",
             }));
           }
@@ -153,7 +154,7 @@ export default function PerfilPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, gender, language }),
         });
-        if (res.ok) toast.success("Alterações salvas");
+        if (res.ok) toast.success(t("perfil_salvo"));
       } catch { /* silent */ }
     }, 900);
     return () => clearTimeout(autoSaveRef.current);
@@ -176,16 +177,16 @@ export default function PerfilPage() {
       if (res.ok) {
         const data = await res.json();
         setAvatarUrl(data.avatar_url);
-        toast.success("Foto atualizada!");
+        toast.success(t("perfil_foto_ok"));
       } else {
-        toast.error("Erro ao enviar foto");
+        toast.error(t("perfil_foto_erro"));
       }
-    } catch { toast.error("Erro ao enviar foto"); }
+    } catch { toast.error(t("perfil_foto_erro")); }
     setUploading(false);
   };
 
   const handleChangePassword = async () => {
-    if (newPassword !== confirmPassword) { toast.error("Senhas não conferem"); return; }
+    if (newPassword !== confirmPassword) { toast.error(t("perfil_senha_diff")); return; }
     setChangingPassword(true);
     const res = await fetch("/api/profile/password", {
       method: "POST",
@@ -193,10 +194,10 @@ export default function PerfilPage() {
       body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
     });
     if (res.ok) {
-      toast.success("Senha alterada!");
+      toast.success(t("perfil_senha_ok"));
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
     } else {
-      toast.error("Erro ao alterar senha.");
+      toast.error(t("perfil_senha_erro"));
     }
     setChangingPassword(false);
   };
@@ -204,7 +205,7 @@ export default function PerfilPage() {
   if (loading) {
     return (
       <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "oklch(0.12 0.012 270)" }}>
-        <p style={{ color: "#A78BFA", fontSize: 13 }}>Carregando…</p>
+        <p style={{ color: "#A78BFA", fontSize: 13 }}>{t("carregando")}</p>
       </div>
     );
   }
@@ -226,7 +227,7 @@ export default function PerfilPage() {
         {/* Header */}
         <div style={{ padding: "32px 0 24px" }}>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em", color: "#e0d6ff" }}>
-            Perfil
+            {t("perfil_titulo")}
           </h1>
         </div>
 
@@ -283,15 +284,15 @@ export default function PerfilPage() {
             <p style={{ margin: 0, fontSize: 13, color: "#9e96b5" }}>{email || "—"}</p>
             {memberSince && (
               <p style={{ margin: "4px 0 0", fontSize: 11, color: "#9e96b5" }}>
-                Membro desde {memberSince}
+                {t("perfil_membro_desde", { date: memberSince })}
               </p>
             )}
           </div>
 
           {/* Name */}
           <div style={{ marginBottom: 14 }}>
-            {label11("Nome")}
-            <input value={name} onChange={(e) => { userEdited.current = true; setName(e.target.value); }} placeholder="Seu nome" style={inputStyle} />
+            {label11(t("perfil_nome"))}
+            <input value={name} onChange={(e) => { userEdited.current = true; setName(e.target.value); }} placeholder={t("perfil_nome_placeholder")} style={inputStyle} />
           </div>
 
           {/* Gender */}
@@ -310,7 +311,7 @@ export default function PerfilPage() {
                     display: "flex", alignItems: "center", justifyContent: "center",
                     textAlign: "center", lineHeight: 1.2,
                   }}>
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </button>
               ))}
             </div>
@@ -318,7 +319,7 @@ export default function PerfilPage() {
 
           {/* Language */}
           <div style={{ marginBottom: 8 }}>
-            {label11("Idioma")}
+            {label11(t("perfil_idioma"))}
             <div style={{ display: "flex", gap: 8 }}>
               {LANG_OPTIONS.map((opt) => (
                 <button key={opt.id} type="button" onClick={() => { userEdited.current = true; setLanguage(opt.id); setLang(opt.id); }}
@@ -338,24 +339,24 @@ export default function PerfilPage() {
 
         {/* Notificações Push */}
         <div style={card}>
-          {label11("Notificações")}
+          {label11(t("perfil_notificacoes"))}
           <p style={{ margin: "0 0 14px", fontSize: 12, color: "#9e96b5", lineHeight: 1.5 }}>
-            Receba lembretes de sono, check-in, refeições e compromissos da sua agenda.
+            {t("perfil_notif_desc")}
           </p>
 
           {pushState === "granted" && (
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, background: "rgba(124,92,255,0.08)", border: "1px solid rgba(167,139,250,0.2)" }}>
               <BellRing size={18} style={{ color: "#7C5CFF", flexShrink: 0 }} />
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>Notificações ativas</span>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>{t("perfil_notif_ativas")}</span>
               <button
                 type="button"
                 onClick={async () => {
                   const res = await fetch("/api/push/test", { method: "POST" });
                   if (!res.ok) {
                     const { error } = await res.json();
-                    toast.error(error ?? "Erro ao enviar teste");
+                    toast.error(error ?? t("perfil_erro_teste"));
                   } else {
-                    toast.success("Push de teste enviado!");
+                    toast.success(t("perfil_push_teste"));
                   }
                 }}
                 style={{
@@ -364,7 +365,7 @@ export default function PerfilPage() {
                   fontSize: 11, fontWeight: 600,
                 }}
               >
-                Testar
+                {t("perfil_testar")}
               </button>
             </div>
           )}
@@ -377,14 +378,14 @@ export default function PerfilPage() {
                 background: "#7C5CFF", color: "#fff", fontFamily: "inherit",
                 fontSize: 13, fontWeight: 700,
               }}>
-              <BellRing size={16} /> Ativar notificações
+              <BellRing size={16} /> {t("perfil_ativar_notif")}
             </button>
           )}
 
           {pushState === "loading" && (
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, background: "rgba(124,92,255,0.08)", border: "1px solid rgba(167,139,250,0.2)" }}>
               <BellRing size={18} style={{ color: "#A78BFA", flexShrink: 0 }} className="animate-pulse" />
-              <span style={{ fontSize: 13, color: "#A78BFA", fontWeight: 500 }}>Aguardando permissão...</span>
+              <span style={{ fontSize: 13, color: "#A78BFA", fontWeight: 500 }}>{t("perfil_aguardando")}</span>
             </div>
           )}
 
@@ -392,7 +393,7 @@ export default function PerfilPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, background: "rgba(255,92,92,0.06)", border: "1px solid rgba(255,92,92,0.2)" }}>
               <BellOff size={18} style={{ color: "#FF5C5C", flexShrink: 0 }} />
               <span style={{ flex: 1, fontSize: 12, color: "#FF5C5C", fontWeight: 500, lineHeight: 1.4 }}>
-                Notificações bloqueadas. Vá nas configurações do navegador para liberar.
+                {t("perfil_notif_bloqueadas")}
               </span>
             </div>
           )}
@@ -408,8 +409,8 @@ export default function PerfilPage() {
             style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: "transparent", border: 0, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
             <span style={{ fontSize: 20 }}>⚙️</span>
             <div style={{ flex: 1, textAlign: "left" }}>
-              <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#e0d6ff" }}>Configurações</span>
-              <span style={{ display: "block", fontSize: 11, color: "#9e96b5", marginTop: 1 }}>Perguntas do check-in</span>
+              <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#e0d6ff" }}>{t("configuracoes")}</span>
+              <span style={{ display: "block", fontSize: 11, color: "#9e96b5", marginTop: 1 }}>{t("perfil_config_sub")}</span>
             </div>
             <span style={{ color: "#9e96b5", fontSize: 18 }}>›</span>
           </button>
@@ -417,20 +418,20 @@ export default function PerfilPage() {
 
         {/* Password */}
         <div style={card}>
-          {label11("Alterar senha")}
+          {label11(t("perfil_alterar_senha"))}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <input type={showPassword ? "text" : "password"} value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Senha atual" style={inputStyle} />
+              placeholder={t("perfil_senha_atual")} style={inputStyle} />
             <input type={showPassword ? "text" : "password"} value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Nova senha" style={inputStyle} />
+              placeholder={t("perfil_nova_senha")} style={inputStyle} />
             <input type={showPassword ? "text" : "password"} value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirmar nova senha" style={inputStyle} />
+              placeholder={t("perfil_confirmar_senha")} style={inputStyle} />
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#9e96b5", cursor: "pointer" }}>
               <input type="checkbox" checked={showPassword} onChange={() => setShowPassword(!showPassword)} />
-              Mostrar senha
+              {t("perfil_mostrar_senha")}
             </label>
             <button type="button" onClick={handleChangePassword}
               disabled={changingPassword || !currentPassword || !newPassword}
@@ -441,7 +442,7 @@ export default function PerfilPage() {
                 background: (changingPassword || !currentPassword || !newPassword) ? "#1e1840" : "#7C5CFF",
                 color: (changingPassword || !currentPassword || !newPassword) ? "#9e96b5" : "#fff",
               }}>
-              {changingPassword ? "Alterando…" : "Alterar senha"}
+              {changingPassword ? t("perfil_alterando") : t("perfil_alterar_senha")}
             </button>
           </div>
         </div>

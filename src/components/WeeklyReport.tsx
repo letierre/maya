@@ -1,3 +1,4 @@
+import { getLocale } from "@/lib/language";
 import { useMemo } from "react";
 import { sumMacros, nutritionScore, mealTypeLabel, mealTypeEmoji } from "@/lib/meal-utils";
 import { detectNutrientGaps } from "@/lib/nutrient-data";
@@ -201,7 +202,7 @@ export function WeeklyReport({ meals, weekDays, onAddToShoppingList }: { meals: 
             }}>
               <p style={mutedText}>🌟 Melhor dia</p>
               <p style={{ fontSize: 13, fontWeight: 500, color: "#e0d6ff" }}>
-                {new Date(bestDay.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "numeric" })}
+                {new Date(bestDay.date + "T12:00:00").toLocaleDateString(getLocale(), { weekday: "short", day: "numeric" })}
               </p>
               <p style={{ fontSize: 20, fontWeight: 700, color: TEAL }}>{bestDay.score}</p>
             </div>
@@ -214,7 +215,7 @@ export function WeeklyReport({ meals, weekDays, onAddToShoppingList }: { meals: 
             }}>
               <p style={mutedText}>💡 A melhorar</p>
               <p style={{ fontSize: 13, fontWeight: 500, color: "#e0d6ff" }}>
-                {new Date(worstDay.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "numeric" })}
+                {new Date(worstDay.date + "T12:00:00").toLocaleDateString(getLocale(), { weekday: "short", day: "numeric" })}
               </p>
               <p style={{ fontSize: 20, fontWeight: 700, color: AMBER }}>{worstDay.score}</p>
             </div>

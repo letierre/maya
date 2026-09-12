@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "@/lib/useTranslation";
@@ -45,7 +46,7 @@ async function persistWithRetry(
 const CHAT_CACHE_KEY = "maya_chat";
 
 function formatTime(): string {
-  return new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return new Date().toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" });
 }
 
 function formatDate(): string {
@@ -73,7 +74,7 @@ function getDateLabel(dateStr: string): string {
   if (diff === 0) return "Hoje";
   if (diff === 1) return "Ontem";
   if (diff < 7) return PT_DAYS[d.getDay()];
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return d.toLocaleDateString(getLocale(), { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 // ── Sub-components ────────────────────────────────────────────────────
@@ -281,7 +282,7 @@ export default function MayaChatPage() {
                   role: msg.role as "user" | "assistant",
                   content: msg.content,
                   imageUrls: msg.image_urls || [],
-                  time: new Date(msg.created_at).toLocaleTimeString("pt-BR", {
+                  time: new Date(msg.created_at).toLocaleTimeString(getLocale(), {
                     hour: "2-digit",
                     minute: "2-digit",
                   }),
@@ -446,7 +447,7 @@ export default function MayaChatPage() {
           role: m.role as "user" | "assistant",
           content: m.content,
           imageUrls: m.image_urls || [],
-          time: new Date(m.created_at).toLocaleTimeString("pt-BR", {
+          time: new Date(m.created_at).toLocaleTimeString(getLocale(), {
             hour: "2-digit",
             minute: "2-digit",
           }),

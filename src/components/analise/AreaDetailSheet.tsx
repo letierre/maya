@@ -1,4 +1,5 @@
 "use client";
+import { getLocale } from "@/lib/language";
 
 // Detalhe por área da Roda da Vida: lista as tarefas (plano semanal) e os
 // itens da agenda (compromissos/atividades) do período selecionado, agrupados
@@ -73,7 +74,7 @@ function addDaysYMD(dateStr: string, days: number): string {
 /** YYYY-MM-DD → "DD/MM". */
 function fmtYMD(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return d.toLocaleDateString(getLocale(), { day: "2-digit", month: "2-digit" });
 }
 
 function fmtTime(t: string | null): string | null {

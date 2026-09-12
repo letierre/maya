@@ -1,4 +1,6 @@
 "use client";
+import { getLocale } from "@/lib/language";
+
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -18,7 +20,7 @@ const MOODS = [
 ];
 
 function formatDisplayDate(dateStr: string): string {
-  return new Date(dateStr + "T12:00:00").toLocaleDateString("pt-BR", {
+  return new Date(dateStr + "T12:00:00").toLocaleDateString(getLocale(), {
     weekday: "long", day: "numeric", month: "long",
   });
 }
