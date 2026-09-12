@@ -188,7 +188,9 @@ const CARE_DEFS: {
   {
     id: "social", emoji: "🗣️", title: "Conexão", tier: "emocional",
     basePriority: 58, minStreak: 4,
-    action: { label: "Ver comunidade", href: "/comunidade" },
+    // Comunidade está oculta (redireciona pra home); aponta pro check-in, onde
+    // a pergunta "conversei pessoalmente com alguém" é respondida.
+    action: { label: "Marcar no check-in", href: "/check-in" },
     describe: (s) => `Você tem ficado sem conversar pessoalmente com alguém há ${plural(s, "dia")}.`,
     compute: (ctx) => consecutiveBad(ctx.checkIns.map((c) => ({ bad: c.talked_to_someone === false }))),
   },
