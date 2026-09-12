@@ -972,6 +972,69 @@ const translations: Record<Lang, Record<string, string>> = {
     mood_entediada: "Entediada",
     mood_solitario: "Solitário",
     mood_solitaria: "Solitária",
+
+    // Histórico
+    hist_progress: "Seu progresso",
+    hist_months_one: "{{count}} mês de registro",
+    hist_months_other: "{{count}} meses de registro",
+    hist_checkins_total: "{{count}} check-ins ao todo",
+    hist_empty_title: "Nenhum check-in ainda",
+    hist_empty_desc:
+      "Quando você fizer seu primeiro check-in ele aparece aqui — junto com todos os próximos.",
+    hist_empty_cta: "Fazer primeiro check-in",
+    hist_no_note: "Sem anotação",
+
+    // Análise
+    an_foco: "Foco",
+    an_pausa: "Pausa",
+    an_meditacao: "Meditação",
+    an_oracao: "Oração",
+    an_respiracao: "Respiração",
+    an_caminhada: "Caminhada",
+    an_corrida: "Corrida",
+    an_musculacao: "Musculação",
+    an_criatividade: "Criatividade",
+    an_fazer_gosta: "Fazer algo que gosta",
+    an_conexao_social: "Conexão social",
+    an_hidratacao: "Hidratação",
+    an_sono_desc:
+      "Qualidade do sono no período, combinando duração, qualidade, interrupções e sonhos. Sem registro detalhado, usa o % de noites bem dormidas.",
+    an_humor_desc:
+      "Equilíbrio emocional: proporção de humores positivos em relação aos negativos registrados nos check-ins.",
+    an_foco_desc:
+      "Execução do que você planejou na agenda, somada a ter trabalhado nas suas metas.",
+    an_movimento_desc:
+      "% de dias em que você se movimentou — caminhada, corrida ou musculação.",
+    an_pausa_desc:
+      "% de dias com uma prática de pausa: meditação, oração ou respiração intencional.",
+    an_what_is: "O que é {{name}}",
+    an_what_is_bemestar: "O que é bem-estar",
+    an_semana: "Semana",
+    an_mes: "Mês",
+    an_trimestre: "Trimestre",
+    an_esta_semana: "esta semana",
+    an_este_mes: "este mês",
+    an_este_trimestre: "este trimestre",
+    an_bemestar: "Bem-estar",
+    an_crescimento_pessoal: "Crescimento pessoal",
+    an_crescimento: "Crescimento",
+    an_checkins_em: "{{count}} check-ins em {{period}}",
+    an_crescimento_em: "Seu crescimento em {{period}}",
+    an_vs_anterior: "vs período anterior",
+    an_bemestar_info:
+      "Nota de 0 a 100 que mede quanto dos seus hábitos você cumpriu no período. Só entram os hábitos que você realmente respondeu (os pulados não contam); sentir-se julgado reduz a nota e a água pontua conforme os copos.",
+    an_register_dia: "Registre {{count}} dia a mais para ver seu bem-estar.",
+    an_register_dias: "Registre {{count}} dias a mais para ver seu bem-estar.",
+    an_tendencia: "Tendência de bem-estar",
+    an_areas_destaque: "Áreas em destaque",
+    an_consistencia: "Consistência",
+    an_dias: "dias",
+    an_impact_title: "O que mais impacta seu bem-estar",
+    an_impact_sub: "baseado nos seus check-ins",
+    an_impact_lead: "{{label}} é o hábito que mais acompanha seus dias bons.",
+    an_impact_empty: "Continue registrando para ver seus padrões.",
+    an_empty_desc:
+      "Faça seu primeiro check-in para começar a ver sua evolução por aqui.",
   },
 
   es: {
@@ -1926,6 +1989,69 @@ const translations: Record<Lang, Record<string, string>> = {
     mood_entediada: "Aburrida",
     mood_solitario: "Solitario",
     mood_solitaria: "Solitaria",
+
+    // Histórico
+    hist_progress: "Tu progreso",
+    hist_months_one: "{{count}} mes de registro",
+    hist_months_other: "{{count}} meses de registro",
+    hist_checkins_total: "{{count}} check-ins en total",
+    hist_empty_title: "Aún no hay check-ins",
+    hist_empty_desc:
+      "Cuando hagas tu primer check-in aparecerá aquí — junto con todos los próximos.",
+    hist_empty_cta: "Hacer el primer check-in",
+    hist_no_note: "Sin anotación",
+
+    // Análise
+    an_foco: "Enfoque",
+    an_pausa: "Pausa",
+    an_meditacao: "Meditación",
+    an_oracao: "Oración",
+    an_respiracao: "Respiración",
+    an_caminhada: "Caminata",
+    an_corrida: "Correr",
+    an_musculacao: "Musculación",
+    an_criatividade: "Creatividad",
+    an_fazer_gosta: "Hacer algo que te gusta",
+    an_conexao_social: "Conexión social",
+    an_hidratacao: "Hidratación",
+    an_sono_desc:
+      "Calidad del sueño en el período, combinando duración, calidad, interrupciones y sueños. Sin registro detallado, usa el % de noches bien dormidas.",
+    an_humor_desc:
+      "Equilibrio emocional: proporción de estados de ánimo positivos frente a los negativos registrados en los check-ins.",
+    an_foco_desc:
+      "Ejecución de lo que planeaste en la agenda, sumado a haber trabajado en tus metas.",
+    an_movimento_desc:
+      "% de días en que te moviste — caminata, correr o musculación.",
+    an_pausa_desc:
+      "% de días con una práctica de pausa: meditación, oración o respiración intencional.",
+    an_what_is: "¿Qué es {{name}}?",
+    an_what_is_bemestar: "¿Qué es el bienestar?",
+    an_semana: "Semana",
+    an_mes: "Mes",
+    an_trimestre: "Trimestre",
+    an_esta_semana: "esta semana",
+    an_este_mes: "este mes",
+    an_este_trimestre: "este trimestre",
+    an_bemestar: "Bienestar",
+    an_crescimento_pessoal: "Crecimiento personal",
+    an_crescimento: "Crecimiento",
+    an_checkins_em: "{{count}} check-ins en {{period}}",
+    an_crescimento_em: "Tu crecimiento en {{period}}",
+    an_vs_anterior: "vs período anterior",
+    an_bemestar_info:
+      "Nota de 0 a 100 que mide cuántos de tus hábitos cumpliste en el período. Solo entran los hábitos que realmente respondiste (los omitidos no cuentan); sentirte juzgado reduce la nota y el agua puntúa según los vasos.",
+    an_register_dia: "Registra {{count}} día más para ver tu bienestar.",
+    an_register_dias: "Registra {{count}} días más para ver tu bienestar.",
+    an_tendencia: "Tendencia de bienestar",
+    an_areas_destaque: "Áreas destacadas",
+    an_consistencia: "Constancia",
+    an_dias: "días",
+    an_impact_title: "Lo que más impacta tu bienestar",
+    an_impact_sub: "basado en tus check-ins",
+    an_impact_lead: "{{label}} es el hábito que más acompaña tus buenos días.",
+    an_impact_empty: "Sigue registrando para ver tus patrones.",
+    an_empty_desc:
+      "Haz tu primer check-in para empezar a ver tu evolución aquí.",
   },
 
   en: {
@@ -2880,6 +3006,69 @@ const translations: Record<Lang, Record<string, string>> = {
     mood_entediada: "Bored",
     mood_solitario: "Lonely",
     mood_solitaria: "Lonely",
+
+    // Histórico
+    hist_progress: "Your progress",
+    hist_months_one: "{{count}} month of tracking",
+    hist_months_other: "{{count}} months of tracking",
+    hist_checkins_total: "{{count}} check-ins in total",
+    hist_empty_title: "No check-ins yet",
+    hist_empty_desc:
+      "When you do your first check-in it will appear here — along with all the next ones.",
+    hist_empty_cta: "Do your first check-in",
+    hist_no_note: "No note",
+
+    // Análise
+    an_foco: "Focus",
+    an_pausa: "Pause",
+    an_meditacao: "Meditation",
+    an_oracao: "Prayer",
+    an_respiracao: "Breathing",
+    an_caminhada: "Walk",
+    an_corrida: "Run",
+    an_musculacao: "Strength training",
+    an_criatividade: "Creativity",
+    an_fazer_gosta: "Doing something you enjoy",
+    an_conexao_social: "Social connection",
+    an_hidratacao: "Hydration",
+    an_sono_desc:
+      "Sleep quality in the period, combining duration, quality, interruptions and dreams. Without detailed logging, it uses the % of well-slept nights.",
+    an_humor_desc:
+      "Emotional balance: proportion of positive moods relative to negative ones recorded in your check-ins.",
+    an_foco_desc:
+      "Execution of what you planned in the agenda, plus having worked on your goals.",
+    an_movimento_desc:
+      "% of days you moved — walking, running or strength training.",
+    an_pausa_desc:
+      "% of days with a pause practice: meditation, prayer or intentional breathing.",
+    an_what_is: "What is {{name}}?",
+    an_what_is_bemestar: "What is well-being?",
+    an_semana: "Week",
+    an_mes: "Month",
+    an_trimestre: "Quarter",
+    an_esta_semana: "this week",
+    an_este_mes: "this month",
+    an_este_trimestre: "this quarter",
+    an_bemestar: "Well-being",
+    an_crescimento_pessoal: "Personal growth",
+    an_crescimento: "Growth",
+    an_checkins_em: "{{count}} check-ins in {{period}}",
+    an_crescimento_em: "Your growth in {{period}}",
+    an_vs_anterior: "vs previous period",
+    an_bemestar_info:
+      "A 0–100 score measuring how many of your habits you completed in the period. Only habits you actually answered count (skipped ones don't); feeling judged lowers the score and water scores by the cups.",
+    an_register_dia: "Log {{count}} more day to see your well-being.",
+    an_register_dias: "Log {{count}} more days to see your well-being.",
+    an_tendencia: "Well-being trend",
+    an_areas_destaque: "Highlighted areas",
+    an_consistencia: "Consistency",
+    an_dias: "days",
+    an_impact_title: "What most impacts your well-being",
+    an_impact_sub: "based on your check-ins",
+    an_impact_lead: "{{label}} is the habit that most accompanies your good days.",
+    an_impact_empty: "Keep logging to see your patterns.",
+    an_empty_desc:
+      "Do your first check-in to start seeing your evolution here.",
   },
 };
 

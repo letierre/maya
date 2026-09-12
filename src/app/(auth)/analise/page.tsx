@@ -17,6 +17,7 @@ import { NutricaoResumo } from "@/components/analise/NutricaoResumo";
 import { MovimentoResumo } from "@/components/analise/MovimentoResumo";
 import { PausaResumo } from "@/components/analise/PausaResumo";
 import { LeituraResumo } from "@/components/analise/LeituraResumo";
+import { useTranslation } from "@/lib/useTranslation";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -124,6 +125,7 @@ function getMoodValence(chipId: string): "positive" | "negative" | null {
 // ── component ────────────────────────────────────────────────────────────────
 
 export default function AnalisePage() {
+  const { t, lang } = useTranslation();
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [sleepLogs, setSleepLogs] = useState<SleepLog[]>([]);
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
@@ -301,19 +303,19 @@ export default function AnalisePage() {
 
     // Only behavioral, actionable habits — no bodily functions or external events
     const habitLabels: Record<string, string> = {
-      slept_well: "Sono",
-      ate_well: "Alimentação",
-      meditation: "Meditação",
-      prayer: "Oração",
-      breathing: "Respiração",
-      walked: "Caminhada",
-      ran: "Corrida",
-      strength_training: "Musculação",
-      worked_on_goals: "Foco",
-      creative_activity: "Criatividade",
-      did_something_enjoyable: "Fazer algo que gosta",
-      talked_to_someone: "Conexão social",
-      drank_water: "Hidratação",
+      slept_well: t("ob_area_sono"),
+      ate_well: t("ob_area_alimentacao"),
+      meditation: t("an_meditacao"),
+      prayer: t("an_oracao"),
+      breathing: t("an_respiracao"),
+      walked: t("an_caminhada"),
+      ran: t("an_corrida"),
+      strength_training: t("an_musculacao"),
+      worked_on_goals: t("an_foco"),
+      creative_activity: t("an_criatividade"),
+      did_something_enjoyable: t("an_fazer_gosta"),
+      talked_to_someone: t("an_conexao_social"),
+      drank_water: t("an_hidratacao"),
     };
 
     const factors: { label: string; pct: number; negative: boolean }[] = [];
@@ -362,7 +364,7 @@ export default function AnalisePage() {
     // Sort by impact desc, take top 4
     factors.sort((a, b) => b.pct - a.pct);
     return factors.slice(0, 4);
-  }, [checkIns, habitKeys]);
+  }, [checkIns, habitKeys, lang]);
 
   // ── trend data (wellness per day) ──────────────────────────────────────────
 
@@ -472,7 +474,7 @@ export default function AnalisePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-muted-foreground">Carregando...</p>
+        <p className="text-muted-foreground">{t("carregando")}</p>
       </div>
     );
   }
@@ -492,49 +494,54 @@ export default function AnalisePage() {
 
   const areaCards = [
     {
-      label: "Sono",
+      key: "sono",
+      label: t("ob_area_sono"),
       pct: areas.sono.pct,
       trend: areas.sono.trend,
       positive: areas.sono.trend >= 0,
       detail: areas.sono.display != null ? `${areas.sono.display}h` : `${areas.sono.sleptWellPct ?? 0}%`,
-      description: "Qualidade do sono no período, combinando duração, qualidade, interrupções e sonhos. Sem registro detalhado, usa o % de noites bem dormidas.",
+      description: t("an_sono_desc"),
     },
     {
-      label: "Humor",
+      key: "humor",
+      label: t("ob_area_humor"),
       pct: areas.humor.pct,
       trend: areas.humor.trend,
       positive: areas.humor.trend >= 0,
       detail: null,
-      description: "Equilíbrio emocional: proporção de humores positivos em relação aos negativos registrados nos check-ins.",
+      description: t("an_humor_desc"),
     },
     {
-      label: "Foco",
+      key: "foco",
+      label: t("an_foco"),
       pct: areas.foco.pct,
       trend: areas.foco.trend,
       positive: areas.foco.trend >= 0,
       detail: null,
-      description: "Execução do que você planejou na agenda, somada a ter trabalhado nas suas metas.",
+      description: t("an_foco_desc"),
     },
     {
-      label: "Movimento",
+      key: "movimento",
+      label: t("ob_area_movimento"),
       pct: areas.movimento.pct,
       trend: areas.movimento.trend,
       positive: areas.movimento.trend >= 0,
       detail: null,
-      description: "% de dias em que você se movimentou — caminhada, corrida ou musculação.",
+      description: t("an_movimento_desc"),
     },
     {
-      label: "Pausa",
+      key: "pausa",
+      label: t("an_pausa"),
       pct: areas.pausa.pct,
       trend: areas.pausa.trend,
       positive: areas.pausa.trend >= 0,
       detail: null,
-      description: "% de dias com uma prática de pausa: meditação, oração ou respiração intencional.",
+      description: t("an_pausa_desc"),
     },
   ];
 
-  const tabLabel = tab === "semana" ? "esta semana" : tab === "mes" ? "este mês" : "este trimestre";
-  const crescTabLabel = crescTab === "semana" ? "esta semana" : crescTab === "mes" ? "este mês" : "este trimestre";
+  const tabLabel = t(tab === "semana" ? "an_esta_semana" : tab === "mes" ? "an_este_mes" : "an_este_trimestre");
+  const crescTabLabel = t(crescTab === "semana" ? "an_esta_semana" : crescTab === "mes" ? "an_este_mes" : "an_este_trimestre");
   const crescFrom = daysAgo(crescPeriodDays - 1);
   const crescTo = daysAgo(0);
 
@@ -542,12 +549,12 @@ export default function AnalisePage() {
     <div style={{ minHeight: "100dvh", background: "oklch(0.12 0.012 270)", paddingBottom: 110 }}>
       <div style={{ padding: "22px 20px 4px" }}>
         <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#e0d6ff", letterSpacing: "-0.02em" }}>
-          {hub === "bemestar" ? "Bem-estar" : "Crescimento pessoal"}
+          {hub === "bemestar" ? t("an_bemestar") : t("an_crescimento_pessoal")}
         </h1>
         <p style={{ margin: "2px 0 0", fontSize: 13, color: "oklch(0.55 0.03 270)" }}>
           {hub === "bemestar"
-            ? `${periodCI.length} check-ins em ${tabLabel}`
-            : `Seu crescimento em ${crescTabLabel}`}
+            ? t("an_checkins_em", { count: String(periodCI.length), period: tabLabel })
+            : t("an_crescimento_em", { period: crescTabLabel })}
         </p>
       </div>
 
@@ -558,8 +565,8 @@ export default function AnalisePage() {
           border: "1px solid rgba(167,139,250,0.15)", padding: 3,
         }}>
           {([
-            { key: "bemestar", icon: "🌿", label: "Bem-estar" },
-            { key: "crescimento", icon: "📈", label: "Crescimento" },
+            { key: "bemestar", icon: "🌿", label: t("an_bemestar") },
+            { key: "crescimento", icon: "📈", label: t("an_crescimento") },
           ] as const).map(({ key, icon, label }) => (
             <button key={key} type="button" onClick={() => setHub(key)}
               style={{
@@ -580,9 +587,9 @@ export default function AnalisePage() {
       {/* Tabs (período) — apenas no hub de bem-estar */}
       {hub === "bemestar" && (
         <div style={{ padding: "12px 20px", display: "flex", gap: 8 }}>
-          {(["semana", "mes", "trimestre"] as const).map((t) => (
-            <button key={t} type="button" style={tabStyle(tab === t)} onClick={() => setTab(t)}>
-              {t === "semana" ? "Semana" : t === "mes" ? "Mês" : "Trimestre"}
+          {(["semana", "mes", "trimestre"] as const).map((opt) => (
+            <button key={opt} type="button" style={tabStyle(tab === opt)} onClick={() => setTab(opt)}>
+              {opt === "semana" ? t("an_semana") : opt === "mes" ? t("an_mes") : t("an_trimestre")}
             </button>
           ))}
         </div>
@@ -609,15 +616,15 @@ export default function AnalisePage() {
                   {wellnessAvg != null ? Math.round(wellnessAvg) : "—"}
                 </span>
                 <span style={{ fontSize: 10, color: "oklch(0.55 0.03 270)", marginTop: 2 }}>
-                  Bem-estar
+                  {t("an_bemestar")}
                 </span>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setRingInfo((v) => !v)}
-              aria-label="O que é bem-estar"
-              title="O que é bem-estar"
+              aria-label={t("an_what_is_bemestar")}
+              title={t("an_what_is_bemestar")}
               style={{
                 position: "absolute", top: 6, right: 6,
                 width: 20, height: 20, borderRadius: "50%",
@@ -640,7 +647,7 @@ export default function AnalisePage() {
               }}>
                 {evolutionPct > 0 ? "▲ +" : evolutionPct < 0 ? "▼ " : "— "}{evolutionPct}%
               </span>
-              <span style={{ fontSize: 12, color: "oklch(0.55 0.03 270)" }}>vs período anterior</span>
+              <span style={{ fontSize: 12, color: "oklch(0.55 0.03 270)" }}>{t("an_vs_anterior")}</span>
             </div>
           )}
           {ringInfo && (
@@ -650,16 +657,14 @@ export default function AnalisePage() {
               background: "oklch(0.2 0.02 270)",
               borderRadius: 10, padding: "8px 10px", textAlign: "center",
             }}>
-              Nota de 0 a 100 que mede quanto dos seus hábitos você cumpriu no período.
-              Só entram os hábitos que você realmente respondeu (os pulados não contam);
-              sentir-se julgado reduz a nota e a água pontua conforme os copos.
+              {t("an_bemestar_info")}
             </p>
           )}
         </div>
       ) : (
         <div style={{ display: "flex", justifyContent: "center", padding: "24px 0" }}>
           <p style={{ color: "oklch(0.55 0.03 270)", fontSize: 14 }}>
-            Registre {3 - periodCI.length} {3 - periodCI.length === 1 ? "dia" : "dias"} a mais para ver seu bem-estar.
+            {t(3 - periodCI.length === 1 ? "an_register_dia" : "an_register_dias", { count: String(3 - periodCI.length) })}
           </p>
         </div>
       )}
@@ -668,7 +673,7 @@ export default function AnalisePage() {
       {trendData.filter((p) => p.score != null).length >= 3 && (
         <div style={{ padding: "4px 16px 0" }}>
           <p style={{ margin: "0 0 6px", fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "oklch(0.65 0.12 270)", paddingLeft: 4 }}>
-            Tendência de bem-estar
+            {t("an_tendencia")}
           </p>
           <div style={{
             background: "oklch(0.16 0.012 270)",
@@ -753,14 +758,14 @@ export default function AnalisePage() {
       {/* Áreas em destaque */}
       <div style={{ padding: "20px 16px 0" }}>
         <p style={{ margin: "0 0 10px", fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "oklch(0.65 0.12 270)", paddingLeft: 4 }}>
-          Áreas em destaque
+          {t("an_areas_destaque")}
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {areaCards.map((a, idx) => {
             const spansFull = idx === areaCards.length - 1 && areaCards.length % 2 === 1;
-            const infoOpen = openInfo === a.label;
+            const infoOpen = openInfo === a.key;
             return (
-              <div key={a.label} style={{
+              <div key={a.key} style={{
                 background: "oklch(0.16 0.012 270)",
                 border: "1px solid oklch(0.28 0.02 270 / 0.5)",
                 borderRadius: 16, padding: "14px 12px",
@@ -770,9 +775,9 @@ export default function AnalisePage() {
                   <p style={{ margin: 0, fontSize: 11, color: "oklch(0.55 0.03 270)", fontWeight: 500 }}>{a.label}</p>
                   <button
                     type="button"
-                    onClick={() => setOpenInfo(infoOpen ? null : a.label)}
-                    aria-label={`O que é ${a.label}`}
-                    title={`O que é ${a.label}`}
+                    onClick={() => setOpenInfo(infoOpen ? null : a.key)}
+                    aria-label={t("an_what_is", { name: a.label })}
+                    title={t("an_what_is", { name: a.label })}
                     style={{
                       width: 18, height: 18, borderRadius: "50%",
                       border: "1px solid oklch(0.5 0.12 270 / 0.4)",
@@ -789,7 +794,7 @@ export default function AnalisePage() {
                 </div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 4 }}>
                   <span style={{ fontSize: 20, fontWeight: 700, color: "#e0d6ff" }}>
-                    {a.label === "Sono" && a.detail ? a.detail : `${a.pct}%`}
+                    {a.key === "sono" && a.detail ? a.detail : `${a.pct}%`}
                   </span>
                   {a.trend !== 0 && (
                     <span style={{ fontSize: 12, fontWeight: 600, color: a.positive ? "#22D18B" : "#FF5C5C" }}>
@@ -833,7 +838,7 @@ export default function AnalisePage() {
       {moodTimeline.some((m) => m.dominant != null) && (
         <div style={{ padding: "4px 16px 0" }}>
           <p style={{ margin: "0 0 6px", fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "oklch(0.65 0.12 270)", paddingLeft: 4 }}>
-            Humor · {tabLabel}
+            {t("ob_area_humor")} · {tabLabel}
           </p>
           <div style={{
             background: "oklch(0.16 0.012 270)",
@@ -873,7 +878,7 @@ export default function AnalisePage() {
       {/* Heatmap */}
       <div style={{ padding: "4px 16px 0" }}>
         <p style={{ margin: "0 0 6px", fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "oklch(0.65 0.12 270)", paddingLeft: 4 }}>
-          Consistência · {tabLabel}
+          {t("an_consistencia")} · {tabLabel}
         </p>
         <div style={{
           background: "oklch(0.16 0.012 270)",
@@ -897,7 +902,7 @@ export default function AnalisePage() {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 8px 0" }}>
           <span style={{ fontSize: 9, color: "oklch(0.5 0.02 270)" }}>
-            {heatmapData.filter((c) => c.filled).length}/{periodDays} dias
+            {heatmapData.filter((c) => c.filled).length}/{periodDays} {t("an_dias")}
           </span>
           <span style={{ fontSize: 9, color: "oklch(0.5 0.02 270)" }}>
             {periodDays > 0 ? Math.round((heatmapData.filter((c) => c.filled).length / periodDays) * 100) : 0}%
@@ -909,10 +914,10 @@ export default function AnalisePage() {
       {impactFactors.length > 0 && (
         <div style={{ padding: "20px 16px 0" }}>
           <p style={{ margin: "0 0 2px", fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "oklch(0.65 0.12 270)", paddingLeft: 4 }}>
-            O que mais impacta seu bem-estar
+            {t("an_impact_title")}
           </p>
           <p style={{ margin: "0 0 10px", fontSize: 11, color: "oklch(0.55 0.03 270)", paddingLeft: 4, fontWeight: 500 }}>
-            baseado nos seus check-ins
+            {t("an_impact_sub")}
           </p>
           <div style={{
             background: "oklch(0.16 0.012 270)",
@@ -921,8 +926,8 @@ export default function AnalisePage() {
           }}>
             <p style={{ margin: "0 0 12px", fontSize: 13, color: "#e0d6ff", lineHeight: 1.4 }}>
               {impactFactors[0]?.label
-                ? `${impactFactors[0].label} é o hábito que mais acompanha seus dias bons.`
-                : "Continue registrando para ver seus padrões."}
+                ? t("an_impact_lead", { label: impactFactors[0].label })
+                : t("an_impact_empty")}
             </p>
             {impactFactors.map((f) => (
               <div key={f.label} style={{ marginBottom: 8 }}>
@@ -959,10 +964,10 @@ export default function AnalisePage() {
       {checkIns.length === 0 && (
         <div style={{ padding: "40px 20px", textAlign: "center" }}>
           <p style={{ color: "oklch(0.55 0.03 270)", fontSize: 15, margin: "0 0 8px" }}>
-            Nenhum check-in ainda
+            {t("hist_empty_title")}
           </p>
           <p style={{ color: "oklch(0.45 0.02 270)", fontSize: 13, margin: 0, lineHeight: 1.5 }}>
-            Faça seu primeiro check-in para começar a ver sua evolução por aqui.
+            {t("an_empty_desc")}
           </p>
         </div>
       )}
@@ -974,9 +979,9 @@ export default function AnalisePage() {
         <>
           {/* Tabs (período) — crescimento */}
           <div style={{ padding: "12px 20px", display: "flex", gap: 8 }}>
-            {(["semana", "mes", "trimestre"] as const).map((t) => (
-              <button key={t} type="button" style={tabStyle(crescTab === t)} onClick={() => setCrescTab(t)}>
-                {t === "semana" ? "Semana" : t === "mes" ? "Mês" : "Trimestre"}
+            {(["semana", "mes", "trimestre"] as const).map((opt) => (
+              <button key={opt} type="button" style={tabStyle(crescTab === opt)} onClick={() => setCrescTab(opt)}>
+                {opt === "semana" ? t("an_semana") : opt === "mes" ? t("an_mes") : t("an_trimestre")}
               </button>
             ))}
           </div>

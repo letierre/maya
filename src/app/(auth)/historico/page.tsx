@@ -1,5 +1,6 @@
 "use client";
 import { getLocale } from "@/lib/language";
+import { useTranslation } from "@/lib/useTranslation";
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -60,6 +61,7 @@ function getScore(ci: CheckIn, scoreKeys: string[]) {
 
 export default function HistoricoPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [enabledKeys, setEnabledKeys] = useState<string[]>([]);
   const [gender, setGender] = useState<string>("nao_dizer");
@@ -108,7 +110,7 @@ export default function HistoricoPage() {
                      linear-gradient(180deg, oklch(0.12 0.012 270) 0%, oklch(0.10 0.012 270) 100%)`,
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <p style={{ color: "var(--muted-foreground)", fontSize: 13 }}>Carregando…</p>
+        <p style={{ color: "var(--muted-foreground)", fontSize: 13 }}>{t("carregando")}</p>
       </div>
     );
   }
@@ -129,14 +131,14 @@ export default function HistoricoPage() {
       {/* Header */}
       <div className="px-6 pt-6 pb-2">
         <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
-          Seu progresso
+          {t("hist_progress")}
         </p>
         <h1 className="mt-1 text-[36px] font-bold tracking-tight leading-[1.05]">
-          Histórico
+          {t("historico")}
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          {monthGroups.length} {monthGroups.length === 1 ? "mês" : "meses"} de registro
-          {checkIns.length > 0 && ` · ${checkIns.length} check-ins ao todo`}
+          {t(monthGroups.length === 1 ? "hist_months_one" : "hist_months_other", { count: String(monthGroups.length) })}
+          {checkIns.length > 0 && ` · ${t("hist_checkins_total", { count: String(checkIns.length) })}`}
         </p>
       </div>
 
@@ -144,9 +146,9 @@ export default function HistoricoPage() {
       {checkIns.length === 0 && (
         <div className="px-8 pt-16 pb-20 text-center">
           <div className="text-5xl mb-4">📋</div>
-          <h2 className="text-lg font-bold mb-2">Nenhum check-in ainda</h2>
+          <h2 className="text-lg font-bold mb-2">{t("hist_empty_title")}</h2>
           <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-6">
-            Quando você fizer seu primeiro check-in ele aparece aqui — junto com todos os próximos.
+            {t("hist_empty_desc")}
           </p>
           <button
             type="button"
@@ -158,7 +160,7 @@ export default function HistoricoPage() {
               boxShadow: "0 4px 12px -4px oklch(.5 .12 270 / .4)",
             }}
           >
-            Fazer primeiro check-in
+            {t("hist_empty_cta")}
           </button>
         </div>
       )}
@@ -310,7 +312,7 @@ export default function HistoricoPage() {
                           </p>
                         ) : (
                           <p className="m-0 text-[12px] text-muted-foreground" style={{ opacity: 0.5 }}>
-                            Sem anotação
+                            {t("hist_no_note")}
                           </p>
                         )}
 

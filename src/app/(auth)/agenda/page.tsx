@@ -19,11 +19,11 @@ import { toast } from "sonner";
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-const DAY_NAMES = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
-
 function formatDateLabel(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
-  return `${DAY_NAMES[d.getDay()]}, ${d.getDate()} de ${d.toLocaleDateString(getLocale(), { month: "long" })}`;
+  const weekday = d.toLocaleDateString(getLocale(), { weekday: "long" });
+  const dayName = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  return `${dayName}, ${d.getDate()} de ${d.toLocaleDateString(getLocale(), { month: "long" })}`;
 }
 
 function weekRangeLabel(dateStr: string): string {
