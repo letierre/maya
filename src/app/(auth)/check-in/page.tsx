@@ -23,6 +23,7 @@ import {
   WATER_GOAL,
   WATER_MAX,
   saveSleepLogFromAnswers,
+  answersEqual,
 } from "@/components/CheckInEditor";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -654,6 +655,9 @@ export default function CheckInPage() {
   const savedRef = useRef(false);
   const latestAnswers = useRef<CheckInAnswers>(defaultAnswers());
   latestAnswers.current = answers;
+  // Snapshot do check-in carregado (para o botão "Salvar alterações" só habilitar
+  // quando houver mudança real).
+  const originalRef = useRef<CheckInAnswers>(defaultAnswers());
 
   useEffect(() => {
     const today = getLocalDate();
@@ -695,6 +699,7 @@ export default function CheckInPage() {
         // Fonte de verdade: uma corrida/ sono do dia sempre sobrescreve o valor salvo.
         if (hasRunningSession) next.ran = true;
         if (hasSleepLog) next.slept_well = (sleepLogs[0]?.quality ?? 0) >= 3;
+        originalRef.current = next; // base para detectar alterações
         return next;
       });
       setLoading(false);
@@ -834,6 +839,9 @@ export default function CheckInPage() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
+  // Houve alguma alteração em relação ao check-in carregado?
+  const dirty = !answersEqual(answers, originalRef.current);
+
   if (loading) return <LoadingScreen />;
 
   // Edit mode: compact overview for existing check-in
@@ -849,6 +857,7 @@ export default function CheckInPage() {
         onClose={() => router.push("/dashboard")}
         saving={saving}
         todaySleep={todaySleep}
+        dirty={dirty}
       />
     );
   }

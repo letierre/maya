@@ -120,6 +120,31 @@ export function defaultAnswers(): CheckInAnswers {
   };
 }
 
+function arraysEqual(a: string[], b: string[]) {
+  if (a.length !== b.length) return false;
+  const sa = [...a].sort();
+  const sb = [...b].sort();
+  return sa.every((v, i) => v === sb[i]);
+}
+
+// Compara os campos que o editor altera (sono é read-only e não entra aqui).
+// Reutilizada pelo editor de check-in passado (/check-in/[id]) e pelo modo
+// "editar" do check-in de hoje (/check-in) para o botão "Salvar alterações"
+// só habilitar quando há mudança real.
+export function answersEqual(a: CheckInAnswers, b: CheckInAnswers): boolean {
+  const keys: (keyof CheckInAnswers)[] = [
+    "date", "feeling", "gratitude", "suicidal_thoughts", "drank_water", "water_cups",
+    "took_medication", "talked_to_someone", "meditation", "prayer", "breathing",
+    "creative_activity", "walked", "ran", "strength_training", "read",
+    "did_something_enjoyable", "worked_on_goals", "bowel_movement", "felt_judged", "ate_well",
+    "sleep_quality", "sleep_start_time", "sleep_end_time",
+  ];
+  for (const k of keys) if (a[k] !== b[k]) return false;
+  if (!arraysEqual(a.mood_tags ?? [], b.mood_tags ?? [])) return false;
+  if (!arraysEqual(a.gratitude_photos ?? [], b.gratitude_photos ?? [])) return false;
+  return true;
+}
+
 export function getHabitLabel(key: string, context: Record<string, boolean>): string {
   const base = HABIT_COPY[key]?.label ?? key;
   if (key === "creative_activity") {

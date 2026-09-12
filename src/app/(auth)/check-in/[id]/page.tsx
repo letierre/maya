@@ -15,6 +15,7 @@ import {
   HABIT_COPY,
   getHabitLabel,
   saveSleepLogFromAnswers,
+  answersEqual,
 } from "@/components/CheckInEditor";
 
 // Janela (em dias) em que um check-in antigo ainda pode ser editado.
@@ -51,28 +52,6 @@ function checkInToAnswers(ci: CheckIn): CheckInAnswers {
     felt_judged: ci.felt_judged ?? false,
     ate_well: ci.ate_well ?? false,
   };
-}
-
-function arraysEqual(a: string[], b: string[]) {
-  if (a.length !== b.length) return false;
-  const sa = [...a].sort();
-  const sb = [...b].sort();
-  return sa.every((v, i) => v === sb[i]);
-}
-
-// Compara apenas os campos que o editor altera (sono é read-only aqui).
-function answersEqual(a: CheckInAnswers, b: CheckInAnswers): boolean {
-  const keys: (keyof CheckInAnswers)[] = [
-    "date", "feeling", "gratitude", "suicidal_thoughts", "drank_water", "water_cups",
-    "took_medication", "talked_to_someone", "meditation", "prayer", "breathing",
-    "creative_activity", "walked", "ran", "strength_training", "read",
-    "did_something_enjoyable", "worked_on_goals", "bowel_movement", "felt_judged", "ate_well",
-    "sleep_quality", "sleep_start_time", "sleep_end_time",
-  ];
-  for (const k of keys) if (a[k] !== b[k]) return false;
-  if (!arraysEqual(a.mood_tags ?? [], b.mood_tags ?? [])) return false;
-  if (!arraysEqual(a.gratitude_photos ?? [], b.gratitude_photos ?? [])) return false;
-  return true;
 }
 
 export default function EditCheckInPage({
