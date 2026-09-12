@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date");
   const id = searchParams.get("id");
+  const limit = searchParams.get("limit");
 
   try {
     const admin = getSupabaseAdmin();
@@ -43,12 +44,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(data || []);
     }
 
-    const { data, error } = await admin
+    let query = admin
       .from("diary_entries")
       .select("*")
       .eq("user_id", user.id)
       .order("date", { ascending: false })
       .order("created_at", { ascending: false });
+
+    // Suporta ?limit=N (ex.: preview da home busca só o último registro).
+    const limitNum = limit ? parseInt(limit, 10) : NaN;
+    if (Number.isFinite(limitNum) && limitNum > 0) {
+      query = query.limit(limitNum);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     return NextResponse.json(data || []);
