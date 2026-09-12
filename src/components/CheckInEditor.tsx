@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { getLocalDate } from "@/lib/utils";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { MOOD_CHIPS, getMoodLabel } from "@/lib/checkin-moods";
+import { useTranslation } from "@/lib/useTranslation";
+import { t } from "@/lib/i18n";
+import { getLanguage } from "@/lib/language";
 import { DEFAULT_DAILY_KCAL } from "@/lib/meal-utils";
 import { MetaCheckinCard } from "@/components/MetaCheckinCard";
 
@@ -35,25 +38,25 @@ type HabitKey = typeof HABIT_ORDER[number];
 export const MEDITATION_KEYS = ["meditation", "prayer", "breathing"] as const;
 export const EXERCISE_KEYS = ["walked", "ran", "strength_training"] as const;
 
-interface HabitCopy { emoji: string; label: string; a: string; b: string; }
+interface HabitCopy { emoji: string; labelKey: string; aKey: string; bKey: string; }
 
 export const HABIT_COPY: Record<string, HabitCopy> = {
-  drank_water:                 { emoji: "💧", label: "Bebeu água hoje?",              a: "Sim", b: "Hoje não"  }, // substituído por WaterStep — mantido para EditCheckInView
-  slept_well:                  { emoji: "😴", label: "Dormiu bem ontem?",             a: "Sim", b: "Não muito" },
-  took_medication:             { emoji: "💊", label: "Tomou seus remédios?",          a: "Sim", b: "Esqueci"   },
-  talked_to_someone:           { emoji: "🗣️", label: "Conversou pessoalmente com alguém?", a: "Sim", b: "Não hoje"  },
-  meditation:                  { emoji: "🧘", label: "Meditou",                       a: "Sim", b: "Não"       },
-  prayer:                      { emoji: "🙏", label: "Orou",                          a: "Sim", b: "Não"       },
-  breathing:                   { emoji: "🌬️", label: "Respirou intencionalmente",     a: "Sim", b: "Não"       },
-  creative_activity:           { emoji: "🎨", label: "Fez algo criativo?",            a: "Sim", b: "Não"       },
-  walked:                      { emoji: "🚶", label: "Caminhou",                      a: "Sim", b: "Não"       },
-  ran:                         { emoji: "🏃", label: "Correu",                        a: "Sim", b: "Não"       },
-  strength_training:           { emoji: "🏋️", label: "Musculação",                    a: "Sim", b: "Não"       },
-  read:                        { emoji: "📖", label: "Leu hoje?",                      a: "Sim", b: "Não"       },
-  did_something_enjoyable:     { emoji: "😊", label: "Fez algo que gosta?",           a: "Sim", b: "Não"       },
-  worked_on_goals:             { emoji: "🎯", label: "Avançou nas suas metas hoje?",  a: "Sim", b: "Não"       },
-  bowel_movement:              { emoji: "🚽", label: "Funcionamento intestinal OK?",  a: "Sim", b: "Não"       },
-  felt_judged:                 { emoji: "⚖️", label: "Sentiu que foi julgada hoje?",  a: "Sim", b: "Não"       },
+  drank_water:                 { emoji: "💧", labelKey: "ck_habit_drank_water",       aKey: "sim", bKey: "ck_no_today" }, // substituído por WaterStep — mantido para EditCheckInView
+  slept_well:                  { emoji: "😴", labelKey: "ck_habit_slept_well",        aKey: "sim", bKey: "ck_no_not_much" },
+  took_medication:             { emoji: "💊", labelKey: "ck_habit_took_medication",   aKey: "sim", bKey: "ck_forgot" },
+  talked_to_someone:           { emoji: "🗣️", labelKey: "ck_habit_talked_to_someone", aKey: "sim", bKey: "ck_no_today" },
+  meditation:                  { emoji: "🧘", labelKey: "ck_habit_meditation",        aKey: "sim", bKey: "nao" },
+  prayer:                      { emoji: "🙏", labelKey: "ck_habit_prayer",            aKey: "sim", bKey: "nao" },
+  breathing:                   { emoji: "🌬️", labelKey: "ck_habit_breathing",         aKey: "sim", bKey: "nao" },
+  creative_activity:           { emoji: "🎨", labelKey: "ck_habit_creative",          aKey: "sim", bKey: "nao" },
+  walked:                      { emoji: "🚶", labelKey: "ck_habit_walked",            aKey: "sim", bKey: "nao" },
+  ran:                         { emoji: "🏃", labelKey: "ck_habit_ran",               aKey: "sim", bKey: "nao" },
+  strength_training:           { emoji: "🏋️", labelKey: "ck_habit_strength",          aKey: "sim", bKey: "nao" },
+  read:                        { emoji: "📖", labelKey: "ck_habit_read",              aKey: "sim", bKey: "nao" },
+  did_something_enjoyable:     { emoji: "😊", labelKey: "ck_habit_enjoyable",         aKey: "sim", bKey: "nao" },
+  worked_on_goals:             { emoji: "🎯", labelKey: "ck_habit_goals",             aKey: "sim", bKey: "nao" },
+  bowel_movement:              { emoji: "🚽", labelKey: "ck_habit_bowel",             aKey: "sim", bKey: "nao" },
+  felt_judged:                 { emoji: "⚖️", labelKey: "ck_habit_judged",            aKey: "sim", bKey: "nao" },
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -146,11 +149,11 @@ export function answersEqual(a: CheckInAnswers, b: CheckInAnswers): boolean {
 }
 
 export function getHabitLabel(key: string, context: Record<string, boolean>): string {
-  const base = HABIT_COPY[key]?.label ?? key;
+  const lang = getLanguage();
   if (key === "creative_activity") {
-    return context.has_creative_hobby ? "Trabalhou no seu hobby criativo?" : "Fez algo criativo?";
+    return context.has_creative_hobby ? t(lang, "ck_habit_creative_hobby") : t(lang, "ck_habit_creative");
   }
-  return base;
+  return t(lang, HABIT_COPY[key]?.labelKey ?? key);
 }
 
 // Salva o log de sono a partir das respostas do editor (usado no save do editor).
@@ -188,11 +191,11 @@ export function saveSleepLogFromAnswers(answers: CheckInAnswers) {
 // ── Indicadores visuais do dia ────────────────────────────────────────────────
 
 const SLEEP_EMOJIS = [
-  { emoji: "😩", label: "Péssimo", quality: 1 },
-  { emoji: "😕", label: "Ruim",    quality: 2 },
-  { emoji: "😐", label: "Ok",      quality: 3 },
-  { emoji: "🙂", label: "Bom",     quality: 4 },
-  { emoji: "😊", label: "Ótimo",   quality: 5 },
+  { emoji: "😩", labelKey: "sono_qualidade_1", quality: 1 },
+  { emoji: "😕", labelKey: "sono_qualidade_2", quality: 2 },
+  { emoji: "😐", labelKey: "sono_qualidade_3", quality: 3 },
+  { emoji: "🙂", labelKey: "sono_qualidade_4", quality: 4 },
+  { emoji: "😊", labelKey: "sono_qualidade_5", quality: 5 },
 ];
 
 const SLEEP_GOAL_MIN = 8 * 60; // meta de 8h de sono
@@ -254,6 +257,7 @@ export function WaterCupSelector({ cups, size, onChange }: {
   size?: number;
   onChange: (n: number) => void;
 }) {
+  const { t } = useTranslation();
   const displayCount = Math.max(cups, WATER_GOAL);
   const cupW = size ?? 52;
   const totalMl = cups * ML_PER_CUP;
@@ -315,10 +319,10 @@ export function WaterCupSelector({ cups, size, onChange }: {
         color: cups >= WATER_GOAL ? "#e0d6ff" : "var(--muted-foreground)",
       }}>
         <span style={{ fontWeight: 700, fontSize: 15 }}>{totalMl}ml</span>
-        {" · 250ml por copo · "}
+        {" · "}{t("ck_water_per_cup")}{" · "}
         {cups >= WATER_GOAL
-          ? "meta atingida 🎉"
-          : `faltam ${goalMl - totalMl}ml para 1L`}
+          ? t("ck_water_goal_reached")
+          : t("ck_water_remaining", { ml: String(goalMl - totalMl) })}
       </p>
     </div>
   );
@@ -327,22 +331,23 @@ export function WaterCupSelector({ cups, size, onChange }: {
 // ── Chips multi-select ────────────────────────────────────────────────────────
 
 export const MEDITATION_OPTIONS = [
-  { key: "meditation", emoji: "🧘", label: "Meditei" },
-  { key: "prayer", emoji: "🙏", label: "Orei" },
-  { key: "breathing", emoji: "🌬️", label: "Respirei intencionalmente" },
+  { key: "meditation", emoji: "🧘", labelKey: "ck_meditated" },
+  { key: "prayer", emoji: "🙏", labelKey: "ck_prayed" },
+  { key: "breathing", emoji: "🌬️", labelKey: "ck_breathed" },
 ];
 
 export const EXERCISE_OPTIONS = [
-  { key: "walked", emoji: "🚶", label: "Caminhei" },
-  { key: "ran", emoji: "🏃", label: "Corri" },
-  { key: "strength_training", emoji: "🏋️", label: "Musculação" },
+  { key: "walked", emoji: "🚶", labelKey: "ck_walked_past" },
+  { key: "ran", emoji: "🏃", labelKey: "ck_ran_past" },
+  { key: "strength_training", emoji: "🏋️", labelKey: "ck_habit_strength" },
 ];
 
 export function HabitChipSelector({ options, selected, onToggle }: {
-  options: { key: string; emoji: string; label: string }[];
+  options: { key: string; emoji: string; labelKey: string }[];
   selected: Record<string, boolean>;
   onToggle: (key: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div style={{ display: "grid", gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`, gap: 8 }}>
       {options.map((o) => {
@@ -360,7 +365,7 @@ export function HabitChipSelector({ options, selected, onToggle }: {
           }}>
             <span style={{ fontSize: 24, lineHeight: 1 }}>{o.emoji}</span>
             <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.25, textAlign: "center" }}>
-              {o.label}
+              {t(o.labelKey)}
             </span>
           </button>
         );
@@ -371,7 +376,7 @@ export function HabitChipSelector({ options, selected, onToggle }: {
 
 // ── EditCheckInView — editor do check-in (mesmo dia ou histórico) ─────────────
 
-export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gender, onSave, onClose, saving, todaySleep, dirty, eyebrow = "Editar check-in de hoje", title = "O que mudou?" }: {
+export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gender, onSave, onClose, saving, todaySleep, dirty, eyebrow, title }: {
   answers: CheckInAnswers;
   setAnswers: React.Dispatch<React.SetStateAction<CheckInAnswers>>;
   enabledKeys: string[];
@@ -386,6 +391,9 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
   eyebrow?: string;
   title?: string;
 }) {
+  const { t } = useTranslation();
+  const eyebrowText = eyebrow ?? t("editar_checkin");
+  const titleText = title ?? t("ck_what_changed");
   const feelingRef = useRef<HTMLDivElement>(null);
   const gratitudeRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -430,7 +438,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
       const path = await uploadToCloud(compressed, "diary");
       setAnswers((a) => ({ ...a, gratitude_photos: [...a.gratitude_photos, path] }));
     } catch {
-      toast.error("Erro ao processar imagem");
+      toast.error(t("ck_erro_imagem"));
     }
   };
 
@@ -456,7 +464,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
       paddingBottom: 100,
     }}>
       {/* Close */}
-      <button type="button" onClick={onClose} aria-label="Fechar" style={{
+      <button type="button" onClick={onClose} aria-label={t("ck_fechar")} style={{
         position: "fixed", top: 14, left: 16, zIndex: 10,
         width: 36, height: 36, borderRadius: 9999, border: 0, cursor: "pointer",
         background: "oklch(0.16 0.012 270 / 0.85)", backdropFilter: "blur(12px)",
@@ -475,10 +483,10 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
           margin: "0 0 4px", fontSize: 11, fontWeight: 700, letterSpacing: ".16em",
           textTransform: "uppercase", color: "var(--muted-foreground)",
         }}>
-          {eyebrow}
+          {eyebrowText}
         </p>
         <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.1 }}>
-          {title}
+          {titleText}
         </h1>
       </div>
 
@@ -487,10 +495,10 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
         {/* ── Sentimento ── */}
         <section>
           <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-            Como você está
+            {t("ck_how_are")}
           </p>
           <p style={{ margin: "0 0 12px", fontSize: 13.5, color: "var(--muted-foreground)" }}>
-            Escolha mais de um humor que tenha feito sentido até esse momento
+            {t("ck_feeling_sub")}
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12 }}>
             {MOOD_CHIPS.map((chip) => {
@@ -527,7 +535,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
             ref={feelingRef}
             contentEditable
             suppressContentEditableWarning
-            data-placeholder="Quer detalhar? (opcional)"
+            data-placeholder={t("ck_feeling_detail_placeholder")}
             onInput={(e) => setAnswers((a) => ({ ...a, feeling: (e.target as HTMLElement).innerText }))}
             style={{
               outline: "none", fontSize: 15, lineHeight: 1.55, fontWeight: 500,
@@ -543,7 +551,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
         {habitsToShow.length > 0 && (
           <section>
             <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-              Hábitos de hoje
+              {t("ck_habits_today")}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {habitsToShow.map((key) => {
@@ -561,7 +569,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                         <span style={{ fontSize: 21, flexShrink: 0, lineHeight: 1 }}>🥛</span>
-                        <span style={{ flex: 1, fontSize: 13.5, fontWeight: 500 }}>Copos de água hoje</span>
+                        <span style={{ flex: 1, fontSize: 13.5, fontWeight: 500 }}>{t("ck_water_label")}</span>
                         <span style={{ fontSize: 12, fontWeight: 700,
                           color: cups >= WATER_GOAL ? "#e0d6ff" : "var(--muted-foreground)" }}>
                           {cups * ML_PER_CUP}ml{cups >= WATER_GOAL ? " ✓" : ""}
@@ -590,9 +598,9 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                     <span style={{ flex: 1, fontSize: 13.5, fontWeight: 500, lineHeight: 1.3 }}>{label}</span>
                     <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
                       <button type="button" style={btn(value === true)}
-                        onClick={() => setAnswers((a) => ({ ...a, [key]: true }))}>{base.a}</button>
+                        onClick={() => setAnswers((a) => ({ ...a, [key]: true }))}>{t(base.aKey)}</button>
                       <button type="button" style={btn(value === false, true)}
-                        onClick={() => setAnswers((a) => ({ ...a, [key]: false }))}>{base.b}</button>
+                        onClick={() => setAnswers((a) => ({ ...a, [key]: false }))}>{t(base.bKey)}</button>
                     </div>
                   </div>
                 );
@@ -605,7 +613,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
         {MEDITATION_KEYS.some((k) => enabledKeys.includes(k)) && (
           <section>
             <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-              Meditação & respiração
+              {t("ck_meditation_breath")}
             </p>
             <HabitChipSelector
               options={MEDITATION_OPTIONS.filter((o) => o.key !== "prayer" || !!context.has_faith)}
@@ -619,7 +627,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
         {EXERCISE_KEYS.some((k) => enabledKeys.includes(k)) && (
           <section>
             <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-              Exercício
+              {t("ck_exercise")}
             </p>
             <HabitChipSelector
               options={EXERCISE_OPTIONS}
@@ -632,7 +640,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
         {/* ── Indicadores do dia (feedback visual) ── */}
         <section>
           <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#A78BFA" }}>
-            📊 Indicadores do dia
+            {t("ck_indicators")}
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {/* Comida */}
@@ -642,17 +650,17 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
               border: "1px solid oklch(0.5 0.12 270 / .12)",
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>🍽️ Comida</span>
+                <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{t("ck_food")}</span>
                 <span style={{ fontSize: 12, color: "#9e96b5", textAlign: "right" }}>
                   {mealCount > 0
-                    ? `${mealCount} refeiç${mealCount === 1 ? "ão" : "ões"} · ${kcal} kcal`
-                    : "nada registrado"}
+                    ? t(mealCount === 1 ? "ck_meal_one" : "ck_meal_many", { n: String(mealCount), kcal: String(kcal) })
+                    : t("ck_nothing_logged")}
                 </span>
               </div>
               <DayProgressBar pct={kcalPct} />
               {mealCount === 0 && (
                 <p style={{ margin: "8px 0 0", fontSize: 11, color: "#9e96b5" }}>
-                  Registre suas refeições para acompanhar sua meta diária de {DEFAULT_DAILY_KCAL} kcal
+                  {t("ck_register_meals", { kcal: String(DEFAULT_DAILY_KCAL) })}
                 </p>
               )}
             </div>
@@ -664,11 +672,11 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
               border: "1px solid oklch(0.5 0.12 270 / .12)",
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>😴 Sono</span>
+                <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{t("ck_sleep_short")}</span>
                 <span style={{ fontSize: 12, color: "#9e96b5", textAlign: "right" }}>
                   {hasSleepLog
-                    ? [formatSleepDuration(sleepMin), todaySleep?.quality != null ? `${todaySleep.quality}/5` : ""].filter(Boolean).join(" · ") || "registrado"
-                    : "não registrado"}
+                    ? [formatSleepDuration(sleepMin), todaySleep?.quality != null ? `${todaySleep.quality}/5` : ""].filter(Boolean).join(" · ") || t("ck_registered")
+                    : t("ck_not_registered")}
                 </span>
               </div>
               <DayProgressBar pct={sleepPct} color="#A78BFA" />
@@ -677,10 +685,10 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
               {!hasSleepLog && (
                 <div style={{ marginTop: 12, borderTop: "1px solid oklch(0.28 0.02 270 / 0.4)", paddingTop: 12 }}>
                   <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#e0d6ff" }}>
-                    Como foi seu sono da última noite?
+                    {t("ck_sleep_last_night")}
                   </p>
                   <div style={{ display: "flex", gap: 6 }}>
-                    {SLEEP_EMOJIS.map(({ emoji, label, quality: q }) => (
+                    {SLEEP_EMOJIS.map(({ emoji, labelKey, quality: q }) => (
                       <button key={q} type="button"
                         onClick={() => setAnswers((a) => ({ ...a, sleep_quality: q, slept_well: q >= 3 }))}
                         style={{
@@ -692,14 +700,14 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                         }}>
                         <span style={{ fontSize: 22 }}>{emoji}</span>
                         <span style={{ fontSize: 9, fontWeight: 600, color: answers.sleep_quality === q ? "#e0d6ff" : "var(--muted-foreground)" }}>
-                          {label}
+                          {t(labelKey)}
                         </span>
                       </button>
                     ))}
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                     <div style={{ flex: 1 }}>
-                      <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Dormi</p>
+                      <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>{t("ck_dormi")}</p>
                       <input type="time" value={answers.sleep_start_time}
                         onChange={(e) => setAnswers((a) => ({ ...a, sleep_start_time: e.target.value }))}
                         style={{
@@ -710,7 +718,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                         }} />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Acordei</p>
+                      <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>{t("ck_acordei")}</p>
                       <input type="time" value={answers.sleep_end_time}
                         onChange={(e) => setAnswers((a) => ({ ...a, sleep_end_time: e.target.value }))}
                         style={{
@@ -733,7 +741,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
         {/* ── Resumo automático ── */}
         <section>
           <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#A78BFA" }}>
-            📋 Seu dia até agora: {score}/{scoreTotal}
+            {t("ck_day_so_far", { score: String(score), total: String(scoreTotal) })}
           </p>
           <div style={{
             padding: "14px 16px", borderRadius: 14,
@@ -749,24 +757,24 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
               let label = key;
               let hint = "";
               if (key === "ate_well") {
-                emoji = "🍽️"; label = "Comeu bem";
-                hint = done ? "Refeições equilibradas hoje" : "Registre pelo menos 2 refeições no dia";
+                emoji = "🍽️"; label = t("ck_ate_well");
+                hint = done ? t("ck_ate_well_done") : t("ck_ate_well_todo");
               } else if (key === "worked_on_goals") {
-                emoji = "🎯"; label = "Metas";
-                hint = done ? "Avançou hoje" : "Conclua uma tarefa do plano";
+                emoji = "🎯"; label = t("ck_goals");
+                hint = done ? t("ck_goals_done") : t("ck_goals_todo");
               } else if (key === "slept_well") {
-                emoji = "😴"; label = "Sono";
-                if (done) hint = "Boa noite de sono";
-                else if (todaySleep?.quality != null) hint = `Qualidade ${todaySleep.quality}/5 — não atingiu o mínimo`;
-                else hint = "Registre seu sono";
+                emoji = "😴"; label = t("ck_sleep");
+                if (done) hint = t("ck_sleep_done");
+                else if (todaySleep?.quality != null) hint = t("ck_sleep_bad", { q: String(todaySleep.quality) });
+                else hint = t("ck_sleep_todo");
               } else if (key === "drank_water") {
-                emoji = "💧"; label = "Água";
+                emoji = "💧"; label = t("ck_water");
                 const falta = waterGoal - cups;
-                hint = done ? `${cups} copos ✓` : falta > 1 ? `Faltam só ${falta} copos` : falta === 1 ? "Falta só 1 copo" : "Marque seus copos";
+                hint = done ? t("ck_water_done", { n: String(cups) }) : falta > 1 ? t("ck_water_many", { n: String(falta) }) : falta === 1 ? t("ck_water_one") : t("ck_water_todo");
               } else {
                 const base = HABIT_COPY[key];
                 emoji = base?.emoji ?? "•";
-                label = base?.label ?? key;
+                label = getHabitLabel(key, context);
               }
               return (
                 <div key={key} style={{
@@ -787,13 +795,13 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
         {/* ── Gratidão ── */}
         <section>
           <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-            Gratidão
+            {t("ck_gratidao")}
           </p>
           <div
             ref={gratitudeRef}
             contentEditable
             suppressContentEditableWarning
-            data-placeholder="Uma palavra, um momento, alguém…"
+            data-placeholder={t("ck_gratidao_placeholder")}
             onInput={(e) => setAnswers((a) => ({ ...a, gratitude: (e.target as HTMLElement).innerText }))}
             style={{
               outline: "none", fontSize: 16, lineHeight: 1.55, fontStyle: "italic",
@@ -832,7 +840,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                 <circle cx="9" cy="9" r="2" />
                 <path d="m21 15-5-5L5 21" />
               </svg>
-              Foto
+              {t("ck_photo")}
             </button>
           </div>
           <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }}
@@ -844,10 +852,10 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
         {hasConfirm && (
           <section>
             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
-              Só pra confirmar
+              {t("ck_confirm_label")}
             </p>
             <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.4 }}>
-              Hoje você sentiu vontade de se machucar ou de se ir?
+              {t("ck_confirm_q")}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
               <button type="button" onClick={() => setAnswers((a) => ({ ...a, suicidal_thoughts: false }))} style={{
@@ -858,7 +866,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                 border: answers.suicidal_thoughts === false ? "none" : "1px solid rgba(167,139,250,0.2)",
                 color: answers.suicidal_thoughts === false ? "#fff" : "#7C5CFF",
               }}>
-                Não, hoje não.
+                {t("ck_confirm_no")}
               </button>
               <button type="button" onClick={() => setAnswers((a) => ({ ...a, suicidal_thoughts: true }))} style={{
                 height: 48, borderRadius: 12, cursor: "pointer", fontFamily: "inherit",
@@ -868,7 +876,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                 border: "1px solid rgba(255,77,77,0.3)",
                 color: answers.suicidal_thoughts === true ? "#FF6B6B" : "#FF6B6B",
               }}>
-                Sim, tive esse pensamento.
+                {t("ck_confirm_yes")}
               </button>
             </div>
           </section>
@@ -890,7 +898,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
           boxShadow: isDirty ? "0 4px 14px -4px oklch(0.5 0.12 270 / .45)" : "none",
           opacity: saving ? 0.7 : 1, transition: "opacity .15s ease, background .15s ease, color .15s ease",
         }}>
-          {saving ? "Salvando…" : "Salvar alterações"}
+          {saving ? t("salvando") : t("ck_salvar_alteracoes")}
         </button>
       </div>
     </div>

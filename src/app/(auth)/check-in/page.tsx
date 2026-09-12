@@ -7,6 +7,7 @@ import { getLocalDate } from "@/lib/utils";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { MOOD_CHIPS, getMoodLabel } from "@/lib/checkin-moods";
 import { invalidateFetchCache } from "@/lib/fetch-cache";
+import { useTranslation } from "@/lib/useTranslation";
 import {
   EditCheckInView,
   CheckInAnswers,
@@ -68,13 +69,14 @@ function buildSteps(enabledKeys: string[], hasSuicidal: boolean, hasSleepLog: bo
 // ── Shared loading screen ─────────────────────────────────────────────────────
 
 function LoadingScreen() {
+  const { t } = useTranslation();
   return (
     <div style={{
       minHeight: "100dvh",
       background: "oklch(0.12 0.012 270)",
       display: "flex", alignItems: "center", justifyContent: "center",
     }}>
-      <p style={{ color: "#e0d6ff", fontSize: 13 }}>Carregando…</p>
+      <p style={{ color: "#e0d6ff", fontSize: 13 }}>{t("carregando")}</p>
     </div>
   );
 }
@@ -88,6 +90,7 @@ function CheckInStage({ stepIdx, totalForProgress, isDone, onClose, children }: 
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const progress = Math.min(stepIdx + 1, totalForProgress);
 
   return (
@@ -98,7 +101,7 @@ function CheckInStage({ stepIdx, totalForProgress, isDone, onClose, children }: 
       position: "relative", transition: "background .6s ease",
     }}>
       {!isDone && (
-        <button type="button" onClick={onClose} aria-label="Fechar" style={{
+        <button type="button" onClick={onClose} aria-label={t("ck_fechar")} style={{
           position: "fixed", top: 14, left: 16, zIndex: 10,
           width: 36, height: 36, borderRadius: 9999, border: 0, cursor: "pointer",
           background: "oklch(0.16 0.012 270 / 0.85)", backdropFilter: "blur(12px)",
@@ -133,7 +136,7 @@ function CheckInStage({ stepIdx, totalForProgress, isDone, onClose, children }: 
           margin: 0, fontFamily: "var(--font-sans)", fontSize: 10,
           color: "var(--muted-foreground)", letterSpacing: ".16em", textTransform: "uppercase",
         }}>
-          {String(progress).padStart(2, "0")} de {String(totalForProgress).padStart(2, "0")}
+          {t("ck_step_of", { current: String(progress).padStart(2, "0"), total: String(totalForProgress).padStart(2, "0") })}
         </p>
       )}
 
@@ -164,6 +167,7 @@ function StepFooter({ onPrev, onNext, nextLabel, nextDisabled, secondary }: {
   nextDisabled?: boolean;
   secondary?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <div style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 20,
@@ -175,7 +179,7 @@ function StepFooter({ onPrev, onNext, nextLabel, nextDisabled, secondary }: {
           background: "transparent", border: 0, cursor: "pointer",
           fontFamily: "inherit", fontSize: 13, color: "var(--muted-foreground)",
           padding: "8px 0", flexShrink: 0,
-        }}>← Voltar</button>
+        }}>{t("voltar")}</button>
         {secondary}
         <div style={{ flex: 1 }} />
         {onNext && (
@@ -186,7 +190,7 @@ function StepFooter({ onPrev, onNext, nextLabel, nextDisabled, secondary }: {
             color: nextDisabled ? "oklch(0.55 0.03 270)" : "#fff",
             fontFamily: "inherit", fontSize: 14, fontWeight: 600, flexShrink: 0,
             boxShadow: nextDisabled ? "none" : "0 4px 14px -4px oklch(0.5 0.12 270 / .45)",
-          }}>{nextLabel ?? "Continuar"}</button>
+          }}>{nextLabel ?? t("ck_continuar")}</button>
         )}
       </div>
     </div>
@@ -202,6 +206,7 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
   onNext: () => void;
   onPrev: () => void;
 }) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const [tags, setTags] = useState<string[]>(initialMoodTags);
 
@@ -220,10 +225,10 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
   return (
     <>
       <h1 style={{ margin: "0 0 6px", fontSize: 28, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.1 }}>
-        Como você está?
+        {t("ck_feeling_title")}
       </h1>
       <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--muted-foreground)" }}>
-        Escolha mais de um humor que tenha feito sentido até esse momento
+        {t("ck_feeling_sub")}
       </p>
 
       {/* Emotion chips */}
@@ -254,10 +259,10 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
       </div>
 
       <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>
-        💬 Como está seu coração hoje?
+        {t("ck_feeling_heart")}
       </p>
       <div ref={ref} contentEditable suppressContentEditableWarning
-        data-placeholder="Escreva como você está se sentindo... use suas próprias palavras"
+        data-placeholder={t("ck_feeling_placeholder")}
         onInput={(e) => onChange((e.target as HTMLElement).innerText)}
         style={{
           outline: "none", fontSize: 16, lineHeight: 1.6, fontWeight: 400,
@@ -272,7 +277,7 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
         <button type="button" onClick={onPrev} style={{
           background: "transparent", border: 0, cursor: "pointer",
           fontFamily: "inherit", fontSize: 13, color: "var(--muted-foreground)",
-        }}>← Voltar</button>
+        }}>{t("voltar")}</button>
         <button type="button" onClick={onNext} style={{
           height: 48, padding: "0 24px", borderRadius: 14,
           background: "#7C5CFF", color: "#fff", border: 0, cursor: "pointer",
@@ -280,7 +285,7 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
           display: "inline-flex", alignItems: "center", gap: 6,
           boxShadow: "0 4px 14px -4px oklch(0.5 0.12 270 / .45)",
         }}>
-          Continuar
+          {t("ck_continuar")}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M5 12h14M13 5l7 7-7 7" />
           </svg>
@@ -292,12 +297,12 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
 
 // ── Sleep Step (shown only when no sleep log exists for today) ────────────────
 
-const SLEEP_EMOJIS: { emoji: string; label: string; quality: number }[] = [
-  { emoji: "😩", label: "Péssimo", quality: 1 },
-  { emoji: "😕", label: "Ruim",    quality: 2 },
-  { emoji: "😐", label: "Ok",      quality: 3 },
-  { emoji: "🙂", label: "Bom",     quality: 4 },
-  { emoji: "😊", label: "Ótimo",   quality: 5 },
+const SLEEP_EMOJIS: { emoji: string; labelKey: string; quality: number }[] = [
+  { emoji: "😩", labelKey: "sono_qualidade_1", quality: 1 },
+  { emoji: "😕", labelKey: "sono_qualidade_2", quality: 2 },
+  { emoji: "😐", labelKey: "sono_qualidade_3", quality: 3 },
+  { emoji: "🙂", labelKey: "sono_qualidade_4", quality: 4 },
+  { emoji: "😊", labelKey: "sono_qualidade_5", quality: 5 },
 ];
 
 const sleepTimeWrap: React.CSSProperties = {
@@ -317,6 +322,7 @@ function SleepStep({ onAnswer, onPrev }: {
   onAnswer: (quality: number, startTime: string, endTime: string) => void;
   onPrev: () => void;
 }) {
+  const { t } = useTranslation();
   const [quality, setQuality] = useState<number | null>(null);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -331,22 +337,22 @@ function SleepStep({ onAnswer, onPrev }: {
     <>
       <div style={{ fontSize: 64, lineHeight: 1, marginBottom: 16 }}>🌙</div>
       <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
-        Como foi seu sono?
+        {t("ck_sleep_title")}
       </h1>
       <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--muted-foreground)" }}>
-        Ainda não há registro de hoje — registre aqui
+        {t("ck_sleep_no_log")}
       </p>
 
       {/* Times */}
       <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
         <div style={{ flex: 1 }}>
-          {label11("Fui dormir")}
+          {label11(t("ck_fui_dormir"))}
           <div style={sleepTimeWrap}>
             <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={sleepTimeInput} />
           </div>
         </div>
         <div style={{ flex: 1 }}>
-          {label11("Acordei")}
+          {label11(t("ck_acordei"))}
           <div style={sleepTimeWrap}>
             <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={sleepTimeInput} />
           </div>
@@ -355,9 +361,9 @@ function SleepStep({ onAnswer, onPrev }: {
 
       {/* Quality */}
       <div style={{ marginTop: 20 }}>
-        {label11("Qualidade")}
+        {label11(t("sono_qualidade_label"))}
         <div style={{ display: "flex", gap: 6, justifyContent: "space-between" }}>
-          {SLEEP_EMOJIS.map(({ emoji, label, quality: q }) => (
+          {SLEEP_EMOJIS.map(({ emoji, labelKey, quality: q }) => (
             <button key={q} type="button" onClick={() => setQuality(q)} style={{
               flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
               padding: "12px 2px", borderRadius: 14, border: 0, cursor: "pointer",
@@ -368,7 +374,7 @@ function SleepStep({ onAnswer, onPrev }: {
             }}>
               <span style={{ fontSize: 26 }}>{emoji}</span>
               <span style={{ fontSize: 10, fontWeight: 600, color: quality === q ? "#e0d6ff" : "var(--muted-foreground)" }}>
-                {label}
+                {t(labelKey)}
               </span>
             </button>
           ))}
@@ -378,14 +384,14 @@ function SleepStep({ onAnswer, onPrev }: {
       <StepFooter
         onPrev={onPrev}
         onNext={() => quality && onAnswer(quality, startTime, endTime)}
-        nextLabel="Registrar sono"
+        nextLabel={t("ck_sleep_log")}
         nextDisabled={!quality}
         secondary={
           <button type="button" onClick={() => onAnswer(3, "", "")} style={{
             background: "transparent", border: 0, cursor: "pointer",
             fontFamily: "inherit", fontSize: 12.5, color: "var(--muted-foreground)",
             textDecoration: "underline", padding: "8px 0", flexShrink: 0,
-          }}>Pular</button>
+          }}>{t("ck_pular")}</button>
         }
       />
     </>
@@ -399,15 +405,16 @@ function WaterStep({ initialCups, onAnswer, onPrev }: {
   onAnswer: (cups: number) => void;
   onPrev: () => void;
 }) {
+  const { t } = useTranslation();
   const [cups, setCups] = useState<number>(initialCups);
 
   return (
     <>
       <h1 style={{ margin: "0 0 6px", fontSize: 26, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
-        Quantos copos bebeu hoje?
+        {t("ck_water_title")}
       </h1>
       <p style={{ margin: "0 0 26px", fontSize: 13, color: "var(--muted-foreground)" }}>
-        1 copo = 250ml · meta: {WATER_GOAL} copos (1L)
+        {t("ck_water_hint", { goal: String(WATER_GOAL) })}
       </p>
 
       <WaterCupSelector
@@ -415,7 +422,7 @@ function WaterStep({ initialCups, onAnswer, onPrev }: {
         onChange={(n) => setCups(Math.max(0, Math.min(n, WATER_MAX)))}
       />
 
-      <StepFooter onPrev={onPrev} onNext={() => onAnswer(cups)} nextLabel={cups === 0 ? "Não bebi" : "Continuar"} />
+      <StepFooter onPrev={onPrev} onNext={() => onAnswer(cups)} nextLabel={cups === 0 ? t("ck_water_no") : t("ck_continuar")} />
     </>
   );
 }
@@ -429,7 +436,8 @@ function HabitStep({ habitKey, context, onAnswer, onSkip, onPrev }: {
   onSkip: () => void;
   onPrev: () => void;
 }) {
-  const base = HABIT_COPY[habitKey] ?? { emoji: "•", label: habitKey, a: "Sim", b: "Não" };
+  const { t } = useTranslation();
+  const base = HABIT_COPY[habitKey] ?? { emoji: "•", labelKey: habitKey, aKey: "sim", bKey: "nao" };
   const label = getHabitLabel(habitKey, context);
 
   return (
@@ -450,7 +458,7 @@ function HabitStep({ habitKey, context, onAnswer, onSkip, onPrev }: {
             strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12 10 17 19 7" />
           </svg>
-          {base.a}
+          {t(base.aKey)}
         </button>
         <button type="button" onClick={() => onAnswer(habitKey, false)} style={{
           flex: 1, height: 56, borderRadius: 16,
@@ -458,13 +466,13 @@ function HabitStep({ habitKey, context, onAnswer, onSkip, onPrev }: {
           border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer",
           fontFamily: "inherit", fontSize: 16, fontWeight: 500,
           color: "#e0d6ff", letterSpacing: "-0.005em",
-        }}>{base.b}</button>
+        }}>{t(base.bKey)}</button>
       </div>
       <button type="button" onClick={onSkip} style={{
         marginTop: 14, background: "transparent", border: 0, cursor: "pointer",
         fontFamily: "inherit", fontSize: 12.5, color: "var(--muted-foreground)",
         textDecoration: "underline", alignSelf: "center",
-      }}>Prefiro não responder</button>
+      }}>{t("ck_prefiro_nao")}</button>
       <StepFooter onPrev={onPrev} />
     </>
   );
@@ -479,15 +487,16 @@ function MeditationStep({ selected, hasFaith, onToggle, onNext, onPrev }: {
   onNext: () => void;
   onPrev: () => void;
 }) {
+  const { t } = useTranslation();
   const options = MEDITATION_OPTIONS.filter((o) => o.key !== "prayer" || hasFaith);
   return (
     <>
       <div style={{ fontSize: 64, lineHeight: 1, marginBottom: 16 }}>🧘</div>
       <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
-        O que você fez hoje?
+        {t("ck_meditation_what")}
       </h1>
       <p style={{ margin: "6px 0 26px", fontSize: 13, color: "var(--muted-foreground)" }}>
-        Marque tudo o que se aplicar
+        {t("ck_mark_all")}
       </p>
       <HabitChipSelector options={options} selected={selected} onToggle={onToggle} />
       <StepFooter onPrev={onPrev} onNext={onNext} />
@@ -503,14 +512,15 @@ function ExerciseStep({ selected, onToggle, onNext, onPrev }: {
   onNext: () => void;
   onPrev: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       <div style={{ fontSize: 64, lineHeight: 1, marginBottom: 16 }}>🏃</div>
       <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
-        Você se exercitou hoje?
+        {t("ck_exercise_q")}
       </h1>
       <p style={{ margin: "6px 0 26px", fontSize: 13, color: "var(--muted-foreground)" }}>
-        Marque tudo o que se aplicar
+        {t("ck_mark_all")}
       </p>
       <HabitChipSelector options={EXERCISE_OPTIONS} selected={selected} onToggle={onToggle} />
       <StepFooter onPrev={onPrev} onNext={onNext} />
@@ -526,6 +536,7 @@ function GratitudeStep({ initialValue, initialPhotos, onChange, onPhotosChange, 
   onNext: () => void;
   onPrev: () => void;
 }) {
+  const { t } = useTranslation();
   const textRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<string[]>(initialPhotos);
@@ -539,16 +550,16 @@ function GratitudeStep({ initialValue, initialPhotos, onChange, onPhotosChange, 
       const compressed = await compressImage(file);
       const path = await uploadToCloud(compressed, "diary");
       setPhotos((prev) => { const next = [...prev, path]; onPhotosChange(next); return next; });
-    } catch { toast.error("Erro ao processar imagem"); }
+    } catch { toast.error(t("ck_erro_imagem")); }
   }, [onPhotosChange]);
 
   return (
     <>
       <h1 style={{ margin: "0 0 8px", fontSize: 28, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
-        Pelo que você foi grata hoje?
+        {t("ck_gratidao_question")}
       </h1>
       <p style={{ margin: "0 0 26px", fontSize: 14, color: "var(--muted-foreground)" }}>
-        Uma palavra, um momento, alguém…
+        {t("ck_gratidao_placeholder")}
       </p>
       <div ref={textRef} contentEditable suppressContentEditableWarning data-placeholder="…"
         onInput={(e) => onChange((e.target as HTMLElement).innerText)}
@@ -567,7 +578,7 @@ function GratitudeStep({ initialValue, initialPhotos, onChange, onPhotosChange, 
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
             <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-5-5L5 21" />
           </svg>
-          Adicionar foto
+          {t("ck_add_photo")}
         </button>
         {photos.map((p) => (
           <div key={p} style={{ position: "relative", width: 52, height: 52, borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
@@ -585,16 +596,17 @@ function GratitudeStep({ initialValue, initialPhotos, onChange, onPhotosChange, 
 }
 
 function ConfirmStep({ onAnswer, onPrev }: { onAnswer: (v: boolean) => void; onPrev: () => void; }) {
+  const { t } = useTranslation();
   return (
     <>
       <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".16em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
-        Só pra confirmar
+        {t("ck_confirm_label")}
       </p>
       <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.3 }}>
-        Hoje você sentiu vontade de se machucar ou de se ir?
+        {t("ck_confirm_q")}
       </h1>
       <p style={{ margin: "12px 0 0", fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
-        Pergunto pra cuidar de você. Tudo que você responde aqui fica entre nós.
+        {t("ck_confirm_sub")}
       </p>
       <div style={{ marginTop: 36, display: "flex", flexDirection: "column", gap: 8 }}>
         <button type="button" onClick={() => onAnswer(false)} style={{
@@ -603,13 +615,13 @@ function ConfirmStep({ onAnswer, onPrev }: { onAnswer: (v: boolean) => void; onP
           border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer",
           fontFamily: "inherit", fontSize: 15, fontWeight: 500,
           color: "#7C5CFF", textAlign: "left", padding: "0 18px",
-        }}>Não, hoje não.</button>
+        }}>{t("ck_confirm_no")}</button>
         <button type="button" onClick={() => onAnswer(true)} style={{
           height: 52, borderRadius: 14,
           background: "rgba(255,77,77,0.15)", border: "1px solid rgba(255,77,77,0.3)",
           cursor: "pointer", fontFamily: "inherit", fontSize: 15, fontWeight: 500,
           color: "#FF6B6B", textAlign: "left", padding: "0 18px",
-        }}>Sim, tive esse pensamento.</button>
+        }}>{t("ck_confirm_yes")}</button>
       </div>
       <StepFooter onPrev={onPrev} />
     </>
@@ -617,6 +629,7 @@ function ConfirmStep({ onAnswer, onPrev }: { onAnswer: (v: boolean) => void; onP
 }
 
 function DoneStep() {
+  const { t } = useTranslation();
   return (
     <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{
@@ -631,8 +644,8 @@ function DoneStep() {
           <path d="M5 12 10 17 19 7" />
         </svg>
       </div>
-      <h1 style={{ margin: 0, fontSize: 32, fontWeight: 700, letterSpacing: "-0.025em" }}>Registrado.</h1>
-      <p style={{ margin: "8px 0 0", fontSize: 15, color: "var(--muted-foreground)" }}>Até amanhã.</p>
+      <h1 style={{ margin: 0, fontSize: 32, fontWeight: 700, letterSpacing: "-0.025em" }}>{t("ck_done_title")}</h1>
+      <p style={{ margin: "8px 0 0", fontSize: 15, color: "var(--muted-foreground)" }}>{t("ck_done_sub")}</p>
     </div>
   );
 }
@@ -641,6 +654,7 @@ function DoneStep() {
 
 export default function CheckInPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
@@ -720,7 +734,7 @@ export default function CheckInPage() {
       });
       if (answers.suicidal_thoughts) {
         toast.warning(
-          "Se estiver passando por um momento difícil, o CVV pode ajudar. Ligue 188 ou acesse cvv.org.br — é gratuito e sigiloso.",
+          t("ck_cvv"),
           { duration: 12000 }
         );
       }
@@ -728,7 +742,7 @@ export default function CheckInPage() {
       router.push("/dashboard");
       router.refresh();
     } catch {
-      toast.error("Erro ao salvar alterações");
+      toast.error(t("ck_erro_salvar"));
       setSaving(false);
     }
   }, [answers, router]);
@@ -826,7 +840,7 @@ export default function CheckInPage() {
       .then(() => {
         if (data.suicidal_thoughts) {
           toast.warning(
-            "Se estiver passando por um momento difícil, o CVV pode ajudar. Ligue 188 ou acesse cvv.org.br — é gratuito e sigiloso.",
+            t("ck_cvv"),
             { duration: 12000 }
           );
         }

@@ -1,5 +1,6 @@
 "use client";
 import { getLocale } from "@/lib/language";
+import { useTranslation } from "@/lib/useTranslation";
 
 import { useEffect, useState, use, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -62,6 +63,7 @@ export default function EditCheckInPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [checkIn, setCheckIn] = useState<CheckIn | null>(null);
@@ -140,16 +142,13 @@ export default function EditCheckInPage({
         body: JSON.stringify({ ...answers }),
       });
       if (answers.suicidal_thoughts) {
-        toast.warning(
-          "Se estiver passando por um momento difícil, o CVV pode ajudar. Ligue 188 ou acesse cvv.org.br — é gratuito e sigiloso.",
-          { duration: 12000 }
-        );
+        toast.warning(t("ck_cvv"), { duration: 12000 });
       }
       invalidateFetchCache("/api/check-ins");
       router.push("/historico");
       router.refresh();
     } catch {
-      toast.error("Erro ao salvar alterações");
+      toast.error(t("ck_erro_salvar"));
       setSaving(false);
     }
   }, [answers, router]);
@@ -172,7 +171,7 @@ export default function EditCheckInPage({
         background: "oklch(0.12 0.012 270)",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <p style={{ color: "#e0d6ff", fontSize: 13 }}>Carregando…</p>
+        <p style={{ color: "#e0d6ff", fontSize: 13 }}>{t("carregando")}</p>
       </div>
     );
   }
@@ -185,7 +184,7 @@ export default function EditCheckInPage({
         display: "flex", alignItems: "center", justifyContent: "center",
         flexDirection: "column", gap: 12, padding: "0 24px",
       }}>
-        <p style={{ color: "#e0d6ff", fontSize: 15 }}>Check-in não encontrado.</p>
+        <p style={{ color: "#e0d6ff", fontSize: 15 }}>{t("ck_not_found")}</p>
         <button
           type="button"
           onClick={() => router.push("/historico")}
@@ -195,7 +194,7 @@ export default function EditCheckInPage({
             fontSize: 14, fontWeight: 600,
           }}
         >
-          Voltar ao histórico
+          {t("ck_back_history")}
         </button>
       </div>
     );
@@ -214,9 +213,9 @@ export default function EditCheckInPage({
     const moodTags = checkIn.mood_tags ?? [];
 
     const habit = (key: string): { emoji: string; label: string } => {
-      if (key === "exercise_walk") return { emoji: "🏃", label: "Exercício" };
-      if (key === "meditation_prayer_breathing") return { emoji: "🧘", label: "Pausa" };
-      if (key === "ate_well") return { emoji: "🍽️", label: "Comeu bem" };
+      if (key === "exercise_walk") return { emoji: "🏃", label: t("ck_exercise") };
+      if (key === "meditation_prayer_breathing") return { emoji: "🧘", label: t("ck_habit_pause") };
+      if (key === "ate_well") return { emoji: "🍽️", label: t("ck_ate_well") };
       return { emoji: HABIT_COPY[key]?.emoji ?? "•", label: getHabitLabel(key, context) };
     };
 
@@ -228,7 +227,7 @@ export default function EditCheckInPage({
         paddingBottom: 100,
       }}>
         {/* Close */}
-        <button type="button" onClick={() => router.push("/historico")} aria-label="Fechar" style={{
+        <button type="button" onClick={() => router.push("/historico")} aria-label={t("ck_fechar")} style={{
           position: "fixed", top: 14, left: 16, zIndex: 10,
           width: 36, height: 36, borderRadius: 9999, border: 0, cursor: "pointer",
           background: "oklch(0.16 0.012 270 / 0.85)", backdropFilter: "blur(12px)",
@@ -247,10 +246,10 @@ export default function EditCheckInPage({
             margin: "0 0 4px", fontSize: 11, fontWeight: 700, letterSpacing: ".16em",
             textTransform: "uppercase", color: "var(--muted-foreground)",
           }}>
-            Check-in de {dateLabel}
+            {t("ck_checkin_of", { date: dateLabel })}
           </p>
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.1 }}>
-            Somente leitura
+            {t("ck_readonly")}
           </h1>
         </div>
 
@@ -262,15 +261,14 @@ export default function EditCheckInPage({
             border: "1px solid oklch(0.5 0.12 270 / .16)",
             fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.5,
           }}>
-            🔒 Check-ins com mais de {EDIT_WINDOW_DAYS} dias não podem mais ser editados.
-            Você ainda pode rever este registro.
+            {t("ck_locked_notice", { days: String(EDIT_WINDOW_DAYS) })}
           </div>
 
           {/* Mood */}
           {moodTags.length > 0 && (
             <section>
               <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-                Como você estava
+                {t("ck_how_were")}
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                 {moodTags.map((tag) => {
@@ -297,7 +295,7 @@ export default function EditCheckInPage({
           {checkIn.feeling && (
             <section>
               <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-                Como você está
+                {t("ck_how_are")}
               </p>
               <p style={{
                 margin: 0, fontSize: 15, lineHeight: 1.55, fontWeight: 500,
@@ -314,7 +312,7 @@ export default function EditCheckInPage({
           {checkIn.gratitude && (
             <section>
               <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-                Gratidão
+                {t("ck_gratidao")}
               </p>
               <p style={{
                 margin: 0, fontSize: 16, lineHeight: 1.55, fontStyle: "italic",
@@ -331,7 +329,7 @@ export default function EditCheckInPage({
           {habitKeys.length > 0 && (
             <section>
               <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-                Seu dia
+                {t("ck_your_day")}
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {habitKeys.map((key) => {
@@ -367,7 +365,7 @@ export default function EditCheckInPage({
               transition: "background .15s ease",
             }}
           >
-            Voltar ao histórico
+            {t("ck_back_history")}
           </button>
         </div>
       </div>
@@ -386,7 +384,7 @@ export default function EditCheckInPage({
       saving={saving}
       todaySleep={todaySleep}
       dirty={dirty}
-      eyebrow={`Check-in de ${dateLabel}`}
+      eyebrow={t("ck_checkin_of", { date: dateLabel })}
     />
   );
 }
