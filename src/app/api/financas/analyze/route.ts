@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { NextRequest, NextResponse } from "next/server";
 import { callLLM, toImageBlock } from "@/lib/llm";
+import { getLocalDate } from "@/lib/utils";
 
 const EXPENSE_IDS = ["moradia", "alimentacao", "transporte", "saude_beleza", "educacao", "lazer", "pessoal", "servicos_fin", "comunicacao", "doacoes", "pet", "personalizada"];
 const INCOME_IDS = ["salario", "freelance", "investimentos", "presente", "outros"];
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
   const expenseCats = expenseGuide || `Categorias de despesa (ids): ${EXPENSE_IDS.join(", ")}`;
   const incomeCats = incomeGuide || `Categorias de receita (ids): ${INCOME_IDS.join(", ")}`;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDate();
   const safeMediaType = (mediaType as string) || "image/jpeg";
   const cleanBase64 = (photoBase64 as string).replace(/^data:image\/\w+;base64,/, "");
 

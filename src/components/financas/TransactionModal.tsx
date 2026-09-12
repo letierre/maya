@@ -9,6 +9,7 @@ import type { CustomCat, SubcatOverrides } from "@/lib/financas-categories";
 import type { UserCategory } from "@/lib/financas-categories";
 import { CategoryPicker } from "./CategoryPicker";
 import { CustomCatModal } from "./CustomCatModal";
+import { getLocalDate } from "@/lib/utils";
 
 type TxDraft = {
   type: "receita" | "despesa";
@@ -49,7 +50,7 @@ export function TransactionModal({
   const [category, setCat]      = useState<string>(initial?.category ?? prefill?.category ?? "");
   const [subcategory, setSubcat]= useState<string>(initial?.subcategory ?? prefill?.subcategory ?? "");
   const [desc, setDesc]         = useState(initial?.description ?? prefill?.description ?? "");
-  const [date, setDate]         = useState(initial?.date ?? prefill?.date ?? new Date().toISOString().slice(0, 10));
+  const [date, setDate]         = useState(initial?.date ?? prefill?.date ?? getLocalDate());
   const [saving, setSaving]     = useState(false);
   const [showCustomEdit, setShowCustomEdit] = useState(false);
 
@@ -210,7 +211,7 @@ export function TransactionModal({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              style={inputStyle}
+              style={{ ...inputStyle, WebkitAppearance: "none", appearance: "none", minWidth: 0 }}
             />
           </div>
         </div>

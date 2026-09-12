@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Camera, ImageIcon, X, ArrowLeft } from "lucide-react";
 import { compressImage } from "@/lib/photo-storage";
+import { getLocalDate } from "@/lib/utils";
 import { useTranslation } from "@/lib/useTranslation";
 import { t as tFn, type Lang } from "@/lib/i18n";
 import { mergeCats, type CustomCat, type UserCategory, type SubcatOverrides, type FinCat } from "@/lib/financas-categories";
@@ -161,7 +162,7 @@ export default function FinancasRegistrarPage() {
             category: t.category ?? "",
             subcategory: t.subcategory ?? "",
             description: t.description ?? "",
-            date: t.date ?? new Date().toISOString().slice(0, 10),
+            date: t.date ?? getLocalDate(),
           }, hiddenCatIds, userCategories, customCat, subcatOverrides)));
         } else {
           toast.error("Não consegui ler os dados da foto. Preencha manualmente abaixo.");
@@ -213,7 +214,7 @@ export default function FinancasRegistrarPage() {
   const addDraft = () =>
     setDrafts((prev) => [...prev, {
       type: "despesa", amount: "", category: "", subcategory: "",
-      description: "", date: new Date().toISOString().slice(0, 10),
+      description: "", date: getLocalDate(),
     }]);
 
   const inputS: React.CSSProperties = {
@@ -405,7 +406,7 @@ export default function FinancasRegistrarPage() {
                   type="date"
                   value={d.date}
                   onChange={(e) => updateDraft(i, { date: e.target.value })}
-                  style={inputS}
+                  style={{ ...inputS, WebkitAppearance: "none", appearance: "none", minWidth: 0 }}
                 />
               </div>
             </div>
