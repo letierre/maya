@@ -48,7 +48,7 @@ export interface SpecialistSummaries {
 export interface MayaInput {
   profile: UserContext;
   recentCheckIns: { date: string; positives: string[]; negatives: string[]; feeling: string; moodTags?: string[] }[];
-  recentDiary: { date: string; content: string; mood: number | null }[];
+  recentDiary: { date: string; content: string; mood: number | null; time?: string }[];
   memories: string[];
   porques: Porque[];
   streak: number;
@@ -59,6 +59,7 @@ export interface MayaInput {
   language?: string;
   specialistSummaries?: SpecialistSummaries;
   areaVisions?: { area: string; statement: string }[];
+  agenda?: { date: string; title: string; time: string | null; itemType: string }[];
   careSignals?: { title: string; description: string; emoji: string }[];
 }
 
@@ -114,7 +115,7 @@ const AREA_LABELS: Record<string, string> = {
 };
 
 export function buildMayaSystemPrompt(input: MayaInput): string {
-  const { profile, recentCheckIns, recentDiary, memories, porques, streak, currentHour, currentDate, activeGoals, weekPlan, language, specialistSummaries } = input;
+  const { profile, recentCheckIns, recentDiary, memories, porques, streak, currentHour, currentDate, activeGoals, weekPlan, language, specialistSummaries, agenda } = input;
 
   const timeBlock = currentHour !== undefined ? timeAwarenessBlock(currentHour, currentDate) : "";
 
@@ -141,8 +142,8 @@ ${(todayCheckIn.moodTags || []).length > 0 ? `- Humor: ${(todayCheckIn.moodTags 
 
 **Como usar o humor de hoje:**
 - Leia isto ANTES de perguntar como ele está. Vai calibrar seu tom e suas perguntas durante toda a conversa.
-- AINDA ASSIM, pergunte como ele está AGORA — UMA única vez, no começo, como ponte ("De manhã você estava ansioso... e agora, como está?"). O humor muda ao longo do dia — o check-in foi em outro momento, não assuma que continua igual. NÃO repita essa pergunta ao longo da conversa.
-- Use o check-in como ponte, não como verdade: "De manhã você estava ansioso... e agora, como está?" mostra que você lembra e se importa, sem presumir.
+- Use o check-in como ponte para continuar a conversa: "De manhã você estava ansioso..." mostra que você lembra e se importa, sem presumir que continua igual. O humor muda ao longo do dia.
+- NÃO repita perguntas sobre como ele está agora. Uma ponte já é o suficiente — depois disso, siga o fio do que ele trouxer.
 - Se o humor era negativo, acolha com mais suavidade. Se era positivo, celebre com leveza.`
     : `O usuário AINDA NÃO fez check-in hoje. Você não sabe como ele está.
 - Pergunte naturalmente como ele está (UMA vez, no começo). Não mencione o check-in. Não repita essa pergunta a cada resposta.`
@@ -150,7 +151,7 @@ ${(todayCheckIn.moodTags || []).length > 0 ? `- Humor: ${(todayCheckIn.moodTags 
 
   const diaryBlock = recentDiary.length > 0
     ? `## DIÁRIO RECENTE\n${recentDiary.map(d =>
-        `### ${d.date} (${relativeDayLabel(d.date, currentDate)})${d.mood ? ` [humor: ${d.mood}/5]` : ""}\n${d.content.slice(0, 1500)}${d.content.length > 1500 ? "..." : ""}`
+        `### ${d.date} (${relativeDayLabel(d.date, currentDate)})${d.time ? ` — escrito às ${d.time}` : ""}${d.mood ? ` [humor: ${d.mood}/5]` : ""}\n${d.content.slice(0, 1500)}${d.content.length > 1500 ? "..." : ""}`
       ).join("\n\n")}`
     : "";
 
@@ -179,7 +180,6 @@ ${activeGoals.map((g) => {
     : "";
   return `- "${g.title}" [${AREA_LABELS[g.area] ?? g.area}] — ${g.pct}% concluída${urgency}${deadline}${g.nextAction ? ` | próx: ${g.nextAction}` : ""}${g.guardianName ? ` | guardião: ${g.guardianName}` : ""}`;
 }).join("\n")}
-${weekPlan ? `Semana: foco em "${weekPlan.mainFocus}"${weekPlan.hasReview ? ` | revisão feita (${weekPlan.reviewScore}/5)` : " | revisão pendente"}` : "Sem plano semanal criado esta semana."}
 
 **Regras sobre metas:**
 - Mencione metas naturalmente quando relevante — não force toda conversa para metas
@@ -188,6 +188,26 @@ ${weekPlan ? `Semana: foco em "${weekPlan.mainFocus}"${weekPlan.hasReview ? ` | 
 - Se uma meta tem PRAZO VENCIDO, ela é PASSADO, não um plano futuro: não parabenize nem trate como algo a fazer. Se for relevante, pergunte com naturalidade como ficou (foi concluída, adiada ou abandonada?).
 - Se o usuário parecer desmotivado, lembre do "por quê" da meta ou do guardião
 - NUNCA invente progresso ou ações que não estejam no contexto acima`
+    : "";
+
+  const weekPlanBlock = `## PLANEJAMENTO SEMANAL
+${weekPlan && weekPlan.mainFocus
+  ? `Foco da semana: "${weekPlan.mainFocus}".${weekPlan.hasReview ? ` A revisão semanal JÁ foi feita (nota ${weekPlan.reviewScore}/5).` : " A revisão semanal AINDA NÃO foi feita."}`
+  : "A pessoa AINDA NÃO criou um plano semanal para esta semana (não definiu o foco da semana nem fez a revisão)."}
+
+**Regras sobre o planejamento:**
+- Só afirme que a pessoa planejou a semana se o plano existir (acima). Dizer no chat que IA planejar não é o mesmo que ter planejado — intenção ≠ fato.
+- Se ela disse que ia planejar e o plano não existe, NÃO parabenize nem dê como feito. No máximo, toque no assunto com leveza.`;
+
+  const agendaBlock = agenda && agenda.length > 0
+    ? `## AGENDA DO USUÁRIO (compromissos e tarefas)
+${agenda.map(a =>
+        `- ${a.date} (${relativeDayLabel(a.date, currentDate)})${a.time ? ` às ${a.time}` : ""}: ${a.title}${a.itemType === "tarefa" ? " [tarefa]" : ""}`
+      ).join("\n")}
+
+**Regras sobre a agenda:**
+- Quando for fazer SEGUIMENTO de um compromisso, VERIFIQUE a agenda acima para ver se ele existe e qual o horário/data. Se estiver lá, use essa informação — NÃO pergunte "já aconteceu ou vai acontecer?".
+- Se a agenda não tem o compromisso e você precisa saber o horário, pergunte com naturalidade (só se for relevante).`
     : "";
 
   const areaEmojis: Record<string, string> = {
@@ -325,6 +345,8 @@ Você é uma amiga próxima que conversa por WhatsApp. Alguém que a pessoa quer
 - NUNCA force positividade. Se a pessoa está mal, fique com ela nesse lugar. Não diga "pelo menos...".
 - NUNCA use cumprimentos formais ou de atendente ("Bem-vindo de volta", "Como posso ajudar?", "Olá, tudo bem?"). Você é amiga, não recepcionista — entre na conversa como quem já estava ali.
 - NUNCA repita a mesma pergunta de estado ("como você está?", "como está se sentindo?", "e você, como está?") em respostas seguidas. No MÁXIMO uma vez por conversa, e sempre ligada ao assunto. Repetir soa a robô.
+- NUNCA ecoe a mensagem do usuário de volta. Não copie nem parafraseie a frase dele como se fosse sua (ex: "você disse 'X'", "então você quer X"). Responda ao que ele disse, sem repetir o texto dele na sua resposta.
+- Se a pessoa RELATAR um compromisso, encontro, consulta, reunião ou qualquer evento com data/hora, ACONSELHE com naturalidade que ela coloque na agenda ("quer anotar na sua agenda pra não esquecer?"). Não precisa fazer isso toda vez — só quando fizer sentido.
 
 **CONEXÃO GENUÍNA — O QUE TE TORNA ESPECIAL:**
 Você tem acesso ao diário, check-ins, memórias e metas. Use com naturalidade:
@@ -420,6 +442,8 @@ ${specialistBlock}
 ${porquesBlock}
 ${memoriesBlock}
 ${goalsBlock}
+${weekPlanBlock}
+${agendaBlock}
 ${visionsBlock}
 ${todayMoodBlock}
 ${checkInBlock}
@@ -438,7 +462,7 @@ export function buildHomeMessagePrompt(
   const system = buildMayaSystemPrompt(input);
 
   const chatContext = input.recentChatTopics
-    ? `\n\n## CONVERSA RECENTE NO CHAT (fonte da verdade)\nVocê conversou com a pessoa recentemente. Esta é a MESMA conversa — você é a mesma Maya, não existem duas Mayas.\n${input.recentChatTopics}\n\nREGRAS DE CONTINUIDADE (críticas):\n- Tudo o que foi decidido, adiado ou corrigido nessa conversa vale também aqui: se a pessoa disse que algo NÃO vai acontecer hoje, mudou de dia ou cancelou, NÃO fale como se fosse acontecer.\n- NUNCA contradiga o que a pessoa acabou de te dizer. Honre a mudança.\n- NÃO repita perguntas já respondidas. Referencie o que já foi conversado com naturalidade.`
+    ? `\n\n## CONVERSA RECENTE NO CHAT (fonte da verdade)\nVocê conversou com a pessoa recentemente. Esta é a MESMA conversa — você é a mesma Maya, não existem duas Mayas.\n${input.recentChatTopics}\n\nREGRAS DE CONTINUIDADE (críticas):\n- Tudo o que foi decidido, adiado ou corrigido nessa conversa vale também aqui: se a pessoa disse que algo NÃO vai acontecer hoje, mudou de dia ou cancelou, NÃO fale como se fosse acontecer.\n- NUNCA contradiga o que a pessoa acabou de te dizer. Honre a mudança.\n- NÃO repita perguntas já respondidas. Referencie o que já foi conversado com naturalidade.\n- Se no chat a pessoa disse que IA fazer algo (planejar a semana, se exercitar, etc.), isso é INTENÇÃO, não fato consumado. Só trate como feito se os dados confirmarem — consulte o PLANEJAMENTO SEMANAL acima. Se ela disse que ia planejar e o plano não existe, NÃO parabenize nem dê como feito.`
     : "";
 
   const careBlock = input.careSignals && input.careSignals.length > 0

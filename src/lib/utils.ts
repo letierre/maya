@@ -86,6 +86,41 @@ export function getLocalDateFromISO(isoStr: string, tz?: string): string {
   return spDate(new Date(isoStr).getTime());
 }
 
+/** Returns the current wall-clock hour (0-23) in the given IANA timezone. */
+export function getCurrentHour(tz?: string): number {
+  const tzName = tz || "America/Sao_Paulo";
+  try {
+    const h = new Intl.DateTimeFormat("en-US", {
+      timeZone: tzName,
+      hour: "numeric",
+      hour12: false,
+    }).format(new Date());
+    return parseInt(h, 10) % 24;
+  } catch {
+    return new Date().getHours();
+  }
+}
+
+/** Formats a UTC ISO timestamp as "HH:MM" in the given IANA timezone.
+ *  Used to show WHEN a diary entry was written (time-of-day), so a message
+ *  written 40 minutes ago isn't read as "this morning". */
+export function getLocalTimeFromISO(isoStr: string, tz?: string): string {
+  if (!isoStr) return "";
+  const tzName = tz || "America/Sao_Paulo";
+  try {
+    const h = new Intl.DateTimeFormat("en-US", {
+      timeZone: tzName,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(new Date(isoStr));
+    return h === "24:00" ? "00:00" : h;
+  } catch {
+    const d = new Date(isoStr);
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  }
+}
+
 /** Converte "YYYY-MM-DD" em rótulo relativo ("hoje", "ontem", "há N dias")
  *  em relação a `todayStr` (também "YYYY-MM-DD"). Usa UTC para evitar DST. */
 export function relativeDayLabel(dateStr: string, todayStr?: string): string {

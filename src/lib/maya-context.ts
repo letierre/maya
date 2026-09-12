@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getLatestInsights, type SpecialistInsights } from "@/lib/specialists";
-import { calculateStreak, getWeekMondayDate, getLocalDate, getLocalDateFromISO } from "@/lib/utils";
+import { calculateStreak, getWeekMondayDate, getLocalDate, getLocalDateFromISO, getLocalTimeFromISO, relativeDayLabel } from "@/lib/utils";
 import { habitAnswered } from "@/lib/checkin-answered";
 import { getMoodById, getMoodLabel } from "@/lib/checkin-moods";
 import type {
@@ -28,6 +28,7 @@ export interface FetchMayaContextOptions {
   includeFinancials?: boolean;
   includeAreaVisions?: boolean;
   includeQuarterly?: boolean;
+  includeAgenda?: boolean;
 }
 
 export interface MayaContext {
@@ -38,9 +39,10 @@ export interface MayaContext {
   rawGoals: Record<string, unknown>[];
   weekPlanRaw: Record<string, unknown> | null;
   sleepLogs: Record<string, unknown>[];
-  chatMessages: { role: string; content: string }[];
+  chatMessages: { role: string; content: string; created_at?: string }[];
   financialTransactions: Record<string, unknown>[];
   areaVisions: Record<string, unknown>[];
+  agendaItems: Record<string, unknown>[];
   quarterlyCycle: Record<string, unknown> | null;
   latestInsights: SpecialistInsights | null;
 }
@@ -90,7 +92,7 @@ export async function fetchMayaContext(
   }
   const chatLimit = opts.chatLimit ?? 0;
   if (chatLimit > 0) {
-    add("chatMessages", admin.from("chat_messages").select("role, content").eq("user_id", userId)
+    add("chatMessages", admin.from("chat_messages").select("role, content, created_at").eq("user_id", userId)
       .or("chat_type.is.null,chat_type.eq.maya")
       .order("created_at", { ascending: false }).limit(chatLimit));
   }
@@ -108,6 +110,17 @@ export async function fetchMayaContext(
       .eq("user_id", userId).eq("status", "active")
       .order("position", { foreignTable: "key_results", ascending: true }).maybeSingle());
   }
+  if (opts.includeAgenda) {
+    add("agendaItems", admin.from("agenda_items")
+      .select("title, item_type, date, start_time, due_date")
+      .eq("user_id", userId)
+      .eq("status", "pendente")
+      .eq("excluded", false)
+      .gte("date", today)
+      .order("date", { ascending: true })
+      .order("start_time", { ascending: true, nullsFirst: false })
+      .limit(20));
+  }
 
   const results = await Promise.all(tasks);
 
@@ -122,6 +135,7 @@ export async function fetchMayaContext(
     chatMessages: [],
     financialTransactions: [],
     areaVisions: [],
+    agendaItems: [],
     quarterlyCycle: null,
     latestInsights: null,
   };
@@ -141,6 +155,7 @@ export async function fetchMayaContext(
       case "chatMessages": ctx.chatMessages = res?.data ?? []; break;
       case "financialTransactions": ctx.financialTransactions = res?.data ?? []; break;
       case "areaVisions": ctx.areaVisions = res?.data ?? []; break;
+      case "agendaItems": ctx.agendaItems = res?.data ?? []; break;
       case "quarterlyCycle": ctx.quarterlyCycle = res?.data ?? null; break;
     }
   }
@@ -212,12 +227,25 @@ export function buildWeekPlanSummary(weekPlanRaw: Record<string, unknown> | null
   };
 }
 
-/** Transcrição da conversa recente do chat (papéis explícitos, ordem cronológica). */
-export function buildRecentChatTopics(messages: { role: string; content: string }[]): string {
+/** Transcrição da conversa recente do chat (papéis explícitos, ordem cronológica).
+ *  Cada linha ganha o prefixo [dia HH:MM] para a Maya situar QUANDO cada
+ *  mensagem aconteceu — mesma convenção usada no chat (hoje/ontem/há N dias). */
+export function buildRecentChatTopics(
+  messages: { role: string; content: string; created_at?: string }[],
+  todayStr?: string,
+  tz?: string,
+): string {
   return (messages || [])
     .filter((m) => m.role === "assistant" || m.role === "user")
     .reverse()
-    .map((m) => `${m.role === "assistant" ? "Maya" : "Usuário"}: ${m.content?.slice(0, 200)}`)
+    .map((m) => {
+      const day = m.created_at
+        ? relativeDayLabel(getLocalDateFromISO(m.created_at, tz), todayStr)
+        : "";
+      const time = m.created_at ? getLocalTimeFromISO(m.created_at, tz) : "";
+      const prefix = day ? `[${day}${time ? " " + time : ""}] ` : "";
+      return `${prefix}${m.role === "assistant" ? "Maya" : "Usuário"}: ${m.content?.slice(0, 200)}`;
+    })
     .join("\n");
 }
 
@@ -279,6 +307,7 @@ export interface MayaInputProfile {
   language?: string;
   currentHour?: number;
   currentDate?: string;
+  tz?: string;
 }
 
 export function toMayaInput(ctx: MayaContext, p: MayaInputProfile): MayaInput {
@@ -298,6 +327,7 @@ export function toMayaInput(ctx: MayaContext, p: MayaInputProfile): MayaInput {
       date: d.date as string,
       content: (d.content as string) || "",
       mood: (d.mood as number) ?? null,
+      time: (d.created_at as string) ? getLocalTimeFromISO(d.created_at as string, p.tz) : "",
     })),
     memories: ctx.memories,
     porques: ((context.porques as Array<Record<string, unknown>>) || []).map((q) => ({
@@ -315,5 +345,13 @@ export function toMayaInput(ctx: MayaContext, p: MayaInputProfile): MayaInput {
     areaVisions: (ctx.areaVisions || [])
       .map((v) => ({ area: v.area as string, statement: (v.statement as string) || "" }))
       .filter((v) => v.statement.trim()),
+    agenda: (ctx.agendaItems || []).length > 0
+      ? (ctx.agendaItems || []).map((a) => ({
+          date: a.date as string,
+          title: (a.title as string) || "",
+          time: a.start_time ? String(a.start_time).slice(0, 5) : null,
+          itemType: (a.item_type as string) || "tarefa",
+        }))
+      : undefined,
   };
 }

@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { buildMayaSystemPrompt } from "@/lib/maya";
 import { fetchMayaContext, toMayaInput, buildRecentChatTopics } from "@/lib/maya-context";
-import { getWeekMondayDate } from "@/lib/utils";
+import { getWeekMondayDate, getCurrentHour } from "@/lib/utils";
 import { computeCareSignals } from "@/lib/care-signals";
 import { callLLM } from "@/lib/llm";
 import { NextResponse } from "next/server";
@@ -454,7 +454,7 @@ export async function POST(request: Request) {
     const recentChatTopics = buildRecentChatTopics(ctx.chatMessages);
 
     // ── Build system prompt (persona única) ──
-    const currentHour = new Date().getHours();
+    const currentHour = getCurrentHour("America/Sao_Paulo");
     const currentDate = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 
     const systemPrompt = buildMayaSystemPrompt(toMayaInput(ctx, {

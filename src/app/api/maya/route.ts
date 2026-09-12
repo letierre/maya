@@ -100,7 +100,7 @@ export async function POST(request: Request) {
     const admin = getSupabaseAdmin();
 
     // ── Contexto único (mesma fonte que home/planejamento/nudge) ──
-    const ctx = await fetchMayaContext(user.id, { includeAreaVisions: true });
+    const ctx = await fetchMayaContext(user.id, { includeAreaVisions: true, includeAgenda: true });
     const context = (ctx.prefs?.context ?? {}) as Record<string, unknown>;
 
     // Hora e data no fuso do usuario (do browser, fallback SP)
@@ -140,9 +140,10 @@ export async function POST(request: Request) {
       language: (context.language as string) || "pt",
       currentHour,
       currentDate,
+      tz: clientTz,
     }));
 
-    const rawReply = await chatLLM(systemPrompt, anthropicMessages, 400);
+    const rawReply = await chatLLM(systemPrompt, anthropicMessages, 1000);
     // Belt-and-suspenders: strip any "[dia HH:MM]" timestamp tokens Maya may echo
     // (e.g. "[21:06]", "[hoje 23:07]", "[ontem 14:30]", "[há 3 dias 09:10]").
     // These are internal rhythm context only — never shown to the user.

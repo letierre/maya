@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
-import { getLocalDate } from "@/lib/utils";
+import { getLocalDate, getCurrentHour } from "@/lib/utils";
 import { callLLM } from "@/lib/llm";
 import { buildMayaSystemPrompt, type MayaInput } from "@/lib/maya";
 import { fetchMayaContext, toMayaInput, buildRecentChatTopics } from "@/lib/maya-context";
@@ -144,7 +144,7 @@ export async function GET() {
       const mayaInput = toMayaInput(ctx, {
         name: firstName,
         gender,
-        currentHour: new Date().getHours(),
+        currentHour: getCurrentHour(),
         currentDate: today,
       });
       const chatSummary = buildRecentChatTopics(ctx.chatMessages);
@@ -160,7 +160,7 @@ export async function GET() {
       const releaseHour = await cacheNudge(admin, user.id, context, bestNudge.id, enhancedMessage, today, bestNudge.action);
 
       // Respect random release hour — don't show if too early
-      const brH = new Date().getHours();
+      const brH = getCurrentHour();
       if (brH < releaseHour) {
         return NextResponse.json({ nudges: [] });
       }

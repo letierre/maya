@@ -5,7 +5,7 @@ import { buildHomeMessagePrompt } from "@/lib/maya";
 import { fetchMayaContext, toMayaInput, buildRecentChatTopics } from "@/lib/maya-context";
 import { computeCareSignals } from "@/lib/care-signals";
 import { callLLM } from "@/lib/llm";
-import { getLocalDate, getUserTimezone } from "@/lib/utils";
+import { getLocalDate, getUserTimezone, getCurrentHour } from "@/lib/utils";
 import { NEGATIVE_MOODS } from "@/lib/maya-constants";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
   const admin = getSupabaseAdmin();
   const userTz = req.nextUrl.searchParams.get("tz") || getUserTimezone();
   const today = getLocalDate(userTz);
-  const currentHour = new Date().getHours();
+  const currentHour = getCurrentHour(userTz);
 
   try {
     // ── Check cache ──
@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
     const state = detectState({ hasTodayCheckIn, todayMood, lastSleepQuality, anyNegativePattern });
 
     // ── Recent chat topics (for continuity) ──
-    const recentChatTopics = buildRecentChatTopics(ctx.chatMessages) || undefined;
+    const recentChatTopics = buildRecentChatTopics(ctx.chatMessages, today, userTz) || undefined;
 
     // ── Build MayaInput (fonte única: mesma persona/contexto do chat) ──
     const mayaInput = {
@@ -123,6 +123,7 @@ export async function GET(req: NextRequest) {
         language: (context.language as string) || undefined,
         currentHour,
         currentDate: today,
+        tz: userTz,
       }),
       recentChatTopics,
       greetingLabel: greetingLabels[state],
