@@ -112,7 +112,7 @@ export default function DiarioEntryPage() {
       const compressed = await compressImage(file);
       const path = await uploadToCloud(compressed, "diary");
       setPhotos((prev) => [...prev, path]);
-    } catch { toast.error("Erro ao processar imagem"); }
+    } catch { toast.error(t("dj_erro_processar_imagem")); }
     setUploading(false);
   }, []);
 
@@ -144,14 +144,14 @@ export default function DiarioEntryPage() {
     return (
       <div style={{ minHeight: "100dvh", background: "#0F0F14", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 20 }}>
         <span style={{ fontSize: 48 }}>🔒</span>
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>Registro privado</h2>
-        <p style={{ margin: 0, fontSize: 13, color: "#9e96b5" }}>Digite seu PIN para acessar</p>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>{t("dj_registro_privado")}</h2>
+        <p style={{ margin: 0, fontSize: 13, color: "#9e96b5" }}>{t("dj_digite_pin_acessar")}</p>
         <input type="password" maxLength={4} inputMode="numeric" pattern="[0-9]*" autoFocus
           value={pinInput} onChange={e => setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
           onKeyDown={e => {
             if (e.key === "Enter" && pinInput.length === 4) {
               if (pinInput === diaryPin()) setPinVerified(true);
-              else { setPinInput(""); toast.error("PIN incorreto"); }
+              else { setPinInput(""); toast.error(t("dj_pin_incorreto")); }
             }
           }}
           style={{ width: 120, padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.3)", background: "#1a1530", color: "#e0d6ff", fontSize: 24, textAlign: "center", fontFamily: "monospace", letterSpacing: 8, outline: "none" }} />
@@ -160,10 +160,10 @@ export default function DiarioEntryPage() {
             style={{ borderRadius: 12, background: "transparent", border: "1px solid rgba(167,139,250,0.2)", color: "#9e96b5" }}>{t("voltar_diario")}</Button>
           <Button onClick={() => {
             if (pinInput === diaryPin()) setPinVerified(true);
-            else { setPinInput(""); toast.error("PIN incorreto"); }
+            else { setPinInput(""); toast.error(t("dj_pin_incorreto")); }
           }} disabled={pinInput.length !== 4}
             style={{ borderRadius: 12, background: pinInput.length === 4 ? "#7C5CFF" : "#1e1840", color: "#fff" }}>
-            Entrar
+            {t("dj_entrar")}
           </Button>
         </div>
       </div>
@@ -253,7 +253,7 @@ export default function DiarioEntryPage() {
 
             {/* Title — grande, bold */}
             <input
-              placeholder="Título"
+              placeholder={t("titulo")}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               style={{
@@ -271,8 +271,8 @@ export default function DiarioEntryPage() {
             <div
               ref={contentEditRef}
               contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true"
-              aria-label="Conteúdo do diário"
-              data-placeholder="Escreva o que está pensando e sentindo..."
+              aria-label={t("dj_aria_conteudo")}
+              data-placeholder={t("dj_placeholder_edit")}
               onInput={(e) => setContent((e.target as HTMLElement).innerHTML)}
               style={{
                 outline: "none", fontSize: 15, fontFamily: "inherit", lineHeight: 1.75,
@@ -309,7 +309,7 @@ export default function DiarioEntryPage() {
                   cursor: "pointer", color: "#A78BFA", flexDirection: "column", gap: 2,
                 }}>
                 <Camera size={18} />
-                <span style={{ fontSize: 9, color: "#9e96b5" }}>{uploading ? "..." : "Foto"}</span>
+                <span style={{ fontSize: 9, color: "#9e96b5" }}>{uploading ? "..." : t("dj_foto")}</span>
               </button>
               <input ref={photoInputRef} type="file" accept="image/*"
                 style={{ display: "none" }}
@@ -411,18 +411,18 @@ export default function DiarioEntryPage() {
         <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ width: "100%", maxWidth: 300, background: "#1a1530", borderRadius: 24, padding: 28, border: "1px solid rgba(255,92,92,0.25)", textAlign: "center" }}>
             <span style={{ fontSize: 40 }}>🗑️</span>
-            <h3 style={{ margin: "12px 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>Excluir registro?</h3>
+            <h3 style={{ margin: "12px 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>{t("dj_excluir_registro")}</h3>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "#9e96b5", lineHeight: 1.5 }}>
-              {entry.title || formatDisplayDate(entry.date)} será apagado permanentemente. Essa ação não pode ser desfeita.
+              {t("dj_sera_apagado", { title: entry.title || formatDisplayDate(entry.date) })}
             </p>
             <div style={{ display: "flex", gap: 10 }}>
               <button type="button" onClick={() => setDeleteConfirmOpen(false)} disabled={deleting}
                 style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                Cancelar
+                {t("cancelar")}
               </button>
               <button type="button" onClick={handleDelete} disabled={deleting}
                 style={{ flex: 1, padding: 12, borderRadius: 12, border: 0, background: "#FF5C5C", color: "#fff", fontSize: 14, fontWeight: 700, cursor: deleting ? "default" : "pointer", fontFamily: "inherit", opacity: deleting ? 0.6 : 1 }}>
-                {deleting ? "Excluindo…" : "Excluir"}
+                {deleting ? t("dj_excluindo") : t("dj_excluir")}
               </button>
             </div>
           </div>

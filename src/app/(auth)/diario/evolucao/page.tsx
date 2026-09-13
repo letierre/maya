@@ -11,12 +11,12 @@ import { getLocalDate } from "@/lib/utils";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 
 const QUESTIONS = [
-  { key: "q1", label: "Três coisas boas que aconteceram hoje", rows: 3 },
-  { key: "q2", label: "O que você fez para que elas acontecessem?", rows: 2 },
-  { key: "q3", label: "Qual qualidade sua você mais usou hoje?", rows: 2 },
-  { key: "q4", label: "O que faria diferente hoje?", rows: 2 },
-  { key: "q5", label: "Uma gentileza que você fez ou recebeu hoje", rows: 2 },
-  { key: "q6", label: "O que você se compromete a fazer amanhã?", rows: 3 },
+  { key: "q1", labelKey: "dj_q1", rows: 3 },
+  { key: "q2", labelKey: "dj_q2", rows: 2 },
+  { key: "q3", labelKey: "dj_q3", rows: 2 },
+  { key: "q4", labelKey: "dj_q4", rows: 2 },
+  { key: "q5", labelKey: "dj_q5", rows: 2 },
+  { key: "q6", labelKey: "dj_q6", rows: 3 },
 ];
 
 function formatDisplayDate(dateStr: string): string {
@@ -33,22 +33,24 @@ export default function DiarioEvolucaoPage() {
   const [saving, setSaving] = useState(false);
   const dateInputRef = useRef<HTMLInputElement>(null);
 
+  const questions = QUESTIONS.map((q) => ({ key: q.key, label: t(q.labelKey), rows: q.rows }));
+
   const updateAnswer = (key: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSave = async () => {
-    const answered = QUESTIONS.filter((q) => answers[q.key]?.trim());
-    if (answered.length === 0) { toast.error("Responda pelo menos uma pergunta"); return; }
+    const answered = questions.filter((q) => answers[q.key]?.trim());
+    if (answered.length === 0) { toast.error(t("dj_responda_uma")); return; }
     setSaving(true);
-    const content = QUESTIONS
+    const content = questions
       .filter((q) => answers[q.key]?.trim())
       .map((q) => `${q.label}\n${answers[q.key].trim()}`)
       .join("\n\n");
     const res = await fetch("/api/diary", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: entryDate, title: "Diário de Evolução", content, photos: [] }),
+      body: JSON.stringify({ date: entryDate, title: t("dj_diario_evolucao"), content, photos: [] }),
     });
     if (!res.ok) { toast.error(t("erro_salvar_entrada")); setSaving(false); return; }
     toast.success(t("entrada_salva"));
@@ -66,7 +68,7 @@ export default function DiarioEvolucaoPage() {
     }
   };
 
-  const answeredCount = QUESTIONS.filter((q) => answers[q.key]?.trim()).length;
+  const answeredCount = questions.filter((q) => answers[q.key]?.trim()).length;
 
   return (
     <div style={{ minHeight: "100dvh", background: "#0F0F14", paddingBottom: 100 }}>
@@ -96,20 +98,20 @@ export default function DiarioEvolucaoPage() {
           </div>
           <Button onClick={handleSave} disabled={saving}
             style={{ height: 38, paddingInline: 18, borderRadius: 12, background: "#7C5CFF", border: 0, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            {saving ? "Salvando…" : "Salvar"}
+            {saving ? t("dj_salvando") : t("salvar")}
           </Button>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
           <span style={{ fontSize: 20 }}>🌱</span>
-          <span style={{ fontSize: 13, color: "#9e96b5" }}>{answeredCount}/{QUESTIONS.length} respondidas</span>
+          <span style={{ fontSize: 13, color: "#9e96b5" }}>{t("dj_respondidas", { n: String(answeredCount), total: String(questions.length) })}</span>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {QUESTIONS.map((q) => (
+          {questions.map((q) => (
             <div key={q.key}>
               <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#e0d6ff", marginBottom: 8 }}>{q.label}</label>
-              <Textarea placeholder="Escreva aqui..." rows={q.rows}
+              <Textarea placeholder={t("dj_escreva_aqui")} rows={q.rows}
                 value={answers[q.key] || ""}
                 onChange={(e) => updateAnswer(q.key, e.target.value)}
                 style={{
@@ -129,7 +131,7 @@ export default function DiarioEvolucaoPage() {
             cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600,
             color: "#9e96b5",
           }}>
-          Cancelar
+          {t("cancelar")}
         </button>
       </div>
     </div>

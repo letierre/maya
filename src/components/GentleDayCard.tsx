@@ -62,13 +62,13 @@ export function GentleDayCard() {
 
         <div className="flex gap-2 text-[11px] text-muted-foreground">
           <span className="bg-white/60 dark:bg-white/5 rounded-full px-2.5 py-1">
-            🫁 2 min de respiração
+            🫁 {t("dj_2min_respiracao")}
           </span>
           <span className="bg-white/60 dark:bg-white/5 rounded-full px-2.5 py-1">
-            💧 um copo d'água
+            💧 {t("dj_copo_agua")}
           </span>
           <span className="bg-white/60 dark:bg-white/5 rounded-full px-2.5 py-1">
-            🎵 uma música
+            🎵 {t("dj_uma_musica")}
           </span>
         </div>
 

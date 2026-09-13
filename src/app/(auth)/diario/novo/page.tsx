@@ -21,10 +21,8 @@ function getBrowserDate(): string {
 
 function formatLongDate(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
-  const wk = d.toLocaleDateString(getLocale(), { weekday: "long" });
-  const day = d.getDate();
-  const month = d.toLocaleDateString(getLocale(), { month: "long" });
-  return `${wk.charAt(0).toUpperCase() + wk.slice(1)}, ${day} de ${month}`;
+  const s = d.toLocaleDateString(getLocale(), { weekday: "long", day: "numeric", month: "long" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 /**
@@ -181,7 +179,7 @@ export default function NovoDiarioPage() {
   };
 
   const SLASH_COMMANDS = [
-    { id: "foto", label: "Inserir foto", emoji: "📷", action: () => {
+    { id: "foto", label: t("dj_inserir_foto"), emoji: "📷", action: () => {
       // Salva o ponto do cursor (após remover "/foto") para inserir aqui depois
       const sel = window.getSelection();
       if (sel && sel.rangeCount > 0) {
@@ -190,9 +188,9 @@ export default function NovoDiarioPage() {
       }
       slashPhotoInputRef.current?.click();
     } },
-    { id: "hora", label: "Inserir horário", emoji: "🕐", action: () => insertHtmlAtCursor(`<span contenteditable="false" style="color:#A78BFA;font-weight:700;font-size:13px;background:rgba(167,139,250,0.12);padding:1px 6px;border-radius:6px;white-space:nowrap;user-select:none">🕐 ${new Date().toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" })}</span>&#8203;`) },
-    { id: "emoji", label: "Inserir emoji", emoji: "😊", action: () => { setEmojiPos(computeMenuPos(contentWrapperRef.current, 190, 320)); setEmojiPickerOpen(true); } },
-    { id: "link", label: "Vincular registro", emoji: "🔗", action: () => {
+    { id: "hora", label: t("dj_inserir_horario"), emoji: "🕐", action: () => insertHtmlAtCursor(`<span contenteditable="false" style="color:#A78BFA;font-weight:700;font-size:13px;background:rgba(167,139,250,0.12);padding:1px 6px;border-radius:6px;white-space:nowrap;user-select:none">🕐 ${new Date().toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" })}</span>&#8203;`) },
+    { id: "emoji", label: t("dj_inserir_emoji"), emoji: "😊", action: () => { setEmojiPos(computeMenuPos(contentWrapperRef.current, 190, 320)); setEmojiPickerOpen(true); } },
+    { id: "link", label: t("dj_vincular_registro"), emoji: "🔗", action: () => {
       setSlashOpen(false);
       // Save cursor position before opening search popup
       const sel = window.getSelection();
@@ -312,7 +310,7 @@ export default function NovoDiarioPage() {
         // Foto pequena, inline (mesma linha do texto), alinhada pelo topo — como um anexo discreto
         insertHtmlAtCursor(`<span contenteditable="false" style="display:inline-block;vertical-align:text-top;margin:0 2px"><img src="${url}" data-photo-url="${url}" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:8px;display:block;cursor:pointer" /></span>&#8203;`);
       }
-    } catch { toast.error("Erro ao inserir foto"); }
+    } catch { toast.error(t("dj_erro_inserir_foto")); }
   }, []);
 
   const selectedMoodEmoji = mood ? MOOD_EMOJI[mood] : "😶";
@@ -394,7 +392,7 @@ export default function NovoDiarioPage() {
         setContentHtml(draft.content || "");
         setContent((draft.content || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim());
       }, 100);
-      toast("Rascunho restaurado", { duration: 2000 });
+      toast(t("dj_rascunho_restaurado"), { duration: 2000 });
     }
   }, []);
 
@@ -416,7 +414,7 @@ export default function NovoDiarioPage() {
       if (!res.ok) {
         const err = await res.text();
         console.error("Save error:", err);
-        toast.error("Erro ao salvar. Tente de novo.");
+        toast.error(t("dj_erro_salvar_tente"));
         setSaving(false);
         return;
       }
@@ -427,7 +425,7 @@ export default function NovoDiarioPage() {
       router.refresh();
     } catch (e) {
       console.error("Save exception:", e);
-      toast.error("Erro ao salvar. Verifique sua conexão.");
+      toast.error(t("dj_erro_salvar_conexao"));
       setSaving(false);
     }
   };
@@ -437,7 +435,7 @@ export default function NovoDiarioPage() {
       const compressed = await compressImage(file);
       const path = await uploadToCloud(compressed, "diary");
       setPhotos((prev) => [...prev, path]);
-    } catch { toast.error("Erro ao processar imagem"); }
+    } catch { toast.error(t("dj_erro_processar_imagem")); }
   }, []);
 
   const removePhoto = useCallback((path: string) => {
@@ -478,7 +476,7 @@ export default function NovoDiarioPage() {
       a.download = `foto-diario-${entryDate}.jpg`;
       a.click();
       URL.revokeObjectURL(objectUrl);
-    } catch { toast.error("Erro ao baixar imagem"); }
+    } catch { toast.error(t("dj_erro_baixar")); }
   };
 
   return (
@@ -554,8 +552,8 @@ export default function NovoDiarioPage() {
       <div style={{ padding: "0 24px 12px" }}>
         <div
           ref={titleRef}
-          contentEditable suppressContentEditableWarning role="textbox" aria-label="Título"
-          data-placeholder="Título (opcional)"
+          contentEditable suppressContentEditableWarning role="textbox" aria-label={t("titulo")}
+          data-placeholder={t("titulo_opcional")}
           onInput={(e) => setTitle((e.target as HTMLElement).innerText)}
           onPaste={handlePaste}
           style={{
@@ -570,7 +568,7 @@ export default function NovoDiarioPage() {
         <div
           ref={contentRef}
           contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true"
-          aria-label="Conteúdo do diário" data-placeholder="Escreva o que estiver passando... (digite / para ações rápidas)"
+          aria-label={t("dj_aria_conteudo")} data-placeholder={t("dj_placeholder_novo")}
           onInput={handleContentInput}
           onPaste={handlePaste}
           onClick={handleContentClick}
@@ -638,7 +636,7 @@ export default function NovoDiarioPage() {
             ))}
             <button type="button" onClick={() => setEmojiPickerOpen(false)}
               style={{ width: "100%", padding: "6px 0", borderRadius: 8, border: 0, background: "transparent", cursor: "pointer", color: "#9e96b5", fontSize: 11, fontFamily: "inherit" }}>
-              Fechar
+              {t("dj_fechar")}
             </button>
           </div>
         )}
@@ -646,11 +644,11 @@ export default function NovoDiarioPage() {
         {linkSearchOpen && (
           <div style={{ position: "absolute", left: 8, right: 8, top: linkPos.y, zIndex: 70, background: "#1a1530", borderRadius: 20, padding: 16, border: "1px solid rgba(167,139,250,0.2)", boxShadow: "0 12px 40px rgba(0,0,0,0.5)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>🔗 Vincular registro</h3>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>🔗 {t("dj_vincular_registro")}</h3>
               <button type="button" onClick={() => setLinkSearchOpen(false)} style={{ background: "none", border: 0, color: "#9e96b5", fontSize: 18, cursor: "pointer" }}>✕</button>
             </div>
             <input ref={linkInputRef} value={linkQuery} onChange={e => { setLinkQuery(e.target.value); searchLinks(e.target.value); }}
-              placeholder="Buscar por título ou conteúdo..."
+              placeholder={t("dj_buscar_titulo")}
               style={{ width: "100%", boxSizing: "border-box" as any, padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none", marginBottom: 10 }} />
             <div style={{ maxHeight: 240, overflowY: "auto" }}>
               {linkResults.map((entry: any) => {
@@ -669,7 +667,7 @@ export default function NovoDiarioPage() {
                     <span style={{ fontSize: 14, flexShrink: 0 }}>📔</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {entry.title || "Sem título"}
+                        {entry.title || t("dj_sem_titulo")}
                       </span>
                       <span style={{ fontSize: 10, color: "#9e96b5" }}>{dateStr}{entry.mood ? ` · ${["😔","😕","😐","🙂","😊"][entry.mood - 1] || ""}` : ""}</span>
                     </div>
@@ -678,7 +676,7 @@ export default function NovoDiarioPage() {
               })}
               {linkResults.length === 0 && (
                 <p style={{ textAlign: "center", color: "#9e96b5", fontSize: 12, padding: 16 }}>
-                  {linkQuery ? "Nenhum registro encontrado" : allEntries.length === 0 ? "Carregando..." : "Nenhum registro"}
+                  {linkQuery ? t("dj_nenhum_registro_encontrado") : allEntries.length === 0 ? t("carregando") : t("dj_nenhum_registro")}
                 </p>
               )}
             </div>
@@ -730,7 +728,7 @@ export default function NovoDiarioPage() {
         background: "#0F0F14", borderTop: "1px solid rgba(167,139,250,0.1)",
       }}>
         <span style={{ fontSize: 11, color: "#9e96b5", fontFamily: "monospace" }}>
-          {wordCount > 0 ? `${wordCount} ${wordCount === 1 ? "palavra" : "palavras"}` : "Comece a escrever"}
+          {wordCount > 0 ? `${wordCount} ${wordCount === 1 ? t("dj_palavra") : t("dj_palavras")}` : t("dj_comece_escrever")}
         </span>
         <Button onClick={handleSave} disabled={saving || (!content.trim() && !contentHtml.trim())}
           style={{
@@ -739,7 +737,7 @@ export default function NovoDiarioPage() {
             fontSize: 13, fontWeight: 700, cursor: "pointer",
             opacity: (saving || (!content.trim() && !contentHtml.trim())) ? 0.5 : 1,
           }}>
-          {saving ? "Salvando…" : "Concluir"}
+          {saving ? t("dj_salvando") : t("dj_concluir")}
         </Button>
       </div>
 

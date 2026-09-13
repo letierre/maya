@@ -132,10 +132,10 @@ export default function DiarioPage() {
       <div className="px-6 pt-6 pb-2">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Suas memórias</p>
-            <h1 className="mt-1 text-[36px] font-bold tracking-tight leading-[1.05]">Diário</h1>
+            <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{t("dj_memorias")}</p>
+            <h1 className="mt-1 text-[36px] font-bold tracking-tight leading-[1.05]">{t("diario_title")}</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              {entries.length} {entries.length === 1 ? "registro" : "registros"}
+              {entries.length} {entries.length === 1 ? t("dj_registro") : t("dj_registros")}
             </p>
           </div>
           <button type="button" onClick={() => {
@@ -154,7 +154,7 @@ export default function DiarioPage() {
               whiteSpace: "nowrap",
             }}>
             <Lock size={12} />
-            {pinSet ? "PIN ativo" : "Criar PIN"}
+            {pinSet ? t("dj_pin_ativo") : t("dj_criar_pin")}
           </button>
         </div>
       </div>
@@ -185,11 +185,11 @@ export default function DiarioPage() {
       {entries.length === 0 && (
         <div className="px-8 pt-16 pb-20 text-center">
           <div className="text-5xl mb-4">📔</div>
-          <h2 className="text-lg font-bold mb-2">Nenhuma entrada ainda</h2>
+          <h2 className="text-lg font-bold mb-2">{t("nenhuma_entrada")}</h2>
           <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-            Quando você escrever pela primeira vez, ela aparece aqui.
+            {t("dj_primeira_vez")}
           </p>
-          <p className="text-xs text-muted-foreground mt-6">Toque no <strong>+</strong> abaixo pra começar</p>
+          <p className="text-xs text-muted-foreground mt-6">{t("dj_toque_comecar")}</p>
         </div>
       )}
 
@@ -242,7 +242,7 @@ export default function DiarioPage() {
                     {group.label}
                   </h2>
                   <span style={{ fontSize: 11, fontWeight: 500, color: "#9e96b5" }}>
-                    {group.entries.length} {group.entries.length === 1 ? "registro" : "registros"}
+                    {group.entries.length} {group.entries.length === 1 ? t("dj_registro") : t("dj_registros")}
                   </span>
                 </div>
                 {/* Day-dot strip — one dot per day of month (only when collapsed) */}
@@ -331,11 +331,11 @@ export default function DiarioPage() {
                             </div>
                             {pinSet ? (
                               <p className="m-0 text-[12.5px]" style={{ color: "#FF4D4D", display: "flex", alignItems: "center", gap: 4 }}>
-                                <Lock size={10} /> Registro privado
+                                <Lock size={10} /> {t("dj_registro_privado")}
                               </p>
                             ) : isEmpty ? (
                               <p className="m-0 text-[12.5px] italic" style={{ color: "#9e96b5" }}>
-                                Você marcou seu humor, mas não escreveu nada nesse dia.
+                                {t("dj_marcou_humor")}
                               </p>
                             ) : (
                               <p className="m-0 text-[13px] leading-[1.5] overflow-hidden"
@@ -387,7 +387,7 @@ export default function DiarioPage() {
                 border: "1px solid rgba(167,139,250,0.25)", background: "#1a1530", cursor: "pointer",
                 boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
               }}>
-              <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", color: "#e0d6ff" }}>Diário de Evolução</span>
+              <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", color: "#e0d6ff" }}>{t("dj_diario_evolucao")}</span>
               <span style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(124,92,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Sparkles size={16} style={{ color: "#A78BFA" }} />
               </span>
@@ -398,7 +398,7 @@ export default function DiarioPage() {
                 border: "1px solid rgba(167,139,250,0.25)", background: "#1a1530", cursor: "pointer",
                 boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
               }}>
-              <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", color: "#e0d6ff" }}>Diário Livre</span>
+              <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", color: "#e0d6ff" }}>{t("dj_diario_livre")}</span>
               <span style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(124,92,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <BookOpen size={16} style={{ color: "#A78BFA" }} />
               </span>
@@ -410,15 +410,15 @@ export default function DiarioPage() {
         <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ width: "100%", maxWidth: 300, background: "#1a1530", borderRadius: 24, padding: 28, border: "1px solid rgba(167,139,250,0.2)", textAlign: "center" }}>
             <span style={{ fontSize: 40 }}>🔓</span>
-            <h3 style={{ margin: "12px 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>Remover PIN</h3>
-            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9e96b5" }}>Digite o PIN atual para remover</p>
+            <h3 style={{ margin: "12px 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>{t("dj_remover_pin")}</h3>
+            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9e96b5" }}>{t("dj_digite_pin_remover")}</p>
             <input type="password" maxLength={4} inputMode="numeric" pattern="[0-9]*" autoFocus
               value={pinInput} onChange={e => setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
               style={{ width: 120, padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.3)", background: "#0B0B10", color: "#e0d6ff", fontSize: 24, textAlign: "center", fontFamily: "monospace", letterSpacing: 8, outline: "none", marginBottom: 16 }} />
             <div style={{ display: "flex", gap: 10 }}>
               <button type="button" onClick={() => { setPinPrompt(null); setPinInput(""); }}
                 style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                Cancelar
+                {t("cancelar")}
               </button>
               <button type="button" onClick={() => {
                 if (pinInput === getPin()) {
@@ -426,11 +426,11 @@ export default function DiarioPage() {
                   fetch("/api/preferences", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ context: { diary_pin: null } }) }).catch(() => {});
                   window.location.reload();
                 } else {
-                  setPinInput(""); toast.error("PIN incorreto");
+                  setPinInput(""); toast.error(t("dj_pin_incorreto"));
                 }
               }} disabled={pinInput.length !== 4}
                 style={{ flex: 1, padding: 12, borderRadius: 12, border: 0, background: pinInput.length === 4 ? "#FF5C5C" : "#1e1840", color: "#fff", fontSize: 14, fontWeight: 700, cursor: pinInput.length === 4 ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-                Remover
+                {t("dj_remover")}
               </button>
             </div>
           </div>
@@ -440,15 +440,15 @@ export default function DiarioPage() {
         <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ width: "100%", maxWidth: 300, background: "#1a1530", borderRadius: 24, padding: 28, border: "1px solid rgba(167,139,250,0.2)", textAlign: "center" }}>
             <span style={{ fontSize: 40 }}>🔐</span>
-            <h3 style={{ margin: "12px 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>Criar PIN</h3>
-            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9e96b5" }}>4 dígitos para acessar registros privados</p>
+            <h3 style={{ margin: "12px 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>{t("dj_criar_pin")}</h3>
+            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9e96b5" }}>{t("dj_pin_4_digitos")}</p>
             <input type="password" maxLength={4} inputMode="numeric" pattern="[0-9]*" autoFocus
               value={pinInput} onChange={e => setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
               style={{ width: 120, padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.3)", background: "#0B0B10", color: "#e0d6ff", fontSize: 24, textAlign: "center", fontFamily: "monospace", letterSpacing: 8, outline: "none", marginBottom: 16 }} />
             <div style={{ display: "flex", gap: 10 }}>
               <button type="button" onClick={() => setPinPrompt(null)}
                 style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                Cancelar
+                {t("cancelar")}
               </button>
               <button type="button" onClick={() => {
                 if (pinInput.length === 4) {
@@ -457,7 +457,7 @@ export default function DiarioPage() {
                 }
               }} disabled={pinInput.length !== 4}
                 style={{ flex: 1, padding: 12, borderRadius: 12, border: 0, background: pinInput.length === 4 ? "#7C5CFF" : "#1e1840", color: "#fff", fontSize: 14, fontWeight: 700, cursor: pinInput.length === 4 ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-                Salvar
+                {t("salvar")}
               </button>
             </div>
           </div>
@@ -467,8 +467,8 @@ export default function DiarioPage() {
         <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ width: "100%", maxWidth: 300, background: "#1a1530", borderRadius: 24, padding: 28, border: "1px solid rgba(167,139,250,0.2)", textAlign: "center" }}>
             <span style={{ fontSize: 40 }}>🔒</span>
-            <h3 style={{ margin: "12px 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>Registro privado</h3>
-            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9e96b5" }}>Digite seu PIN para acessar</p>
+            <h3 style={{ margin: "12px 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>{t("dj_registro_privado")}</h3>
+            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9e96b5" }}>{t("dj_digite_pin_acessar")}</p>
             <input type="password" maxLength={4} inputMode="numeric" pattern="[0-9]*" autoFocus
               value={pinInput} onChange={e => setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
               onKeyDown={e => {
@@ -478,26 +478,26 @@ export default function DiarioPage() {
               }}
               style={{ width: 120, padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.3)", background: "#0B0B10", color: "#e0d6ff", fontSize: 24, textAlign: "center", fontFamily: "monospace", letterSpacing: 8, outline: "none", marginBottom: 16 }} />
             <button type="button" onClick={() => {
-              if (confirm("Resetar seu PIN?\n\nVocê poderá criar um novo PIN na próxima vez que acessar um registro privado.")) {
+              if (confirm(t("dj_resetar_pin"))) {
                 try { localStorage.removeItem("diary_pin"); } catch {}
                 fetch("/api/preferences", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ context: { diary_pin: null } }) }).catch(() => {});
                 setPinPrompt("setup"); setPinInput("");
               }
             }}
               style={{ background: "none", border: 0, color: "#FF5C5C", cursor: "pointer", fontSize: 11, fontFamily: "inherit", marginBottom: 12, textDecoration: "underline" }}>
-              Esqueci o PIN
+              {t("dj_esqueci_pin")}
             </button>
             <div style={{ display: "flex", gap: 10 }}>
               <button type="button" onClick={() => { setPinPrompt(null); setPinInput(""); }}
                 style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                Cancelar
+                {t("cancelar")}
               </button>
               <button type="button" onClick={() => {
                 if (pinInput === getPin()) { router.push(`/diario/${pinPrompt}`); setPinPrompt(null); setPinInput(""); }
-                else { setPinInput(""); toast.error("PIN incorreto"); }
+                else { setPinInput(""); toast.error(t("dj_pin_incorreto")); }
               }} disabled={pinInput.length !== 4}
                 style={{ flex: 1, padding: 12, borderRadius: 12, border: 0, background: pinInput.length === 4 ? "#7C5CFF" : "#1e1840", color: "#fff", fontSize: 14, fontWeight: 700, cursor: pinInput.length === 4 ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-                Entrar
+                {t("dj_entrar")}
               </button>
             </div>
           </div>
@@ -514,7 +514,7 @@ export default function DiarioPage() {
             transition: "transform 0.2s ease",
             zIndex: 40,
           }}
-          aria-label="Nova entrada">
+          aria-label={t("nova_entrada_title")}>
           <Plus size={24} color="#fff" />
         </button>
       </div>
