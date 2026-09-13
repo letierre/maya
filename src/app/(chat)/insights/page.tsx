@@ -61,19 +61,14 @@ function localDateFromTimestamp(ts: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-const PT_DAYS = [
-  "Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira",
-  "Quinta-feira", "Sexta-feira", "Sábado",
-];
-
-function getDateLabel(dateStr: string): string {
+function getDateLabel(dateStr: string, t: (key: string) => string): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const d = new Date(dateStr + "T00:00:00");
   const diff = Math.round((today.getTime() - d.getTime()) / 86400000);
-  if (diff === 0) return "Hoje";
-  if (diff === 1) return "Ontem";
-  if (diff < 7) return PT_DAYS[d.getDay()];
+  if (diff === 0) return t("ins_hoje");
+  if (diff === 1) return t("ins_ontem");
+  if (diff < 7) return d.toLocaleDateString(getLocale(), { weekday: "long" });
   return d.toLocaleDateString(getLocale(), { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
@@ -772,12 +767,12 @@ export default function MayaChatPage() {
           let separatorLabel: string | null = null;
           if (!msg.date) {
             if (!prevMsg || prevMsg.date != null) {
-              separatorLabel = "Mensagens anteriores";
+              separatorLabel = t("ins_mensagens_anteriores");
             }
           } else {
             const prevDate = prevMsg?.date ?? null;
             if (msg.date !== prevDate)
-              separatorLabel = getDateLabel(msg.date);
+              separatorLabel = getDateLabel(msg.date, t);
           }
 
           // Spacing: tighter within the same author's sequence, looser on
@@ -1121,7 +1116,7 @@ export default function MayaChatPage() {
           </button>
           <img
             src={viewerImage}
-            alt="Foto ampliada"
+            alt={t("ins_foto_ampliada")}
             style={{ maxWidth: "92vw", maxHeight: "88vh", objectFit: "contain", borderRadius: 8 }}
             onClick={(e) => e.stopPropagation()}
           />
