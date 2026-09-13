@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/useTranslation";
 
 const ACCENT = "#7C5CFF";
 const ACCENT_2 = "#A78BFA";
@@ -12,26 +13,26 @@ const TEXT = "#e0d6ff";
 
 type Variant = "none" | "expired" | "past_due" | "canceled";
 
-const COPY: Record<Variant, { headline: string; sub: string; cta: string }> = {
+const COPY: Record<Variant, { headlineKey: string; subKey: string; ctaKey: string }> = {
   none: {
-    headline: "Seu equilíbrio, com a Maya ao seu lado.",
-    sub: "Continue sua jornada com uma companheira que entende você.",
-    cta: "Assinar agora",
+    headlineKey: "pw_none_headline",
+    subKey: "pw_none_sub",
+    ctaKey: "pw_cta_assinar",
   },
   expired: {
-    headline: "Seu período grátis terminou.",
-    sub: "Assine agora para continuar sua jornada com a Maya.",
-    cta: "Assinar agora",
+    headlineKey: "pw_expired_headline",
+    subKey: "pw_expired_sub",
+    ctaKey: "pw_cta_assinar",
   },
   past_due: {
-    headline: "Falta só o pagamento.",
-    sub: "Atualize seu cartão para continuar sem interrupção.",
-    cta: "Atualizar pagamento",
+    headlineKey: "pw_past_due_headline",
+    subKey: "pw_past_due_sub",
+    ctaKey: "pw_cta_atualizar",
   },
   canceled: {
-    headline: "Que bom ter você de volta.",
-    sub: "Reative seu plano e continue de onde parou.",
-    cta: "Reativar plano",
+    headlineKey: "pw_canceled_headline",
+    subKey: "pw_canceled_sub",
+    ctaKey: "pw_cta_reativar",
   },
 };
 
@@ -40,6 +41,7 @@ const COPY: Record<Variant, { headline: string; sub: string; cta: string }> = {
  * novo (sem trial ainda), período grátis expirado, pagamento pendente ou cancelado.
  */
 export function Paywall() {
+  const { t } = useTranslation();
   const [plan, setPlan] = useState<"monthly" | "annual">("annual");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -66,8 +68,8 @@ export function Paywall() {
   }, []);
 
   const px = isBrazil
-    ? { monthly: "R$ 49,90", annual: "R$ 399,90", note: "≈ R$ 33,33/mês" }
-    : { monthly: "$ 9,99", annual: "$ 79,99", note: "≈ $ 6,67/mês" };
+    ? { monthly: "R$ 49,90", annual: "R$ 399,90", note: "≈ R$ 33,33" }
+    : { monthly: "$ 9,99", annual: "$ 79,99", note: "≈ $ 6,67" };
 
   useEffect(() => {
     fetch("/api/subscription")
@@ -100,7 +102,7 @@ export function Paywall() {
       if (!res.ok || !data.url) throw new Error(data.error || "checkout");
       window.location.href = data.url;
     } catch {
-      toast.error("Não foi possível iniciar o pagamento. Tente novamente.");
+      toast.error(t("pw_erro_pagamento"));
       setLoading(false);
     }
   };
@@ -110,9 +112,9 @@ export function Paywall() {
       const res = await fetch("/api/stripe/portal", { method: "POST" });
       const data = await res.json();
       if (res.ok && data.url) window.location.href = data.url;
-      else toast.info("Você ainda não tem uma assinatura para restaurar.");
+      else toast.info(t("pw_sem_assinatura"));
     } catch {
-      toast.info("Em breve: gerenciamento de assinatura.");
+      toast.info(t("pw_em_breve"));
     }
   };
 
@@ -120,14 +122,14 @@ export function Paywall() {
     <div style={{ textAlign: "center" }}>
       <div style={{ fontSize: 56, lineHeight: 1, marginBottom: 10 }}>💜</div>
       <h1 style={{ margin: "0 0 6px", fontSize: 27, fontWeight: 700, letterSpacing: "-0.025em", color: TEXT }}>
-        {copy.headline}
+        {t(copy.headlineKey)}
       </h1>
       <p style={{ margin: "0 0 20px", fontSize: 14, color: MUTED, lineHeight: 1.5 }}>
-        {copy.sub}
+        {t(copy.subKey)}
       </p>
 
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px", marginBottom: 20 }}>
-        <p style={{ margin: "0 0 4px", fontSize: 13.5, color: TEXT, fontStyle: "italic" }}>“É como ter alguém que presta atenção em mim.”</p>
+        <p style={{ margin: "0 0 4px", fontSize: 13.5, color: TEXT, fontStyle: "italic" }}>“{t("pw_depoimento")}”</p>
         <p style={{ margin: 0, fontSize: 12, color: ACCENT_2, fontWeight: 700 }}>★★★★★</p>
       </div>
 
@@ -145,13 +147,13 @@ export function Paywall() {
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 15, fontWeight: 800, color: TEXT }}>Anual</span>
-            <span style={{ background: ACCENT, color: "#fff", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>economize 33%</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: TEXT }}>{t("pw_anual")}</span>
+            <span style={{ background: ACCENT, color: "#fff", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{t("pw_economize")}</span>
           </div>
           <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
-            {px.annual}<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/ano</span>
+            {px.annual}<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>{t("pw_ano")}</span>
           </p>
-          <p style={{ margin: "2px 0 0", fontSize: 12.5, color: MUTED }}>{px.note} · cancele quando quiser</p>
+          <p style={{ margin: "2px 0 0", fontSize: 12.5, color: MUTED }}>{px.note}{t("pw_mes")} · {t("pw_cancele")}</p>
         </div>
 
         {/* Plano mensal */}
@@ -166,9 +168,9 @@ export function Paywall() {
             borderRadius: 16, padding: "14px 16px",
           }}
         >
-          <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>Mensal</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>{t("pw_mensal")}</span>
           <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
-            {px.monthly}<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>/mês</span>
+            {px.monthly}<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>{t("pw_mes")}</span>
           </p>
         </div>
       </div>
@@ -180,13 +182,13 @@ export function Paywall() {
         opacity: loading ? 0.7 : 1,
         boxShadow: "0 4px 18px -4px oklch(.55 .2 270 / .5)",
       }}>
-        {loading ? "Preparando…" : copy.cta}
+        {loading ? t("pw_preparando") : t(copy.ctaKey)}
       </button>
 
       <button type="button" onClick={handleRestore} style={{
         marginTop: 14, background: "transparent", border: 0, cursor: "pointer",
         fontFamily: "inherit", fontSize: 13, color: MUTED, textDecoration: "underline",
-      }}>Restaurar compras</button>
+      }}>{t("pw_restaurar")}</button>
     </div>
   );
 }

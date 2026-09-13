@@ -1,11 +1,17 @@
+"use client";
+
+import { useTranslation } from "@/lib/useTranslation";
+
 export default function LandingPage() {
+  const { t } = useTranslation();
+
   const features = [
-    { emoji: "💜", title: "Maya te conhece", desc: "Ela cruza seu sono, humor e metas em tempo real" },
-    { emoji: "📊", title: "Análise pessoal", desc: "Correlações que só uma IA próxima consegue ver" },
-    { emoji: "🌙", title: "Sono",          desc: "Registre e entenda seus padrões de descanso" },
-    { emoji: "🎯", title: "Metas",         desc: "Defina, acompanhe e conquiste com suporte" },
-    { emoji: "📅", title: "Planejamento",  desc: "Semana organizada com foco no que importa" },
-    { emoji: "✍️", title: "Check-in",      desc: "2 minutos por dia para se manter no rumo" },
+    { emoji: "💜", tKey: "lp_feat1_t", dKey: "lp_feat1_d" },
+    { emoji: "📊", tKey: "lp_feat2_t", dKey: "lp_feat2_d" },
+    { emoji: "🌙", tKey: "lp_feat3_t", dKey: "lp_feat3_d" },
+    { emoji: "🎯", tKey: "lp_feat4_t", dKey: "lp_feat4_d" },
+    { emoji: "📅", tKey: "lp_feat5_t", dKey: "lp_feat5_d" },
+    { emoji: "✍️", tKey: "lp_feat6_t", dKey: "lp_feat6_d" },
   ];
 
   return (
@@ -52,9 +58,7 @@ export default function LandingPage() {
             color: "#e0d6ff",
             lineHeight: 1.65, fontWeight: 500,
           }}>
-            Sua IA pessoal de bem-estar e crescimento pessoal,<br />
-            que conecta sono, humor, hábitos, metas e dinheiro<br />
-            para mostrar o que você sozinho não enxerga.
+            {t("lp_hero")}
           </p>
         </div>
 
@@ -63,8 +67,8 @@ export default function LandingPage() {
           display: "grid", gridTemplateColumns: "1fr 1fr",
           gap: 10, marginBottom: 28,
         }}>
-          {features.map(({ emoji, title, desc }) => (
-            <div key={title} style={{
+          {features.map(({ emoji, tKey, dKey }) => (
+            <div key={tKey} style={{
               background: "oklch(0.18 0.015 270 / .7)",
               backdropFilter: "blur(12px)",
               borderRadius: 18,
@@ -73,12 +77,12 @@ export default function LandingPage() {
               boxShadow: "0 1px 3px oklch(.2 .04 270 / .05)",
             }}>
               <div style={{ fontSize: 27, lineHeight: 1, marginBottom: 9 }}>{emoji}</div>
-              <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "#e0d6ff" }}>{title}</p>
+              <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "#e0d6ff" }}>{t(tKey)}</p>
               <p style={{
                 margin: 0, fontSize: 11.5,
                 color: "oklch(0.6 0.03 270)",
                 lineHeight: 1.45,
-              }}>{desc}</p>
+              }}>{t(dKey)}</p>
             </div>
           ))}
         </div>
@@ -90,9 +94,9 @@ export default function LandingPage() {
           fontSize: 12, color: "oklch(0.6 0.03 270)",
           fontWeight: 600, letterSpacing: ".02em",
         }}>
-          <span>🔒 Privacidade total</span>
+          <span>{t("lp_privacidade")}</span>
           <span>·</span>
-          <span>🆓 7 dias grátis</span>
+          <span>{t("lp_7_dias")}</span>
           <span>·</span>
           <span>📱 PWA</span>
         </div>
@@ -112,7 +116,7 @@ export default function LandingPage() {
               transition: "opacity .15s ease",
             }}
           >
-            Começar agora — 7 dias grátis
+            {t("lp_comecar")}
           </a>
           <a
             href="/login"
@@ -127,7 +131,7 @@ export default function LandingPage() {
               textDecoration: "none",
             }}
           >
-            Já tenho conta
+            {t("lp_ja_tenho")}
           </a>
         </div>
 

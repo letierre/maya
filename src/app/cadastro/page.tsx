@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { MayaAvatar } from "@/components/MayaAvatar";
+import { useTranslation } from "@/lib/useTranslation";
 import { Suspense } from "react";
 
 const P  = "#7C5CFF";
@@ -70,6 +71,7 @@ function CadastroInner() {
   const router   = useRouter();
   const params   = useSearchParams();
   const erroParam = params.get("erro");
+  const { t } = useTranslation();
 
   const handleCadastro = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,10 +111,10 @@ function CadastroInner() {
         <div style={{ ...cardStyle, textAlign: "center" }}>
           <div style={{ fontSize: 56, marginBottom: 18 }}>📬</div>
           <h1 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 800, letterSpacing: "-0.025em" }}>
-            Verifique seu email
+            {t("cd_verifique_email")}
           </h1>
           <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--muted-foreground)", lineHeight: 1.6 }}>
-            Enviamos um link de confirmação para
+            {t("cd_enviamos_link")}
           </p>
           <div style={{
             background: PL, borderRadius: 12, border: PB,
@@ -127,12 +129,12 @@ function CadastroInner() {
             borderRadius: 16, border: PB,
             padding: "18px 16px", textAlign: "left", marginBottom: 22,
           }}>
-            <p style={{ margin: "0 0 12px", fontSize: 13.5, fontWeight: 700 }}>Próximos passos:</p>
+            <p style={{ margin: "0 0 12px", fontSize: 13.5, fontWeight: 700 }}>{t("cd_proximos_passos")}</p>
             {[
-              ["1", "Abra o Gmail agora"],
-              ["2", "Clique em \"Confirmar cadastro\""],
-              ["3", "Você entra no app automaticamente — sem precisar digitar a senha de novo"],
-            ].map(([n, txt]) => (
+              ["1", "cd_passo1"],
+              ["2", "cd_passo2"],
+              ["3", "cd_passo3"],
+            ].map(([n, txtKey]) => (
               <div key={n} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
                 <div style={{
                   width: 26, height: 26, borderRadius: "50%",
@@ -141,13 +143,13 @@ function CadastroInner() {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   marginTop: 1,
                 }}>{n}</div>
-                <span style={{ fontSize: 13, lineHeight: 1.5 }}>{txt}</span>
+                <span style={{ fontSize: 13, lineHeight: 1.5 }}>{t(txtKey)}</span>
               </div>
             ))}
           </div>
 
           <p style={{ margin: "0 0 12px", fontSize: 12.5, color: "var(--muted-foreground)" }}>
-            Não achou? Verifique a pasta <strong>Spam</strong> ou <strong>Promoções</strong>.
+            {t("cd_nao_achou")} <strong>Spam</strong> {t("cd_ou")} <strong>{t("cd_promocoes")}</strong>.
           </p>
 
           <button
@@ -159,7 +161,7 @@ function CadastroInner() {
               color: "var(--muted-foreground)", fontFamily: "var(--font-sans)",
             }}
           >
-            ← Errei o email? Voltar
+            {t("cd_errei_email")}
           </button>
         </div>
       </div>
@@ -175,10 +177,10 @@ function CadastroInner() {
             <MayaAvatar state="idle" size={56} />
           </div>
           <h1 style={{ margin: "0 0 4px", fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em" }}>
-            Criar conta
+            {t("cd_criar_conta_titulo")}
           </h1>
           <p style={{ margin: 0, fontSize: 13, color: "var(--muted-foreground)" }}>
-            Seu companheiro de saúde e evolução
+            {t("cd_subtitulo")}
           </p>
         </div>
 
@@ -188,14 +190,14 @@ function CadastroInner() {
             borderRadius: 12, padding: "12px 14px", marginBottom: 16,
             fontSize: 13, color: "oklch(.4 .1 15)", lineHeight: 1.5,
           }}>
-            O link de confirmação expirou ou é inválido. Tente criar a conta novamente.
+            {t("cd_link_expirado")}
           </div>
         )}
 
         <form onSubmit={handleCadastro} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--muted-foreground)" }}>
-              Email
+              {t("lg_email")}
             </label>
             <input
               type="email"
@@ -208,11 +210,11 @@ function CadastroInner() {
           </div>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--muted-foreground)" }}>
-              Senha
+              {t("lg_senha")}
             </label>
             <input
               type="password"
-              placeholder="Mínimo 6 caracteres"
+              placeholder={t("cd_min_6")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -228,13 +230,13 @@ function CadastroInner() {
           )}
 
           <button type="submit" disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.6 : 1, marginTop: 4 }}>
-            {loading ? "Criando conta…" : "Criar conta grátis"}
+            {loading ? t("cd_criando") : t("cd_criar_conta_gratis")}
           </button>
 
           <p style={{ margin: 0, textAlign: "center", fontSize: 13, color: "var(--muted-foreground)" }}>
-            Já tem conta?{" "}
+            {t("cd_ja_tem_conta")}{" "}
             <Link href="/login" style={{ color: P, fontWeight: 700, textDecoration: "none" }}>
-              Entrar
+              {t("lg_entrar")}
             </Link>
           </p>
         </form>

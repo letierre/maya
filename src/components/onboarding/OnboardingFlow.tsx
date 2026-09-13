@@ -772,7 +772,7 @@ export default function OnboardingFlow() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...sub.toJSON(), timezone: getUserTimezone() }),
         });
-        toast.success("Lembretes ativados! 🔔");
+        toast.success(tr(lang, "ob_notif_toast"));
       }
     } catch {}
     setNotifLoading(false);
@@ -815,7 +815,7 @@ export default function OnboardingFlow() {
       ...ctx,
       gender,
       language: lang,
-      community_name: `Anônimo${Math.floor(1000 + Math.random() * 9000)}`,
+      community_name: `${translate(lang as Lang, "cm_anonimo")}${Math.floor(1000 + Math.random() * 9000)}`,
     };
 
     const onboarding = {

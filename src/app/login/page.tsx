@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { MayaAvatar } from "@/components/MayaAvatar";
+import { useTranslation } from "@/lib/useTranslation";
 
 const P  = "#7C5CFF";
 const PB = "1px solid oklch(0.5 0.12 270 / .15)";
@@ -54,6 +55,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const confirmationFailed = searchParams.get("error") === "confirmation_failed";
@@ -73,7 +75,7 @@ function LoginForm() {
       if (loginError) {
         setError(
           loginError.message === "Invalid login credentials"
-            ? "Email ou senha incorretos. Verifique se confirmou seu email."
+            ? t("lg_erro_credenciais")
             : loginError.message
         );
         setLoading(false);
@@ -89,7 +91,7 @@ function LoginForm() {
       window.location.href = target;
     } catch (err: any) {
       console.error("[LOGIN] Erro capturado:", err);
-      setError(err?.message || "Erro inesperado ao fazer login. Tente novamente.");
+      setError(err?.message || t("lg_erro_generico"));
       setLoading(false);
     }
   };
@@ -101,10 +103,10 @@ function LoginForm() {
           <MayaAvatar state="idle" size={56} />
         </div>
         <h1 style={{ margin: "0 0 4px", fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em" }}>
-          Bem-vindo de volta
+          {t("lg_titulo")}
         </h1>
         <p style={{ margin: 0, fontSize: 13, color: "var(--muted-foreground)" }}>
-          Continue sua jornada de saúde
+          {t("lg_subtitulo")}
         </p>
       </div>
 
@@ -119,14 +121,14 @@ function LoginForm() {
           color: "oklch(.4 .1 15)",
           lineHeight: 1.5,
         }}>
-          Não foi possível confirmar o email. Tente o link novamente ou entre em contato.
+          {t("lg_confirm_falhou")}
         </div>
       )}
 
       <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div>
           <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--muted-foreground)" }}>
-            Email
+            {t("lg_email")}
           </label>
           <input
             type="email"
@@ -139,7 +141,7 @@ function LoginForm() {
         </div>
         <div>
           <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--muted-foreground)" }}>
-            Senha
+            {t("lg_senha")}
           </label>
           <input
             type="password"
@@ -158,13 +160,13 @@ function LoginForm() {
         )}
 
         <button type="submit" disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.6 : 1, marginTop: 4 }}>
-          {loading ? "Entrando…" : "Entrar"}
+          {loading ? t("lg_entrando") : t("lg_entrar")}
         </button>
 
         <p style={{ margin: 0, textAlign: "center", fontSize: 13, color: "var(--muted-foreground)" }}>
-          Não tem conta?{" "}
+          {t("lg_nao_tem_conta")}{" "}
           <Link href="/cadastro" style={{ color: P, fontWeight: 700, textDecoration: "none" }}>
-            Criar conta grátis
+            {t("lg_criar_conta")}
           </Link>
         </p>
       </form>
