@@ -1,5 +1,7 @@
 "use client";
-import { getLocale } from "@/lib/language";
+import { getLocale, getLanguage } from "@/lib/language";
+import { t as tFn } from "@/lib/i18n";
+import { useTranslation } from "@/lib/useTranslation";
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -13,16 +15,16 @@ interface Post {
 }
 
 const CATEGORIES = [
-  { key: "vitoria", label: "🏆 Vitória" },
-  { key: "dica", label: "💡 Dica" },
-  { key: "reflexao", label: "🤔 Reflexão" },
-  { key: "gratidao", label: "🙏 Gratidão" },
+  { key: "vitoria", labelKey: "cm_cat_vitoria" },
+  { key: "dica", labelKey: "cm_cat_dica" },
+  { key: "reflexao", labelKey: "cm_cat_reflexao" },
+  { key: "gratidao", labelKey: "cm_cat_gratidao" },
 ];
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "agora";
+  if (mins < 1) return tFn(getLanguage(), "cm_agora");
   if (mins < 60) return `${mins}min`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h`;
@@ -34,6 +36,7 @@ function timeAgo(dateStr: string): string {
 export default function CommunityProfilePage() {
   // Comunidade oculta temporariamente — remover redirect ao reativar
   const router = useRouter();
+  const { t } = useTranslation();
   useEffect(() => { router.push("/dashboard"); }, [router]);
   const { userId } = useParams<{ userId: string }>();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -79,8 +82,8 @@ export default function CommunityProfilePage() {
             {profileEmoji || "💬"}
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>{profileName || "Usuário"}</h1>
-            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#9e96b5" }}>{posts.length} {posts.length === 1 ? "publicação" : "publicações"}</p>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>{profileName || t("cm_usuario")}</h1>
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#9e96b5" }}>{posts.length} {posts.length === 1 ? t("cm_publicacao") : t("cm_publicacoes")}</p>
           </div>
         </div>
       </div>
@@ -88,18 +91,18 @@ export default function CommunityProfilePage() {
       {/* Posts */}
       <div style={{ padding: "16px 20px" }}>
         {loading ? (
-          <p style={{ textAlign: "center", color: "#9e96b5", padding: 40 }}>Carregando...</p>
+          <p style={{ textAlign: "center", color: "#9e96b5", padding: 40 }}>{t("cm_carregando")}</p>
         ) : posts.length === 0 ? (
           <div style={{ textAlign: "center", padding: 40 }}>
             <span style={{ fontSize: 40 }}>🌱</span>
-            <p style={{ color: "#9e96b5", fontSize: 14, marginTop: 8 }}>Nenhuma publicação ainda</p>
+            <p style={{ color: "#9e96b5", fontSize: 14, marginTop: 8 }}>{t("cm_nenhuma_publicacao")}</p>
           </div>
         ) : posts.map(post => {
           const catCfg = CATEGORIES.find(c => c.key === post.category);
           return (
             <div key={post.id} style={{ background: "#1a1530", borderRadius: 16, padding: 16, marginBottom: 10, border: "1px solid rgba(167,139,250,0.1)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 10, color: "#9e96b5" }}>{catCfg?.label || "💬"}</span>
+                <span style={{ fontSize: 10, color: "#9e96b5" }}>{catCfg ? t(catCfg.labelKey) : "💬"}</span>
                 <span style={{ fontSize: 10, color: "#5a5470" }}>{timeAgo(post.created_at)}</span>
               </div>
               <p style={{ margin: "0 0 8px", fontSize: 14, color: "#e0d6ff", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{post.content}</p>

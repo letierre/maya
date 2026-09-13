@@ -1,5 +1,7 @@
 "use client";
-import { getLocale } from "@/lib/language";
+import { getLocale, getLanguage } from "@/lib/language";
+import { t as tFn } from "@/lib/i18n";
+import { useTranslation } from "@/lib/useTranslation";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -16,16 +18,16 @@ interface Post {
 interface Comment { id: string; user_id: string; display_name: string; display_emoji: string | null; content: string; created_at: string; }
 
 const CATEGORIES = [
-  { key: "vitoria", label: "🏆 Vitória", desc: "Algo que conseguiu fazer" },
-  { key: "dica", label: "💡 Dica", desc: "Algo que funcionou pra você" },
-  { key: "reflexao", label: "🤔 Reflexão", desc: "Um pensamento ou percepção" },
-  { key: "gratidao", label: "🙏 Gratidão", desc: "Algo pelo qual é grato" },
+  { key: "vitoria", labelKey: "cm_cat_vitoria", descKey: "cm_cat_vitoria_desc" },
+  { key: "dica", labelKey: "cm_cat_dica", descKey: "cm_cat_dica_desc" },
+  { key: "reflexao", labelKey: "cm_cat_reflexao", descKey: "cm_cat_reflexao_desc" },
+  { key: "gratidao", labelKey: "cm_cat_gratidao", descKey: "cm_cat_gratidao_desc" },
 ];
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "agora";
+  if (mins < 1) return tFn(getLanguage(), "cm_agora");
   if (mins < 60) return `${mins}min`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h`;
@@ -43,6 +45,7 @@ const modalInputStyle: React.CSSProperties = {
 export default function ComunidadePage() {
   // Comunidade oculta temporariamente — remover redirect ao reativar
   const router = useRouter();
+  const { t } = useTranslation();
   useEffect(() => { router.push("/dashboard"); }, [router]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,19 +88,19 @@ export default function ComunidadePage() {
   const saveProfile = async () => {
     await fetch("/api/community/profile", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ display_name: profileName || "Anônimo", display_emoji: profileEmoji || null }),
+      body: JSON.stringify({ display_name: profileName || t("cm_anonimo"), display_emoji: profileEmoji || null }),
     });
     setShowProfile(false);
     // Update local posts too
-    setPosts(prev => prev.map(p => p.user_id === myUserId ? { ...p, display_name: profileName || "Anônimo", display_emoji: profileEmoji || null } : p));
-    toast.success("Perfil atualizado!");
+    setPosts(prev => prev.map(p => p.user_id === myUserId ? { ...p, display_name: profileName || t("cm_anonimo"), display_emoji: profileEmoji || null } : p));
+    toast.success(t("cm_perfil_atualizado"));
   };
 
   const deletePost = async (postId: string) => {
-    if (!confirm("Excluir esta publicação?")) return;
+    if (!confirm(t("cm_excluir_publicacao"))) return;
     await fetch(`/api/community/posts/${postId}`, { method: "DELETE" });
     setPosts(prev => prev.filter(p => p.id !== postId));
-    toast.success("Publicação excluída");
+    toast.success(t("cm_publicacao_excluida"));
   };
 
   const deleteComment = async (commentId: string) => {
@@ -114,7 +117,7 @@ export default function ComunidadePage() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ post_id: postId }),
     });
-    toast.success("Denúncia enviada. Obrigado.");
+    toast.success(t("cm_denuncia_enviada"));
   };
 
   const handleInspire = async () => {
@@ -122,8 +125,8 @@ export default function ComunidadePage() {
     try {
       const res = await fetch("/api/community/inspire");
       if (res.ok) { setInspireData(await res.json()); }
-      else { toast.error("Tente de novo"); setInspireOpen(false); }
-    } catch { toast.error("Erro ao buscar"); setInspireOpen(false); }
+      else { toast.error(t("cm_tente_novamente")); setInspireOpen(false); }
+    } catch { toast.error(t("cm_erro_buscar")); setInspireOpen(false); }
     setInspireLoading(false);
   };
 
@@ -181,11 +184,11 @@ export default function ComunidadePage() {
         body: JSON.stringify({ content: newContent.trim(), category: newCategory, photo: newPhoto }),
       });
       if (res.ok) {
-        toast.success("Publicado!");
+        toast.success(t("cm_publicado"));
         setShowCreate(false); setNewContent(""); setNewPhoto(null);
         fetchPosts();
-      } else { toast.error("Erro ao publicar"); }
-    } catch { toast.error("Erro ao publicar"); }
+      } else { toast.error(t("cm_erro_publicar")); }
+    } catch { toast.error(t("cm_erro_publicar")); }
     setSaving(false);
   };
 
@@ -226,7 +229,7 @@ export default function ComunidadePage() {
       const compressed = await compressImage(file);
       const path = await uploadToCloud(compressed, "diary");
       setNewPhoto(path);
-    } catch { toast.error("Erro ao processar imagem"); }
+    } catch { toast.error(t("cm_erro_imagem")); }
     setUploading(false);
   };
 
@@ -235,8 +238,8 @@ export default function ComunidadePage() {
       {/* Header */}
       <div style={{ padding: "22px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#e0d6ff" }}>Comunidade</h1>
-          <p style={{ margin: "2px 0 0", fontSize: 13, color: "#9e96b5" }}>O que te fez bem hoje?</p>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#e0d6ff" }}>{t("cm_titulo")}</h1>
+          <p style={{ margin: "2px 0 0", fontSize: 13, color: "#9e96b5" }}>{t("cm_subtitulo")}</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" onClick={() => setShowProfile(!showProfile)}
@@ -257,10 +260,10 @@ export default function ComunidadePage() {
             <input value={profileEmoji} onChange={e => setProfileEmoji(e.target.value)} maxLength={4}
               placeholder="😊" style={{ width: 48, padding: "8px 4px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 20, textAlign: "center", fontFamily: "inherit", outline: "none" }} />
             <input value={profileName} onChange={e => setProfileName(e.target.value)} maxLength={20}
-              placeholder="Seu nome público" style={{ flex: 1, minWidth: 120, padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none" }} />
+              placeholder={t("cm_nome_publico")} style={{ flex: 1, minWidth: 120, padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none" }} />
             <button type="button" onClick={saveProfile}
               style={{ padding: "8px 14px", borderRadius: 10, background: "#7C5CFF", border: 0, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-              Salvar
+              {t("salvar")}
             </button>
           </div>
         </div>
@@ -275,12 +278,12 @@ export default function ComunidadePage() {
               {CATEGORIES.map(c => (
                 <button key={c.key} type="button" onClick={() => setNewCategory(c.key)}
                   style={{ padding: "5px 10px", borderRadius: 9999, border: newCategory === c.key ? "1.5px solid #7C5CFF" : "1px solid rgba(167,139,250,0.15)", background: newCategory === c.key ? "rgba(124,92,255,0.1)" : "transparent", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 600, color: newCategory === c.key ? "#A78BFA" : "#9e96b5", whiteSpace: "nowrap" }}>
-                  {c.label}
+                  {t(c.labelKey)}
                 </button>
               ))}
             </div>
             <textarea value={newContent} onChange={e => setNewContent(e.target.value)}
-              placeholder={CATEGORIES.find(c => c.key === newCategory)?.desc || "Compartilhe algo..."}
+              placeholder={t(CATEGORIES.find(c => c.key === newCategory)?.descKey || "cm_compartilhe_algo")}
               rows={3} autoFocus style={{ ...modalInputStyle, resize: "none", marginBottom: 10 }} />
             {newPhoto && (
               <div style={{ position: "relative", display: "inline-block", marginBottom: 8 }}>
@@ -293,14 +296,14 @@ export default function ComunidadePage() {
             )}
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <label style={{ cursor: "pointer", color: "#A78BFA", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                📷 {uploading ? "Enviando..." : "Foto"}
+                📷 {uploading ? t("cm_enviando") : t("cm_foto")}
                 <input type="file" accept="image/*" style={{ display: "none" }}
                   onChange={e => { if (e.target.files?.[0]) handlePhotoUpload(e.target.files[0]); e.target.value = ""; }} />
               </label>
               <div style={{ flex: 1 }} />
               <Button onClick={handleCreate} disabled={saving || !newContent.trim()}
                 style={{ height: 36, paddingInline: 16, borderRadius: 10, background: (saving || !newContent.trim()) ? "#1e1840" : "#7C5CFF", border: 0, color: "#fff", fontSize: 13, fontWeight: 600 }}>
-                {saving ? "Publicando..." : "Publicar"}
+                {saving ? t("cm_publicando") : t("cm_publicar")}
               </Button>
             </div>
           </div>
@@ -313,7 +316,7 @@ export default function ComunidadePage() {
           style={{ width: "100%", padding: "14px 16px", borderRadius: 16, border: "1px solid rgba(167,139,250,0.2)", background: "linear-gradient(135deg, rgba(124,92,255,0.12) 0%, rgba(167,139,250,0.06) 100%)", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, fontFamily: "inherit", opacity: inspireLoading ? 0.6 : 1 }}>
           <span style={{ fontSize: 22 }}>✨</span>
           <span style={{ flex: 1, textAlign: "left", fontSize: 13, fontWeight: 600, color: "#A78BFA" }}>
-            {inspireLoading ? "Buscando inspirações..." : "Maya, me inspira"}
+            {inspireLoading ? t("cm_buscando_inspiracoes") : t("cm_me_inspira")}
           </span>
           <Sparkles size={16} style={{ color: "#A78BFA" }} />
         </button>
@@ -339,7 +342,7 @@ export default function ComunidadePage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                     <span style={{ fontSize: 14 }}>{p.display_emoji || "💬"}</span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "#A78BFA" }}>{p.display_name}</span>
-                    <span style={{ fontSize: 10, color: "#9e96b5" }}>{catCfg?.label || ""}</span>
+                    <span style={{ fontSize: 10, color: "#9e96b5" }}>{catCfg ? t(catCfg.labelKey) : ""}</span>
                   </div>
                   <p style={{ margin: 0, fontSize: 13, color: "#e0d6ff", lineHeight: 1.5 }}>{p.content}</p>
                   <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 12 }}>
@@ -349,12 +352,12 @@ export default function ComunidadePage() {
                     </div>
                     <button type="button" onClick={async (e) => { e.stopPropagation();
                       await fetch("/api/community/inspire", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ post_id: p.id, helpful: true }) });
-                      toast.success("Obrigado pelo feedback!");
-                    }} style={{ background: "none", border: 0, cursor: "pointer", fontSize: 14, padding: 0 }} title="Ajudou">👍</button>
+                      toast.success(t("cm_obrigado_feedback"));
+                    }} style={{ background: "none", border: 0, cursor: "pointer", fontSize: 14, padding: 0 }} title={t("cm_ajudou")}>👍</button>
                     <button type="button" onClick={async (e) => { e.stopPropagation();
                       await fetch("/api/community/inspire", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ post_id: p.id, helpful: false }) });
-                      toast.success("Obrigado pelo feedback!");
-                    }} style={{ background: "none", border: 0, cursor: "pointer", fontSize: 14, padding: 0, opacity: 0.4 }} title="Não ajudou">👎</button>
+                      toast.success(t("cm_obrigado_feedback"));
+                    }} style={{ background: "none", border: 0, cursor: "pointer", fontSize: 14, padding: 0, opacity: 0.4 }} title={t("cm_nao_ajudou")}>👎</button>
                   </div>
                 </div>
               );
@@ -366,12 +369,12 @@ export default function ComunidadePage() {
       {/* Feed */}
       <div style={{ padding: "12px 20px" }}>
         {loading ? (
-          <p style={{ textAlign: "center", color: "#9e96b5", padding: 40 }}>Carregando...</p>
+          <p style={{ textAlign: "center", color: "#9e96b5", padding: 40 }}>{t("cm_carregando")}</p>
         ) : posts.length === 0 ? (
           <div style={{ textAlign: "center", padding: 40 }}>
             <span style={{ fontSize: 48 }}>🌱</span>
-            <p style={{ color: "#9e96b5", fontSize: 15, marginTop: 12 }}>Nenhuma publicação ainda.</p>
-            <p style={{ color: "#9e96b5", fontSize: 13 }}>Seja o primeiro a compartilhar algo bom!</p>
+            <p style={{ color: "#9e96b5", fontSize: 15, marginTop: 12 }}>{t("cm_nenhuma_publicacao")}</p>
+            <p style={{ color: "#9e96b5", fontSize: 13 }}>{t("cm_seja_primeiro")}</p>
           </div>
         ) : (
           posts.map(post => {
@@ -388,7 +391,7 @@ export default function ComunidadePage() {
                       style={{ fontSize: 13, fontWeight: 700, color: "#A78BFA", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>
                       {post.display_name}
                     </span>
-                    <span style={{ fontSize: 10, color: "#9e96b5", marginLeft: 8 }}>{catCfg?.label || "💬"}</span>
+                    <span style={{ fontSize: 10, color: "#9e96b5", marginLeft: 8 }}>{catCfg ? t(catCfg.labelKey) : "💬"}</span>
                   </div>
                   <span style={{ fontSize: 10, color: "#5a5470" }}>{timeAgo(post.created_at)}</span>
                 </div>
@@ -422,7 +425,7 @@ export default function ComunidadePage() {
                       <Trash2 size={12} />
                     </button>
                   </>)}
-                  <button type="button" onClick={() => { if (confirm("Denunciar esta publicação?")) reportPost(post.id); }}
+                  <button type="button" onClick={() => { if (confirm(t("cm_denunciar_publicacao"))) reportPost(post.id); }}
                     style={{ background: "none", border: 0, cursor: "pointer", color: "#5a5470", marginLeft: "auto", padding: 0 }}>
                     <Flag size={12} />
                   </button>
@@ -434,9 +437,9 @@ export default function ComunidadePage() {
                       rows={3} style={{ ...modalInputStyle, marginBottom: 8 }} autoFocus />
                     <div style={{ display: "flex", gap: 8 }}>
                       <button type="button" onClick={() => setEditingPost(null)}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{t("cancelar")}</button>
                       <button type="button" onClick={() => saveEdit(post.id)}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Salvar</button>
+                        style={{ padding: "6px 12px", borderRadius: 8, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{t("salvar")}</button>
                     </div>
                   </div>
                 )}
@@ -462,7 +465,7 @@ export default function ComunidadePage() {
                     <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                       <input value={commentText} onChange={e => setCommentText(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter") addComment(post.id); }}
-                        placeholder="Escreva um comentário..." style={{ ...modalInputStyle, padding: "8px 12px", fontSize: 12, flex: 1 }} />
+                        placeholder={t("cm_escreva_comentario")} style={{ ...modalInputStyle, padding: "8px 12px", fontSize: 12, flex: 1 }} />
                       <button type="button" onClick={() => addComment(post.id)}
                         style={{ width: 36, height: 36, borderRadius: "50%", background: "#7C5CFF", border: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <Send size={14} color="#fff" />
@@ -479,11 +482,11 @@ export default function ComunidadePage() {
           <div onClick={() => setShowLikes(null)} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
             <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 300, background: "#1a1530", borderRadius: 20, padding: 20, border: "1px solid rgba(167,139,250,0.2)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>❤️ Curtidas</h3>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>{t("cm_curtidas")}</h3>
                 <button type="button" onClick={() => setShowLikes(null)} style={{ background: "none", border: 0, color: "#9e96b5", fontSize: 18, cursor: "pointer" }}>✕</button>
               </div>
               {likedUsers.length === 0 ? (
-                <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center" }}>Nenhuma curtida ainda</p>
+                <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center" }}>{t("cm_nenhuma_curtida")}</p>
               ) : likedUsers.map(u => (
                 <div key={u.user_id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
                   <span style={{ fontSize: 16 }}>💬</span>
@@ -497,7 +500,7 @@ export default function ComunidadePage() {
         {/* Infinite scroll sentinel */}
         <div ref={sentinelRef} style={{ height: 1 }} />
         {loadingMore && (
-          <p style={{ textAlign: "center", color: "#9e96b5", fontSize: 11, padding: 12 }}>Carregando...</p>
+          <p style={{ textAlign: "center", color: "#9e96b5", fontSize: 11, padding: 12 }}>{t("cm_carregando")}</p>
         )}
       </div>
     </div>
