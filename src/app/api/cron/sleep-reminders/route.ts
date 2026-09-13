@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push-send";
 import { getLocalNow, getTimezoneOffset } from "@/lib/utils";
 import { repeatMatches, occKey } from "@/lib/agenda-repeat";
+import { tUser } from "@/lib/server-i18n";
+import type { Lang } from "@/lib/i18n";
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -44,6 +46,14 @@ export async function GET(req: NextRequest) {
     .in("user_id", userIds);
   const prefsByUser = new Map((prefs ?? []).map((p) => [p.user_id, p]));
 
+  // Idioma por usuário (pt/es/en) para as mensagens de push
+  const langByUser = new Map<string, Lang>();
+  for (const [uid, p] of prefsByUser) {
+    const lang = (p.context as { language?: string } | undefined)?.language;
+    if (lang === "es" || lang === "en" || lang === "pt") langByUser.set(uid, lang as Lang);
+  }
+  const L = (uid: string, key: string, vars?: Record<string, string>) => tUser(langByUser.get(uid), key, vars);
+
   const log: Record<string, number> = {};
   let totalSent = 0;
 
@@ -82,8 +92,8 @@ export async function GET(req: NextRequest) {
           h = (wakeMins - bedMins) / 60;
         }
         totalSent += await sendPushToUser(uid, {
-          title: "🌙 Hora de dormir",
-          body: `Sua meta é ${h}h de sono esta noite. Descanse bem!`,
+          title: L(uid, "pn_sleep_title"),
+          body: L(uid, "pn_sleep_body", { h: String(h) }),
           tag: "bedtime-reminder",
           data: { url: "/sono" },
         });
@@ -95,14 +105,14 @@ export async function GET(req: NextRequest) {
         const wakeTime = `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
         if (wakeTime === currentTime) {
           totalSent += await sendPushToUser(uid, {
-            title: "☀️ Bom dia! Como foi o sono?",
-            body: "Registre rapidamente antes de começar o dia.",
+            title: L(uid, "pn_wake_title"),
+            body: L(uid, "pn_wake_body"),
             tag: "wake-checkin",
             data: { url: "/sono", date: todaySP },
             actions: [
-              { action: "quality_good", title: "😊 Bem" },
-              { action: "quality_ok", title: "😐 Ok" },
-              { action: "quality_bad", title: "😕 Mal" },
+              { action: "quality_good", title: L(uid, "pn_wake_good") },
+              { action: "quality_ok", title: L(uid, "pn_wake_ok") },
+              { action: "quality_bad", title: L(uid, "pn_wake_bad") },
             ],
           });
         }
@@ -122,8 +132,8 @@ export async function GET(req: NextRequest) {
 
       for (const userId of pending) {
         totalSent += await sendPushToUser(userId, {
-          title: "📋 Check-in do dia",
-          body: "Como foi hoje? Leva menos de 1 minuto.",
+          title: L(userId, "pn_checkin_title"),
+          body: L(userId, "pn_checkin_body"),
           tag: "daily-checkin",
           data: { url: "/check-in" },
         });
@@ -134,9 +144,9 @@ export async function GET(req: NextRequest) {
     // ── Meal reminders (only if meal not yet logged in each window) ──────────
     const offset = getTimezoneOffset(tz, todaySP);
     const mealSlots = [
-      { time: "08:00", tipo: "cafe_da_manha", label: "café da manhã", emoji: "🌅", from: `${todaySP}T06:00:00${offset}`, to: `${todaySP}T11:00:00${offset}` },
-      { time: "12:30", tipo: "almoco", label: "almoço", emoji: "☀️", from: `${todaySP}T11:00:00${offset}`, to: `${todaySP}T14:00:00${offset}` },
-      { time: "19:30", tipo: "jantar", label: "jantar", emoji: "🌙", from: `${todaySP}T17:00:00${offset}`, to: `${todaySP}T21:00:00${offset}` },
+      { time: "08:00", tipo: "cafe_da_manha", labelKey: "pn_cafe", emoji: "🌅", from: `${todaySP}T06:00:00${offset}`, to: `${todaySP}T11:00:00${offset}` },
+      { time: "12:30", tipo: "almoco", labelKey: "pn_almoco", emoji: "☀️", from: `${todaySP}T11:00:00${offset}`, to: `${todaySP}T14:00:00${offset}` },
+      { time: "19:30", tipo: "jantar", labelKey: "pn_jantar", emoji: "🌙", from: `${todaySP}T17:00:00${offset}`, to: `${todaySP}T21:00:00${offset}` },
     ];
 
     for (const slot of mealSlots) {
@@ -155,8 +165,8 @@ export async function GET(req: NextRequest) {
 
       for (const userId of pending) {
         totalSent += await sendPushToUser(userId, {
-          title: `${slot.emoji} Hora do ${slot.label}`,
-          body: "Registre o que você comeu — foto ou descrição rápida.",
+          title: L(userId, "pn_meal_title", { emoji: slot.emoji, label: L(userId, slot.labelKey) }),
+          body: L(userId, "pn_meal_body"),
           tag: `meal-${slot.tipo}`,
           data: { url: "/nutricao/registrar" },
         });
@@ -168,8 +178,8 @@ export async function GET(req: NextRequest) {
     if (dayOfWeek === 0 && currentTime === "19:00") {
       for (const userId of tzUserIds) {
         totalSent += await sendPushToUser(userId, {
-          title: "📊 Resumo da semana",
-          body: "Veja como foi sua semana — sono, hábitos e nutrição.",
+          title: L(userId, "pn_week_title"),
+          body: L(userId, "pn_week_body"),
           tag: "weekly-summary",
           data: { url: "/historico" },
         });
@@ -286,7 +296,7 @@ export async function GET(req: NextRequest) {
       const emoji = item.item_type === "compromisso" ? "📅" : "☑️";
       totalSent += await sendPushToUser(item.user_id, {
         title: `${emoji} ${item.title}`,
-        body: `Em ${notifyMins} min — ${item.start_time.slice(0, 5)}`,
+        body: `${L(item.user_id, "pn_em_min", { min: String(notifyMins) })} — ${item.start_time.slice(0, 5)}`,
         tag: `agenda-${item.id}-${item.date}`,
         data: { url: "/agenda" },
       });

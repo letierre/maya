@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendPushToUser } from "@/lib/push-send";
+import { getLanguagesByUser, tUser } from "@/lib/server-i18n";
 
 // GET /api/cron/trial-reminders — avisa (push) quem está nas últimas 24h do trial sem cartão.
 // Agendado via pg_cron (Supabase) — ver migration 050_trial_reminder.sql.
@@ -31,11 +32,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 
+  const langByUser = await getLanguagesByUser((subs ?? []).map((s) => s.user_id));
+
   let sent = 0;
   for (const s of subs ?? []) {
+    const L = (key: string, vars?: Record<string, string>) => tUser(langByUser.get(s.user_id), key, vars);
     const n = await sendPushToUser(s.user_id, {
-      title: "⏳ Seu teste grátis está acabando",
-      body: "Faltam menos de 24h. Assine para continuar sua jornada com a Maya.",
+      title: L("pn_trial_title"),
+      body: L("pn_trial_body"),
       tag: "trial-ending",
       data: { url: "/assinar" },
     });

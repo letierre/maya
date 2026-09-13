@@ -1,3 +1,6 @@
+import { getLanguage } from "@/lib/language";
+import { t as tFn } from "@/lib/i18n";
+
 /** Register the service worker and return the registration, or null if unsupported. */
 export async function registerSW(): Promise<ServiceWorkerRegistration | null> {
   if (typeof window === "undefined") return null;
@@ -45,7 +48,7 @@ function notifyUpdate() {
     text-align:center;box-shadow:0 4px 20px rgba(124,92,255,0.5);
     cursor:pointer;animation:swSlideUp .3s ease;
   `;
-  banner.textContent = "Nova versão disponível! Toque para atualizar ✨";
+  banner.textContent = tFn(getLanguage(), "sw_nova_versao");
   banner.addEventListener("click", () => {
     window.location.reload();
   });
@@ -86,10 +89,10 @@ export function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
  */
 export async function requestPushSubscription(): Promise<{ sub: PushSubscription | null; error: string | null }> {
   if (typeof window === "undefined") return { sub: null, error: "SSR" };
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return { sub: null, error: "Push não suportado neste navegador" };
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return { sub: null, error: tFn(getLanguage(), "push_nao_suportado") };
 
   const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  if (!vapidKey) return { sub: null, error: "VAPID key não configurada" };
+  if (!vapidKey) return { sub: null, error: tFn(getLanguage(), "push_vapid_nao_configurada") };
 
   try {
     await navigator.serviceWorker.register("/sw.js");
