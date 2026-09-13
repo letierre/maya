@@ -163,28 +163,28 @@ export default function LeituraPage() {
         ? await fetch("/api/leitura/books", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, id: editingBook.id }) })
         : await fetch("/api/leitura/books", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       if (res.ok) {
-        toast.success(editingBook ? "Livro atualizado!" : "Livro adicionado à estante 📚");
+        toast.success(editingBook ? t("leitura_livro_atualizado") : t("leitura_livro_adicionado"));
         setAddModal(false);
         setEditingBook(null);
         await loadAll();
       } else {
-        toast.error("Erro ao salvar livro");
+        toast.error(t("leitura_erro_salvar_livro"));
       }
     } catch {
-      toast.error("Erro ao salvar livro");
+      toast.error(t("leitura_erro_salvar_livro"));
     }
   };
 
   const deleteBook = async (book: ReadingBook) => {
-    if (!window.confirm(`Remover "${book.title}" da sua estante?`)) return;
+    if (!window.confirm(t("leitura_remover_confirm", { title: book.title }))) return;
     try {
       const res = await fetch(`/api/leitura/books?id=${book.id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("Livro removido");
+        toast.success(t("leitura_removido"));
         await loadAll();
       }
     } catch {
-      toast.error("Erro ao remover");
+      toast.error(t("leitura_erro_remover"));
     }
   };
 
@@ -196,11 +196,11 @@ export default function LeituraPage() {
         body: JSON.stringify({ id: book.id, status: "concluido", total_pages: book.total_pages }),
       });
       if (res.ok) {
-        toast.success("Leitura concluída! 🎉");
+        toast.success(t("leitura_leitura_concluida"));
         await loadAll();
       }
     } catch {
-      toast.error("Erro ao concluir");
+      toast.error(t("leitura_erro_concluir"));
     }
   };
 
@@ -212,11 +212,11 @@ export default function LeituraPage() {
         body: JSON.stringify({ id: book.id, status: "lendo" }),
       });
       if (res.ok) {
-        toast.success("Livro reaberto");
+        toast.success(t("leitura_livro_reaberto"));
         await loadAll();
       }
     } catch {
-      toast.error("Erro ao reabrir");
+      toast.error(t("leitura_erro_reabrir"));
     }
   };
 
@@ -235,14 +235,14 @@ export default function LeituraPage() {
       });
       if (res.ok) {
         emitCareDataChanged();
-        toast.success("Leitura registrada! 🔥");
+        toast.success(t("leitura_leitura_registrada"));
         setLogModal(false);
         await loadAll();
       } else {
-        toast.error("Erro ao registrar leitura");
+        toast.error(t("leitura_erro_registrar_leitura"));
       }
     } catch {
-      toast.error("Erro ao registrar leitura");
+      toast.error(t("leitura_erro_registrar_leitura"));
     }
   };
 
@@ -268,10 +268,10 @@ export default function LeituraPage() {
       if (res.ok) {
         const data = await res.json();
         setSettings(data);
-        toast.success("Meta salva!");
+        toast.success(t("leitura_meta_salva"));
       }
     } catch {
-      toast.error("Erro ao salvar meta");
+      toast.error(t("leitura_erro_salvar_meta"));
     }
   };
 
@@ -305,7 +305,7 @@ export default function LeituraPage() {
                 background: PURPLE_HEX, color: "#fff", fontSize: 13, fontWeight: 700,
                 fontFamily: "inherit", whiteSpace: "nowrap",
               }}>
-              <Timer style={{ width: 16, height: 16 }} /> Cronômetro
+              <Timer style={{ width: 16, height: 16 }} /> {t("leitura_cronometro")}
             </button>
             <button type="button" onClick={() => openLog(activeBooks[0] || null)}
               style={{
@@ -314,7 +314,7 @@ export default function LeituraPage() {
                 background: CARD_BG, color: "#A78BFA", fontSize: 13, fontWeight: 700,
                 fontFamily: "inherit", whiteSpace: "nowrap",
               }}>
-              <Plus style={{ width: 15, height: 15 }} /> Registrar
+              <Plus style={{ width: 15, height: 15 }} /> {t("leitura_registrar")}
             </button>
           </div>
         </div>
@@ -331,8 +331,8 @@ export default function LeituraPage() {
               color: FOREGROUND, fontFamily: "inherit",
             }}>
             <Timer style={{ width: 18, height: 18, color: "#A78BFA" }} />
-            <span style={{ fontSize: 13, fontWeight: 600 }}>Cronômetro de leitura ativo</span>
-            <span style={{ marginLeft: "auto", fontSize: 12, color: "#A78BFA", fontWeight: 700 }}>Retomar →</span>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{t("leitura_cronometro_ativo")}</span>
+            <span style={{ marginLeft: "auto", fontSize: 12, color: "#A78BFA", fontWeight: 700 }}>{t("leitura_retomar")}</span>
           </button>
         </div>
       )}
@@ -343,16 +343,16 @@ export default function LeituraPage() {
           display: "flex", gap: 10, padding: 14, borderRadius: 16,
           background: CARD_BG, border: `1px solid ${BORDER}`,
         }}>
-          <StatPill icon={<Flame style={{ width: 18, height: 18 }} />} value={stats.streak} label="dias" color="#FF9A5C" />
+          <StatPill icon={<Flame style={{ width: 18, height: 18 }} />} value={stats.streak} label={t("leitura_dias")} color="#FF9A5C" />
           <div style={{ width: 1, background: BORDER, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: 12, color: MUTED, fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
                 <Target style={{ width: 13, height: 13 }} />
-                Meta de hoje
+                {t("leitura_meta_hoje")}
               </span>
               <span style={{ fontSize: 11, color: stats.goalReached ? "oklch(0.55 0.15 160)" : MUTED, fontWeight: 700 }}>
-                {stats.todayProgress}/{stats.goalValue} {stats.goalType === "pages" ? "pág" : "min"}
+                {stats.todayProgress}/{stats.goalValue} {stats.goalType === "pages" ? t("leitura_pag") : t("leitura_min")}
               </span>
             </div>
             <div style={{
@@ -367,7 +367,7 @@ export default function LeituraPage() {
               }} />
             </div>
             <p style={{ margin: "6px 0 0", fontSize: 11, color: MUTED }}>
-              {stats.todayPages} páginas · {stats.todayMinutes} min hoje
+              {stats.todayPages} {t("leitura_paginas_lc")} · {stats.todayMinutes} {t("leitura_min_hoje")}
             </p>
           </div>
         </div>
@@ -375,8 +375,8 @@ export default function LeituraPage() {
 
       {/* Tabs */}
       <div style={{ padding: "0 20px 12px", display: "flex", gap: 6 }}>
-        {([{ key: "estante", label: "Estante", icon: <Library style={{ width: 14, height: 14 }} /> },
-           { key: "stats", label: "Estatísticas", icon: <BarChart3 style={{ width: 14, height: 14 }} /> }] as const).map((tb) => (
+        {([{ key: "estante", label: t("leitura_estante"), icon: <Library style={{ width: 14, height: 14 }} /> },
+           { key: "stats", label: t("leitura_estatisticas"), icon: <BarChart3 style={{ width: 14, height: 14 }} /> }] as const).map((tb) => (
           <button key={tb.key} type="button" onClick={() => setTab(tb.key)}
             style={{
               padding: "8px 16px", borderRadius: 9999, border: 0, cursor: "pointer",
@@ -401,7 +401,7 @@ export default function LeituraPage() {
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               marginBottom: 16,
             }}>
-            <Plus style={{ width: 15, height: 15 }} /> Adicionar livro
+            <Plus style={{ width: 15, height: 15 }} /> {t("leitura_adicionar_livro")}
           </button>
 
           {loading ? (
@@ -413,14 +413,14 @@ export default function LeituraPage() {
           ) : books.length === 0 ? (
             <EmptyState
               emoji="📚"
-              title="Sua estante está vazia"
-              subtitle="Adicione o livro que você está lendo (ou quer ler) e comece a acompanhar seu hábito de leitura."
-              cta="Adicionar primeiro livro"
+              title={t("leitura_estante_vazia")}
+              subtitle={t("leitura_estante_vazia_sub")}
+              cta={t("leitura_adicionar_primeiro")}
               onCta={openAdd}
             />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <BookGroup title="Lendo" count={lendo.length} color="#A78BFA">
+              <BookGroup title={t("leitura_lendo")} count={lendo.length} color="#A78BFA">
                 {lendo.map((b) => (
                   <ReadingBookCard key={b.id} book={b}
                     onLogSession={openLog} onComplete={completeBook}
@@ -428,7 +428,7 @@ export default function LeituraPage() {
                 ))}
               </BookGroup>
 
-              <BookGroup title="Quero ler" count={queroLer.length} color={MUTED}>
+              <BookGroup title={t("leitura_quero_ler")} count={queroLer.length} color={MUTED}>
                 {queroLer.map((b) => (
                   <ReadingBookCard key={b.id} book={b}
                     onLogSession={openLog} onComplete={completeBook}
@@ -436,7 +436,7 @@ export default function LeituraPage() {
                 ))}
               </BookGroup>
 
-              <BookGroup title="Concluídos" count={concluidos.length} color="oklch(0.55 0.15 160)">
+              <BookGroup title={t("leitura_concluidos")} count={concluidos.length} color="oklch(0.55 0.15 160)">
                 {concluidos.map((b) => (
                   <ReadingBookCard key={b.id} book={b}
                     onLogSession={openLog} onComplete={completeBook}
@@ -444,7 +444,7 @@ export default function LeituraPage() {
                 ))}
               </BookGroup>
 
-              <BookGroup title="Abandonados" count={abandonados.length} color="oklch(0.6 0.12 20)">
+              <BookGroup title={t("leitura_abandonados")} count={abandonados.length} color="oklch(0.6 0.12 20)">
                 {abandonados.map((b) => (
                   <ReadingBookCard key={b.id} book={b}
                     onLogSession={openLog} onComplete={completeBook}
@@ -461,22 +461,22 @@ export default function LeituraPage() {
         <div style={{ padding: "0 20px", display: "flex", flexDirection: "column", gap: 14 }}>
           {/* Contadores */}
           <div style={{ display: "flex", gap: 10 }}>
-            <MiniStat icon="📖" value={stats.booksReading} label="Lendo" />
-            <MiniStat icon="✅" value={stats.booksCompleted} label="Concluídos" />
-            <MiniStat icon="🔥" value={stats.streak} label="Sequência" />
+            <MiniStat icon="📖" value={stats.booksReading} label={t("leitura_lendo")} />
+            <MiniStat icon="✅" value={stats.booksCompleted} label={t("leitura_concluidos")} />
+            <MiniStat icon="🔥" value={stats.streak} label={t("leitura_sequencia")} />
           </div>
 
           {/* Semana / Mês */}
-          <SummaryCard icon={<Clock style={{ width: 16, height: 16 }} />} title="Esta semana">
-            <SummaryRow label="Páginas" value={stats.weekPages} />
-            <SummaryRow label="Minutos" value={stats.weekMinutes} />
-            <SummaryRow label="Dias lendo" value={`${stats.weekDays} de 7`} />
+          <SummaryCard icon={<Clock style={{ width: 16, height: 16 }} />} title={t("leitura_esta_semana")}>
+            <SummaryRow label={t("leitura_paginas")} value={stats.weekPages} />
+            <SummaryRow label={t("leitura_minutos")} value={stats.weekMinutes} />
+            <SummaryRow label={t("leitura_dias_lendo")} value={`${stats.weekDays} ${t("leitura_de")} 7`} />
           </SummaryCard>
 
-          <SummaryCard icon={<FileText style={{ width: 16, height: 16 }} />} title="Este mês">
-            <SummaryRow label="Páginas" value={stats.monthPages} />
-            <SummaryRow label="Minutos" value={stats.monthMinutes} />
-            <SummaryRow label="Dias lendo" value={stats.monthDays} />
+          <SummaryCard icon={<FileText style={{ width: 16, height: 16 }} />} title={t("leitura_este_mes")}>
+            <SummaryRow label={t("leitura_paginas")} value={stats.monthPages} />
+            <SummaryRow label={t("leitura_minutos")} value={stats.monthMinutes} />
+            <SummaryRow label={t("leitura_dias_lendo")} value={stats.monthDays} />
           </SummaryCard>
 
           {/* Meta */}
@@ -490,7 +490,7 @@ export default function LeituraPage() {
           {recentSessions.length > 0 && (
             <div>
               <h3 style={{ fontSize: 13, fontWeight: 600, color: FOREGROUND, margin: "0 0 8px" }}>
-                Últimos registros
+                {t("leitura_ultimos_registros")}
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {recentSessions.map((s) => (
@@ -503,7 +503,7 @@ export default function LeituraPage() {
                         {s.book_title}
                       </p>
                       <p style={{ margin: "2px 0 0", fontSize: 11, color: MUTED }}>
-                        {formatDate(s.date)} · {s.pages_read} pág · {s.minutes_read} min
+                        {formatDate(s.date)} · {s.pages_read} {t("leitura_pag")} · {s.minutes_read} {t("leitura_min")}
                       </p>
                     </div>
                     <button type="button" onClick={() => deleteSession(s)}
@@ -588,6 +588,7 @@ function GoalCard({ goalType, goalValue, onSave }: {
   goalValue: number;
   onSave: (type: "pages" | "minutes", value: number) => void;
 }) {
+  const { t } = useTranslation();
   const [type, setType] = useState<"pages" | "minutes">(goalType);
   const [value, setValue] = useState(String(goalValue));
 
@@ -599,10 +600,10 @@ function GoalCard({ goalType, goalValue, onSave }: {
   return (
     <div style={{ padding: 14, borderRadius: 16, background: CARD_BG, border: `1px solid ${BORDER}` }}>
       <h3 style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#A78BFA", display: "flex", alignItems: "center", gap: 6 }}>
-        <Target style={{ width: 15, height: 15 }} /> Meta diária
+        <Target style={{ width: 15, height: 15 }} /> {t("leitura_meta_diaria")}
       </h3>
       <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-        {([{ v: "pages", label: "Páginas" }, { v: "minutes", label: "Minutos" }] as const).map((o) => (
+        {([{ v: "pages", label: t("leitura_paginas") }, { v: "minutes", label: t("leitura_minutos") }] as const).map((o) => (
           <button key={o.v} type="button" onClick={() => setType(o.v)}
             style={{
               flex: 1, padding: "8px", borderRadius: 10, cursor: "pointer",
@@ -627,7 +628,7 @@ function GoalCard({ goalType, goalValue, onSave }: {
             padding: "10px 16px", borderRadius: 10, border: 0, cursor: "pointer",
             background: PURPLE_HEX, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
           }}>
-          Salvar
+          {t("salvar")}
         </button>
       </div>
     </div>

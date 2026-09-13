@@ -6,6 +6,7 @@ import { Play, Square, X, Timer } from "lucide-react";
 import { toast } from "sonner";
 import type { ReadingBook } from "@/types";
 import { getLocalDate } from "@/lib/utils";
+import { useTranslation } from "@/lib/useTranslation";
 import { emitCareDataChanged } from "@/lib/care-events";
 
 // ── Design tokens ──────────────────────────────────────────────
@@ -47,6 +48,7 @@ function formatElapsed(ms: number): string {
 }
 
 export default function LeituraTimerPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [books, setBooks] = useState<ReadingBook[]>([]);
   const [selectedBookId, setSelectedBookId] = useState("");
@@ -122,8 +124,8 @@ export default function LeituraTimerPage() {
       if (perm === "default") perm = await Notification.requestPermission();
       if (perm !== "granted") return;
       closeTimerNotification();
-      const notif = new Notification("Cronômetro de leitura em andamento", {
-        body: `${timer.book_emoji} ${timer.book_title} · Toque para voltar ao cronômetro`,
+      const notif = new Notification(t("leitura_cronometro_andamento"), {
+        body: `${timer.book_emoji} ${timer.book_title} · ${t("leitura_toque_voltar")}`,
         tag: "leitura-timer",
       });
       notif.onclick = () => {
@@ -137,13 +139,13 @@ export default function LeituraTimerPage() {
 
   const start = () => {
     if (books.length === 0) {
-      toast.error("Adicione um livro primeiro");
+      toast.error(t("leitura_adicionar_livro_primeiro"));
       return;
     }
     const book = books.find((b) => b.id === selectedBookId) || books[0];
     const timer: ActiveTimer = {
       book_id: book?.id || null,
-      book_title: book?.title || "Leitura",
+      book_title: book?.title || t("leitura"),
       book_emoji: book?.emoji || "📖",
       started_at: Date.now(),
     };
@@ -175,13 +177,13 @@ export default function LeituraTimerPage() {
         emitCareDataChanged();
         localStorage.removeItem(STORAGE_KEY);
         closeTimerNotification();
-        toast.success(`Leitura registrada: ${minutes} min 🔥`);
+        toast.success(t("leitura_registrada_min", { min: String(minutes) }));
         router.push("/leitura");
       } else {
-        toast.error("Erro ao salvar leitura");
+        toast.error(t("leitura_erro_salvar_leitura"));
       }
     } catch {
-      toast.error("Erro ao salvar leitura");
+      toast.error(t("leitura_erro_salvar_leitura"));
     } finally {
       setSaving(false);
     }
@@ -214,7 +216,7 @@ export default function LeituraTimerPage() {
           <X style={{ width: 18, height: 18 }} />
         </button>
         <span style={{ fontSize: 13, fontWeight: 600, color: MUTED, display: "flex", alignItems: "center", gap: 6 }}>
-          <Timer style={{ width: 15, height: 15 }} /> Modo foco
+          <Timer style={{ width: 15, height: 15 }} /> {t("leitura_modo_foco")}
         </span>
         <div style={{ width: 36 }} />
       </div>
@@ -225,18 +227,18 @@ export default function LeituraTimerPage() {
           <>
             <span style={{ fontSize: 56 }}>📖</span>
             <h1 style={{ margin: "14px 0 4px", fontSize: 22, fontWeight: 800, textAlign: "center" }}>
-              Cronômetro de leitura
+              {t("leitura_cronometro_leitura")}
             </h1>
             <p style={{ margin: "0 0 28px", fontSize: 13, color: MUTED, textAlign: "center", maxWidth: 300, lineHeight: 1.5 }}>
-              Inicie e mergulhe na leitura. O tempo continua contando mesmo se você sair do app.
+              {t("leitura_inicie_mergulhe")}
             </p>
 
             {books.length === 0 ? (
               <p style={{ color: MUTED, fontSize: 13, textAlign: "center" }}>
-                Você ainda não tem livros na estante.{" "}
+                {t("leitura_sem_livros_estante")}{" "}
                 <button type="button" onClick={() => router.push("/leitura")}
                   style={{ background: "none", border: 0, color: "#A78BFA", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}>
-                  Adicionar livro
+                  {t("leitura_adicionar_livro")}
                 </button>
               </p>
             ) : (
@@ -262,7 +264,7 @@ export default function LeituraTimerPage() {
                   fontSize: 16, fontWeight: 700, fontFamily: "inherit",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 }}>
-                <Play style={{ width: 20, height: 20 }} /> Iniciar leitura
+                <Play style={{ width: 20, height: 20 }} /> {t("leitura_iniciar_leitura")}
               </button>
             )}
           </>
@@ -276,7 +278,7 @@ export default function LeituraTimerPage() {
             } as React.CSSProperties}>
               {active.book_title}
             </h2>
-            <p style={{ margin: 0, fontSize: 12, color: MUTED }}>lendo agora…</p>
+            <p style={{ margin: 0, fontSize: 12, color: MUTED }}>{t("leitura_lendo_agora")}</p>
 
             <div style={{
               fontSize: 72, fontWeight: 800, color: "#fff", margin: "24px 0 8px",
@@ -289,7 +291,7 @@ export default function LeituraTimerPage() {
               value={pages}
               onChange={(e) => setPages(e.target.value.replace(/\D/g, ""))}
               inputMode="numeric"
-              placeholder="Páginas lidas (opcional)"
+              placeholder={t("leitura_paginas_lidas_opcional")}
               style={{
                 width: "100%", maxWidth: 300, padding: "12px 14px", borderRadius: 12,
                 background: CARD_BG, border: `1px solid ${BORDER}`, color: FOREGROUND,
@@ -306,7 +308,7 @@ export default function LeituraTimerPage() {
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 opacity: saving ? 0.6 : 1,
               }}>
-              <Square style={{ width: 16, height: 16 }} /> {saving ? "Salvando…" : "Finalizar"}
+              <Square style={{ width: 16, height: 16 }} /> {saving ? t("salvando") : t("leitura_finalizar")}
             </button>
 
             <button type="button" onClick={cancel}
@@ -314,7 +316,7 @@ export default function LeituraTimerPage() {
                 marginTop: 14, background: "none", border: 0, cursor: "pointer",
                 color: MUTED, fontSize: 13, fontWeight: 600, fontFamily: "inherit",
               }}>
-              Descartar e cancelar
+              {t("leitura_descartar_cancelar")}
             </button>
           </>
         )}

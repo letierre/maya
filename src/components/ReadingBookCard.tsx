@@ -2,6 +2,8 @@
 
 import { BookOpen, Check, Edit3, Trash2, RotateCcw } from "lucide-react";
 import type { ReadingBook } from "@/types";
+import { useTranslation } from "@/lib/useTranslation";
+import { GENRES } from "@/components/ReadingAddBookModal";
 
 // ── Design tokens ──────────────────────────────────────────────
 const MUTED = "#9e96b5";
@@ -10,12 +12,24 @@ const PURPLE_HEX = "#7C5CFF";
 const FOREGROUND = "#e0d6ff";
 const CARD_BG = "oklch(.17 .015 270 / .6)";
 
-const STATUS_LABEL: Record<ReadingBook["status"], { label: string; color: string }> = {
-  lendo: { label: "Lendo", color: "#A78BFA" },
-  quero_ler: { label: "Quero ler", color: MUTED },
-  concluido: { label: "Concluído", color: "oklch(0.55 0.15 160)" },
-  abandonado: { label: "Abandonado", color: "oklch(0.6 0.12 20)" },
+const STATUS_KEY: Record<ReadingBook["status"], string> = {
+  lendo: "leitura_lendo",
+  quero_ler: "leitura_quero_ler",
+  concluido: "leitura_concluido",
+  abandonado: "leitura_abandonado",
 };
+const STATUS_COLOR: Record<ReadingBook["status"], string> = {
+  lendo: "#A78BFA",
+  quero_ler: MUTED,
+  concluido: "oklch(0.55 0.15 160)",
+  abandonado: "oklch(0.6 0.12 20)",
+};
+
+function genreLabel(t: (key: string) => string, genre?: string | null): string | null {
+  if (!genre) return null;
+  const opt = GENRES.find((g) => g.value === genre);
+  return opt ? t(opt.key) : genre;
+}
 
 interface Props {
   book: ReadingBook;
@@ -27,7 +41,8 @@ interface Props {
 }
 
 export function ReadingBookCard({ book, onLogSession, onComplete, onReopen, onEdit, onDelete }: Props) {
-  const status = STATUS_LABEL[book.status];
+  const { t } = useTranslation();
+  const statusColor = STATUS_COLOR[book.status];
   const hasTotal = book.total_pages && book.total_pages > 0;
   const pct = hasTotal
     ? Math.min(100, Math.round((book.current_page / (book.total_pages as number)) * 100))
@@ -62,17 +77,17 @@ export function ReadingBookCard({ book, onLogSession, onComplete, onReopen, onEd
               {book.title}
             </h4>
             <span style={{
-              fontSize: 10, fontWeight: 700, color: status.color,
+              fontSize: 10, fontWeight: 700, color: statusColor,
               background: "oklch(.22 .015 270 / .6)", borderRadius: 9999,
               padding: "2px 8px", whiteSpace: "nowrap", flexShrink: 0,
             }}>
-              {status.label}
+              {t(STATUS_KEY[book.status])}
             </span>
           </div>
 
           {(book.author || book.genre) && (
             <p style={{ margin: "2px 0 0", fontSize: 12, color: MUTED }}>
-              {[book.author, book.genre].filter(Boolean).join(" · ")}
+              {[book.author, genreLabel(t, book.genre)].filter(Boolean).join(" · ")}
             </p>
           )}
 
@@ -90,9 +105,9 @@ export function ReadingBookCard({ book, onLogSession, onComplete, onReopen, onEd
               </div>
               <span style={{ fontSize: 10, color: PURPLE_HEX, fontWeight: 700, whiteSpace: "nowrap" }}>
                 {hasTotal
-                  ? `${book.current_page}/${book.total_pages} pág`
+                  ? `${book.current_page}/${book.total_pages} ${t("leitura_pag")}`
                   : book.current_page > 0
-                    ? `${book.current_page} pág`
+                    ? `${book.current_page} ${t("leitura_pag")}`
                     : "—"}
               </span>
             </div>
@@ -121,7 +136,7 @@ export function ReadingBookCard({ book, onLogSession, onComplete, onReopen, onEd
               fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4,
             }}>
             <BookOpen style={{ width: 12, height: 12 }} />
-            {book.status === "lendo" ? "Registrar leitura" : "Começar"}
+            {book.status === "lendo" ? t("leitura_registrar_leitura") : t("leitura_comecar")}
           </button>
         ) : (
           <button type="button" onClick={() => onReopen(book)}
@@ -130,21 +145,21 @@ export function ReadingBookCard({ book, onLogSession, onComplete, onReopen, onEd
               border: 0, borderRadius: 8, padding: "6px 12px", cursor: "pointer",
               fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4,
             }}>
-            <RotateCcw style={{ width: 12, height: 12 }} /> Reabrir
+            <RotateCcw style={{ width: 12, height: 12 }} /> {t("leitura_reabrir")}
           </button>
         )}
 
         <div style={{ flex: 1 }} />
 
         {book.status !== "concluido" && (
-          <IconBtn title="Concluir" onClick={() => onComplete(book)} color="oklch(0.55 0.15 160)">
+          <IconBtn title={t("leitura_concluir")} onClick={() => onComplete(book)} color="oklch(0.55 0.15 160)">
             <Check style={{ width: 14, height: 14 }} />
           </IconBtn>
         )}
-        <IconBtn title="Editar" onClick={() => onEdit(book)} color={MUTED}>
+        <IconBtn title={t("editar")} onClick={() => onEdit(book)} color={MUTED}>
           <Edit3 style={{ width: 14, height: 14 }} />
         </IconBtn>
-        <IconBtn title="Remover" onClick={() => onDelete(book)} color={MUTED}>
+        <IconBtn title={t("leitura_remover")} onClick={() => onDelete(book)} color={MUTED}>
           <Trash2 style={{ width: 14, height: 14 }} />
         </IconBtn>
       </div>

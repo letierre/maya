@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import type { ReadingBook, ReadingStatus } from "@/types";
+import { useTranslation } from "@/lib/useTranslation";
 
 // ── Design tokens ──────────────────────────────────────────────
 const MUTED = "#9e96b5";
@@ -13,16 +14,23 @@ const CARD_BG = "oklch(.17 .015 270 / .6)";
 
 const EMOJIS = ["📖", "📚", "💡", "🧠", "🌱", "💪", "❤️", "✨", "🌙", "⚡", "🎯", "🕊️", "💰", "🧘"];
 
-const GENRES = [
-  "Desenvolvimento pessoal", "Filosofia", "Espiritualidade", "Finanças",
-  "Negócios", "Biografia", "Ficção", "Saúde", "Outro",
+export const GENRES: { value: string; key: string }[] = [
+  { value: "Desenvolvimento pessoal", key: "leitura_genre_desenvolvimento" },
+  { value: "Filosofia", key: "leitura_genre_filosofia" },
+  { value: "Espiritualidade", key: "leitura_genre_espiritualidade" },
+  { value: "Finanças", key: "leitura_genre_financas" },
+  { value: "Negócios", key: "leitura_genre_negocios" },
+  { value: "Biografia", key: "leitura_genre_biografia" },
+  { value: "Ficção", key: "leitura_genre_ficcao" },
+  { value: "Saúde", key: "leitura_genre_saude" },
+  { value: "Outro", key: "leitura_genre_outro" },
 ];
 
-const STATUS_OPTIONS: { value: ReadingStatus; label: string }[] = [
-  { value: "quero_ler", label: "Quero ler" },
-  { value: "lendo", label: "Lendo" },
-  { value: "concluido", label: "Concluído" },
-  { value: "abandonado", label: "Abandonado" },
+const STATUS_OPTIONS: { value: ReadingStatus; key: string }[] = [
+  { value: "quero_ler", key: "leitura_quero_ler" },
+  { value: "lendo", key: "leitura_lendo" },
+  { value: "concluido", key: "leitura_concluido" },
+  { value: "abandonado", key: "leitura_abandonado" },
 ];
 
 export interface BookFormValues {
@@ -42,6 +50,7 @@ interface Props {
 }
 
 export function ReadingAddBookModal({ initial, onClose, onSave }: Props) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [emoji, setEmoji] = useState("📖");
@@ -89,7 +98,7 @@ export function ReadingAddBookModal({ initial, onClose, onSave }: Props) {
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
-            {initial ? "Editar livro" : "Adicionar livro"}
+            {initial ? t("leitura_editar_livro") : t("leitura_adicionar_livro")}
           </h3>
           <button type="button" onClick={onClose}
             style={{ width: 32, height: 32, borderRadius: "50%", background: "none", border: 0, color: MUTED, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -98,7 +107,7 @@ export function ReadingAddBookModal({ initial, onClose, onSave }: Props) {
         </div>
 
         {/* Emoji */}
-        <p style={{ margin: "0 0 6px", fontSize: 12, color: MUTED, fontWeight: 600 }}>Capa (emoji)</p>
+        <p style={{ margin: "0 0 6px", fontSize: 12, color: MUTED, fontWeight: 600 }}>{t("leitura_capa_emoji")}</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
           {EMOJIS.map((e) => (
             <button key={e} type="button" onClick={() => setEmoji(e)}
@@ -112,40 +121,40 @@ export function ReadingAddBookModal({ initial, onClose, onSave }: Props) {
           ))}
         </div>
 
-        <Field label="Título *">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nome do livro"
+        <Field label={`${t("titulo")} *`}>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("leitura_nome_livro_ph")}
             style={inputStyle} />
         </Field>
 
-        <Field label="Autor">
-          <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Autor(a)"
+        <Field label={t("leitura_autor")}>
+          <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder={t("leitura_autor_ph")}
             style={inputStyle} />
         </Field>
 
-        <Field label="Categoria">
+        <Field label={t("leitura_categoria")}>
           <select value={genre} onChange={(e) => setGenre(e.target.value)} style={inputStyle}>
             <option value="">—</option>
             {GENRES.map((g) => (
-              <option key={g} value={g} style={{ background: "#1a1a28" }}>{g}</option>
+              <option key={g.value} value={g.value} style={{ background: "#1a1a28" }}>{t(g.key)}</option>
             ))}
           </select>
         </Field>
 
         <div style={{ display: "flex", gap: 10 }}>
-          <Field label="Total de páginas">
+          <Field label={t("leitura_total_paginas")}>
             <input value={totalPages} onChange={(e) => setTotalPages(e.target.value.replace(/\D/g, ""))}
-              inputMode="numeric" placeholder="Ex: 240" style={inputStyle} />
+              inputMode="numeric" placeholder={t("leitura_ex_240")} style={inputStyle} />
           </Field>
-          <Field label="Página atual">
+          <Field label={t("leitura_pagina_atual")}>
             <input value={currentPage} onChange={(e) => setCurrentPage(e.target.value.replace(/\D/g, ""))}
               inputMode="numeric" placeholder="0" style={inputStyle} />
           </Field>
         </div>
 
-        <Field label="Status">
+        <Field label={t("leitura_status")}>
           <select value={status} onChange={(e) => setStatus(e.target.value as ReadingStatus)} style={inputStyle}>
             {STATUS_OPTIONS.map((s) => (
-              <option key={s.value} value={s.value} style={{ background: "#1a1a28" }}>{s.label}</option>
+              <option key={s.value} value={s.value} style={{ background: "#1a1a28" }}>{t(s.key)}</option>
             ))}
           </select>
         </Field>
@@ -157,7 +166,7 @@ export function ReadingAddBookModal({ initial, onClose, onSave }: Props) {
             fontSize: 14, fontWeight: 700, fontFamily: "inherit",
             opacity: title.trim() ? 1 : 0.5,
           }}>
-          {initial ? "Salvar alterações" : "Adicionar à estante"}
+          {initial ? t("leitura_salvar_alteracoes") : t("leitura_adicionar_estante")}
         </button>
       </div>
     </div>

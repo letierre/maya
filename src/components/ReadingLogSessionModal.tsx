@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import type { ReadingBook } from "@/types";
 import { getLocalDate } from "@/lib/utils";
+import { useTranslation } from "@/lib/useTranslation";
 
 // ── Design tokens ──────────────────────────────────────────────
 const MUTED = "#9e96b5";
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export function ReadingLogSessionModal({ books, initialBookId, onClose, onSave }: Props) {
+  const { t } = useTranslation();
   const [bookId, setBookId] = useState("");
   const [pages, setPages] = useState("");
   const [minutes, setMinutes] = useState("");
@@ -49,7 +51,7 @@ export function ReadingLogSessionModal({ books, initialBookId, onClose, onSave }
     const book = books.find((b) => b.id === bookId);
     onSave({
       book_id: bookId || "",
-      book_title: book?.title || "Leitura",
+      book_title: book?.title || t("leitura"),
       date,
       pages_read: pages,
       minutes_read: minutes,
@@ -71,16 +73,16 @@ export function ReadingLogSessionModal({ books, initialBookId, onClose, onSave }
         color: FOREGROUND,
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Registrar leitura</h3>
+          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{t("leitura_registrar_leitura")}</h3>
           <button type="button" onClick={onClose}
             style={{ width: 32, height: 32, borderRadius: "50%", background: "none", border: 0, color: MUTED, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <X style={{ width: 18, height: 18 }} />
           </button>
         </div>
 
-        <Field label="Livro">
+        <Field label={t("leitura_livro")}>
           <select value={bookId} onChange={(e) => setBookId(e.target.value)} style={inputStyle}>
-            {books.length === 0 && <option value="">Nenhum livro na estante</option>}
+            {books.length === 0 && <option value="">{t("leitura_nenhum_livro")}</option>}
             {books.map((b) => (
               <option key={b.id} value={b.id} style={{ background: "#1a1a28" }}>
                 {b.emoji || "📖"} {b.title}
@@ -90,17 +92,17 @@ export function ReadingLogSessionModal({ books, initialBookId, onClose, onSave }
         </Field>
 
         <div style={{ display: "flex", gap: 10 }}>
-          <Field label="Páginas lidas">
+          <Field label={t("leitura_paginas_lidas")}>
             <input value={pages} onChange={(e) => setPages(e.target.value.replace(/\D/g, ""))}
               inputMode="numeric" placeholder="0" style={inputStyle} />
           </Field>
-          <Field label="Minutos lidos">
+          <Field label={t("leitura_minutos_lidos")}>
             <input value={minutes} onChange={(e) => setMinutes(e.target.value.replace(/\D/g, ""))}
               inputMode="numeric" placeholder="0" style={inputStyle} />
           </Field>
         </div>
 
-        <Field label="Data">
+        <Field label={t("leitura_data")}>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} />
         </Field>
 
@@ -111,7 +113,7 @@ export function ReadingLogSessionModal({ books, initialBookId, onClose, onSave }
             fontSize: 14, fontWeight: 700, fontFamily: "inherit",
             opacity: valid ? 1 : 0.5,
           }}>
-          Salvar registro
+          {t("leitura_salvar_registro")}
         </button>
       </div>
     </div>
