@@ -5,15 +5,16 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Home, BarChart3, CalendarDays, User } from "lucide-react";
 import { MayaAvatar } from "@/components/MayaAvatar";
+import { useTranslation } from "@/lib/useTranslation";
 
-const NAV_ITEMS = [
-  { href: "/dashboard",    icon: Home,        label: "Início", slug: "dashboard" },
+const NAV_ITEMS: { href: string; icon: React.ComponentType<{ size?: number }> | null; label?: string; labelKey?: string; slug: string }[] = [
+  { href: "/dashboard",    icon: Home,        labelKey: "nav_inicio",  slug: "dashboard" },
   { href: "/insights",     icon: null,        label: "Maya",   slug: "insights" },
   // Comunidade oculta temporariamente — reativar quando houver usuários ativos suficientes
   // { href: "/comunidade",   icon: Heart,       label: "Comunidade", slug: "comunidade" },
-  { href: "/analise",      icon: BarChart3,   label: "Análise", slug: "analise" },
-  { href: "/agenda",       icon: CalendarDays, label: "Plano",  slug: "agenda" },
-  { href: "/perfil",       icon: User,        label: "Perfil",  slug: "perfil" },
+  { href: "/analise",      icon: BarChart3,   labelKey: "nav_analise", slug: "analise" },
+  { href: "/agenda",       icon: CalendarDays, labelKey: "nav_plano",  slug: "agenda" },
+  { href: "/perfil",       icon: User,        labelKey: "nav_perfil",  slug: "perfil" },
 ];
 
 // Screens where the bottom nav should be hidden
@@ -27,6 +28,7 @@ const HIDE_ON = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { t } = useTranslation();
   const [hasNudge, setHasNudge] = useState(false);
 
   // Check for unread Maya nudge
@@ -84,7 +86,7 @@ export function BottomNav() {
           paddingInline: 8,
         }}
       >
-        {NAV_ITEMS.map(({ href, icon: Icon, label, slug }) => {
+        {NAV_ITEMS.map(({ href, icon: Icon, label, labelKey, slug }) => {
           const active = isActive(slug);
           return (
             <Link
@@ -121,7 +123,7 @@ export function BottomNav() {
                 <Icon size={22} />
               ) : null}
               <span style={{ fontSize: 10, fontWeight: 600, lineHeight: 1 }}>
-                {label}
+                {labelKey ? t(labelKey) : label}
               </span>
             </Link>
           );

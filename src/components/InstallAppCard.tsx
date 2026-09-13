@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Download, Share, X, Smartphone, SquareArrowUp } from "lucide-react";
+import { useTranslation } from "@/lib/useTranslation";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -104,6 +105,7 @@ function Step({ n, title, desc, icon }: { n: number; title: string; desc: string
 }
 
 export function IosGuide({ onClose, onDone }: { onClose: () => void; onDone?: () => void }) {
+  const { t } = useTranslation();
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} />
@@ -117,7 +119,7 @@ export function IosGuide({ onClose, onDone }: { onClose: () => void; onDone?: ()
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 9999, background: "rgba(167,139,250,0.2)", margin: "0 auto 16px" }} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>Instalar a Maya</h3>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>{t("ia_instalar_maya")}</h3>
           <button type="button" onClick={onClose} style={{ border: 0, background: "#0B0B10", borderRadius: 10, padding: 8, cursor: "pointer" }}>
             <X size={18} style={{ color: "#9e96b5" }} />
           </button>
@@ -128,14 +130,14 @@ export function IosGuide({ onClose, onDone }: { onClose: () => void; onDone?: ()
             <Smartphone size={22} style={{ color: "#7C5CFF" }} />
           </div>
           <p style={{ margin: 0, fontSize: 13, color: "#e0d6ff", lineHeight: 1.5 }}>
-            O iPhone não permite instalar por botão. É rápido — siga 3 passos:
+            {t("ia_iphone_nao_permite")}
           </p>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Step n={1} icon={<SquareArrowUp size={15} style={{ color: "#A78BFA" }} />} title="Toque em Compartilhar" desc="O quadrado com a seta pra cima, na barra do Safari." />
-          <Step n={2} title="Escolha “Adicionar à Tela de Início”" desc="Role o menu para baixo até encontrar essa opção." />
-          <Step n={3} title="Toque em Adicionar" desc="Pronto! A Maya aparece como um app na sua tela de início." />
+          <Step n={1} icon={<SquareArrowUp size={15} style={{ color: "#A78BFA" }} />} title={t("ia_step1_t")} desc={t("ia_step1_d")} />
+          <Step n={2} title={t("ia_step2_t")} desc={t("ia_step2_d")} />
+          <Step n={3} title={t("ia_step3_t")} desc={t("ia_step3_d")} />
         </div>
 
         {onDone && (
@@ -144,7 +146,7 @@ export function IosGuide({ onClose, onDone }: { onClose: () => void; onDone?: ()
             cursor: "pointer", background: "#7C5CFF", color: "#fff",
             fontFamily: "inherit", fontSize: 14, fontWeight: 700,
           }}>
-            Continuar
+            {t("ia_continuar")}
           </button>
         )}
       </div>
@@ -154,6 +156,7 @@ export function IosGuide({ onClose, onDone }: { onClose: () => void; onDone?: ()
 
 export function InstallAppCard() {
   const { deferred, ios, installed, handleInstall } = useInstallPrompt();
+  const { t } = useTranslation();
   const [showGuide, setShowGuide] = useState(false);
 
   if (installed) return null;
@@ -163,10 +166,10 @@ export function InstallAppCard() {
     return (
       <>
         <div style={CARD}>
-          <p style={LABEL}>Instalar app</p>
-          <p style={DESC}>Tenha a Maya na tela de início do seu iPhone, como um app.</p>
+          <p style={LABEL}>{t("ia_instalar_app")}</p>
+          <p style={DESC}>{t("ia_tenha_maya")}</p>
           <button type="button" onClick={() => setShowGuide(true)} style={BTN}>
-            <Share size={16} /> Como instalar
+            <Share size={16} /> {t("ia_como_instalar")}
           </button>
         </div>
         {showGuide && <IosGuide onClose={() => setShowGuide(false)} />}
@@ -178,10 +181,10 @@ export function InstallAppCard() {
   if (deferred) {
     return (
       <div style={CARD}>
-        <p style={LABEL}>Instalar app</p>
-        <p style={DESC}>Adicione a Maya à tela de início em um toque.</p>
+        <p style={LABEL}>{t("ia_instalar_app")}</p>
+        <p style={DESC}>{t("ia_adicionar_tela")}</p>
         <button type="button" onClick={handleInstall} style={BTN}>
-          <Download size={16} /> Instalar app
+          <Download size={16} /> {t("ia_instalar_app")}
         </button>
       </div>
     );

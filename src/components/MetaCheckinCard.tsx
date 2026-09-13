@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AREA_CONFIG } from "@/lib/planejamento-constants";
+import { useTranslation } from "@/lib/useTranslation";
 
 type Status = "avançou" | "parcial" | "nao";
 
@@ -17,17 +18,17 @@ interface MetaStatus {
   doneTodayCount: number;
 }
 
-const OPTIONS: { key: Status; label: string; emoji: string }[] = [
-  { key: "avançou", label: "Avançou", emoji: "✓" },
-  { key: "parcial", label: "Parcial", emoji: "~" },
-  { key: "nao", label: "Não", emoji: "✗" },
+const OPTIONS: { key: Status; labelKey: string; emoji: string }[] = [
+  { key: "avançou", labelKey: "mc_avancou", emoji: "✓" },
+  { key: "parcial", labelKey: "mc_parcial", emoji: "~" },
+  { key: "nao", labelKey: "nao", emoji: "✗" },
 ];
 
-function feedbackFor(status: Status): string {
+function feedbackFor(status: Status, t: (key: string) => string): string {
   switch (status) {
-    case "avançou": return "🔥 Mandou bem. Continue!";
-    case "parcial": return "Metade é melhor que nada. O que faltou?";
-    case "nao": return "O que te travou hoje? Amanhã é um novo dia.";
+    case "avançou": return t("mc_feedback_avancou");
+    case "parcial": return t("mc_feedback_parcial");
+    case "nao": return t("mc_feedback_nao");
   }
 }
 
@@ -38,6 +39,7 @@ function feedbackFor(status: Status): string {
  * reflete com um toque (Avançou / Parcial / Não — com desconforto no "Não").
  */
 export function MetaCheckinCard({ date }: { date: string }) {
+  const { t } = useTranslation();
   const [statuses, setStatuses] = useState<MetaStatus[] | null>(null);
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -60,7 +62,7 @@ export function MetaCheckinCard({ date }: { date: string }) {
     setStatuses((prev) => (prev ?? []).map((s) =>
       s.goal_id === goalId ? { ...s, effective: status, status } : s,
     ));
-    setFeedback((f) => ({ ...f, [goalId]: feedbackFor(status) }));
+    setFeedback((f) => ({ ...f, [goalId]: feedbackFor(status, t) }));
     try {
       await fetch("/api/goal-daily-status", {
         method: "POST",
@@ -79,8 +81,8 @@ export function MetaCheckinCard({ date }: { date: string }) {
       border: "1px solid oklch(0.5 0.12 270 / .12)",
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>🎯 Metas</span>
-        <span style={{ fontSize: 11, color: "#9e96b5", textAlign: "right" }}>Como a meta andou hoje?</span>
+        <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{t("mc_metas")}</span>
+        <span style={{ fontSize: 11, color: "#9e96b5", textAlign: "right" }}>{t("mc_como_anda")}</span>
       </div>
 
       {statuses.map((s, i) => {
@@ -104,7 +106,7 @@ export function MetaCheckinCard({ date }: { date: string }) {
                   background: "oklch(0.14 0.012 270 / 0.9)", borderRadius: 9999, padding: "2px 8px",
                   whiteSpace: "nowrap",
                 }}>
-                  🔥 {s.streak} {s.streak === 1 ? "dia" : "dias"}
+                  🔥 {s.streak} {s.streak === 1 ? t("mc_dia") : t("dias")}
                 </span>
               )}
             </div>
@@ -112,7 +114,7 @@ export function MetaCheckinCard({ date }: { date: string }) {
             {/* Contexto automático do dia */}
             {s.doneToday.length > 0 && (
               <p style={{ margin: "0 0 8px", fontSize: 11, color: "#9e96b5", lineHeight: 1.4 }}>
-                Hoje: {s.doneToday.slice(0, 3).map((t) => `✓ ${t}`).join(" · ")}
+                {t("mc_hoje")}: {s.doneToday.slice(0, 3).map((x) => `✓ ${x}`).join(" · ")}
               </p>
             )}
 
@@ -124,7 +126,7 @@ export function MetaCheckinCard({ date }: { date: string }) {
                 background: "rgba(94,234,212,0.12)", border: "1px solid rgba(94,234,212,0.25)",
                 color: "#5EEAD4", fontSize: 12, fontWeight: 700,
               }}>
-                <span>✓</span> Avançou hoje
+                <span>✓</span> {t("mc_avancou_hoje")}
               </div>
             ) : (
               <div style={{ display: "flex", gap: 6 }}>
@@ -148,7 +150,7 @@ export function MetaCheckinCard({ date }: { date: string }) {
                           : "1px solid oklch(0.5 0.12 270 / .1)",
                         opacity: savingId === s.goal_id ? 0.6 : 1,
                       }}>
-                      {opt.emoji} {opt.label}
+                      {opt.emoji} {t(opt.labelKey)}
                     </button>
                   );
                 })}
