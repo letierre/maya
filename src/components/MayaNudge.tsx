@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowUpRight, X } from "lucide-react";
 import { MayaAvatar } from "@/components/MayaAvatar";
+import { useTranslation } from "@/lib/useTranslation";
 
 interface Nudge {
   id: string;
@@ -22,6 +23,7 @@ const ROTATE_INTERVAL = 3 * 60 * 1000; // 3 minutos
 
 export function MayaNudge() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [nudges, setNudges] = useState<Nudge[]>([]);
   const [index, setIndex] = useState(0);
 
@@ -69,7 +71,7 @@ export function MayaNudge() {
           type="button"
           onClick={(e) => { e.stopPropagation(); dismiss(); }}
           className="absolute top-2.5 right-2.5 size-6 rounded-full hover:bg-muted flex items-center justify-center transition-colors text-muted-foreground/50 hover:text-muted-foreground"
-          aria-label="Fechar"
+          aria-label={t("fechar")}
         >
           <X className="size-3" />
         </button>

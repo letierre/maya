@@ -453,7 +453,7 @@ export default function PerfilPage() {
             <button type="button" onClick={() => router.push("/admin")}
               style={{ width: "100%", padding: "14px 16px", borderRadius: 14, border: "1px solid rgba(255,77,77,0.3)", background: "rgba(255,77,77,0.08)", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, fontFamily: "inherit" }}>
               <Shield size={18} style={{ color: "#FF4D4D" }} />
-              <span style={{ fontSize: 14, fontWeight: 600, color: "#FF4D4D" }}>Painel Admin</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: "#FF4D4D" }}>{t("admin_painel")}</span>
             </button>
           </div>
         )}

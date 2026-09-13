@@ -656,7 +656,7 @@ export default function MayaChatPage() {
           onClick={() => router.push("/dashboard")}
           className="size-9 flex items-center justify-center rounded-full transition-colors -ml-1"
           style={{ color: "#D8D2E7" }}
-          aria-label="Voltar"
+          aria-label={t("config_voltar")}
         >
           <ArrowLeft className="size-5" />
         </button>
@@ -895,7 +895,7 @@ export default function MayaChatPage() {
             fontWeight: 600,
             boxShadow: "0 4px 14px rgba(124,92,255,0.45)",
           }}
-          aria-label="Ver novas mensagens"
+          aria-label={t("ver_novas_mensagens")}
         >
           <ArrowDown className="size-4" />
           <span style={{ marginLeft: 5 }}>{unread} nova{unread > 1 ? "s" : ""}</span>
@@ -974,7 +974,7 @@ export default function MayaChatPage() {
                   onClick={() => removeSelectedImage(i)}
                   className="absolute -top-1.5 -right-1.5 size-5 rounded-full flex items-center justify-center text-white border-0 cursor-pointer"
                   style={{ background: "rgba(0,0,0,0.6)" }}
-                  aria-label="Remover foto"
+                  aria-label={t("remover_foto")}
                 >
                   <X className="size-3" />
                 </button>
@@ -1020,7 +1020,7 @@ export default function MayaChatPage() {
             disabled={busy}
             className="size-10 shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer transition-transform active:scale-90 disabled:opacity-40"
             style={{ background: "rgba(124,92,255,0.14)", color: "#A78BFA" }}
-            aria-label="Anexar"
+            aria-label={t("anexar")}
           >
             <Plus className="size-5" />
           </button>
@@ -1070,7 +1070,7 @@ export default function MayaChatPage() {
               sendMessage();
             }}
             disabled={busy}
-            aria-label="Enviar"
+            aria-label={t("enviar")}
           >
             <Send className="size-[18px]" color="#fff" />
           </button>
@@ -1094,7 +1094,7 @@ export default function MayaChatPage() {
           <button
             type="button"
             onClick={() => setViewerImage(null)}
-            aria-label="Fechar"
+            aria-label={t("fechar")}
             style={{
               position: "fixed",
               top: "calc(env(safe-area-inset-top) + 12px)",

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useTranslation } from "@/lib/useTranslation";
 
 function loadCache() {
   try {
@@ -18,6 +19,7 @@ function saveCache(data: { name?: string; avatar_url?: string }) {
 }
 
 export function UserAvatar() {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<{ name: string; avatar_url: string }>({ name: "", avatar_url: "" });
   const [ready, setReady] = useState(false);
 
@@ -52,7 +54,7 @@ export function UserAvatar() {
 
   return (
     <Avatar className="h-8 w-8 cursor-pointer">
-      {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt="Foto" />}
+      {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt={t("foto")} />}
       <AvatarFallback
         className="bg-primary text-primary-foreground text-xs"
         {...(ready ? {} : { "data-loading": true })}

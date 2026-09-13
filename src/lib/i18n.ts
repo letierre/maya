@@ -2297,6 +2297,15 @@ const translations: Record<Lang, Record<string, string>> = {
     ia_tenha_maya: "Tenha a Maya na tela de início do seu iPhone, como um app.",
     ia_como_instalar: "Como instalar",
     ia_adicionar_tela: "Adicione a Maya à tela de início em um toque.",
+    fechar: "Fechar",
+    enviar: "Enviar",
+    anexar: "Anexar",
+    remover_foto: "Remover foto",
+    ver_novas_mensagens: "Ver novas mensagens",
+    sair: "Sair",
+    ate_logo: "Até logo! 🌱",
+    admin_painel: "Painel Admin",
+    foto: "Foto",
   },
 
   es: {
@@ -4576,6 +4585,15 @@ const translations: Record<Lang, Record<string, string>> = {
     ia_tenha_maya: "Ten a Maya en la pantalla de inicio de tu iPhone, como una app.",
     ia_como_instalar: "Cómo instalar",
     ia_adicionar_tela: "Añade a Maya a la pantalla de inicio en un toque.",
+    fechar: "Cerrar",
+    enviar: "Enviar",
+    anexar: "Adjuntar",
+    remover_foto: "Quitar foto",
+    ver_novas_mensagens: "Ver mensajes nuevos",
+    sair: "Salir",
+    ate_logo: "¡Hasta luego! 🌱",
+    admin_painel: "Panel Admin",
+    foto: "Foto",
   },
 
   en: {
@@ -6855,6 +6873,15 @@ const translations: Record<Lang, Record<string, string>> = {
     ia_tenha_maya: "Get Maya on your iPhone home screen, like an app.",
     ia_como_instalar: "How to install",
     ia_adicionar_tela: "Add Maya to your home screen in one tap.",
+    fechar: "Close",
+    enviar: "Send",
+    anexar: "Attach",
+    remover_foto: "Remove photo",
+    ver_novas_mensagens: "See new messages",
+    sair: "Log out",
+    ate_logo: "See you soon! 🌱",
+    admin_painel: "Admin Panel",
+    foto: "Photo",
   },
 };
 

@@ -5,8 +5,10 @@ import { safeCachedFetch } from "@/lib/fetch-cache";
 import { getLocalDateFromISO } from "@/lib/utils";
 import type { UserAchievement } from "@/types";
 import { Section, FOREGROUND } from "./Section";
+import { useTranslation } from "@/lib/useTranslation";
 
 export function ConquistasGrid({ from, to }: { from: string; to: string }) {
+  const { t } = useTranslation();
   const [achs, setAchs] = useState<UserAchievement[]>([]);
 
   useEffect(() => {
@@ -25,7 +27,7 @@ export function ConquistasGrid({ from, to }: { from: string; to: string }) {
   if (period.length === 0) return null;
 
   return (
-    <Section title="Conquistas">
+    <Section title={t("conquistas")}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {period.map((a) => {
           const meta = (a.metadata ?? {}) as { label?: string; icon?: string };

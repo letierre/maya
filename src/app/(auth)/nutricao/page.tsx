@@ -188,7 +188,7 @@ function NutricaoPage() {
         toast.error(t("nu_erro_adicionar"));
       }
     } catch {
-      toast.error("Erro ao adicionar");
+      toast.error(t("nu_erro_adicionar"));
     }
     setAddingMeal(null);
   };
@@ -208,7 +208,7 @@ function NutricaoPage() {
         toast.error(t("nu_erro_adicionar"));
       }
     } catch {
-      toast.error("Erro ao adicionar");
+      toast.error(t("nu_erro_adicionar"));
     }
   };
 

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/useTranslation";
+import { getLocale } from "@/lib/language";
 import { getMealTypeFromHour, mealTypeLabel, mealTypeEmoji, classificationLabel } from "@/lib/meal-utils";
 import { compressImage, uploadToCloud } from "@/lib/photo-storage";
 import { invalidateFetchCache } from "@/lib/fetch-cache";
@@ -48,11 +49,12 @@ const BG_GRADIENT: React.CSSProperties = {
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  const days = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
-  const months = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+  const locale = getLocale();
+  const weekday = d.toLocaleDateString(locale, { weekday: "short" }).replace(/\./g, "").toUpperCase();
+  const month = d.toLocaleDateString(locale, { month: "short" }).replace(/\./g, "").toUpperCase();
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${days[d.getDay()]} · ${String(d.getDate()).padStart(2, "0")} ${months[d.getMonth()]} · ${hh}:${mm}`;
+  return `${weekday} · ${String(d.getDate()).padStart(2, "0")} ${month} · ${hh}:${mm}`;
 }
 
 // ── Page ───────────────────────────────────────────────────────
