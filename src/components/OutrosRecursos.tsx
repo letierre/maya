@@ -98,7 +98,7 @@ function ResourceCard({
       </p>
 
       {sub && (
-        <p className="m-0 text-[10px]" style={{ color: "oklch(0.55 0.03 270)" }}>
+        <p className="m-0 text-[10px]" style={{ color: "var(--text-muted)" }}>
           {sub}
         </p>
       )}

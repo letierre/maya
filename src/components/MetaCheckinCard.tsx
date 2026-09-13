@@ -92,7 +92,7 @@ export function MetaCheckinCard({ date }: { date: string }) {
         return (
           <div key={s.goal_id} style={{
             padding: "11px 0 3px",
-            borderTop: i > 0 ? "1px solid oklch(0.28 0.02 270 / 0.4)" : "none",
+            borderTop: i > 0 ? "1px solid var(--divider)" : "none",
           }}>
             {/* Header */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>

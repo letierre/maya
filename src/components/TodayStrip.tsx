@@ -69,7 +69,7 @@ function MiniCard({
       <p className="m-0 text-[11px] font-semibold leading-tight" style={{ color: "#e0d6ff" }}>
         {value}
       </p>
-      <p className="m-0 text-[10px] font-medium" style={{ color: subColor || "oklch(0.55 0.03 270)" }}>
+      <p className="m-0 text-[10px] font-medium" style={{ color: subColor || "var(--text-muted)" }}>
         {sub || label}
       </p>
     </button>

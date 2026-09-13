@@ -96,7 +96,7 @@ export function OKRProgress({ period }: { period: Period }) {
 
         {past.length > 0 && (
           <>
-            {hasActive && <div style={{ height: 1, background: "oklch(0.25 0.02 270)", margin: "16px 0 14px" }} />}
+            {hasActive && <div style={{ height: 1, background: "var(--surface-3)", margin: "16px 0 14px" }} />}
             <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: MUTED }}>
               {t("an_trimestres_anteriores")}
             </p>

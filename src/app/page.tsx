@@ -80,7 +80,7 @@ export default function LandingPage() {
               <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "#e0d6ff" }}>{t(tKey)}</p>
               <p style={{
                 margin: 0, fontSize: 11.5,
-                color: "oklch(0.6 0.03 270)",
+                color: "var(--muted-foreground)",
                 lineHeight: 1.45,
               }}>{t(dKey)}</p>
             </div>
@@ -91,7 +91,7 @@ export default function LandingPage() {
         <div style={{
           display: "flex", justifyContent: "center",
           gap: 20, marginBottom: 28,
-          fontSize: 12, color: "oklch(0.6 0.03 270)",
+          fontSize: 12, color: "var(--muted-foreground)",
           fontWeight: 600, letterSpacing: ".02em",
         }}>
           <span>{t("lp_privacidade")}</span>

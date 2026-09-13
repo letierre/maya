@@ -110,7 +110,7 @@ export function EvolucaoSpark({ data, loading }: EvolucaoSparkProps) {
               >
                 {sparkAvg.toFixed(1)}
               </span>
-              <span className="text-[10.5px]" style={{ color: "oklch(0.55 0.03 270)" }}>
+              <span className="text-[10.5px]" style={{ color: "var(--text-muted)" }}>
                 {t("ev_media")}{sparkTrend ? ` · ${sparkTrend}` : ""}
               </span>
             </div>
@@ -119,7 +119,7 @@ export function EvolucaoSpark({ data, loading }: EvolucaoSparkProps) {
             </div>
           </>
         ) : (
-          <p className="m-0 text-[11px]" style={{ color: "oklch(0.55 0.03 270)" }}>
+          <p className="m-0 text-[11px]" style={{ color: "var(--text-muted)" }}>
             {t("ev_sem_dados")}
           </p>
         )}

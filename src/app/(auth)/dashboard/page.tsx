@@ -407,7 +407,7 @@ export default function DashboardPage() {
         </button>
         <p
           className="text-center m-0 mt-1.5 text-[11px]"
-          style={{ color: "oklch(0.55 0.03 270)" }}
+          style={{ color: "var(--text-muted)" }}
         >
           {todayCheckIn ? t("dash_conectar_pontos") : t("dash_como_atualizo")}
         </p>

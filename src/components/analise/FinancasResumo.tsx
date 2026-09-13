@@ -233,7 +233,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
                       <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: FOREGROUND }}>{labelOf(id)}</span>
                       <span style={{ fontSize: 12, fontWeight: 700, color: FOREGROUND }}>{fmt(total, currency)}</span>
                     </div>
-                    <div style={{ height: 4, borderRadius: 9999, background: "oklch(0.25 0.02 270)", overflow: "hidden" }}>
+                    <div style={{ height: 4, borderRadius: 9999, background: "var(--surface-3)", overflow: "hidden" }}>
                       <div style={{
                         height: "100%", borderRadius: 9999,
                         background: "linear-gradient(90deg, #7C5CFF, #A78BFA)",
@@ -262,7 +262,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
                     {fmt(spent, currency)} / {fmt(b.monthly_limit, currency)}
                   </span>
                 </div>
-                <div style={{ height: 5, borderRadius: 9999, background: "oklch(0.25 0.02 270)", overflow: "hidden" }}>
+                <div style={{ height: 5, borderRadius: 9999, background: "var(--surface-3)", overflow: "hidden" }}>
                   <div style={{
                     height: "100%", borderRadius: 9999,
                     background: over ? RED : pct > 80 ? "#f59e0b" : GREEN,
@@ -281,7 +281,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
                   <span style={{ fontWeight: 500, color: MUTED }}> / {fmt(totalLimit, currency)}</span>
                 </span>
               </div>
-              <div style={{ height: 6, borderRadius: 9999, background: "oklch(0.25 0.02 270)", overflow: "hidden" }}>
+              <div style={{ height: 6, borderRadius: 9999, background: "var(--surface-3)", overflow: "hidden" }}>
                 <div style={{
                   height: "100%", borderRadius: 9999,
                   background: totalOver ? RED : totalPct > 80 ? "#f59e0b" : GREEN,

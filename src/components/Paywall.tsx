@@ -8,7 +8,7 @@ const ACCENT = "#7C5CFF";
 const ACCENT_2 = "#A78BFA";
 const CARD = "var(--surface)";
 const BORDER = "var(--surface-border)";
-const MUTED = "oklch(0.55 0.03 270)";
+const MUTED = "var(--text-muted)";
 const TEXT = "#e0d6ff";
 
 type Variant = "none" | "expired" | "past_due" | "canceled";

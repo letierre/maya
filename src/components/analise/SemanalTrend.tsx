@@ -67,7 +67,7 @@ export function SemanalTrend({ from, to }: { from: string; to: string }) {
                     width: "100%",
                     height: `${Math.max((s / 5) * 44, 3)}px`,
                     borderRadius: 5,
-                    background: e.score != null ? PURPLE : "oklch(0.25 0.02 270)",
+                    background: e.score != null ? PURPLE : "var(--surface-3)",
                     opacity: e.score != null ? 1 : 0.4,
                   }}
                 />

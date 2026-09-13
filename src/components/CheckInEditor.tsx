@@ -203,7 +203,7 @@ const SLEEP_GOAL_MIN = 8 * 60; // meta de 8h de sono
 function DayProgressBar({ pct, color = "#7C5CFF" }: { pct: number; color?: string }) {
   const clamped = Math.max(0, Math.min(100, pct));
   return (
-    <div style={{ height: 6, borderRadius: 9999, background: "oklch(0.28 0.02 270 / 0.4)", overflow: "hidden" }}>
+    <div style={{ height: 6, borderRadius: 9999, background: "var(--divider)", overflow: "hidden" }}>
       <div style={{
         width: `${clamped}%`, height: "100%", borderRadius: 9999,
         background: color, transition: "width .3s ease",
@@ -234,12 +234,12 @@ function CupIcon({ filled, size = 28 }: { filled: boolean; size?: number }) {
   return (
     <svg width={w} height={h} viewBox="0 0 22 28" fill="none">
       <path d="M3 2 L5.5 22 H16.5 L19 2 H3Z"
-        fill={filled ? "oklch(0.5 0.13 270 / .22)" : "oklch(0.28 0.02 270 / .4)"}
+        fill={filled ? "oklch(0.5 0.13 270 / .22)" : "var(--divider)"}
         stroke={filled ? fillColor : emptyStroke}
         strokeWidth="1.6" strokeLinejoin="round"
       />
       <path d="M5.5 22 H16.5 L15.5 26 H6.5 Z"
-        fill={filled ? "oklch(0.5 0.13 270 / .3)" : "oklch(0.28 0.02 270 / .4)"}
+        fill={filled ? "oklch(0.5 0.13 270 / .3)" : "var(--divider)"}
         stroke={filled ? fillColor : emptyStroke}
         strokeWidth="1.6" strokeLinejoin="round"
       />
@@ -683,7 +683,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
 
               {/* Sem registro de sono → campo para adicionar aqui mesmo */}
               {!hasSleepLog && (
-                <div style={{ marginTop: 12, borderTop: "1px solid oklch(0.28 0.02 270 / 0.4)", paddingTop: 12 }}>
+                <div style={{ marginTop: 12, borderTop: "1px solid var(--divider)", paddingTop: 12 }}>
                   <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#e0d6ff" }}>
                     {t("ck_sleep_last_night")}
                   </p>
@@ -746,7 +746,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
           <div style={{
             padding: "14px 16px", borderRadius: 14,
             background: "oklch(0.16 0.012 270 / 0.7)", backdropFilter: "blur(8px)",
-            border: "1px solid oklch(0.28 0.02 270 / 0.4)",
+            border: "1px solid var(--divider)",
             display: "flex", flexDirection: "column", gap: 6,
           }}>
             {scoreKeys.map((key) => {
@@ -851,7 +851,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
         {/* ── Pensamentos (suicidal_thoughts) ── */}
         {hasConfirm && (
           <section>
-            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
+            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--text-muted)" }}>
               {t("ck_confirm_label")}
             </p>
             <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.4 }}>

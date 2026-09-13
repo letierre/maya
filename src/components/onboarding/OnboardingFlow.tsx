@@ -18,7 +18,7 @@ const ACCENT_2 = "#A78BFA";
 const BG = "oklch(0.12 0.012 270)";
 const CARD = "var(--surface)";
 const BORDER = "var(--surface-border)";
-const MUTED = "oklch(0.55 0.03 270)";
+const MUTED = "var(--text-muted)";
 const TEXT = "#e0d6ff";
 
 const tr = (lang: string, key: string, vars?: Record<string, string>) =>

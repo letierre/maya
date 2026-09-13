@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 // Tokens visuais do módulo de Análise (espelham a página /analise)
 export const FOREGROUND = "#e0d6ff";
-export const MUTED = "oklch(0.55 0.03 270)";
+export const MUTED = "var(--text-muted)";
 export const PURPLE = "#7C5CFF";
 export const LILAC = "#A78BFA";
 export const GREEN = "#22D18B";
@@ -67,7 +67,7 @@ export function ProgressBar({
       style={{
         height,
         borderRadius: 9999,
-        background: "oklch(0.25 0.02 270)",
+        background: "var(--surface-3)",
         overflow: "hidden",
         width: "100%",
       }}

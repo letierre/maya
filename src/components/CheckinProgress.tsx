@@ -79,7 +79,7 @@ export function CheckinProgress({
       <div className="px-1 mb-3">
         <div
           className="rounded-full overflow-hidden"
-          style={{ height: 10, background: "oklch(.25 .02 270)" }}
+          style={{ height: 10, background: "var(--surface-3)" }}
         >
           <div
             className="h-full rounded-full relative overflow-hidden"
@@ -104,7 +104,7 @@ export function CheckinProgress({
             />
           </div>
         </div>
-        <p className="m-0 mt-1 text-[10px]" style={{ color: "oklch(.55 .03 270)" }}>
+        <p className="m-0 mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
           {t(positiveCount === 1 ? "cp_cuidado_feito" : "cp_cuidados_feitos", { n: String(positiveCount) })} · {t(totalHabits - positiveCount === 1 ? "dash_pendente" : "dash_pendentes", { n: String(totalHabits - positiveCount) })}
         </p>
       </div>

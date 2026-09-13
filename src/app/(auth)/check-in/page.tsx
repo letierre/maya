@@ -187,7 +187,7 @@ function StepFooter({ onPrev, onNext, nextLabel, nextDisabled, secondary }: {
             height: 48, padding: "0 22px", borderRadius: 14, border: 0,
             cursor: nextDisabled ? "not-allowed" : "pointer",
             background: nextDisabled ? "oklch(0.2 0.02 270)" : "#7C5CFF",
-            color: nextDisabled ? "oklch(0.55 0.03 270)" : "#fff",
+            color: nextDisabled ? "var(--text-muted)" : "#fff",
             fontFamily: "inherit", fontSize: 14, fontWeight: 600, flexShrink: 0,
             boxShadow: nextDisabled ? "none" : "0 4px 14px -4px oklch(0.5 0.12 270 / .45)",
           }}>{nextLabel ?? t("ck_continuar")}</button>
@@ -599,7 +599,7 @@ function ConfirmStep({ onAnswer, onPrev }: { onAnswer: (v: boolean) => void; onP
   const { t } = useTranslation();
   return (
     <>
-      <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".16em", textTransform: "uppercase", color: "oklch(0.55 0.03 270)" }}>
+      <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--text-muted)" }}>
         {t("ck_confirm_label")}
       </p>
       <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.3 }}>

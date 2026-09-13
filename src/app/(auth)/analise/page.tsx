@@ -488,7 +488,7 @@ export default function AnalisePage() {
     fontSize: 13,
     fontWeight: 700,
     background: active ? "#7C5CFF" : "var(--surface-3)",
-    color: active ? "#fff" : "oklch(0.6 0.03 270)",
+    color: active ? "#fff" : "var(--muted-foreground)",
     transition: "all .15s ease",
   });
 
@@ -551,7 +551,7 @@ export default function AnalisePage() {
         <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#e0d6ff", letterSpacing: "-0.02em" }}>
           {hub === "bemestar" ? t("an_bemestar") : t("an_crescimento_pessoal")}
         </h1>
-        <p style={{ margin: "2px 0 0", fontSize: 13, color: "oklch(0.55 0.03 270)" }}>
+        <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
           {hub === "bemestar"
             ? t("an_checkins_em", { count: String(periodCI.length), period: tabLabel })
             : t("an_crescimento_em", { period: crescTabLabel })}
@@ -615,7 +615,7 @@ export default function AnalisePage() {
                 <span style={{ fontSize: 32, fontWeight: 800, color: "#e0d6ff", lineHeight: 1 }}>
                   {wellnessAvg != null ? Math.round(wellnessAvg) : "—"}
                 </span>
-                <span style={{ fontSize: 10, color: "oklch(0.55 0.03 270)", marginTop: 2 }}>
+                <span style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
                   {t("an_bemestar")}
                 </span>
               </div>
@@ -630,7 +630,7 @@ export default function AnalisePage() {
                 width: 20, height: 20, borderRadius: "50%",
                 border: "1px solid oklch(0.5 0.12 270 / 0.4)",
                 background: "var(--surface)", cursor: "pointer",
-                color: ringInfo ? "#7C5CFF" : "oklch(0.55 0.03 270)",
+                color: ringInfo ? "#7C5CFF" : "var(--text-muted)",
                 fontSize: 11, fontWeight: 700, lineHeight: 1,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 padding: 0, fontFamily: "inherit",
@@ -643,11 +643,11 @@ export default function AnalisePage() {
             <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{
                 fontSize: 13, fontWeight: 700,
-                color: evolutionPct > 0 ? "#22D18B" : evolutionPct < 0 ? "#FF5C5C" : "oklch(0.55 0.03 270)",
+                color: evolutionPct > 0 ? "#22D18B" : evolutionPct < 0 ? "#FF5C5C" : "var(--text-muted)",
               }}>
                 {evolutionPct > 0 ? "▲ +" : evolutionPct < 0 ? "▼ " : "— "}{evolutionPct}%
               </span>
-              <span style={{ fontSize: 12, color: "oklch(0.55 0.03 270)" }}>{t("an_vs_anterior")}</span>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("an_vs_anterior")}</span>
             </div>
           )}
           {ringInfo && (
@@ -663,7 +663,7 @@ export default function AnalisePage() {
         </div>
       ) : (
         <div style={{ display: "flex", justifyContent: "center", padding: "24px 0" }}>
-          <p style={{ color: "oklch(0.55 0.03 270)", fontSize: 14 }}>
+          <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
             {t(3 - periodCI.length === 1 ? "an_register_dia" : "an_register_dias", { count: String(3 - periodCI.length) })}
           </p>
         </div>
@@ -772,7 +772,7 @@ export default function AnalisePage() {
                 ...(spansFull ? { gridColumn: "1 / -1" } : {}),
               }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                  <p style={{ margin: 0, fontSize: 11, color: "oklch(0.55 0.03 270)", fontWeight: 500 }}>{a.label}</p>
+                  <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>{a.label}</p>
                   <button
                     type="button"
                     onClick={() => setOpenInfo(infoOpen ? null : a.key)}
@@ -782,7 +782,7 @@ export default function AnalisePage() {
                       width: 18, height: 18, borderRadius: "50%",
                       border: "1px solid oklch(0.5 0.12 270 / 0.4)",
                       background: "transparent", cursor: "pointer",
-                      color: infoOpen ? "#7C5CFF" : "oklch(0.55 0.03 270)",
+                      color: infoOpen ? "#7C5CFF" : "var(--text-muted)",
                       fontSize: 11, fontWeight: 700, lineHeight: 1,
                       display: "flex", alignItems: "center", justifyContent: "center",
                       padding: 0, flexShrink: 0, fontFamily: "inherit",
@@ -805,7 +805,7 @@ export default function AnalisePage() {
                 {/* Mini bar */}
                 <div style={{
                   height: 3, borderRadius: 9999, marginTop: 8,
-                  background: "oklch(0.25 0.02 270)", overflow: "hidden",
+                  background: "var(--surface-3)", overflow: "hidden",
                 }}>
                   <div style={{
                     height: "100%", width: `${Math.min(a.pct, 100)}%`, borderRadius: 9999,
@@ -916,7 +916,7 @@ export default function AnalisePage() {
           <p style={{ margin: "0 0 2px", fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "oklch(0.65 0.12 270)", paddingLeft: 4 }}>
             {t("an_impact_title")}
           </p>
-          <p style={{ margin: "0 0 10px", fontSize: 11, color: "oklch(0.55 0.03 270)", paddingLeft: 4, fontWeight: 500 }}>
+          <p style={{ margin: "0 0 10px", fontSize: 11, color: "var(--text-muted)", paddingLeft: 4, fontWeight: 500 }}>
             {t("an_impact_sub")}
           </p>
           <div style={{
@@ -943,7 +943,7 @@ export default function AnalisePage() {
                 </div>
                 <div style={{
                   height: 4, borderRadius: 9999,
-                  background: "oklch(0.25 0.02 270)",
+                  background: "var(--surface-3)",
                   overflow: "hidden",
                 }}>
                   <div style={{
@@ -963,7 +963,7 @@ export default function AnalisePage() {
       {/* Empty state when no data at all */}
       {checkIns.length === 0 && (
         <div style={{ padding: "40px 20px", textAlign: "center" }}>
-          <p style={{ color: "oklch(0.55 0.03 270)", fontSize: 15, margin: "0 0 8px" }}>
+          <p style={{ color: "var(--text-muted)", fontSize: 15, margin: "0 0 8px" }}>
             {t("hist_empty_title")}
           </p>
           <p style={{ color: "oklch(0.45 0.02 270)", fontSize: 13, margin: 0, lineHeight: 1.5 }}>

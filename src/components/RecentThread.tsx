@@ -76,7 +76,7 @@ export function RecentThread({ days, userGender }: RecentThreadProps) {
               >
                 <span
                   className="text-[11px] font-semibold tracking-tight"
-                  style={{ color: isToday ? "#A78BFA" : "oklch(0.55 0.03 270)" }}
+                  style={{ color: isToday ? "#A78BFA" : "var(--text-muted)" }}
                 >
                   {labels[i]}
                 </span>
@@ -90,7 +90,7 @@ export function RecentThread({ days, userGender }: RecentThreadProps) {
                   style={{
                     color:
                       ratio === null
-                        ? "oklch(0.55 0.03 270)"
+                        ? "var(--text-muted)"
                         : ratio >= 0.7
                           ? "#22D18B"
                           : ratio >= 0.5
@@ -121,14 +121,14 @@ export function RecentThread({ days, userGender }: RecentThreadProps) {
                       {extraMoods > 0 ? ` +${extraMoods}` : ""}
                     </span>
                   ) : (
-                    <span className="text-[11px]" style={{ color: "oklch(0.55 0.03 270)" }}>
+                    <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                       —
                     </span>
                   )}
                 </span>
 
                 {/* Feeling text */}
-                <span className="text-[11px] truncate" style={{ color: "oklch(0.55 0.03 270)" }}>
+                <span className="text-[11px] truncate" style={{ color: "var(--text-muted)" }}>
                   {day.feeling || ""}
                 </span>
               </div>
@@ -136,7 +136,7 @@ export function RecentThread({ days, userGender }: RecentThreadProps) {
           })}
         </div>
 
-        <p className="m-0 mt-3 text-center text-[10px]" style={{ color: "oklch(0.4 0.03 270)" }}>
+        <p className="m-0 mt-3 text-center text-[10px]" style={{ color: "var(--text-dim)" }}>
           {t("rt_deslize")}
         </p>
       </div>

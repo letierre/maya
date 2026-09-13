@@ -325,7 +325,7 @@ function ManualLogModal({ onClose, onSaved, lang }: { onClose: () => void; onSav
               style={{
                 width: "100%", boxSizing: "border-box",
                 height: 42, borderRadius: 10,
-                border: "1px solid oklch(0.28 0.02 270 / 0.4)",
+                border: "1px solid var(--divider)",
                 background: "oklch(0.14 0.012 270)",
                 padding: "0 12px",
                 color: "#e0d6ff",
@@ -500,7 +500,7 @@ function EditSleepModal({ log, onClose, onSaved, lang }: {
               style={{
                 width: "100%", boxSizing: "border-box",
                 height: 42, borderRadius: 10,
-                border: "1px solid oklch(0.28 0.02 270 / 0.4)",
+                border: "1px solid var(--divider)",
                 background: "oklch(0.14 0.012 270)",
                 padding: "0 12px",
                 color: "#e0d6ff",
@@ -613,7 +613,7 @@ function SleepHistoryRow({ log, onEdit, lang }: { log: SleepLog; onEdit: (log: S
         <div style={{ minWidth: 38, textAlign: "right", fontSize: 15, fontWeight: 700, color: scoreColor(score) }}>
           {score}
         </div>
-        <span style={{ fontSize: 11, color: "oklch(.55 .03 270)" }}>✏️</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>✏️</span>
       </div>
     </div>
   );
@@ -1149,7 +1149,7 @@ function SleepTrendChart({ logs, lang }: { logs: SleepLog[]; lang: Lang }) {
           marginTop: 4,
           fontSize: 11,
           fontWeight: 600,
-          color: "oklch(0.55 0.03 270)",
+          color: "var(--text-muted)",
         }}
       >
         <span>{fmtShort(sorted[0].date)}</span>
