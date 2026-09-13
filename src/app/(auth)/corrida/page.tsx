@@ -1,5 +1,6 @@
 "use client";
 import { getLocale } from "@/lib/language";
+import { useTranslation } from "@/lib/useTranslation";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -60,6 +61,7 @@ function drawImageCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x:
 }
 
 export default function CorridaPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -91,7 +93,7 @@ export default function CorridaPage() {
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
     const tk = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    if (!tk) { setMapError("Mapa indisponível: token do Mapbox ausente neste build — redeploie no Vercel"); return; }
+    if (!tk) { setMapError(t("co_mapa_token")); return; }
     mapboxgl.accessToken = tk;
 
     let map: mapboxgl.Map;
@@ -104,7 +106,7 @@ export default function CorridaPage() {
         preserveDrawingBuffer: true, // necessário para capturar o mapa em imagem ao finalizar a corrida
       });
     } catch {
-      setMapError("Não foi possível carregar o mapa");
+      setMapError(t("co_mapa_erro"));
       return;
     }
     mapRef.current = map;
@@ -238,7 +240,7 @@ export default function CorridaPage() {
         console.warn("GPS error:", err);
         if (!gpsErrorShownRef.current) {
           gpsErrorShownRef.current = true;
-          toast.error(err.code === err.PERMISSION_DENIED ? "Permissão de localização negada — ative o GPS para registrar a corrida" : "Sinal de GPS instável");
+          toast.error(err.code === err.PERMISSION_DENIED ? t("co_perm_negada") : t("co_gps_instavel"));
         }
       },
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
@@ -248,7 +250,7 @@ export default function CorridaPage() {
   };
 
   const startRun = async () => {
-    if (!navigator.geolocation) { toast.error("GPS não disponível"); return; }
+    if (!navigator.geolocation) { toast.error(t("co_gps_indisponivel")); return; }
 
     // Cria a sessão no servidor (end_time NULL) — o banco vira a fonte da verdade
     let id: string | null = null;
@@ -391,7 +393,7 @@ export default function CorridaPage() {
       if (sessionIdRef.current) {
         fetch(`/api/running?id=${sessionIdRef.current}`, { method: "DELETE" }).catch(() => {});
       }
-      toast.error("Corrida muito curta para salvar");
+      toast.error(t("co_corrida_curta"));
       runStats.current = null;
       sessionIdRef.current = null;
       return;
@@ -435,7 +437,7 @@ export default function CorridaPage() {
       }
       if (res.ok) {
         emitCareDataChanged();
-        toast.success("Corrida salva!");
+        toast.success(t("co_corrida_salva"));
         const fresh = await fetch("/api/running?limit=20").then((r) => r.json()).catch(() => []);
         if (Array.isArray(fresh)) setHistory(fresh);
         const savedId = sessionIdRef.current || (await res.json().catch(() => null))?.id;
@@ -456,9 +458,9 @@ export default function CorridaPage() {
         setSelectedSession(saved);
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Erro ao salvar");
+        toast.error(err.error || t("co_erro_salvar"));
       }
-    } catch { toast.error("Erro ao salvar"); }
+    } catch { toast.error(t("co_erro_salvar")); }
     setSaving(false);
     runStats.current = null;
     sessionIdRef.current = null;
@@ -471,15 +473,15 @@ export default function CorridaPage() {
       const res = await fetch(`/api/running?id=${selectedSession.id}`, { method: "DELETE" });
       if (res.ok) {
         emitCareDataChanged();
-        toast.success("Corrida excluída");
+        toast.success(t("co_corrida_excluida"));
         setHistory(prev => prev.filter(s => s.id !== selectedSession.id));
         setSelectedSession(null);
         setConfirmDelete(false);
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Erro ao excluir");
+        toast.error(err.error || t("co_erro_excluir"));
       }
-    } catch { toast.error("Erro ao excluir"); }
+    } catch { toast.error(t("co_erro_excluir")); }
     setDeleting(false);
   };
 
@@ -514,7 +516,7 @@ export default function CorridaPage() {
 
       // 3. Título
       const titleY = headerY + 60;
-      const titulo = "Corrida";
+      const titulo = t("co_titulo");
       ctx.font = "700 84px Inter, system-ui, sans-serif";
       const tw = ctx.measureText(titulo).width;
       const tg = ctx.createLinearGradient(W / 2 - tw / 2, titleY, W / 2 + tw / 2, titleY);
@@ -546,13 +548,13 @@ export default function CorridaPage() {
       drawRoundRect(ctx, mapX, statsY, mapW, statsH, 28); ctx.fill(); ctx.stroke();
 
       ctx.fillStyle = "#FFFFFF"; ctx.font = "600 28px Inter, system-ui, sans-serif"; ctx.textAlign = "left";
-      ctx.fillText("Estatísticas", mapX + 40, statsY + 64);
+      ctx.fillText(t("co_estatisticas"), mapX + 40, statsY + 64);
 
       const stats = [
-        { label: "Distância", value: `${(s.distance_meters / 1000).toFixed(2)} km` },
-        { label: "Tempo", value: formatDuration(s.duration_seconds) },
-        { label: "Ritmo médio", value: formatPace(s.avg_pace || 0) },
-        { label: "Velocidade máx", value: s.max_speed ? `${s.max_speed.toFixed(1)} km/h` : "--" },
+        { label: t("co_distancia"), value: `${(s.distance_meters / 1000).toFixed(2)} km` },
+        { label: t("co_tempo"), value: formatDuration(s.duration_seconds) },
+        { label: t("co_ritmo_medio"), value: formatPace(s.avg_pace || 0) },
+        { label: t("co_velocidade_max"), value: s.max_speed ? `${s.max_speed.toFixed(1)} km/h` : "--" },
       ];
       const gap = 20, cellW = (mapW - 80 - gap) / 2, cellH = 120, gridTop = statsY + 104;
       stats.forEach((st, i) => {
@@ -570,14 +572,14 @@ export default function CorridaPage() {
       // 7. Rodapé
       const footerY = H - 130;
       ctx.fillStyle = "#A0A0B3"; ctx.font = "500 20px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
-      ctx.fillText("MAYA APP · SUA MELHOR VERSÃO, TODOS OS DIAS.", W / 2, footerY);
+      ctx.fillText(t("co_footer_share"), W / 2, footerY);
 
       // 8. Exporta e compartilha (mantém dentro do app)
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
       if (!blob) return;
       const file = new File([blob], "corrida.png", { type: "image/png" });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: "Minha corrida" });
+        await navigator.share({ files: [file], title: t("co_minha_corrida") });
       } else {
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
@@ -597,20 +599,20 @@ export default function CorridaPage() {
           <ChevronLeft size={18} />
         </button>
         <div style={{ flex: 1 }}>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>Corrida</h1>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>{t("co_titulo")}</h1>
         </div>
         <button type="button" onClick={() => setShowHistory(!showHistory)}
           style={{ padding: "6px 12px", borderRadius: 9999, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#A78BFA", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-          {showHistory ? "Mapa" : "Histórico"}
+          {showHistory ? t("co_mapa") : t("co_historico")}
         </button>
       </div>
 
       {/* Stats bar */}
       {!showHistory && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1, background: "rgba(167,139,250,0.1)", padding: 2, margin: "0 12px", borderRadius: 14, marginBottom: 8 }}>
-          <StatChip icon={<Timer size={14} />} label="Tempo" value={running ? formatDuration(elapsed) : "--"} />
-          <StatChip icon={<Footprints size={14} />} label="Distância" value={running ? `${(distance / 1000).toFixed(2)} km` : "--"} />
-          <StatChip icon={<Zap size={14} />} label="Ritmo" value={running ? formatPace(pace) : "--"} />
+          <StatChip icon={<Timer size={14} />} label={t("co_tempo")} value={running ? formatDuration(elapsed) : "--"} />
+          <StatChip icon={<Footprints size={14} />} label={t("co_distancia")} value={running ? `${(distance / 1000).toFixed(2)} km` : "--"} />
+          <StatChip icon={<Zap size={14} />} label={t("co_ritmo")} value={running ? formatPace(pace) : "--"} />
         </div>
       )}
 
@@ -627,7 +629,7 @@ export default function CorridaPage() {
         {showHistory && (
           <div style={{ position: "absolute", inset: 0, overflowY: "auto", padding: "0 16px", background: "#0B0B10", zIndex: 5 }}>
             {history.length === 0 ? (
-              <p style={{ textAlign: "center", color: "#9e96b5", padding: 40 }}>Nenhuma corrida ainda</p>
+              <p style={{ textAlign: "center", color: "#9e96b5", padding: 40 }}>{t("co_nenhuma_corrida")}</p>
             ) : history.map(s => (
               <button key={s.id} type="button" onClick={() => { setSelectedSession(s); setConfirmDelete(false); }}
                 style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, border: "1px solid rgba(167,139,250,0.1)", background: "#1a1530", marginBottom: 8, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
@@ -666,12 +668,12 @@ export default function CorridaPage() {
           <div style={{ background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 20, width: "100%", maxWidth: 400, maxHeight: "90vh", overflowY: "auto", padding: 20 }} onClick={(e) => e.stopPropagation()}>
             {selectedSession.map_snapshot && (
               <div style={{ margin: "-20px -20px 16px" }}>
-                <img src={photoUrl(selectedSession.map_snapshot) || ""} alt="Trajeto da corrida" style={{ width: "100%", display: "block", maxHeight: 220, objectFit: "cover", borderRadius: "20px 20px 0 0" }} />
+                <img src={photoUrl(selectedSession.map_snapshot) || ""} alt={t("co_trajeto_alt")} style={{ width: "100%", display: "block", maxHeight: 220, objectFit: "cover", borderRadius: "20px 20px 0 0" }} />
               </div>
             )}
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>Corrida</h2>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>{t("co_titulo")}</h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#9e96b5" }}>
                   {new Date(selectedSession.start_time).toLocaleDateString(getLocale(), { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </p>
@@ -680,36 +682,36 @@ export default function CorridaPage() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-              <StatBox label="Distância" value={`${(selectedSession.distance_meters / 1000).toFixed(2)} km`} />
-              <StatBox label="Tempo" value={formatDuration(selectedSession.duration_seconds)} />
-              <StatBox label="Ritmo médio" value={formatPace(selectedSession.avg_pace || 0)} />
-              <StatBox label="Velocidade máx" value={selectedSession.max_speed ? `${selectedSession.max_speed.toFixed(1)} km/h` : "--"} />
+              <StatBox label={t("co_distancia")} value={`${(selectedSession.distance_meters / 1000).toFixed(2)} km`} />
+              <StatBox label={t("co_tempo")} value={formatDuration(selectedSession.duration_seconds)} />
+              <StatBox label={t("co_ritmo_medio")} value={formatPace(selectedSession.avg_pace || 0)} />
+              <StatBox label={t("co_velocidade_max")} value={selectedSession.max_speed ? `${selectedSession.max_speed.toFixed(1)} km/h` : "--"} />
             </div>
 
             <button type="button" onClick={shareRun} disabled={sharing}
               style={{ width: "100%", padding: "12px", borderRadius: 12, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10, opacity: sharing ? 0.5 : 1 }}>
               <Share2 size={16} />
-              {sharing ? "Preparando…" : "Compartilhar resultado"}
+              {sharing ? t("co_preparando") : t("co_compartilhar")}
             </button>
 
             {!confirmDelete ? (
               <button type="button" onClick={() => setConfirmDelete(true)} disabled={deleting}
                 style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1px solid rgba(255,77,77,0.4)", background: "rgba(255,77,77,0.1)", color: "#FF4D4D", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                Excluir corrida
+                {t("co_excluir_corrida")}
               </button>
             ) : (
               <div>
                 <p style={{ fontSize: 13, color: "#e0d6ff", marginBottom: 10, textAlign: "center" }}>
-                  Excluir esta corrida? Ela também será removida do check-in do dia. Essa ação não pode ser desfeita.
+                  {t("co_excluir_confirm")}
                 </p>
                 <div style={{ display: "flex", gap: 10 }}>
                   <button type="button" onClick={() => setConfirmDelete(false)} disabled={deleting}
                     style={{ flex: 1, padding: "12px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#A78BFA", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                    Cancelar
+                    {t("cancelar")}
                   </button>
                   <button type="button" onClick={deleteSession} disabled={deleting}
                     style={{ flex: 1, padding: "12px", borderRadius: 12, border: 0, background: "#FF4D4D", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: deleting ? 0.5 : 1 }}>
-                    {deleting ? "Excluindo…" : "Excluir"}
+                    {deleting ? t("co_excluindo") : t("co_excluir")}
                   </button>
                 </div>
               </div>
