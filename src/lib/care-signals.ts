@@ -35,8 +35,8 @@ function toCareSignal(s: Signal): CareSignal {
  * ranqueado por peso (maior primeiro). Mantém a assinatura antiga para não
  * quebrar `care-list`, `home-message` e `planning-companion`.
  */
-export async function computeCareSignals(userId: string): Promise<CareSignal[]> {
-  const { signals } = await computeSignals(userId);
+export async function computeCareSignals(userId: string, language?: string): Promise<CareSignal[]> {
+  const { signals } = await computeSignals(userId, { language });
   return signals
     .filter((s) => s.feed.includes("care"))
     .sort((a, b) => b.weight - a.weight)

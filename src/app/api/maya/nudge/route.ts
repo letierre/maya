@@ -7,6 +7,7 @@ import { callLLM } from "@/lib/llm";
 import { buildMayaSystemPrompt, type MayaInput } from "@/lib/maya";
 import { fetchMayaContext, toMayaInput, buildRecentChatTopics } from "@/lib/maya-context";
 import { computeSignals } from "@/lib/signals";
+import { tUser } from "@/lib/server-i18n";
 
 // ── LLM nudge message generation ────────────────────────────────────────────
 
@@ -78,6 +79,7 @@ export async function GET() {
     const userName = (user.user_metadata?.name as string) || "";
     const firstName = userName.split(" ")[0];
     const gender = (context.gender as string) || "nao_dizer";
+    const lang = (context.language as string) || "pt";
 
     // ── Continuidade: não faz nudge se a pessoa já conversou hoje ──
     // (evita que um nudge cacheado contradiga uma conversa recente no chat)
@@ -109,13 +111,14 @@ export async function GET() {
       .eq("user_id", user.id);
 
     if (!count || count === 0) {
-      const welcomeMsg = `Oi ${firstName || "você"}! 💜 Eu sou a Maya. Registre seu primeiro check-in e vamos começar essa jornada juntos.`;
+      const who = firstName || (lang === "es" ? "tú" : lang === "en" ? "you" : "você");
+      const welcomeMsg = tUser(lang, "nudge_welcome", { name: who });
       await cacheNudge(admin, user.id, context, "welcome", welcomeMsg, today);
       return NextResponse.json({ nudges: [{ id: "welcome", message: welcomeMsg }] });
     }
 
     // ── Motor único de sinais: escolhe o nudge mais prioritário ──
-    const { signals } = await computeSignals(user.id, { firstName, gender });
+    const { signals } = await computeSignals(user.id, { firstName, gender, language: lang });
     const bestNudge = signals
       .filter((s) => s.feed.includes("nudge"))
       .sort((a, b) => a.priority - b.priority)[0];
@@ -144,6 +147,7 @@ export async function GET() {
       const mayaInput = toMayaInput(ctx, {
         name: firstName,
         gender,
+        language: lang,
         currentHour: getCurrentHour(),
         currentDate: today,
       });

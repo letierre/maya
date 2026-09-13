@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getLocalDate, getWeekMondayDate } from "@/lib/utils";
+import { t as tt, type Lang } from "@/lib/i18n";
 import {
   NEGATIVE_MOODS,
   SLEEP_QUALITY_MIN,
@@ -70,16 +71,76 @@ function weightFor(basePriority: number, streak: number): number {
   return Math.round(basePriority * (1 + Math.min(streak, STREAK_CAP)));
 }
 
-function plural(n: number, singular: string, pluralSuffix = "s"): string {
-  return `${n} ${n === 1 ? singular : singular + pluralSuffix}`;
-}
-
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function saludo(firstName: string): string {
-  return `Oii, ${firstName || ""}`.trim().replace(/\s+$/, "") + "!";
+// ── Fragmentos localizados (plural/gênero) ──────────────────────────────────
+
+function diasStr(n: number, lang: Lang): string {
+  if (lang === "es") return `${n} ${n === 1 ? "día" : "días"}`;
+  if (lang === "en") return `${n} ${n === 1 ? "day" : "days"}`;
+  return `${n} ${n === 1 ? "dia" : "dias"}`;
+}
+
+function periodoRecente(n: number, lang: Lang): string {
+  if (lang === "es") return `${n} ${n === 1 ? "día" : "días"} ${n === 1 ? "reciente" : "recientes"}`;
+  if (lang === "en") return `${n} ${n === 1 ? "recent day" : "recent days"}`;
+  return `${n} ${n === 1 ? "dia" : "dias"} ${n === 1 ? "recente" : "recentes"}`;
+}
+
+function temTarefas(n: number, lang: Lang): string {
+  if (lang === "es") return n === 1 ? "hay una tarea" : `hay ${n} tareas`;
+  if (lang === "en") return n === 1 ? "there's one task" : `there are ${n} tasks`;
+  return n === 1 ? "tem uma tarefa" : `tem ${n} tarefas`;
+}
+
+function ficaramWord(n: number, lang: Lang): string {
+  if (lang === "es") return n === 1 ? "quedó" : "quedaron";
+  if (lang === "en") return n === 1 ? "was" : "were";
+  return n === 1 ? "ficou" : "ficaram";
+}
+
+function feitoWord(n: number, lang: Lang): string {
+  if (lang === "es") return n === 1 ? "se hizo" : "se hicieron";
+  if (lang === "en") return n === 1 ? "was done" : "were done";
+  return n === 1 ? "foi feito" : "foram feitos";
+}
+
+function naoCulpa(n: number, lang: Lang): string {
+  if (n <= 2) return "";
+  if (lang === "es") return "No te culpes, pasa. ";
+  if (lang === "en") return "Don't blame yourself, it happens. ";
+  return "Não se culpe, isso acontece. ";
+}
+
+function perdidoWord(gender: string, lang: Lang): string {
+  if (lang === "es") return gender === "feminino" ? "perdida" : "perdido";
+  if (lang === "en") return "feeling lost";
+  return gender === "feminino" ? "perdida" : "perdido";
+}
+
+function juntoWord(gender: string, lang: Lang): string {
+  if (lang === "es") return gender === "feminino" ? "juntas" : "juntos";
+  if (lang === "en") return "together";
+  return gender === "feminino" ? "junta" : "junto";
+}
+
+function sozinhoWord(gender: string, lang: Lang): string {
+  if (lang === "es") return gender === "feminino" ? "sola" : "solo";
+  if (lang === "en") return "alone";
+  return gender === "feminino" ? "sozinha" : "sozinho";
+}
+
+function diaSemana(dow3: number, lang: Lang): string {
+  const idx = dow3 - 3;
+  if (lang === "es") return ["miércoles", "jueves", "viernes"][idx] ?? "";
+  if (lang === "en") return ["Wednesday", "Thursday", "Friday"][idx] ?? "";
+  return ["quarta-feira", "quinta-feira", "sexta-feira"][idx] ?? "";
+}
+
+function saludo(firstName: string, lang: Lang): string {
+  return tt(lang, "sg_ola", { name: firstName ? `, ${firstName}` : "" });
 }
 
 // ── Contexto bruto (um único fetch superset) ──────────────────────────────────
@@ -102,28 +163,28 @@ interface SignalContext {
 const CARE_DEFS: {
   id: string;
   emoji: string;
-  title: string;
+  titleKey: string;
   tier: SignalTier;
   basePriority: number;
   minStreak: number;
-  action?: { label: string; href: string };
-  describe: (streak: number) => string;
+  action?: { labelKey: string; href: string };
+  describe: (streak: number, lang: Lang) => string;
   compute: (ctx: SignalContext) => number;
 }[] = [
   {
-    id: "medication", emoji: "💊", title: "Medicação", tier: "biologico",
+    id: "medication", emoji: "💊", titleKey: "care_medication_title", tier: "biologico",
     basePriority: 95, minStreak: 1,
-    action: { label: "Marcar no check-in", href: "/check-in" },
-    describe: (s) => `Você deixou de tomar seus remédios nos últimos ${plural(s, "dia")}.`,
+    action: { labelKey: "care_action_checkin", href: "/check-in" },
+    describe: (s, lang) => tt(lang, "care_medication_desc", { dias: diasStr(s, lang) }),
     compute: (ctx) => ctx.hasMedication
       ? consecutiveBad(ctx.checkIns.map((c) => ({ bad: c.took_medication === false })))
       : 0,
   },
   {
-    id: "sleep", emoji: "😴", title: "Sono", tier: "biologico",
+    id: "sleep", emoji: "😴", titleKey: "care_sleep_title", tier: "biologico",
     basePriority: 90, minStreak: 2,
-    action: { label: "Registrar sono", href: "/sono" },
-    describe: (s) => `Seu sono tem ficado curto ou ruim nos últimos ${plural(s, "dia")}.`,
+    action: { labelKey: "care_action_sleep", href: "/sono" },
+    describe: (s, lang) => tt(lang, "care_sleep_desc", { dias: diasStr(s, lang) }),
     compute: (ctx) => consecutiveBad(
       ctx.sleepLogs
         .map((log) => {
@@ -136,17 +197,17 @@ const CARE_DEFS: {
     ),
   },
   {
-    id: "hydration", emoji: "💧", title: "Água", tier: "biologico",
+    id: "hydration", emoji: "💧", titleKey: "care_hydration_title", tier: "biologico",
     basePriority: 80, minStreak: 2,
-    action: { label: "Marcar água", href: "/check-in" },
-    describe: (s) => `Você tem bebido menos de 1 litro de água por dia nos últimos ${plural(s, "dia")}.`,
+    action: { labelKey: "care_action_water", href: "/check-in" },
+    describe: (s, lang) => tt(lang, "care_hydration_desc", { dias: diasStr(s, lang) }),
     compute: (ctx) => consecutiveBad(ctx.checkIns.map((c) => ({ bad: (c.water_cups ?? 0) < WATER_GOAL_CUPS }))),
   },
   {
-    id: "nutrition", emoji: "🍬", title: "Alimentação", tier: "biologico",
+    id: "nutrition", emoji: "🍬", titleKey: "care_nutrition_title", tier: "biologico",
     basePriority: 75, minStreak: 3,
-    action: { label: "Registrar refeição", href: "/nutricao/registrar" },
-    describe: (s) => `Refeições com muito açúcar, gordura ou sal em ${plural(s, "dia")} recente${s === 1 ? "" : "s"}.`,
+    action: { labelKey: "care_action_meal", href: "/nutricao/registrar" },
+    describe: (s, lang) => tt(lang, "care_nutrition_desc", { periodo: periodoRecente(s, lang) }),
     compute: (ctx) => {
       const dayBad = new Map<string, boolean>();
       for (const m of ctx.meals) {
@@ -164,10 +225,10 @@ const CARE_DEFS: {
     },
   },
   {
-    id: "exercise", emoji: "🏃", title: "Movimento", tier: "fisico",
+    id: "exercise", emoji: "🏃", titleKey: "care_exercise_title", tier: "fisico",
     basePriority: 65, minStreak: 4,
-    action: { label: "Registrar atividade", href: "/corrida" },
-    describe: (s) => `Você não tem se movimentado (caminhada, corrida ou musculação) há ${plural(s, "dia")}.`,
+    action: { labelKey: "care_action_exercise", href: "/corrida" },
+    describe: (s, lang) => tt(lang, "care_exercise_desc", { dias: diasStr(s, lang) }),
     compute: (ctx) => consecutiveBad(
       ctx.checkIns.map((c) => ({
         bad: c.walked !== true && c.ran !== true && c.strength_training !== true && c.exercise_walk !== true,
@@ -175,10 +236,10 @@ const CARE_DEFS: {
     ),
   },
   {
-    id: "mood", emoji: "🌧️", title: "Humor", tier: "emocional",
+    id: "mood", emoji: "🌧️", titleKey: "care_mood_title", tier: "emocional",
     basePriority: 60, minStreak: 2,
-    action: { label: "Conversar com a Maya", href: "/insights" },
-    describe: (s) => `Seu humor tem ficado mais pesado nos últimos ${plural(s, "dia")}.`,
+    action: { labelKey: "care_action_chat", href: "/insights" },
+    describe: (s, lang) => tt(lang, "care_mood_desc", { dias: diasStr(s, lang) }),
     compute: (ctx) => consecutiveBad(
       ctx.checkIns
         .filter((c) => (c.mood_tags?.length ?? 0) > 0)
@@ -186,17 +247,17 @@ const CARE_DEFS: {
     ),
   },
   {
-    id: "social", emoji: "🗣️", title: "Conexão", tier: "emocional",
+    id: "social", emoji: "🗣️", titleKey: "care_social_title", tier: "emocional",
     basePriority: 58, minStreak: 4,
     // Comunidade está oculta (redireciona pra home); aponta pro check-in, onde
     // a pergunta "conversei pessoalmente com alguém" é respondida.
-    action: { label: "Marcar no check-in", href: "/check-in" },
-    describe: (s) => `Você tem ficado sem conversar pessoalmente com alguém há ${plural(s, "dia")}.`,
+    action: { labelKey: "care_action_checkin", href: "/check-in" },
+    describe: (s, lang) => tt(lang, "care_social_desc", { dias: diasStr(s, lang) }),
     compute: (ctx) => consecutiveBad(ctx.checkIns.map((c) => ({ bad: c.talked_to_someone === false }))),
   },
 ];
 
-function detectCare(ctx: SignalContext): Signal[] {
+function detectCare(ctx: SignalContext, lang: Lang): Signal[] {
   const signals: Signal[] = [];
   for (const def of CARE_DEFS) {
     const streak = def.compute(ctx);
@@ -208,9 +269,9 @@ function detectCare(ctx: SignalContext): Signal[] {
       priority: 0,
       streak,
       emoji: def.emoji,
-      title: def.title,
-      description: def.describe(streak),
-      action: def.action,
+      title: tt(lang, def.titleKey),
+      description: def.describe(streak, lang),
+      action: def.action ? { label: tt(lang, def.action.labelKey), href: def.action.href } : undefined,
       feed: ["care"],
     });
   }
@@ -221,7 +282,7 @@ function detectCare(ctx: SignalContext): Signal[] {
 // ── Nudge: triggers de contexto/planejamento (sem sleep/mood/burnout, que são
 //    derivados dos sinais de care/plan no merge). ───────────────────────────────
 
-function detectNudge(ctx: SignalContext, firstName: string, gender: string): Signal[] {
+function detectNudge(ctx: SignalContext, firstName: string, gender: string, lang: Lang): Signal[] {
   const checks = ctx.checkIns;
   const activeGoals = ctx.goals;
   const todayTx = ctx.financial;
@@ -229,9 +290,8 @@ function detectNudge(ctx: SignalContext, firstName: string, gender: string): Sig
   const currentPlan = ctx.currentPlan;
   const today = ctx.today;
 
-  const greet = saludo(firstName);
-  const soloSolo = gender === "feminino" ? "sozinha" : "sozinho";
-  const oo = gender === "feminino" ? "a" : "o";
+  const greet = saludo(firstName, lang);
+  const andWord = lang === "es" ? " y " : lang === "en" ? " and " : " e ";
 
   const hasTodayCheckIn = checks.length > 0 && checks[0]?.date === today;
   const results: Signal[] = [];
@@ -252,12 +312,8 @@ function detectNudge(ctx: SignalContext, firstName: string, gender: string): Sig
         id: "streak_risk", tier: "contexto", weight: 0, priority: 1, streak,
         emoji: "🔥", title: "Sequência em risco",
         description: `Você está há ${streak} dias sem falhar no check-in e ainda não fez o de hoje.`,
-        message: pick([
-          `${greet} vi que você está há ${streak} dias sem falhar no check-in. Hoje ainda não rolou... tá tudo bem?`,
-          `${greet} ${streak} dias seguidos! 🥺 Vi que hoje ainda não fez seu check-in. Aconteceu alguma coisa?`,
-          `${greet} sua corrente de ${streak} dias tá correndo perigo! Tá tudo bem? Não precisa escrever muito, só uns toques.`,
-        ]),
-        action: { label: "Fazer check-in agora", href: "/check-in" },
+        message: tt(lang, pick(["nudge_streak_1", "nudge_streak_2", "nudge_streak_3"]), { greet, dias: diasStr(streak, lang) }),
+        action: { label: tt(lang, "nudge_action_checkin"), href: "/check-in" },
         feed: ["nudge"],
       });
     }
@@ -273,12 +329,8 @@ function detectNudge(ctx: SignalContext, firstName: string, gender: string): Sig
         id: "diary_abandoned", tier: "emocional", weight: 0, priority: 3, streak: daysSince,
         emoji: "📖", title: "Diário parado",
         description: `Faz ${daysSince} dias que você não escreve no diário.`,
-        message: pick([
-          `${greet} faz ${daysSince} dias que você não escreve no diário. Escrever ajuda a clarear a mente... quando quiser, tô aqui pra ler.`,
-          `${greet} vi que seu diário tá paradinho faz ${daysSince} dias. Não precisa escrever um texto, uma frase já vale. Tá afim?`,
-          `${greet} lembrei do seu diário... já faz ${daysSince} dias. Às vezes a gente só precisa despejar os pensamentos em algum lugar.`,
-        ]),
-        action: { label: "Escrever no diário", href: "/diario/novo" },
+        message: tt(lang, pick(["nudge_diary_1", "nudge_diary_2", "nudge_diary_3"]), { greet, dias: diasStr(daysSince, lang) }),
+        action: { label: tt(lang, "nudge_action_diary"), href: "/diario/novo" },
         feed: ["nudge"],
       });
     }
@@ -305,12 +357,8 @@ function detectNudge(ctx: SignalContext, firstName: string, gender: string): Sig
           id: "goal_stale", tier: "planejamento", weight: 0, priority: 3, streak: daysInactive,
           emoji: "🎯", title: "Meta parada",
           description: `Sua meta de ${summary} está parada há ${daysInactive} dias.`,
-          message: pick([
-            `${greet} vi que sua meta de ${summary} tá paradinha há ${daysInactive} dias. Quer destravar? Posso te ajudar a pensar no primeiro passo.`,
-            `${greet} estava olhando aqui e vi que você não mexeu na sua meta de ${summary} faz um tempinho. Tá difícil? Me conta.`,
-            `${greet} sabe aquela meta de ${summary}? Tá parada há ${daysInactive} dias. Mas ei, isso é normal. Bora dar um passo pequeno hoje?`,
-          ]),
-          action: { label: "Ver minhas metas", href: "/agenda" },
+          message: tt(lang, pick(["nudge_goal_1", "nudge_goal_2", "nudge_goal_3"]), { greet, meta: summary, dias: diasStr(daysInactive, lang) }),
+          action: { label: tt(lang, "nudge_action_goals"), href: "/agenda" },
           feed: ["nudge"],
         });
         break; // só o primeiro gol estagnado
@@ -321,16 +369,13 @@ function detectNudge(ctx: SignalContext, firstName: string, gender: string): Sig
   // ── SPENDING ALERT ──
   const totalSpent = todayTx.filter((t: any) => t.type === "despesa").reduce((s: number, t: any) => s + (t.amount || 0), 0);
   if (totalSpent > SPENDING_THRESHOLD) {
+    const valor = totalSpent.toFixed(0).replace(".", ",");
     results.push({
       id: "spending", tier: "contexto", weight: 0, priority: 4, streak: 0,
       emoji: "💰", title: "Gastos",
-      description: `Você já gastou R$ ${totalSpent.toFixed(0).replace(".", ",")} este mês.`,
-      message: pick([
-        `${greet} vi que já gastou R$ ${totalSpent.toFixed(0).replace(".", ",")} este mês. Tá conseguindo se organizar? Posso te ajudar a revisar.`,
-        `${greet} dei uma olhada nos seus gastos e bateu R$ ${totalSpent.toFixed(0).replace(".", ",")} em compras. Quer dar uma revisada comigo?`,
-        `${greet} notei que seus gastos tão em R$ ${totalSpent.toFixed(0).replace(".", ",")}. Tudo sob controle ou quer uma ajudinha pra revisar?`,
-      ]),
-      action: { label: "Ver finanças", href: "/financas" },
+      description: `Você já gastou R$ ${valor} este mês.`,
+      message: tt(lang, pick(["nudge_spending_1", "nudge_spending_2", "nudge_spending_3"]), { greet, valor }),
+      action: { label: tt(lang, "nudge_action_financas"), href: "/financas" },
       feed: ["nudge"],
     });
   }
@@ -346,18 +391,24 @@ function detectNudge(ctx: SignalContext, firstName: string, gender: string): Sig
       t.status !== "concluida"
     );
     if (overdue.length > 0) {
-      const names = overdue.slice(0, 2).map((t: any) => `"${t.title.slice(0, 30)}"`).join(" e ");
-      const extra = overdue.length > 2 ? ` e mais ${overdue.length - 2}` : "";
+      const names = overdue.slice(0, 2).map((t: any) => `"${t.title.slice(0, 30)}"`).join(andWord);
+      const extra = overdue.length > 2
+        ? (lang === "es" ? ` y ${overdue.length - 2} más` : lang === "en" ? ` and ${overdue.length - 2} more` : ` e mais ${overdue.length - 2}`)
+        : "";
+      const nomes = `${names}${extra}`;
       results.push({
         id: "plan_overdue", tier: "planejamento", weight: 0, priority: 1, streak: overdue.length,
         emoji: "📌", title: "Tarefas atrasadas",
-        description: `${overdue.length} tarefa${overdue.length > 1 ? "s" : ""} pendente${overdue.length > 1 ? "s" : ""} de dias anteriores: ${names}${extra}.`,
-        message: pick([
-          `${greet} ${overdue.length === 1 ? "tem uma tarefa" : `tem ${overdue.length} tarefas`} pendente de dias anteriores: ${names}${extra}. Quer reagendar ou concluir hoje?`,
-          `${greet} ${names}${extra} ${overdue.length === 1 ? "ficou" : "ficaram"} pra trás essa semana. Bora dar um jeito? Posso ajudar a reorganizar.`,
-          `${greet} olhei sua semana e ${names}${extra} ainda não ${overdue.length === 1 ? "foi feito" : "foram feitos"}. ${overdue.length > 2 ? "Não se culpe, isso acontece. " : ""}Quer priorizar isso hoje?`,
-        ]),
-        action: { label: "Ver planejamento", href: "/agenda?tab=semana" },
+        description: `${overdue.length} tarefa${overdue.length > 1 ? "s" : ""} pendente${overdue.length > 1 ? "s" : ""} de dias anteriores: ${nomes}.`,
+        message: tt(lang, pick(["nudge_overdue_1", "nudge_overdue_2", "nudge_overdue_3"]), {
+          greet,
+          tarefas: temTarefas(overdue.length, lang),
+          nomes,
+          ficaram: ficaramWord(overdue.length, lang),
+          feito: feitoWord(overdue.length, lang),
+          nao_culpa: naoCulpa(overdue.length, lang),
+        }),
+        action: { label: tt(lang, "nudge_action_plan"), href: "/agenda?tab=semana" },
         feed: ["nudge"],
       });
     }
@@ -372,12 +423,8 @@ function detectNudge(ctx: SignalContext, firstName: string, gender: string): Sig
         id: "plan_empty_weekend", tier: "planejamento", weight: 0, priority: 3, streak: 0,
         emoji: "🗓️", title: "Semana sem plano",
         description: `Fim de semana chegando e nenhum plano semanal criado.`,
-        message: pick([
-          `${greet} fim de semana chegando! Quer planejar a próxima semana? Separar 5 minutinhos agora evita começar segunda perdid${oo}.`,
-          `${greet} tava aqui pensando... quer aproveitar o fim de semana pra esboçar suas pedras da semana que vem? Prometo que segunda você agradece.`,
-          `${greet} domingo é um ótimo dia pra planejar. Quer definir suas 3 prioridades da semana? Te ajudo!`,
-        ]),
-        action: { label: "Planejar semana", href: "/agenda?tab=semana" },
+        message: tt(lang, pick(["nudge_empty_weekend_1", "nudge_empty_weekend_2", "nudge_empty_weekend_3"]), { greet, perdido: perdidoWord(gender, lang) }),
+        action: { label: tt(lang, "nudge_action_plan_week"), href: "/agenda?tab=semana" },
         feed: ["nudge"],
       });
     }
@@ -396,12 +443,13 @@ function detectNudge(ctx: SignalContext, firstName: string, gender: string): Sig
         id: "plan_procrastination", tier: "planejamento", weight: 0, priority: 2, streak: 0,
         emoji: "⏳", title: "Semana atrasada",
         description: `Já é ${["quarta", "quinta", "sexta"][dow3 - 3]}-feira e só ${pct}% da semana foi concluído.`,
-        message: pick([
-          `${greet} já é ${["quarta", "quinta", "sexta"][dow3 - 3]}-feira e só ${pct}% da semana foi concluído. Quer ajuda pra priorizar o que realmente importa?`,
-          `${greet} a semana tá voando e ${undoneTasks.length} tarefas ainda estão pendentes. Que tal focar nas 2 mais importantes hoje?`,
-          `${greet} tá tudo bem ter semanas mais lentas. ${undoneTasks.length} coisas pendentes — quer que eu te ajude a escolher por onde começar?`,
-        ]),
-        action: { label: "Ver semana", href: "/agenda?tab=semana" },
+        message: tt(lang, pick(["nudge_procrast_1", "nudge_procrast_2", "nudge_procrast_3"]), {
+          greet,
+          dia: diaSemana(dow3, lang),
+          pct: String(pct),
+          n: String(undoneTasks.length),
+        }),
+        action: { label: tt(lang, "nudge_action_week"), href: "/agenda?tab=semana" },
         feed: ["nudge"],
       });
     }
@@ -411,11 +459,8 @@ function detectNudge(ctx: SignalContext, firstName: string, gender: string): Sig
           id: "plan_week_wasted", tier: "planejamento", weight: 0, priority: 2, streak: 0,
           emoji: "🌙", title: "Semana em branco",
           description: `Fim de semana e nada concluído essa semana.`,
-          message: pick([
-            `${greet} fim de semana e nada concluído essa semana. Acontece. Quer começar a próxima com o pé direito? Bora planejar junt${oo === "a" ? "a" : "o"}.`,
-            `${greet} essa semana não rolou, e tá tudo bem. Nem toda semana é igual. Quer esboçar 3 coisas importantes pra semana que vem?`,
-          ]),
-          action: { label: "Planejar próxima semana", href: "/agenda?tab=semana" },
+          message: tt(lang, pick(["nudge_wasted_1", "nudge_wasted_2"]), { greet, junto: juntoWord(gender, lang) }),
+          action: { label: tt(lang, "nudge_action_plan_next"), href: "/agenda?tab=semana" },
           feed: ["nudge"],
         });
       }
@@ -428,12 +473,8 @@ function detectNudge(ctx: SignalContext, firstName: string, gender: string): Sig
       id: "checkin_miss", tier: "contexto", weight: 0, priority: 1, streak: 0,
       emoji: "👋", title: "Check-in pendente",
       description: `Você ainda não fez seu check-in hoje.`,
-      message: pick([
-        `${greet} como você está hoje? Ainda não fez seu check-in. São 2 minutinhos e me ajuda a te conhecer melhor.`,
-        `${greet} passando aqui pra saber de você. Não fez o check-in ainda... como tá seu dia?`,
-        `${greet} tava por aqui e vi que você ainda não passou no check-in hoje. Como você está?`,
-      ]),
-      action: { label: "Fazer check-in agora", href: "/check-in" },
+      message: tt(lang, pick(["nudge_checkin_miss_1", "nudge_checkin_miss_2", "nudge_checkin_miss_3"]), { greet }),
+      action: { label: tt(lang, "nudge_action_checkin"), href: "/check-in" },
       feed: ["nudge"],
     });
   }
@@ -443,16 +484,16 @@ function detectNudge(ctx: SignalContext, firstName: string, gender: string): Sig
 
 // ── Plan: insights de planejamento (semana a semana) ──────────────────────────
 
-const AREAS = [
-  { key: "saude", label: "Saúde" }, { key: "carreira", label: "Carreira" },
-  { key: "financas", label: "Finanças" }, { key: "relacionamentos", label: "Relacionamentos" },
-  { key: "familia", label: "Família" }, { key: "desenvolvimento", label: "Mente" },
-  { key: "lazer", label: "Lazer" }, { key: "espiritualidade", label: "Espiritualidade" },
-  { key: "outros", label: "Outros" },
-];
+const AREA_KEYS: Record<string, string> = {
+  saude: "area_saude", carreira: "area_carreira", financas: "area_financas",
+  relacionamentos: "area_relacionamentos", familia: "area_familia",
+  desenvolvimento: "area_desenvolvimento", lazer: "area_lazer",
+  espiritualidade: "area_espiritualidade", outros: "area_outros",
+};
 
-function areaLabel(key: string): string {
-  return AREAS.find((a) => a.key === key)?.label ?? key;
+function areaLabel(key: string, lang: Lang): string {
+  const k = AREA_KEYS[key];
+  return k ? tt(lang, k) : key;
 }
 
 interface WeekData {
@@ -484,6 +525,7 @@ function detectPlan(
   history: WeekData[],
   activeGoals: any[],
   sleepLogs: any[],
+  lang: Lang,
 ): Signal[] {
   const results: Signal[] = [];
 
@@ -507,8 +549,8 @@ function detectPlan(
       results.push({
         id: "overload", tier: "planejamento", weight: 0, priority: 1, streak: 0,
         emoji: "🧭", title: "Muitas áreas",
-        description: `Você está tentando priorizar ${areasWithTasks.length} áreas ao mesmo tempo. Nas semanas em que focou em até 3 áreas, sua execução subiu ${diff}%.`,
-        action: { label: "Ajustar foco", href: "/agenda?tab=semana" },
+        description: tt(lang, "plan_overload_desc", { n: String(areasWithTasks.length), diff: String(diff) }),
+        action: { label: tt(lang, "plan_overload_action"), href: "/agenda?tab=semana" },
         feed: ["plan"],
       });
     }
@@ -526,8 +568,14 @@ function detectPlan(
     results.push({
       id: "abandoned", tier: "planejamento", weight: 0, priority: 2, streak: 0,
       emoji: "🕳️", title: "Área de fora",
-      description: `${areaLabel(abandoned[0])} ${abandoned.length > 1 ? `e ${areaLabel(abandoned[1])} ` : ""}${abandoned.length > 1 ? "ficaram" : "ficou"} de fora esta semana. Isso é intencional ou um descuido?`,
-      action: { label: "Adicionar tarefa", href: "/agenda?tab=semana" },
+      description: tt(lang, "plan_abandoned_desc", {
+        area: areaLabel(abandoned[0], lang),
+        e_area: abandoned.length > 1
+          ? (lang === "es" ? ` y ${areaLabel(abandoned[1], lang)}` : lang === "en" ? ` and ${areaLabel(abandoned[1], lang)}` : ` e ${areaLabel(abandoned[1], lang)}`)
+          : "",
+        ficaram: ficaramWord(abandoned.length, lang),
+      }),
+      action: { label: tt(lang, "plan_abandoned_action"), href: "/agenda?tab=semana" },
       feed: ["plan"],
     });
   }
@@ -541,8 +589,8 @@ function detectPlan(
       results.push({
         id: "orphan_goal", tier: "planejamento", weight: 0, priority: 2, streak: 0,
         emoji: "🎯", title: "Meta órfã",
-        description: `Sua meta "${(g.title || "").slice(0, 40)}" não tem nenhuma ação esta semana. Quer agendar algo?`,
-        action: { label: "Ver metas", href: "/agenda?tab=metas" },
+        description: tt(lang, "plan_orphan_desc", { meta: (g.title || "").slice(0, 40) }),
+        action: { label: tt(lang, "plan_orphan_action"), href: "/agenda?tab=metas" },
         feed: ["plan"],
       });
     }
@@ -559,8 +607,8 @@ function detectPlan(
       results.push({
         id: "imbalance", tier: "planejamento", weight: 0, priority: 1, streak: 0,
         emoji: "⚖️", title: "Semana desequilibrada",
-        description: `${areaLabel(top[0])} está consumindo ${Math.round(top[1] / total * 100)}% da sua semana. Isso é intencional? Às vezes focar demais numa área deixa as outras murcharem.`,
-        action: { label: "Reequilibrar", href: "/agenda?tab=semana" },
+        description: tt(lang, "plan_imbalance_desc", { area: areaLabel(top[0], lang), pct: String(Math.round(top[1] / total * 100)) }),
+        action: { label: tt(lang, "plan_imbalance_action"), href: "/agenda?tab=semana" },
         feed: ["plan"],
       });
     }
@@ -576,7 +624,7 @@ function detectPlan(
       results.push({
         id: "streak", tier: "planejamento", weight: 0, priority: 3, streak: 0,
         emoji: "👏", title: "Disciplina",
-        description: `👏 ${areaLabel(area)} está com ${historicalDone.length + 1} semanas seguidas de execução impecável. Isso é disciplina de verdade!`,
+        description: tt(lang, "plan_streak_desc", { area: areaLabel(area, lang), semanas: String(historicalDone.length + 1) }),
         feed: ["plan"],
       });
       break;
@@ -591,8 +639,8 @@ function detectPlan(
       results.push({
         id: "decline", tier: "planejamento", weight: 0, priority: 2, streak: 0,
         emoji: "📉", title: "Área não executada",
-        description: `${areaLabel(area)} está ${consecutiveLow.length + 1} semanas sendo planejada mas não executada. Talvez o plano esteja ambicioso demais? Que tal começar com uma tarefa bem pequena?`,
-        action: { label: "Ajustar tarefas", href: "/agenda?tab=semana" },
+        description: tt(lang, "plan_decline_desc", { area: areaLabel(area, lang), semanas: String(consecutiveLow.length + 1) }),
+        action: { label: tt(lang, "plan_decline_action"), href: "/agenda?tab=semana" },
         feed: ["plan"],
       });
       break;
@@ -606,8 +654,8 @@ function detectPlan(
     results.push({
       id: "burnout_risk", tier: "planejamento", weight: 0, priority: 1, streak: badSleep,
       emoji: "🪫", title: "Risco de burnout",
-      description: `Seu sono está ruim há ${badSleep} noites e você tem ${growthTasks} tarefas de crescimento. Cuidado com burnout. Esta pode ser uma semana para manutenção, não expansão.`,
-      action: { label: "Conversar com Maya", href: "/insights" },
+      description: tt(lang, "plan_burnout_desc", { noites: String(badSleep), n_tarefas: String(growthTasks) }),
+      action: { label: tt(lang, "plan_burnout_action"), href: "/insights" },
       feed: ["plan", "nudge"],
     });
   }
@@ -615,7 +663,7 @@ function detectPlan(
   return results;
 }
 
-function calculateMetrics(current: WeekData, history: WeekData[]): PlanAnalytics {
+function calculateMetrics(current: WeekData, history: WeekData[], lang: Lang): PlanAnalytics {
   const areaEntries = Object.entries(current.totalByArea).filter(([, v]) => v > 0);
   const total = areaEntries.reduce((s, [, v]) => s + v, 0);
 
@@ -626,8 +674,8 @@ function calculateMetrics(current: WeekData, history: WeekData[]): PlanAnalytics
   for (const [key, tot] of Object.entries(current.totalByArea)) {
     if (key === "outros" || tot === 0) continue;
     const pct = (current.doneByArea[key] || 0) / tot;
-    if (pct > bestPct) { bestPct = pct; strongest = areaLabel(key); }
-    if (pct < worstPct) { worstPct = pct; weakest = areaLabel(key); }
+    if (pct > bestPct) { bestPct = pct; strongest = areaLabel(key, lang); }
+    if (pct < worstPct) { worstPct = pct; weakest = areaLabel(key, lang); }
   }
 
   let balance = 50;
@@ -653,27 +701,18 @@ function calculateMetrics(current: WeekData, history: WeekData[]): PlanAnalytics
 // ── Merge + dedup ──────────────────────────────────────────────────────────────
 
 /** Sinais de care/nudge que também alimentam nudge (derivados no merge). */
-function nudgeMessageFor(id: string, greet: string, gender: string, streak: number): string | undefined {
-  const soloSolo = gender === "feminino" ? "sozinha" : "sozinho";
+function nudgeMessageFor(id: string, greet: string, gender: string, streak: number, lang: Lang): string | undefined {
   switch (id) {
     case "sleep":
-      return pick([
-        `${greet} vi que você dormiu mal nos últimos ${streak} dias. Isso mexe com tudo: humor, energia, foco. Quer conversar sobre o que pode estar atrapalhando?`,
-        `${greet} notei que seu sono não tá legal faz ${streak} dias. Às vezes a gente nem percebe o que tá roubando nosso descanso. Bora tentar entender juntos?`,
-        `${greet} olhei aqui e vi que você não dormiu bem nos últimos dias. Seu corpo tá pedindo atenção. O que será que tá roubando seu sono?`,
-      ]);
+      return tt(lang, pick(["nudge_sleep_1", "nudge_sleep_2", "nudge_sleep_3"]), { greet, dias: diasStr(streak, lang) });
     case "mood":
-      return pick([
-        `${greet} vi que seu humor caiu nos últimos dias. Não precisa enfrentar isso ${soloSolo}. Me conta o que tá pesando?`,
-        `${greet} tá tudo bem não estar bem. Vi que você não está nos seus melhores dias. Quer desabafar um pouco?`,
-        `${greet} senti que você tá mais pra baixo esses dias. Se quiser conversar, tô aqui. Sem pressa, sem cobrança.`,
-      ]);
+      return tt(lang, pick(["nudge_mood_1", "nudge_mood_2", "nudge_mood_3"]), { greet, sozinho: sozinhoWord(gender, lang) });
     default:
       return undefined;
   }
 }
 
-function mergeSignals(care: Signal[], nudge: Signal[], plan: Signal[], firstName: string, gender: string): Signal[] {
+function mergeSignals(care: Signal[], nudge: Signal[], plan: Signal[], firstName: string, gender: string, lang: Lang): Signal[] {
   const byId = new Map<string, Signal>();
 
   for (const s of care) {
@@ -682,7 +721,7 @@ function mergeSignals(care: Signal[], nudge: Signal[], plan: Signal[], firstName
     if (s.id === "sleep" || s.id === "mood") {
       byId.get(s.id)!.feed = ["care", "nudge"];
       byId.get(s.id)!.priority = 2;
-      byId.get(s.id)!.message = nudgeMessageFor(s.id, saludo(firstName), gender, s.streak);
+      byId.get(s.id)!.message = nudgeMessageFor(s.id, saludo(firstName, lang), gender, s.streak, lang);
     }
   }
 
@@ -702,11 +741,7 @@ function mergeSignals(care: Signal[], nudge: Signal[], plan: Signal[], firstName
       // burnout_risk também gera nudge: prioridade 2 + template próprio.
       if (s.id === "burnout_risk") {
         existing.priority = 2;
-        existing.message = pick([
-          `${saludo(firstName)} dormiu mal essa noite e tem tarefas de crescimento. Quer ajustar? Tarefas de manutenção podem ser melhores hoje.`,
-          `${saludo(firstName)} sei que seu sono não foi dos melhores. Tem tarefas ambiciosas hoje — quer trocar alguma por algo mais leve?`,
-          `${saludo(firstName)} notei que você dormiu mal mas planejou tarefas de crescimento. Tá se cobrando demais? Hoje pode ser dia de cuidar, não de performar.`,
-        ]);
+        existing.message = tt(lang, pick(["nudge_burnout_1", "nudge_burnout_2", "nudge_burnout_3"]), { greet: saludo(firstName, lang) });
       }
       byId.set(s.id, existing);
     } else {
@@ -721,7 +756,7 @@ function mergeSignals(care: Signal[], nudge: Signal[], plan: Signal[], firstName
 
 export async function computeSignals(
   userId: string,
-  profile?: { firstName?: string; gender?: string },
+  profile?: { firstName?: string; gender?: string; language?: string },
   opts?: { weekStart?: string },
 ): Promise<SignalResult> {
   const admin = getSupabaseAdmin();
@@ -729,6 +764,7 @@ export async function computeSignals(
   const weekStart = opts?.weekStart || getWeekMondayDate();
   const firstName = profile?.firstName || "";
   const gender = profile?.gender || "nao_dizer";
+  const lang: Lang = (profile?.language as Lang) || "pt";
 
   // 5 semanas: atual + 4 anteriores.
   const weekStarts: string[] = [];
@@ -796,12 +832,12 @@ export async function computeSignals(
     .map((plan, i) => buildWeek(plan, weekStarts[i + 1]))
     .filter((w) => w.totalTasks > 0);
 
-  const care = detectCare(ctx);
-  const nudge = detectNudge(ctx, firstName, gender);
-  const plan = detectPlan(current, history, ctx.goals, ctx.sleepLogs);
+  const care = detectCare(ctx, lang);
+  const nudge = detectNudge(ctx, firstName, gender, lang);
+  const plan = detectPlan(current, history, ctx.goals, ctx.sleepLogs, lang);
 
-  const signals = mergeSignals(care, nudge, plan, firstName, gender);
-  const metrics = calculateMetrics(current, history);
+  const signals = mergeSignals(care, nudge, plan, firstName, gender, lang);
+  const metrics = calculateMetrics(current, history, lang);
 
   return { signals, plan: metrics };
 }

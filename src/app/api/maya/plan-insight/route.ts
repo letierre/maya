@@ -40,11 +40,12 @@ export async function GET(req: Request) {
     const userName = (user.user_metadata?.name as string) || "";
     const firstName = userName.split(" ")[0];
     const gender = (context.gender as string) || "nao_dizer";
+    const lang = (context.language as string) || "pt";
 
     // Motor único: mesma fonte de sinais do care-list e do nudge.
     const { signals, plan } = await computeSignals(
       user.id,
-      { firstName, gender },
+      { firstName, gender, language: lang },
       { weekStart: weekParam },
     );
 
