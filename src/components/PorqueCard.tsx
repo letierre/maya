@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { photoUrl } from "@/lib/photo-storage";
 import { Heart } from "lucide-react";
+import { useTranslation } from "@/lib/useTranslation";
 
 interface Porque {
   id: string;
@@ -35,6 +36,7 @@ const COLOR_SCHEMES = {
 } as const;
 
 export function PorqueCard({ gender = "nao_dizer" }: { gender?: string }) {
+  const { t } = useTranslation();
   const [porques, setPorques] = useState<Porque[]>([]);
   const [index, setIndex] = useState(0);
 
@@ -82,7 +84,7 @@ export function PorqueCard({ gender = "nao_dizer" }: { gender?: string }) {
           <div className="flex-1 min-w-0 space-y-3">
             <div>
               <p className={`text-xs font-medium ${colors.label} mb-1`}>
-                Meu Porquê
+                {t("pq_meu_porque")}
               </p>
               <p className="text-sm leading-relaxed text-foreground/85 italic">
                 {pq.text || "—"}

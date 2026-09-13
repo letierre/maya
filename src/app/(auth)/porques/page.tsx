@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import { Heart, Plus } from "lucide-react";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
+import { useTranslation } from "@/lib/useTranslation";
 
 // ── Design tokens (mesma base de leitura/corrida) ──────────────
 const BG_GRADIENT: React.CSSProperties = {
@@ -32,6 +33,7 @@ interface Porque {
 }
 
 export default function PorquesPage() {
+  const { t } = useTranslation();
   const [porques, setPorques] = useState<Porque[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -57,7 +59,7 @@ export default function PorquesPage() {
         body: JSON.stringify({ porques }),
       });
       setSavingPorques(false);
-      toast.success("Porquê salvo!");
+      toast.success(t("pq_salvo"));
     }, 600);
     return () => clearTimeout(timer);
   }, [porques, savingPorques]);
@@ -85,7 +87,7 @@ export default function PorquesPage() {
       setPorques((prev) => prev.map((p, i) => (i === index ? { ...p, photoPath: path } : p)));
       setSavingPorques(true);
     } catch {
-      toast.error("Erro ao enviar foto");
+      toast.error(t("pq_erro_foto"));
     }
     setUploading(false);
   };
@@ -97,12 +99,11 @@ export default function PorquesPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Heart size={24} color="#f472b6" fill="#f472b6" fillOpacity={0.25} />
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: FOREGROUND }}>
-            Meus Porquês
+            {t("pq_titulo")}
           </h1>
         </div>
         <p style={{ margin: "10px 0 0", fontSize: 13, lineHeight: 1.6, color: MUTED, maxWidth: 400 }}>
-          Seus porquês são as razões que te movem — o que você quer proteger, quem quer se tornar.
-          Volte aqui nos dias em que a motivação fraquejar.
+          {t("pq_subtitulo")}
         </p>
       </div>
 
@@ -116,10 +117,10 @@ export default function PorquesPage() {
           <div style={{ textAlign: "center", padding: "40px 16px" }}>
             <span style={{ fontSize: 48 }}>💗</span>
             <p style={{ color: FOREGROUND, fontSize: 15, fontWeight: 600, margin: "12px 0 4px" }}>
-              Você ainda não escreveu seus porquês
+              {t("pq_vazio_titulo")}
             </p>
             <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.5, maxWidth: 300, margin: "0 auto 16px" }}>
-              Comece pelo que mais importa pra você — uma pessoa, um sonho, uma promessa.
+              {t("pq_vazio_sub")}
             </p>
           </div>
         ) : (
@@ -129,6 +130,7 @@ export default function PorquesPage() {
               pq={pq}
               index={i}
               uploading={uploading}
+              t={t}
               onUpdate={updatePorque}
               onRemove={removePorque}
               onPhotoPick={handlePhoto}
@@ -147,7 +149,7 @@ export default function PorquesPage() {
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             }}
           >
-            <Plus style={{ width: 15, height: 15 }} /> Adicionar porquê
+            <Plus style={{ width: 15, height: 15 }} /> {t("pq_adicionar")}
           </button>
         )}
       </div>
@@ -158,11 +160,12 @@ export default function PorquesPage() {
 // ── Card de um porquê ──────────────────────────────────────────
 
 function PorqueCard({
-  pq, index, uploading, onUpdate, onRemove, onPhotoPick,
+  pq, index, uploading, t, onUpdate, onRemove, onPhotoPick,
 }: {
   pq: Porque;
   index: number;
   uploading: boolean;
+  t: (key: string) => string;
   onUpdate: (index: number, text: string) => void;
   onRemove: (index: number) => void;
   onPhotoPick: (index: number, file: File) => void;
@@ -207,7 +210,7 @@ function PorqueCard({
         <textarea
           value={pq.text}
           onChange={(e) => onUpdate(index, e.target.value)}
-          placeholder="Seu porquê..."
+          placeholder={t("pq_placeholder")}
           rows={2}
           style={{
             width: "100%", boxSizing: "border-box", minHeight: 52, resize: "none",
@@ -226,7 +229,7 @@ function PorqueCard({
             fontSize: 12, color: "#FF5C5C", padding: "4px 0 0", fontWeight: 600,
           }}
         >
-          Remover
+          {t("pq_remover")}
         </button>
       </div>
     </div>
