@@ -44,6 +44,7 @@ const translations: Record<Lang, Record<string, string>> = {
     config_subtitle:
       "Suas respostas ajudam a personalizar as perguntas do check-in.",
     preferencias_atualizadas: "Preferências atualizadas! 🌱",
+    config_voltar: "Voltar",
 
     // Dashboard
     ola: "Olá! 🌱",
@@ -2217,6 +2218,7 @@ const translations: Record<Lang, Record<string, string>> = {
     config_title: "Configuraciones",
     config_subtitle: "Tus respuestas ayudan a personalizar las preguntas del check-in.",
     preferencias_atualizadas: "¡Preferencias actualizadas! 🌱",
+    config_voltar: "Volver",
 
     ola: "¡Hola! 🌱",
     carregando: "Cargando...",
@@ -4378,6 +4380,7 @@ const translations: Record<Lang, Record<string, string>> = {
     config_title: "Settings",
     config_subtitle: "Your answers help personalize your check-in questions.",
     preferencias_atualizadas: "Preferences updated! 🌱",
+    config_voltar: "Back",
 
     ola: "Hello! 🌱",
     carregando: "Loading...",

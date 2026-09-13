@@ -72,7 +72,7 @@ export default function ConfiguracoesPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ enabled_questions: enabled, context: { ...answers } }),
         });
-        if (res.ok) toast.success("Alterações salvas");
+        if (res.ok) toast.success(t("preferencias_atualizadas"));
       } catch { /* silent */ }
     }, 900);
     return () => clearTimeout(autoSaveRef.current);
@@ -84,7 +84,7 @@ export default function ConfiguracoesPage() {
         minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center",
         background: "oklch(0.12 0.012 270)",
       }}>
-        <p style={{ color: "#A78BFA", fontSize: 13 }}>Carregando…</p>
+        <p style={{ color: "#A78BFA", fontSize: 13 }}>{t("carregando")}</p>
       </div>
     );
   }
@@ -107,7 +107,7 @@ export default function ConfiguracoesPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            aria-label="Voltar"
+            aria-label={t("config_voltar")}
             style={{
               width: 36, height: 36, borderRadius: "50%",
               display: "flex", alignItems: "center", justifyContent: "center",
