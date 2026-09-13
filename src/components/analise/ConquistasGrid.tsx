@@ -38,8 +38,8 @@ export function ConquistasGrid({ from, to }: { from: string; to: string }) {
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                background: "oklch(0.16 0.012 270)",
-                border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+                background: "var(--surface)",
+                border: "1px solid var(--surface-border)",
                 borderRadius: 9999,
                 padding: "7px 12px",
               }}

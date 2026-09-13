@@ -114,8 +114,8 @@ export function CheckinProgress({
         <span
           className="px-3 py-1.5 rounded-full text-[12px] font-medium border inline-flex items-center gap-1"
           style={{
-            background: "oklch(0.18 0.015 270)",
-            borderColor: "oklch(0.28 0.02 270 / 0.5)",
+            background: "var(--surface-2)",
+            borderColor: "var(--surface-border)",
             color: "#e0d6ff",
           }}
         >
@@ -126,8 +126,8 @@ export function CheckinProgress({
             key={value}
             className="px-3 py-1.5 rounded-full text-[12px] font-medium border inline-flex items-center gap-1"
             style={{
-              background: "oklch(0.18 0.015 270)",
-              borderColor: "oklch(0.28 0.02 270 / 0.5)",
+              background: "var(--surface-2)",
+              borderColor: "var(--surface-border)",
               color: "#e0d6ff",
             }}
           >

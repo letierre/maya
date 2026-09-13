@@ -55,12 +55,12 @@ export function EvolucaoSpark({ data, loading }: EvolucaoSparkProps) {
         <div
           className="rounded-[18px] px-4 pt-4 pb-[18px] border animate-pulse"
           style={{
-            background: "oklch(0.16 0.012 270)",
-            borderColor: "oklch(0.28 0.02 270 / 0.5)",
+            background: "var(--surface)",
+            borderColor: "var(--surface-border)",
           }}
         >
-          <div className="h-3 rounded-full w-24 mb-3" style={{ background: "oklch(0.22 0.02 270)" }} />
-          <div className="h-8 rounded-lg w-full" style={{ background: "oklch(0.22 0.02 270)" }} />
+          <div className="h-3 rounded-full w-24 mb-3" style={{ background: "var(--surface-3)" }} />
+          <div className="h-8 rounded-lg w-full" style={{ background: "var(--surface-3)" }} />
         </div>
       </div>
     );
@@ -87,8 +87,9 @@ export function EvolucaoSpark({ data, loading }: EvolucaoSparkProps) {
       <div
         className="rounded-[18px] px-4 pt-4 pb-[18px] border"
         style={{
-          background: "oklch(0.16 0.012 270)",
-          borderColor: "oklch(0.28 0.02 270 / 0.5)",
+          background: "var(--surface)",
+          borderColor: "var(--surface-border)",
+          boxShadow: "inset 0 1px 0 var(--surface-highlight)",
         }}
       >
         <div className="flex items-baseline justify-between mb-2">

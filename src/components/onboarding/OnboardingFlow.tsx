@@ -16,8 +16,8 @@ import { setLanguage } from "@/lib/language";
 const ACCENT = "#7C5CFF";
 const ACCENT_2 = "#A78BFA";
 const BG = "oklch(0.12 0.012 270)";
-const CARD = "oklch(0.16 0.012 270)";
-const BORDER = "oklch(0.28 0.02 270 / 0.5)";
+const CARD = "var(--surface)";
+const BORDER = "var(--surface-border)";
 const MUTED = "oklch(0.55 0.03 270)";
 const TEXT = "#e0d6ff";
 

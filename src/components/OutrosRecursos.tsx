@@ -56,13 +56,13 @@ function ResourceCard({
       <div
         className="rounded-2xl animate-pulse flex flex-col gap-2 p-4 min-w-[148px]"
         style={{
-          background: "oklch(0.16 0.012 270)",
-          border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+          background: "var(--surface)",
+          border: "1px solid var(--surface-border)",
         }}
       >
-        <div className="w-8 h-8 rounded-full" style={{ background: "oklch(0.22 0.02 270)" }} />
-        <div className="h-3 rounded-full w-16" style={{ background: "oklch(0.22 0.02 270)" }} />
-        <div className="h-3 rounded-full w-24" style={{ background: "oklch(0.22 0.02 270)" }} />
+        <div className="w-8 h-8 rounded-full" style={{ background: "var(--surface-3)" }} />
+        <div className="h-3 rounded-full w-16" style={{ background: "var(--surface-3)" }} />
+        <div className="h-3 rounded-full w-24" style={{ background: "var(--surface-3)" }} />
       </div>
     );
   }
@@ -72,8 +72,9 @@ function ResourceCard({
       href={href}
       className="rounded-2xl p-4 text-left cursor-pointer transition-all active:scale-[0.98] flex flex-col gap-2 min-w-[148px] shrink-0 group relative overflow-hidden"
       style={{
-        background: "oklch(0.16 0.012 270)",
-        border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+        background: "var(--surface)",
+        border: "1px solid var(--surface-border)",
+        boxShadow: "inset 0 1px 0 var(--surface-highlight)",
         textDecoration: "none",
       }}
     >

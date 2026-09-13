@@ -91,15 +91,15 @@ export function MayaHero({
           <div className="space-y-2 flex flex-col items-center">
             <div
               className="h-4 rounded-full animate-pulse w-[260px]"
-              style={{ background: "oklch(0.22 0.02 270)" }}
+              style={{ background: "var(--surface-3)" }}
             />
             <div
               className="h-4 rounded-full animate-pulse w-[200px]"
-              style={{ background: "oklch(0.22 0.02 270)" }}
+              style={{ background: "var(--surface-3)" }}
             />
             <div
               className="h-4 rounded-full animate-pulse w-[160px]"
-              style={{ background: "oklch(0.22 0.02 270)" }}
+              style={{ background: "var(--surface-3)" }}
             />
           </div>
         ) : (

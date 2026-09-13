@@ -125,7 +125,7 @@ function CadastroInner() {
           </div>
 
           <div style={{
-            background: "oklch(0.16 0.012 270)",
+            background: "var(--surface)",
             borderRadius: 16, border: PB,
             padding: "18px 16px", textAlign: "left", marginBottom: 22,
           }}>

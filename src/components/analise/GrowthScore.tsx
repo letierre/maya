@@ -145,7 +145,7 @@ export function GrowthScore({ from, to }: { from: string; to: string }) {
       <div style={{ position: "relative" }}>
         <div style={{
           width: 140, height: 140, borderRadius: "50%",
-          background: `conic-gradient(${PURPLE} ${Math.max(0, Math.min(score, 100)) * 3.6}deg, oklch(0.22 0.02 270) 0deg)`,
+          background: `conic-gradient(${PURPLE} ${Math.max(0, Math.min(score, 100)) * 3.6}deg, var(--surface-3) 0deg)`,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <div style={{
@@ -166,7 +166,7 @@ export function GrowthScore({ from, to }: { from: string; to: string }) {
             position: "absolute", top: 6, right: 6,
             width: 20, height: 20, borderRadius: "50%",
             border: "1px solid oklch(0.5 0.12 270 / 0.4)",
-            background: "oklch(0.16 0.012 270)", cursor: "pointer",
+            background: "var(--surface)", cursor: "pointer",
             color: ringInfo ? PURPLE : MUTED,
             fontSize: 11, fontWeight: 700, lineHeight: 1,
             display: "flex", alignItems: "center", justifyContent: "center",

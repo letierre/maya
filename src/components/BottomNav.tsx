@@ -71,7 +71,7 @@ export function BottomNav() {
         height: 64,
         background: "oklch(0.14 0.012 270 / 0.97)",
         backdropFilter: "blur(12px)",
-        borderTop: "1px solid oklch(0.28 0.02 270 / 0.5)",
+        borderTop: "1px solid var(--surface-border)",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >

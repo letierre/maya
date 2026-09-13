@@ -219,7 +219,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
 
         {/* Gastos por categoria */}
         {catEntries.length > 0 && (
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid oklch(0.28 0.02 270 / 0.5)" }}>
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--surface-border)" }}>
             <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: MUTED }}>
               {t("an_gastos_categoria")}
             </p>
@@ -249,7 +249,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
 
         {/* Orçamento (apenas no mês) */}
         {period === "mes" && budgets.length > 0 && (
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid oklch(0.28 0.02 270 / 0.5)" }}>
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--surface-border)" }}>
             <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: MUTED }}>
               {t("an_orcamento")}
             </p>
@@ -272,7 +272,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
               </div>
             ))}
             {/* Total */}
-            <div style={{ paddingTop: 10, borderTop: "1px solid oklch(0.28 0.02 270 / 0.5)" }}>
+            <div style={{ paddingTop: 10, borderTop: "1px solid var(--surface-border)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                 <span style={{ fontSize: 12, fontWeight: 800, color: FOREGROUND }}>{t("an_total")}</span>
                 <span style={{ flex: 1 }} />
@@ -296,7 +296,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
         )}
 
         {/* Tendência */}
-        <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid oklch(0.28 0.02 270 / 0.5)" }}>
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--surface-border)" }}>
           <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: MUTED }}>
             {trendTitle}
           </p>

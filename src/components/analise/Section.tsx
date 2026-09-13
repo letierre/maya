@@ -11,8 +11,8 @@ export const GREEN = "#22D18B";
 export const RED = "#FF5C5C";
 
 export const CARD: CSSProperties = {
-  background: "oklch(0.16 0.012 270)",
-  border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+  background: "var(--surface)",
+  border: "1px solid var(--surface-border)",
   borderRadius: 18,
   padding: "16px 18px",
 };

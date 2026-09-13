@@ -487,7 +487,7 @@ export default function AnalisePage() {
     fontFamily: "inherit",
     fontSize: 13,
     fontWeight: 700,
-    background: active ? "#7C5CFF" : "oklch(0.22 0.02 270)",
+    background: active ? "#7C5CFF" : "var(--surface-3)",
     color: active ? "#fff" : "oklch(0.6 0.03 270)",
     transition: "all .15s ease",
   });
@@ -604,7 +604,7 @@ export default function AnalisePage() {
           <div style={{ position: "relative" }}>
             <div style={{
               width: 140, height: 140, borderRadius: "50%",
-              background: `conic-gradient(#7C5CFF ${Math.max(0, Math.min(wellnessAvg ?? 50, 100)) * 3.6}deg, oklch(0.22 0.02 270) 0deg)`,
+              background: `conic-gradient(#7C5CFF ${Math.max(0, Math.min(wellnessAvg ?? 50, 100)) * 3.6}deg, var(--surface-3) 0deg)`,
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               <div style={{
@@ -629,7 +629,7 @@ export default function AnalisePage() {
                 position: "absolute", top: 6, right: 6,
                 width: 20, height: 20, borderRadius: "50%",
                 border: "1px solid oklch(0.5 0.12 270 / 0.4)",
-                background: "oklch(0.16 0.012 270)", cursor: "pointer",
+                background: "var(--surface)", cursor: "pointer",
                 color: ringInfo ? "#7C5CFF" : "oklch(0.55 0.03 270)",
                 fontSize: 11, fontWeight: 700, lineHeight: 1,
                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -676,8 +676,8 @@ export default function AnalisePage() {
             {t("an_tendencia")}
           </p>
           <div style={{
-            background: "oklch(0.16 0.012 270)",
-            border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+            background: "var(--surface)",
+            border: "1px solid var(--surface-border)",
             borderRadius: 18, padding: "16px 8px 8px",
             overflow: "hidden",
           }}>
@@ -685,7 +685,7 @@ export default function AnalisePage() {
               {/* Grid lines */}
               {[30, 60, 90].map((y) => (
                 <line key={y} x1={0} x2={trendScale.w} y1={y} y2={y}
-                  stroke="oklch(0.22 0.02 270)" strokeWidth={0.5} strokeDasharray="4 3" />
+                  stroke="var(--surface-3)" strokeWidth={0.5} strokeDasharray="4 3" />
               ))}
               {/* Line */}
               <polyline
@@ -766,8 +766,8 @@ export default function AnalisePage() {
             const infoOpen = openInfo === a.key;
             return (
               <div key={a.key} style={{
-                background: "oklch(0.16 0.012 270)",
-                border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+                background: "var(--surface)",
+                border: "1px solid var(--surface-border)",
                 borderRadius: 16, padding: "14px 12px",
                 ...(spansFull ? { gridColumn: "1 / -1" } : {}),
               }}>
@@ -841,8 +841,8 @@ export default function AnalisePage() {
             {t("ob_area_humor")} · {tabLabel}
           </p>
           <div style={{
-            background: "oklch(0.16 0.012 270)",
-            border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+            background: "var(--surface)",
+            border: "1px solid var(--surface-border)",
             borderRadius: 18, padding: "12px 10px",
             display: "flex", flexWrap: "wrap", gap: 3,
           }}>
@@ -881,8 +881,8 @@ export default function AnalisePage() {
           {t("an_consistencia")} · {tabLabel}
         </p>
         <div style={{
-          background: "oklch(0.16 0.012 270)",
-          border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+          background: "var(--surface)",
+          border: "1px solid var(--surface-border)",
           borderRadius: 18, padding: "12px 10px",
           display: "flex", flexWrap: "wrap", gap: 3,
         }}>
@@ -892,7 +892,7 @@ export default function AnalisePage() {
               height: periodDays > 30 ? 11 : 14,
               borderRadius: 3,
               flexShrink: 0,
-              background: cell.filled ? "#7C5CFF" : "oklch(0.22 0.02 270)",
+              background: cell.filled ? "#7C5CFF" : "var(--surface-3)",
               opacity: cell.filled ? 1 : 0.5,
               transition: "transform 0.15s ease",
             }}
@@ -920,8 +920,8 @@ export default function AnalisePage() {
             {t("an_impact_sub")}
           </p>
           <div style={{
-            background: "oklch(0.16 0.012 270)",
-            border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+            background: "var(--surface)",
+            border: "1px solid var(--surface-border)",
             borderRadius: 18, padding: "16px 18px",
           }}>
             <p style={{ margin: "0 0 12px", fontSize: 13, color: "#e0d6ff", lineHeight: 1.4 }}>

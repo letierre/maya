@@ -820,7 +820,7 @@ function SleepConfigContent({ config, onChange, onSave, saving, lang }: {
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
           padding: "10px 14px", borderRadius: 10,
-          background: "oklch(0.16 0.012 270)", border: "1px solid oklch(.28 .02 270 / .25)",
+          background: "var(--surface)", border: "1px solid oklch(.28 .02 270 / .25)",
         }}>
           <span style={{ fontSize: 20 }}>🎯</span>
           <span style={{ fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>
@@ -939,7 +939,7 @@ function SleepCalculatorContent({ bedtime = "23:00", lang = "pt" }: { bedtime?: 
         margin: 0, fontSize: 13, color: "#e0d6ff", fontWeight: 600,
         display: "flex", alignItems: "center", gap: 8,
         padding: "8px 14px", borderRadius: 10,
-        background: "oklch(0.16 0.012 270)", border: "1px solid oklch(.28 .02 270 / .25)",
+        background: "var(--surface)", border: "1px solid oklch(.28 .02 270 / .25)",
       }}>
         <span style={{ fontSize: 16 }}>🕐</span>
         {tFn(lang, "sono_dormir_as")} {displayTime}
@@ -1025,9 +1025,9 @@ function SleepTrendChart({ logs, lang }: { logs: SleepLog[]; lang: Lang }) {
   return (
     <div
       style={{
-        background: "oklch(0.16 0.012 270)",
+        background: "var(--surface)",
         borderRadius: 18,
-        border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+        border: "1px solid var(--surface-border)",
         padding: "16px 18px 12px",
       }}
     >
@@ -1170,9 +1170,9 @@ function SleepSpecialistCard({ insight, lang }: {
   return (
     <div
       style={{
-        background: "oklch(0.16 0.012 270)",
+        background: "var(--surface)",
         borderRadius: 18,
-        border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+        border: "1px solid var(--surface-border)",
         padding: "16px",
       }}
     >
@@ -1400,9 +1400,9 @@ export default function SonoPage() {
                 { icon: "🎯", label: tFn(lang, "sono_meta"), value: config ? `${calcWindowHours(config.bedtime, config.wake_time)}h` : "–", sub: stats!.avgDurationMin > 0 ? `${formatDuration(stats!.avgDurationMin)} ${tFn(lang, "sono_medio")}` : tFn(lang, "sono_sem_dados"), color: "#5EEAD4" },
               ].map((card) => (
                 <div key={card.label} style={{
-                  background: "oklch(0.16 0.012 270)",
+                  background: "var(--surface)",
                   borderRadius: 18,
-                  border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+                  border: "1px solid var(--surface-border)",
                   padding: "16px 14px",
                   display: "flex", flexDirection: "column", gap: 4,
                 }}>
@@ -1423,9 +1423,9 @@ export default function SonoPage() {
             {/* Melhor noite + comparativo semanal */}
             {stats!.bestNight && (
               <div style={{
-                background: "oklch(0.16 0.012 270)",
+                background: "var(--surface)",
                 borderRadius: 18,
-                border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+                border: "1px solid var(--surface-border)",
                 padding: "14px 16px",
                 display: "flex", alignItems: "center", gap: 12,
               }}>
@@ -1466,9 +1466,9 @@ export default function SonoPage() {
         {/* ── History ── */}
         {sleepMonthGroups.map((group) => (
           <div key={group.key} style={{
-            background: "oklch(0.16 0.012 270)",
+            background: "var(--surface)",
             borderRadius: 18,
-            border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+            border: "1px solid var(--surface-border)",
             overflow: "hidden",
           }}>
             {/* Month header */}

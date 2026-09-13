@@ -19,17 +19,17 @@ function MiniSkeleton() {
       style={{
         width: 108,
         height: 96,
-        background: "oklch(0.18 0.015 270)",
-        border: "1px solid oklch(0.25 0.02 270 / 0.5)",
+        background: "var(--surface-2)",
+        border: "1px solid var(--surface-border)",
         padding: "12px 10px",
         display: "flex",
         flexDirection: "column",
         gap: 8,
       }}
     >
-      <div className="w-6 h-6 rounded-full" style={{ background: "oklch(0.22 0.02 270)" }} />
-      <div className="h-3 rounded-full w-16" style={{ background: "oklch(0.22 0.02 270)" }} />
-      <div className="h-2.5 rounded-full w-12" style={{ background: "oklch(0.22 0.02 270)" }} />
+      <div className="w-6 h-6 rounded-full" style={{ background: "var(--surface-3)" }} />
+      <div className="h-3 rounded-full w-16" style={{ background: "var(--surface-3)" }} />
+      <div className="h-2.5 rounded-full w-12" style={{ background: "var(--surface-3)" }} />
     </div>
   );
 }
@@ -60,8 +60,9 @@ function MiniCard({
         width: 108,
         borderRadius: 16,
         padding: "12px 10px",
-        background: "oklch(0.16 0.012 270)",
-        border: "1px solid oklch(0.28 0.02 270 / 0.5)",
+        background: "var(--surface)",
+        border: "1px solid var(--surface-border)",
+        boxShadow: "inset 0 1px 0 var(--surface-highlight)",
       }}
     >
       <span className="text-xl leading-none">{emoji}</span>

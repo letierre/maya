@@ -325,7 +325,7 @@ export function MetasPanel() {
           {/* Fio conector (desenha conforme rola) */}
           <div style={{
             position: "absolute", left: 5, top: 6, bottom: 6, width: 2.5,
-            background: "oklch(0.28 0.02 270 / 0.5)", borderRadius: 9999,
+            background: "var(--surface-border)", borderRadius: 9999,
           }}>
             <div ref={fioFillRef} style={{
               position: "absolute", top: 0, left: 0, right: 0,
