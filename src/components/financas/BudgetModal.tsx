@@ -274,7 +274,7 @@ export function BudgetModal({
     const firstFail = postResults.find((r) => !r.ok);
     if (firstFail) {
       setSaving(false);
-      setError(`Não foi possível salvar: ${firstFail.error ?? "erro desconhecido"}`);
+      setError(`${tFn(lang, "fin_nao_possivel_salvar")}: ${firstFail.error ?? tFn(lang, "fin_erro_desconhecido")}`);
       return;
     }
 
@@ -293,7 +293,7 @@ export function BudgetModal({
     const recurFail = recurResults.find((r) => !r.ok);
     if (recurFail) {
       setSaving(false);
-      setError(`Orçamento salvo, mas a recorrência falhou: ${recurFail.error ?? "erro desconhecido"}`);
+      setError(tFn(lang, "fin_orcamento_salvo_recorrencia", { error: recurFail.error ?? tFn(lang, "fin_erro_desconhecido") }));
       return;
     }
     await Promise.all(
@@ -358,12 +358,12 @@ export function BudgetModal({
           display: "flex", alignItems: "center", background: "#0B0B10",
           border: "1px solid rgba(167,139,250,0.25)", borderRadius: 10, overflow: "hidden",
         }}>
-          {seg("once", "1×", "Só este mês")}
-          {seg("months", "N×", "Repetir por N meses")}
-          {seg("forever", "∞", "Sempre")}
+          {seg("once", "1×", tFn(lang, "fin_so_este_mes"))}
+          {seg("months", "N×", tFn(lang, "fin_repetir_n_meses"))}
+          {seg("forever", "∞", tFn(lang, "fin_sempre"))}
         </div>
         {r.mode === "months" && (
-          <div title="Número de meses" style={{
+          <div title={tFn(lang, "fin_numero_meses")} style={{
             display: "flex", alignItems: "center", gap: 5,
             background: "#0B0B10", border: "1px solid rgba(167,139,250,0.25)",
             borderRadius: 10, padding: "0 9px",
@@ -514,8 +514,8 @@ export function BudgetModal({
                     </div>
                     <p style={{ margin: "4px 0 0", fontSize: 10, color: "#9e96b5" }}>
                       {subMode
-                        ? "Total da categoria = soma das subcategorias + outros"
-                        : "Preencha subcategorias para planejar por item (o total vira a soma)"}
+                        ? tFn(lang, "fin_total_categoria_soma")
+                        : tFn(lang, "fin_preencha_subcategorias")}
                     </p>
                   </div>
                 )}
@@ -531,7 +531,7 @@ export function BudgetModal({
         }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, padding: "0 2px" }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#9e96b5" }}>
-              Total planejado
+              {tFn(lang, "fin_total_planejado")}
             </span>
             <span style={{ fontSize: 14, fontWeight: 800, color: "#e0d6ff" }}>
               {formatTotal(plannedTotal, currency)}
@@ -563,23 +563,23 @@ export function BudgetModal({
               border: "1px solid rgba(167,139,250,0.2)", boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
             }}>
               <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>
-                Valor recorrente alterado
+                {tFn(lang, "fin_valor_recorrente_alterado")}
               </h3>
               <p style={{ margin: "0 0 18px", fontSize: 13, color: "#9e96b5", lineHeight: 1.5 }}>
-                Você mudou o valor de um orçamento que se repete. O novo valor vale para...
+                {tFn(lang, "fin_valor_recorrente_prompt")}
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <button type="button" onClick={() => chooseScope("this_month")} style={{
                   padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.3)", cursor: "pointer",
                   background: "transparent", color: "#e0d6ff", fontFamily: "inherit", fontSize: 13, fontWeight: 600,
                 }}>
-                  Este mês apenas
+                  {tFn(lang, "fin_este_mes_apenas")}
                 </button>
                 <button type="button" onClick={() => chooseScope("future")} style={{
                   padding: "12px 14px", borderRadius: 12, border: 0, cursor: "pointer",
                   background: "#7C5CFF", color: "#fff", fontFamily: "inherit", fontSize: 13, fontWeight: 700,
                 }}>
-                  Este mês em diante
+                  {tFn(lang, "fin_este_mes_em_diante")}
                 </button>
               </div>
             </div>

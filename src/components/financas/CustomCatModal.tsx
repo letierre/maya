@@ -21,9 +21,9 @@ export function CustomCatModal({
   onClose: () => void;
   onSaved: (updated: CustomCat) => void;
 }) {
-  const [name, setName] = useState(customCat?.name ?? "Personalizada");
+  const [name, setName] = useState(customCat?.name ?? tFn(lang, "fin_cat_personalizada"));
   const [emoji, setEmoji] = useState(customCat?.emoji ?? "⭐");
-  const [subcats, setSubcats] = useState<string[]>(customCat?.subcats ?? ["Personalizado"]);
+  const [subcats, setSubcats] = useState<string[]>(customCat?.subcats ?? [tFn(lang, "fin_personalizado")]);
   const [newSubcat, setNewSubcat] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -37,7 +37,7 @@ export function CustomCatModal({
     setSaving(true);
     const pending = newSubcat.trim();
     const finalSubcats = pending && !subcats.includes(pending) ? [...subcats, pending] : subcats;
-    const updated: CustomCat = { name: name.trim() || "Personalizada", emoji: emoji || "⭐", subcats: finalSubcats };
+    const updated: CustomCat = { name: name.trim() || tFn(lang, "fin_cat_personalizada"), emoji: emoji || "⭐", subcats: finalSubcats };
     const prefsRes = await fetch("/api/preferences").then((r) => r.json());
     const ctx = prefsRes.context ?? {};
     await fetch("/api/preferences", {
@@ -77,7 +77,7 @@ export function CustomCatModal({
           <div style={{ display: "flex", gap: 10 }}>
             <div>
               <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "#9e96b5" }}>
-                Emoji
+                {tFn(lang, "fin_emoji")}
               </p>
               <input
                 value={emoji}

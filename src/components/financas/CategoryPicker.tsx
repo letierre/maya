@@ -49,7 +49,7 @@ export function CategoryPicker({
             fontFamily: "inherit", fontSize: 10, fontWeight: 600,
           }}
         >
-          <Settings size={12} /> Gerenciar
+          <Settings size={12} /> {tFn(lang, "fin_gerenciar")}
         </button>
       </div>
 
@@ -98,7 +98,7 @@ export function CategoryPicker({
                   background: "#0B0B10", borderRadius: 4, padding: "1px 4px",
                   border: `1px solid rgba(124,92,255,0.3)`,
                 }}>
-                  sua
+                  {tFn(lang, "fin_badge_sua")}
                 </span>
               )}
             </div>

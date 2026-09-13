@@ -71,7 +71,7 @@ export function CategoryFormModal({
           <div>
             <div style={{ width: 36, height: 4, borderRadius: 9999, background: "rgba(167,139,250,0.2)", marginBottom: 14 }} />
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>
-              {mode === "create" ? "Nova categoria" : "Editar categoria"}
+              {mode === "create" ? tFn(lang, "fin_nova_categoria") : tFn(lang, "fin_editar_categoria")}
             </h2>
           </div>
           <button type="button" onClick={onClose} style={{ border: 0, background: "#0B0B10", borderRadius: 10, padding: 8, cursor: "pointer" }}>
@@ -84,7 +84,7 @@ export function CategoryFormModal({
           <div style={{ display: "flex", gap: 10 }}>
             <div>
               <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "#9e96b5" }}>
-                Emoji
+                {tFn(lang, "fin_emoji")}
               </p>
               <input
                 value={emoji}
@@ -95,12 +95,12 @@ export function CategoryFormModal({
             </div>
             <div style={{ flex: 1 }}>
               <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "#9e96b5" }}>
-                Nome
+                {tFn(lang, "fin_nome")}
               </p>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Freelas"
+                placeholder={tFn(lang, "fin_ex_freelas")}
                 style={inputStyle}
               />
             </div>
@@ -109,7 +109,7 @@ export function CategoryFormModal({
           {/* Color picker */}
           <div>
             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "#9e96b5" }}>
-              Cor
+              {tFn(lang, "fin_cor")}
             </p>
             <div style={{ display: "flex", gap: 8 }}>
               {hueColors.map((h) => (
@@ -132,7 +132,7 @@ export function CategoryFormModal({
           {/* Subcats */}
           <div>
             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "#9e96b5" }}>
-              Subcategorias (opcional)
+              {tFn(lang, "fin_subcategorias_opcional")}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {subcats.map((sc, i) => (
@@ -157,7 +157,7 @@ export function CategoryFormModal({
                 value={newSubcat}
                 onChange={(e) => setNewSubcat(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSubcat(); } }}
-                placeholder="Adicionar subcategoria"
+                placeholder={tFn(lang, "fin_personalizada_adicionar")}
                 style={{ ...inputStyle, flex: 1 }}
               />
               <button type="button" onClick={addSubcat} style={{
@@ -177,7 +177,7 @@ export function CategoryFormModal({
           fontFamily: "inherit", fontSize: 15, fontWeight: 700,
           color: (!name.trim() || saving) ? "rgba(167,139,250,0.5)" : "#fff",
         }}>
-          {saving ? "Salvando..." : mode === "create" ? "Criar categoria" : "Salvar alterações"}
+          {saving ? tFn(lang, "salvando") : mode === "create" ? tFn(lang, "fin_criar_categoria") : tFn(lang, "fin_salvar_alteracoes")}
         </button>
       </div>
     </>

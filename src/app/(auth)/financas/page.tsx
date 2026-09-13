@@ -235,7 +235,7 @@ const sectionTitle: React.CSSProperties = {
 
 // ── Delete confirm ────────────────────────────────────────────────────────────
 
-function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+function DeleteConfirm({ onConfirm, onCancel, lang }: { onConfirm: () => void; onCancel: () => void; lang: Lang }) {
   return (
     <>
       <div onClick={onCancel} style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} />
@@ -246,20 +246,20 @@ function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCance
           width: "100%", maxWidth: 320, background: SURFACE, borderRadius: 20, padding: 24,
           border: `1px solid ${BORDER}`,
         }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: TEXT }}>Excluir transação?</h3>
-          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SEC }}>Esta ação não pode ser desfeita.</p>
+          <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: TEXT }}>{tFn(lang, "fin_excluir_tx_titulo")}</h3>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SEC }}>{tFn(lang, "fin_acao_irreversivel")}</p>
           <div style={{ display: "flex", gap: 10 }}>
             <button type="button" onClick={onCancel} style={{
               flex: 1, padding: 12, borderRadius: 12, border: `1px solid ${BORDER}`,
               background: "transparent", color: TEXT_SEC, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
             }}>
-              Cancelar
+              {tFn(lang, "cancelar")}
             </button>
             <button type="button" onClick={onConfirm} style={{
               flex: 1, padding: 12, borderRadius: 12, border: 0,
               background: RED, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
             }}>
-              Excluir
+              {tFn(lang, "fin_excluir")}
             </button>
           </div>
         </div>
@@ -378,7 +378,7 @@ export default function FinancasPage() {
         custom: catsRes?.customFinSubcats ?? {},
       });
     } catch {
-      toast.error("Erro ao carregar dados financeiros");
+      toast.error(tFn(lang, "fin_erro_carregar_dados"));
     } finally {
       setLoading(false);
     }
@@ -392,9 +392,9 @@ export default function FinancasPage() {
       const res = await fetch(`/api/financas/transactions/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       setTransactions((prev) => prev.filter((t) => t.id !== id));
-      toast.success("Transação excluída");
+      toast.success(tFn(lang, "fin_tx_excluida"));
     } catch {
-      toast.error("Erro ao excluir transação");
+      toast.error(tFn(lang, "fin_erro_excluir_tx"));
     }
     setDeleteId(null);
   };
@@ -409,9 +409,9 @@ export default function FinancasPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ context: { ...ctx, currency: code } }),
       });
-      toast.success("Moeda atualizada");
+      toast.success(tFn(lang, "fin_moeda_atualizada"));
     } catch {
-      toast.error("Erro ao salvar moeda");
+      toast.error(tFn(lang, "fin_erro_salvar_moeda"));
     }
   };
 
@@ -518,7 +518,7 @@ export default function FinancasPage() {
               width: 36, height: 36, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer",
               background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center",
               backdropFilter: "blur(10px)",
-            }} title="Configurações">
+            }} title={tFn(lang, "fin_configuracoes")}>
               <Settings size={16} color="#fff" />
             </button>
           </div>
@@ -667,7 +667,7 @@ export default function FinancasPage() {
                       color: ACCENT, display: "flex", alignItems: "center", gap: 4,
                       fontFamily: "inherit", fontSize: 11, fontWeight: 600,
                     }}>
-                      <Settings size={12} /> Gerenciar
+                      <Settings size={12} /> {tFn(lang, "fin_gerenciar")}
                     </button>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
@@ -719,7 +719,7 @@ export default function FinancasPage() {
                       border: 0, background: "transparent", cursor: "pointer",
                       fontSize: 11, fontWeight: 600, color: ACCENT, fontFamily: "inherit",
                     }}>
-                      Editar →
+                      {tFn(lang, "fin_editar_arrow")}
                     </button>
                   </div>
 
@@ -751,7 +751,7 @@ export default function FinancasPage() {
                       fontFamily: "inherit", fontSize: 11, fontWeight: 600,
                       color: ACCENT, textAlign: "center",
                     }}>
-                      {budgetExpanded ? "↑ Mostrar menos" : `↓ Mostrar todos (${allItems.length})`}
+                      {budgetExpanded ? tFn(lang, "fin_mostrar_menos") : tFn(lang, "fin_mostrar_todos", { n: String(allItems.length) })}
                     </button>
                   )}
 
@@ -761,7 +761,7 @@ export default function FinancasPage() {
                     borderTop: `1px solid ${BORDER}`,
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: TEXT }}>Total</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: TEXT }}>{tFn(lang, "fin_total")}</span>
                       <span style={{ flex: 1 }} />
                       <span style={{ fontSize: 12, fontWeight: 800, color: totalOver ? RED : TEXT }}>
                         {fmt(totalSpent, currency)}
@@ -776,7 +776,7 @@ export default function FinancasPage() {
                       }} />
                     </div>
                     <p style={{ margin: "4px 0 0", fontSize: 10, color: totalOver ? RED : TEXT_SEC, textAlign: "right" }}>
-                      {Math.round(totalPct)}% do orçamento total
+                      {tFn(lang, "fin_pct_orcamento", { pct: String(Math.round(totalPct)) })}
                     </p>
                   </div>
 
@@ -787,15 +787,15 @@ export default function FinancasPage() {
                   }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                       <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>
-                        Sobra projetada
+                        {tFn(lang, "fin_sobra_projetada")}
                       </span>
                       <span style={{ fontSize: 15, fontWeight: 800, color: (totalReceitas - totalLimit) >= 0 ? GREEN : RED }}>
                         {fmt(totalReceitas - totalLimit, currency)}
                       </span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: TEXT_SEC }}>
-                      <span>Receitas {fmt(totalReceitas, currency)}</span>
-                      <span>− Orçamento {fmt(totalLimit, currency)}</span>
+                      <span>{tFn(lang, "fin_receitas")} {fmt(totalReceitas, currency)}</span>
+                      <span>− {tFn(lang, "fin_orcamento")} {fmt(totalLimit, currency)}</span>
                     </div>
                   </div>
                 </div>
@@ -869,7 +869,7 @@ export default function FinancasPage() {
                   {tFn(lang, "fin_sem_transacoes")}
                 </p>
                 <p style={{ margin: 0, fontSize: 13, color: TEXT_SEC }}>
-                  Toque em + para começar a registrar
+                  {tFn(lang, "fin_toque_comecar")}
                 </p>
               </div>
             )}
@@ -893,7 +893,7 @@ export default function FinancasPage() {
                   {/* Barra de filtro */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: TEXT_SEC }}>
-                      {filteredGrouped.length} {filteredGrouped.length === 1 ? "dia" : "dias"}
+                      {filteredGrouped.length} {tFn(lang, filteredGrouped.length === 1 ? "fin_dia" : "fin_dias")}
                     </p>
                     <button type="button" onClick={() => setShowFilters(!showFilters)} style={{
                       border: `1px solid ${hasActiveFilters ? ACCENT : BORDER}`, borderRadius: 10, padding: "6px 12px",
@@ -901,7 +901,7 @@ export default function FinancasPage() {
                       fontFamily: "inherit", fontSize: 11, fontWeight: 700, color: hasActiveFilters ? ACCENT : TEXT_SEC,
                       display: "flex", alignItems: "center", gap: 5,
                     }}>
-                      <SlidersHorizontal size={12} /> Filtrar
+                      <SlidersHorizontal size={12} /> {tFn(lang, "fin_filtrar")}
                     </button>
                   </div>
 
@@ -909,10 +909,10 @@ export default function FinancasPage() {
                   {showFilters && (
                     <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 14, background: CARD, border: `1px solid ${BORDER}`, display: "flex", flexDirection: "column", gap: 12 }}>
                       <div>
-                        <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>Data</p>
+                        <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>{tFn(lang, "fin_data_filtro")}</p>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} style={dateInputS} />
-                          <span style={{ fontSize: 11, color: TEXT_SEC }}>até</span>
+                          <span style={{ fontSize: 11, color: TEXT_SEC }}>{tFn(lang, "fin_ate")}</span>
                           <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} style={dateInputS} />
                         </div>
                       </div>
@@ -923,7 +923,7 @@ export default function FinancasPage() {
                           border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
                         }}>
                           <ChevronDown size={12} color={TEXT_SEC} style={{ transform: filterCatsOpen ? "none" : "rotate(-90deg)", transition: "transform .15s ease" }} />
-                          <span style={{ flex: 1, fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>Categorias</span>
+                          <span style={{ flex: 1, fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>{tFn(lang, "fin_categorias")}</span>
                           {filterCats.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: ACCENT }}>{filterCats.length}</span>}
                         </button>
                         {filterCatsOpen && (
@@ -953,7 +953,7 @@ export default function FinancasPage() {
                       </div>
 
                       {filterCats.length === 0 ? (
-                        <p style={{ margin: 0, fontSize: 11, color: TEXT_SEC, fontStyle: "italic" }}>Selecione uma categoria para ver as subcategorias</p>
+                        <p style={{ margin: 0, fontSize: 11, color: TEXT_SEC, fontStyle: "italic" }}>{tFn(lang, "fin_selecione_categoria")}</p>
                       ) : (
                         <div>
                           <button type="button" onClick={() => setFilterSubcatsOpen(!filterSubcatsOpen)} style={{
@@ -961,11 +961,11 @@ export default function FinancasPage() {
                             border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
                           }}>
                             <ChevronDown size={12} color={TEXT_SEC} style={{ transform: filterSubcatsOpen ? "none" : "rotate(-90deg)", transition: "transform .15s ease" }} />
-                            <span style={{ flex: 1, fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>Subcategorias</span>
+                            <span style={{ flex: 1, fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>{tFn(lang, "fin_subcategorias")}</span>
                             {filterSubcats.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: ACCENT }}>{filterSubcats.length}</span>}
                           </button>
                           {filterSubcatsOpen && (uniqueSubcats.length === 0 ? (
-                            <p style={{ margin: 0, fontSize: 11, color: TEXT_SEC, fontStyle: "italic" }}>Nenhuma subcategoria disponível</p>
+                            <p style={{ margin: 0, fontSize: 11, color: TEXT_SEC, fontStyle: "italic" }}>{tFn(lang, "fin_nenhuma_subcategoria")}</p>
                           ) : (
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                               {uniqueSubcats.map((label) => {
@@ -990,7 +990,7 @@ export default function FinancasPage() {
                           border: 0, background: "transparent", cursor: "pointer", padding: "4px 0",
                           fontFamily: "inherit", fontSize: 11, fontWeight: 700, color: RED, textAlign: "left",
                         }}>
-                          Limpar filtros
+                          {tFn(lang, "fin_limpar_filtros")}
                         </button>
                       )}
                     </div>
@@ -998,7 +998,7 @@ export default function FinancasPage() {
 
                   {filteredGrouped.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "24px 0" }}>
-                      <p style={{ margin: 0, fontSize: 13, color: TEXT_SEC, fontStyle: "italic" }}>Nenhuma transação com esses filtros</p>
+                      <p style={{ margin: 0, fontSize: 13, color: TEXT_SEC, fontStyle: "italic" }}>{tFn(lang, "fin_nenhuma_tx_filtros")}</p>
                     </div>
                   ) : (
                     filteredGrouped.map(({ date, txs }) => {
@@ -1095,13 +1095,13 @@ export default function FinancasPage() {
                 <div style={{ textAlign: "center", padding: "24px 0" }}>
                   <Wallet size={32} style={{ color: TEXT_SEC, marginBottom: 8, opacity: 0.4 }} />
                   <p style={{ margin: "0 0 12px", fontSize: 13, color: TEXT_SEC }}>
-                    Nenhum orçamento definido para este mês
+                    {tFn(lang, "fin_nenhum_orcamento")}
                   </p>
                   <button type="button" onClick={() => setShowBudget(true)} style={{
                     padding: "10px 20px", borderRadius: 12, border: 0, cursor: "pointer",
                     background: ACCENT, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
                   }}>
-                    Definir orçamentos
+                    {tFn(lang, "fin_definir_orcamentos")}
                   </button>
                 </div>
               ) : (
@@ -1136,7 +1136,7 @@ export default function FinancasPage() {
                       {/* Total row */}
                       <div style={{ paddingTop: 12, borderTop: `1px solid ${BORDER}`, marginTop: 4 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                          <span style={{ fontSize: 13, fontWeight: 800, color: TEXT }}>Total</span>
+                          <span style={{ fontSize: 13, fontWeight: 800, color: TEXT }}>{tFn(lang, "fin_total")}</span>
                           <span style={{ flex: 1 }} />
                           <span style={{ fontSize: 12, fontWeight: 800, color: totalOver ? RED : TEXT }}>
                             {fmt(totalSpent, currency)}
@@ -1151,7 +1151,7 @@ export default function FinancasPage() {
                           }} />
                         </div>
                         <p style={{ margin: "4px 0 0", fontSize: 10, color: totalOver ? RED : TEXT_SEC, textAlign: "right" }}>
-                          {Math.round(totalPct)}% do orçamento total
+                          {tFn(lang, "fin_pct_orcamento", { pct: String(Math.round(totalPct)) })}
                         </p>
                       </div>
 
@@ -1162,15 +1162,15 @@ export default function FinancasPage() {
                       }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: TEXT_SEC }}>
-                            Sobra projetada
+                            {tFn(lang, "fin_sobra_projetada")}
                           </span>
                           <span style={{ fontSize: 15, fontWeight: 800, color: (totalReceitas - totalLimit) >= 0 ? GREEN : RED }}>
                             {fmt(totalReceitas - totalLimit, currency)}
                           </span>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: TEXT_SEC }}>
-                          <span>Receitas {fmt(totalReceitas, currency)}</span>
-                          <span>− Orçamento {fmt(totalLimit, currency)}</span>
+                          <span>{tFn(lang, "fin_receitas")} {fmt(totalReceitas, currency)}</span>
+                          <span>− {tFn(lang, "fin_orcamento")} {fmt(totalLimit, currency)}</span>
                         </div>
                       </div>
                     </div>
@@ -1235,6 +1235,7 @@ export default function FinancasPage() {
       {showSettings && (
         <FinanceSettingsSheet
           currency={currency}
+          lang={lang}
           onSelectCurrency={selectCurrency}
           onOpenCategories={() => { setShowSettings(false); setShowCategoryManager(true); }}
           onClose={() => setShowSettings(false)}
@@ -1285,6 +1286,7 @@ export default function FinancasPage() {
         <DeleteConfirm
           onConfirm={() => deleteTx(deleteId)}
           onCancel={() => setDeleteId(null)}
+          lang={lang}
         />
       )}
     </div>

@@ -113,7 +113,7 @@ export function CategoryManager({
       setBlockedDelete({
         id: catId,
         name: filteredUserCats.find((c) => c.id === catId)?.name ?? "",
-        message: body?.message ?? "Esta categoria tem registros.",
+        message: body?.message ?? tFn(lang, "fin_esta_categoria_registros"),
       });
       return;
     }
@@ -145,7 +145,7 @@ export function CategoryManager({
     });
     if (res.status === 409) {
       const body = await res.json().catch(() => null);
-      toast.error(body?.message ?? "Não foi possível salvar: uma subcategoria tem registros.");
+      toast.error(body?.message ?? tFn(lang, "fin_erro_subcat_registros"));
       return; // mantém o formulário aberto
     }
     setEditCat(null);
@@ -171,7 +171,7 @@ export function CategoryManager({
         {/* Handle + Header */}
         <div style={{ width: 36, height: 4, borderRadius: 9999, background: "rgba(167,139,250,0.2)", margin: "0 auto 16px" }} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: TEXT }}>Gerenciar categorias</h2>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: TEXT }}>{tFn(lang, "fin_gerenciar_categorias")}</h2>
           <button type="button" onClick={onClose} style={{ border: 0, background: "#0B0B10", borderRadius: 10, padding: 8, cursor: "pointer" }}>
             <X size={18} style={{ color: TEXT_SEC }} />
           </button>
@@ -187,13 +187,13 @@ export function CategoryManager({
               color: selectedType === t ? ACCENT : TEXT_SEC,
               transition: "all .15s ease",
             }}>
-              {t === "despesa" ? "Despesas" : "Receitas"}
+              {t === "despesa" ? tFn(lang, "fin_despesas") : tFn(lang, "fin_receitas")}
             </button>
           ))}
         </div>
 
         {/* Default categories */}
-        <p style={sectionTitle}>Categorias padrão</p>
+        <p style={sectionTitle}>{tFn(lang, "fin_categorias_padrao")}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
           {defaults.filter((c) => !c.custom && !c.system).map((c) => {
             const hidden = hiddenIds.includes(c.id);
@@ -271,7 +271,7 @@ export function CategoryManager({
                         value={newSubcatInput}
                         onChange={(e) => setNewSubcatInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomSubcat(c.id); } }}
-                        placeholder="Nova subcategoria"
+                        placeholder={tFn(lang, "fin_nova_subcategoria")}
                         style={{
                           flex: 1, padding: "7px 10px", borderRadius: 8, border: `1px solid ${BORDER}`,
                           background: "#0B0B10", fontFamily: "inherit", fontSize: 12, color: TEXT, outline: "none",
@@ -300,7 +300,7 @@ export function CategoryManager({
             }}>
               <span style={{ fontSize: 18 }}>{customCat.emoji}</span>
               <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: TEXT }}>
-                {customCat.name} <span style={{ fontSize: 10, color: TEXT_SEC }}>(legado)</span>
+                {customCat.name} <span style={{ fontSize: 10, color: TEXT_SEC }}>{tFn(lang, "fin_legado")}</span>
               </span>
             </div>
           )}
@@ -308,19 +308,19 @@ export function CategoryManager({
 
         {/* User categories */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <p style={sectionTitle}>Suas categorias</p>
+          <p style={sectionTitle}>{tFn(lang, "fin_suas_categorias")}</p>
           <button type="button" onClick={() => setShowForm(true)} style={{
             border: 0, background: "transparent", cursor: "pointer", padding: 2,
             color: ACCENT, display: "flex", alignItems: "center", gap: 4,
             fontFamily: "inherit", fontSize: 12, fontWeight: 700,
           }}>
-            <Plus size={14} /> Nova
+            <Plus size={14} /> {tFn(lang, "fin_nova")}
           </button>
         </div>
 
         {filteredUserCats.length === 0 ? (
           <p style={{ fontSize: 12, color: TEXT_SEC, fontStyle: "italic", textAlign: "center", padding: "16px 0", margin: 0 }}>
-            Nenhuma categoria criada ainda
+            {tFn(lang, "fin_nenhuma_categoria")}
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -413,24 +413,24 @@ export function CategoryManager({
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <AlertTriangle size={18} style={{ color: "#f59e0b" }} />
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: TEXT }}>Excluir categoria?</h3>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: TEXT }}>{tFn(lang, "fin_excluir_categoria")}</h3>
               </div>
               <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SEC, lineHeight: 1.5 }}>
-                Esta ação não pode ser desfeita. Categorias com registros não podem ser excluídas (apenas ocultadas).
+                {tFn(lang, "fin_excluir_categoria_desc")}
               </p>
               <div style={{ display: "flex", gap: 10 }}>
                 <button type="button" onClick={() => setDeleteConfirm(null)} style={{
                   flex: 1, padding: 12, borderRadius: 12, border: `1px solid ${BORDER}`,
                   background: "transparent", color: TEXT_SEC, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
                 }}>
-                  Cancelar
+                  {tFn(lang, "cancelar")}
                 </button>
                 <button type="button" onClick={() => handleDelete(deleteConfirm)} disabled={saving} style={{
                   flex: 1, padding: 12, borderRadius: 12, border: 0,
                   background: RED, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
                   opacity: saving ? 0.6 : 1,
                 }}>
-                  {saving ? "..." : "Excluir"}
+                  {saving ? "..." : tFn(lang, "fin_excluir")}
                 </button>
               </div>
             </div>
@@ -451,23 +451,23 @@ export function CategoryManager({
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <AlertTriangle size={18} style={{ color: "#f59e0b" }} />
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: TEXT }}>Não é possível excluir</h3>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: TEXT }}>{tFn(lang, "fin_nao_possivel_excluir")}</h3>
               </div>
               <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SEC, lineHeight: 1.5 }}>
-                {blockedDelete.message} Você pode ocultá-la para que deixe de aparecer.
+                {blockedDelete.message} {tFn(lang, "fin_pode_ocultar")}
               </p>
               <div style={{ display: "flex", gap: 10 }}>
                 <button type="button" onClick={() => setBlockedDelete(null)} style={{
                   flex: 1, padding: 12, borderRadius: 12, border: `1px solid ${BORDER}`,
                   background: "transparent", color: TEXT_SEC, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
                 }}>
-                  Cancelar
+                  {tFn(lang, "cancelar")}
                 </button>
                 <button type="button" onClick={hideBlocked} style={{
                   flex: 1, padding: 12, borderRadius: 12, border: 0,
                   background: ACCENT, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
                 }}>
-                  Ocultar
+                  {tFn(lang, "fin_ocultar")}
                 </button>
               </div>
             </div>

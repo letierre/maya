@@ -165,13 +165,13 @@ export default function FinancasRegistrarPage() {
             date: t.date ?? getLocalDate(),
           }, hiddenCatIds, userCategories, customCat, subcatOverrides)));
         } else {
-          toast.error("Não consegui ler os dados da foto. Preencha manualmente abaixo.");
+          toast.error(tFn(lang, "fin_erro_ler_foto"));
         }
       } else {
-        toast.error("Não consegui analisar a foto. Tente outra imagem ou preencha manualmente.");
+        toast.error(tFn(lang, "fin_erro_analisar_foto"));
       }
     } catch {
-      toast.error("Erro ao analisar a foto. Preencha manualmente abaixo.");
+      toast.error(tFn(lang, "fin_erro_analisar_foto2"));
     }
     setStage("review");
   };
@@ -202,7 +202,7 @@ export default function FinancasRegistrarPage() {
       router.push("/financas");
     } catch {
       setSaving(false);
-      toast.error("Erro ao salvar transações");
+      toast.error(tFn(lang, "fin_erro_salvar_transacoes"));
     }
   };
 
@@ -246,7 +246,7 @@ export default function FinancasRegistrarPage() {
   if (stage === "analyzing") {
     return (
       <div style={{ minHeight: "100dvh", background: BG, overflowX: "hidden", display: "flex", flexDirection: "column" }}>
-        <Header onBack={() => setStage("capture")} title="Analisando" />
+        <Header onBack={() => setStage("capture")} title={tFn(lang, "fin_analisando_titulo")} />
         <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{
             width: "100%", borderRadius: 16, overflow: "hidden", position: "relative",
@@ -270,10 +270,10 @@ export default function FinancasRegistrarPage() {
               <MayaAvatar state="processing" size={92} />
               <div style={{ textAlign: "center" }}>
                 <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.35)", margin: 0 }}>
-                  Maya está olhando…
+                  {tFn(lang, "fin_maya_olhando")}
                 </p>
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.78)", textShadow: "0 1px 3px rgba(0,0,0,0.3)", margin: "4px 0 0" }}>
-                  Lendo o recibo e identificando os valores
+                  {tFn(lang, "fin_lendo_recibo")}
                 </p>
               </div>
             </div>
@@ -306,18 +306,20 @@ export default function FinancasRegistrarPage() {
           {/* Photo thumbnail */}
           {photo && (
             <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", borderRadius: 16, background: SURFACE, border: `1px solid ${BORDER}` }}>
-              <img src={photo} alt="Recibo" style={{ width: 68, height: 52, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
+              <img src={photo} alt={tFn(lang, "fin_recibo")} style={{ width: 68, height: 52, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: TEXT }}>
-                  {drafts.length === 0 ? "Nada encontrado" : `${drafts.length} ${drafts.length === 1 ? "transação" : "transações"} encontradas`}
+                  {drafts.length === 0
+                    ? tFn(lang, "fin_nada_encontrado")
+                    : `${drafts.length} ${tFn(lang, drafts.length === 1 ? "fin_transacao_encontrada" : "fin_transacoes_encontradas")}`}
                 </p>
-                <p style={{ margin: "2px 0 0", fontSize: 11, color: TEXT_SEC }}>Confira e edite antes de salvar</p>
+                <p style={{ margin: "2px 0 0", fontSize: 11, color: TEXT_SEC }}>{tFn(lang, "fin_confira_edite")}</p>
               </div>
               <button type="button" onClick={() => setStage("capture")} style={{
                 border: 0, background: "rgba(124,92,255,0.1)", borderRadius: 8, padding: "5px 9px", cursor: "pointer",
                 fontSize: 11, fontWeight: 700, color: ACCENT, fontFamily: "inherit", flexShrink: 0,
               }}>
-                Outra foto
+                {tFn(lang, "fin_outra_foto")}
               </button>
             </div>
           )}
@@ -418,7 +420,7 @@ export default function FinancasRegistrarPage() {
             background: "transparent", cursor: "pointer", fontFamily: "inherit",
             fontSize: 13, fontWeight: 700, color: ACCENT,
           }}>
-            + Adicionar transação
+            {tFn(lang, "fin_adicionar_transacao")}
           </button>
 
           {/* Save */}
@@ -433,8 +435,8 @@ export default function FinancasRegistrarPage() {
             {saving
               ? tFn(lang, "salvando")
               : validCount === 0
-                ? "Salvar"
-                : `Salvar ${validCount} ${validCount === 1 ? "transação" : "transações"}`}
+                ? tFn(lang, "salvar")
+                : tFn(lang, validCount === 1 ? "fin_salvar_transacao" : "fin_salvar_transacoes", { n: String(validCount) })}
           </button>
         </div>
 
@@ -478,7 +480,7 @@ export default function FinancasRegistrarPage() {
   // ── Capture ───────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: "100dvh", background: BG, paddingBottom: 40, overflowX: "hidden" }}>
-      <Header onBack={() => router.back()} title="Registrar por foto" />
+      <Header onBack={() => router.back()} title={tFn(lang, "fin_registrar_por_foto")} />
 
       <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20 }}>
 
@@ -487,7 +489,7 @@ export default function FinancasRegistrarPage() {
             <div style={{ position: "relative" }}>
               <img
                 src={photo}
-                alt="Recibo"
+                alt={tFn(lang, "fin_recibo")}
                 style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 20 }}
               />
               <button type="button" onClick={() => setPhoto(null)} style={{
@@ -507,7 +509,7 @@ export default function FinancasRegistrarPage() {
                 cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600,
                 color: TEXT_SEC, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               }}>
-                <Camera size={15} /> Câmera
+                <Camera size={15} /> {tFn(lang, "fin_camera")}
               </button>
               <button type="button" onClick={() => galleryRef.current?.click()} style={{
                 flex: 1, padding: "11px", borderRadius: 12,
@@ -515,7 +517,7 @@ export default function FinancasRegistrarPage() {
                 cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600,
                 color: TEXT_SEC, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               }}>
-                <ImageIcon size={15} /> Galeria
+                <ImageIcon size={15} /> {tFn(lang, "fin_galeria")}
               </button>
             </div>
 
@@ -523,7 +525,7 @@ export default function FinancasRegistrarPage() {
               width: "100%", padding: "16px 20px", borderRadius: 16, border: 0, cursor: "pointer",
               background: ACCENT, fontFamily: "inherit", fontSize: 16, fontWeight: 700, color: "#fff",
             }}>
-              Analisar recibo →
+              {tFn(lang, "fin_analisar_recibo")}
             </button>
           </>
         ) : (
@@ -536,10 +538,10 @@ export default function FinancasRegistrarPage() {
             <span style={{ fontSize: 56 }}>🧾</span>
             <div>
               <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: TEXT }}>
-                Foto do recibo ou nota
+                {tFn(lang, "fin_foto_recibo_nota")}
               </p>
               <p style={{ margin: 0, fontSize: 13, color: TEXT_SEC, lineHeight: 1.5 }}>
-                A IA extrai o valor, categoria e data automaticamente
+                {tFn(lang, "fin_ia_extrai")}
               </p>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
@@ -548,7 +550,7 @@ export default function FinancasRegistrarPage() {
                 background: ACCENT, fontFamily: "inherit", fontSize: 14, fontWeight: 700,
                 color: "#fff", display: "flex", alignItems: "center", gap: 8,
               }}>
-                <Camera size={18} /> Câmera
+                <Camera size={18} /> {tFn(lang, "fin_camera")}
               </button>
               <button type="button" onClick={() => galleryRef.current?.click()} style={{
                 padding: "14px 24px", borderRadius: 14,
@@ -557,7 +559,7 @@ export default function FinancasRegistrarPage() {
                 fontFamily: "inherit", fontSize: 14, fontWeight: 700,
                 color: ACCENT, display: "flex", alignItems: "center", gap: 8,
               }}>
-                <ImageIcon size={18} /> Galeria
+                <ImageIcon size={18} /> {tFn(lang, "fin_galeria")}
               </button>
             </div>
           </div>
@@ -568,7 +570,7 @@ export default function FinancasRegistrarPage() {
           fontFamily: "inherit", fontSize: 13, fontWeight: 600,
           color: TEXT_SEC, padding: "4px 0", textAlign: "center",
         }}>
-          Registrar manualmente →
+          {tFn(lang, "fin_registrar_manualmente")}
         </button>
       </div>
 
