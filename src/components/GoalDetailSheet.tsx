@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, CheckCircle2, Circle, ChevronDown, Shield, Trophy, AlertOctagon } from "lucide-react";
+import { useTranslation } from "@/lib/useTranslation";
 
 const AREA_CONFIG: Record<string, { emoji: string; hue: number }> = {
   saude: { emoji: "💚", hue: 160 }, carreira: { emoji: "💼", hue: 220 },
@@ -14,6 +15,7 @@ const AREA_CONFIG: Record<string, { emoji: string; hue: number }> = {
 
 export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string; onClose: () => void; onUpdated: () => void }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [goal, setGoal] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [addingStage, setAddingStage] = useState(false);
@@ -80,7 +82,7 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
 
   if (loading) return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <p style={{ color: "#9e96b5" }}>Carregando...</p>
+      <p style={{ color: "#9e96b5" }}>{t("carregando")}</p>
     </div>
   );
 
@@ -99,7 +101,7 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
           <span style={{ fontSize: 32 }}>{area.emoji}</span>
           <div style={{ flex: 1 }}>
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>{goal.title}</h2>
-            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#9e96b5" }}>{goal.type === "destino" ? "🎯 Destino" : "🧭 Direção"}</p>
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#9e96b5" }}>{goal.type === "destino" ? "🎯" : "🧭"} {t(goal.type === "destino" ? "goal_destino" : "goal_direcao")}</p>
           </div>
           <button type="button" onClick={onClose} style={{ background: "none", border: 0, color: "#9e96b5", fontSize: 18, cursor: "pointer", padding: 4 }}>✕</button>
         </div>
@@ -113,7 +115,7 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
         {/* Progress */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-            <span style={{ fontSize: 10, color: "#9e96b5" }}>{doneStages}/{totalStages} etapas</span>
+            <span style={{ fontSize: 10, color: "#9e96b5" }}>{t("goal_x_etapas", { done: String(doneStages), total: String(totalStages) })}</span>
             <span style={{ fontSize: 10, fontWeight: 700, color: "#A78BFA" }}>{pct}%</span>
           </div>
           <div style={{ height: 4, borderRadius: 9999, background: "rgba(167,139,250,0.1)", overflow: "hidden" }}>
@@ -142,7 +144,7 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
 
         {/* Stages */}
         <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "#A78BFA", margin: "0 0 10px" }}>
-          Etapas
+          {t("goal_etapas")}
         </p>
         {goal.goal_stages?.map((stage: any, i: number) => {
           const done = stage.status === "concluida";
@@ -191,7 +193,7 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
               {addingActions[stage.id] !== undefined && (
                 <div style={{ marginLeft: 34, marginTop: 6, display: "flex", gap: 6 }}>
                   <input value={addingActions[stage.id]} onChange={e => setAddingActions(prev => ({ ...prev, [stage.id]: e.target.value }))}
-                    placeholder="Nova ação..." autoFocus
+                    placeholder={t("goal_nova_acao")} autoFocus
                     onKeyDown={e => { if (e.key === "Enter") addAction(stage.id); }}
                     style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
                   <button type="button" onClick={() => addAction(stage.id)}
@@ -206,7 +208,7 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
         {addingStage ? (
           <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
             <input value={newStageTitle} onChange={e => setNewStageTitle(e.target.value)}
-              placeholder="Nova etapa..." autoFocus
+              placeholder={t("goal_nova_etapa")} autoFocus
               onKeyDown={e => { if (e.key === "Enter") addStage(); }}
               style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none" }} />
             <button type="button" onClick={addStage}
@@ -215,7 +217,7 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
         ) : (
           <button type="button" onClick={() => setAddingStage(true)}
             style={{ width: "100%", padding: "10px 0", borderRadius: 12, border: "1px dashed rgba(167,139,250,0.2)", background: "transparent", cursor: "pointer", color: "#A78BFA", fontSize: 12, fontWeight: 600, fontFamily: "inherit", marginTop: 8 }}>
-            + Adicionar etapa
+            {t("goal_adicionar_etapa")}
           </button>
         )}
 

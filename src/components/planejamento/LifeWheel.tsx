@@ -1,19 +1,20 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useTranslation } from "@/lib/useTranslation";
 
 // Ordered to place longer labels where there's more horizontal space
 // Top (0) & bottom (4) = most space for long labels
 // Left (6) & right (2) = tight — shorter labels
 const AREAS = [
-  { key: "espiritualidade", label: "Espiritualidade", color: "#F97316", emoji: "✨" }, // top — long label, centered
-  { key: "carreira",        label: "Carreira",        color: "#5EEAD4", emoji: "💼" }, // top-right
-  { key: "desenvolvimento", label: "Mente",           color: "#A78BFA", emoji: "🧠" }, // right — short label
-  { key: "familia",         label: "Família",         color: "#22D18B", emoji: "🏡" }, // bottom-right
-  { key: "relacionamentos", label: "Relacionamentos", color: "#EC4899", emoji: "❤️" }, // bottom — long label, centered
-  { key: "financas",        label: "Finanças",        color: "#F59E0B", emoji: "💰" }, // bottom-left — longer label
-  { key: "lazer",           label: "Lazer",           color: "#38BDF8", emoji: "🌊" }, // left — short label
-  { key: "saude",           label: "Saúde",           color: "#7C5CFF", emoji: "💚" }, // top-left
+  { key: "espiritualidade", labelKey: "area_espiritualidade", color: "#F97316", emoji: "✨" }, // top — long label, centered
+  { key: "carreira",        labelKey: "area_carreira",        color: "#5EEAD4", emoji: "💼" }, // top-right
+  { key: "desenvolvimento", labelKey: "area_desenvolvimento", color: "#A78BFA", emoji: "🧠" }, // right — short label
+  { key: "familia",         labelKey: "area_familia",         color: "#22D18B", emoji: "🏡" }, // bottom-right
+  { key: "relacionamentos", labelKey: "area_relacionamentos", color: "#EC4899", emoji: "❤️" }, // bottom — long label, centered
+  { key: "financas",        labelKey: "area_financas",        color: "#F59E0B", emoji: "💰" }, // bottom-left — longer label
+  { key: "lazer",           labelKey: "area_lazer",           color: "#38BDF8", emoji: "🌊" }, // left — short label
+  { key: "saude",           labelKey: "area_saude",           color: "#7C5CFF", emoji: "💚" }, // top-left
 ];
 
 // Default custom emoji icons (fallback to text emoji if image fails to load)
@@ -56,6 +57,7 @@ function ringPt(i: number, ratio: number) {
 }
 
 export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheelProps) {
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
   const [sharing, setSharing] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -236,20 +238,22 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
       // Title: "Hub da" + "Semana" in gradient — more breathing room from header
       const titleY = headerY + 52;
       ctx.font = "700 84px Inter, system-ui, -apple-system, sans-serif"; ctx.textAlign = "center";
-      const hubDaW = ctx.measureText("Hub da ").width;
-      const semanaW = ctx.measureText("Semana").width;
+      const hubDa = t("lw_share_hub1");
+      const semana = t("lw_share_hub2");
+      const hubDaW = ctx.measureText(hubDa).width;
+      const semanaW = ctx.measureText(semana).width;
       const titleStartX = (W - hubDaW - semanaW) / 2;
       ctx.fillStyle = "#FFFFFF";
-      ctx.fillText("Hub da ", titleStartX + hubDaW / 2, titleY);
+      ctx.fillText(hubDa, titleStartX + hubDaW / 2, titleY);
       // Gradient for "Semana"
       const semanaGrad = ctx.createLinearGradient(titleStartX + hubDaW, titleY, titleStartX + hubDaW + semanaW, titleY);
       semanaGrad.addColorStop(0, "#7C5CFF"); semanaGrad.addColorStop(1, "#A78BFA");
       ctx.fillStyle = semanaGrad;
-      ctx.fillText("Semana", titleStartX + hubDaW + semanaW / 2, titleY);
+      ctx.fillText(semana, titleStartX + hubDaW + semanaW / 2, titleY);
 
       // Subtitle
       ctx.fillStyle = "#A0A0B3"; ctx.font = "400 28px Inter, system-ui, -apple-system, sans-serif";
-      ctx.fillText("Meu equilíbrio. Minhas escolhas. Minha melhor versão.", W / 2, titleY + 48);
+      ctx.fillText(t("lw_share_subtitle"), W / 2, titleY + 48);
 
       // ── 3. DATE BADGE ──────────────────────────────────────────
       const badgeY = titleY + 100;
@@ -344,7 +348,7 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
         // Card header
         const cardHeaderY = cardStartY + cardTopPad;
         ctx.fillStyle = "#FFFFFF"; ctx.font = "600 28px Inter, system-ui, -apple-system, sans-serif"; ctx.textAlign = "left";
-        ctx.fillText("🎯  Meu foco da semana", cardX + cardPadding, cardHeaderY);
+        ctx.fillText("🎯  " + t("lw_share_foco"), cardX + cardPadding, cardHeaderY);
 
         const miniY = cardHeaderY + 28;
 
@@ -385,7 +389,7 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
           // Subtitle — bigger, below title lines
           const subtitleY = lines.length === 1 ? miniY + 128 : miniY + 140;
           ctx.fillStyle = "#A0A0B3"; ctx.font = "400 16px Inter, system-ui, -apple-system, sans-serif";
-          ctx.fillText("Meu compromisso da semana.", mx + miniW / 2, subtitleY);
+          ctx.fillText(t("lw_share_compromisso"), mx + miniW / 2, subtitleY);
         });
       }
 
@@ -394,19 +398,21 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
       const contentEndY = stoneCount > 0 ? cardStartY + 350 /* cardH */ : cardStartY;
       const heroY = contentEndY + 100;
       ctx.font = "700 50px Inter, system-ui, -apple-system, sans-serif"; ctx.textAlign = "center";
-      const planejoW = ctx.measureText("Planejo hoje, ").width;
-      const vivoW = ctx.measureText("vivo meu amanhã.").width;
+      const hero1 = t("lw_share_hero1");
+      const hero2 = t("lw_share_hero2");
+      const planejoW = ctx.measureText(hero1).width;
+      const vivoW = ctx.measureText(hero2).width;
       const heroStartX = (W - planejoW - vivoW) / 2;
       ctx.fillStyle = "#FFFFFF";
-      ctx.fillText("Planejo hoje, ", heroStartX + planejoW / 2, heroY);
+      ctx.fillText(hero1, heroStartX + planejoW / 2, heroY);
       const vivoGrad = ctx.createLinearGradient(heroStartX + planejoW, heroY, heroStartX + planejoW + vivoW, heroY);
       vivoGrad.addColorStop(0, "#7C5CFF"); vivoGrad.addColorStop(1, "#A78BFA");
       ctx.fillStyle = vivoGrad;
-      ctx.fillText("vivo meu amanhã.", heroStartX + planejoW + vivoW / 2, heroY);
+      ctx.fillText(hero2, heroStartX + planejoW + vivoW / 2, heroY);
 
       // Subtitle — larger, replaces old footer
       ctx.fillStyle = "#A0A0B3"; ctx.font = "400 20px Inter, system-ui, -apple-system, sans-serif";
-      ctx.fillText("SUA MELHOR VERSÃO, TODOS OS DIAS.", W / 2, heroY + 42);
+      ctx.fillText(t("lw_share_footer"), W / 2, heroY + 42);
 
       // ── 10. EXPORT & SHARE ─────────────────────────────────────
       const pngBlob = await new Promise<Blob | null>(r => canvas.toBlob(r, "image/png"));
@@ -415,13 +421,13 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
       const file = new File([pngBlob], "roda-da-vida.png", { type: "image/png" });
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: "Minha Roda da Vida" });
+        await navigator.share({ files: [file], title: t("lw_share_dialog_title") });
       } else {
         const a = document.createElement("a"); a.href = URL.createObjectURL(pngBlob); a.download = "roda-da-vida.png"; a.click();
       }
     } catch { /* cancelled */ }
     setSharing(false);
-  }, [totalPlanned, totalDone, pctGlobal, weekLabel, stones, mounted, doneVolume]);
+  }, [totalPlanned, totalDone, pctGlobal, weekLabel, stones, mounted, doneVolume, t]);
 
   return (
     <div
@@ -455,10 +461,10 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, position: "relative" }}>
         <div>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", color: "#e0d6ff" }}>
-            Roda da Vida
+            {t("lw_roda_vida")}
           </p>
           <p style={{ margin: "1px 0 0", fontSize: 10, color: "#6a657a", fontWeight: 500 }}>
-            Como sua energia está distribuída
+            {t("lw_sub")}
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -469,14 +475,14 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
               display: "flex", alignItems: "center",
             }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "#A78BFA", lineHeight: 1 }}>{pctGlobal}%</span>
-              <span style={{ fontSize: 9, color: "#6a657a", marginLeft: 5, lineHeight: 1 }}>concluído</span>
+              <span style={{ fontSize: 9, color: "#6a657a", marginLeft: 5, lineHeight: 1 }}>{t("lw_concluido")}</span>
             </div>
           )}
           <button
             type="button"
             onClick={handleShare}
             disabled={sharing}
-            aria-label="Compartilhar Roda da Vida"
+            aria-label={t("lw_compartilhar")}
             style={{
               width: 32, height: 32, borderRadius: 10, border: "1px solid rgba(167,139,250,0.15)",
               background: "rgba(124,92,255,0.06)", cursor: "pointer",
@@ -579,7 +585,7 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
             const planPct = mounted ? planned[i] : 0;
             const empty = pct === 0 && planPct === 0;
             const d = done[a.key] ?? 0;
-            const t = totals[a.key] ?? 0;
+            const tot = totals[a.key] ?? 0;
             const customEmoji = emojis?.[a.key] ?? DEFAULT_EMOJIS[a.key];
             return (
               <g key={a.key} opacity={empty ? 0.4 : 1} style={{ transition: "opacity .6s" }}>
@@ -592,12 +598,12 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
                 )}
                 <text x={lx} y={ly + 14} textAnchor="middle" dominantBaseline="middle"
                   fontSize="9.5" fontWeight="600" fill={a.color} letterSpacing=".03em">
-                  {a.label}
+                  {t(a.labelKey)}
                 </text>
-                {t > 0 && (
+                {tot > 0 && (
                   <text x={lx} y={ly + 26} textAnchor="middle" dominantBaseline="middle"
                     fontSize="8.5" fontWeight="700" fill="#b8b0d6" letterSpacing=".02em">
-                    {`${d}/${t}`}
+                    {`${d}/${tot}`}
                   </text>
                 )}
               </g>
@@ -613,11 +619,11 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
       }}>
         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ width: 10, height: 10, borderRadius: 3, border: "1px dashed rgba(167,139,250,0.4)" }} />
-          Planejado
+          {t("lw_planejado")}
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ width: 10, height: 10, borderRadius: 3, background: "rgba(124,92,255,0.5)", border: "1px solid rgba(124,92,255,0.6)" }} />
-          Concluído
+          {t("lw_concluido")}
         </span>
       </div>
 
@@ -626,9 +632,9 @@ export function LifeWheel({ done, totals, emojis, weekLabel, stones }: LifeWheel
         display: "flex", justifyContent: "space-around", marginTop: 14, paddingTop: 14,
         borderTop: "1px solid rgba(255,255,255,0.03)", position: "relative",
       }}>
-        <StatCell value={totalPlanned} label="Planejadas" />
-        <StatCell value={totalDone} label="Concluídas" color={totalDone > 0 ? "#22D18B" : undefined} />
-        <StatCell value={`${Math.min(AREAS.filter((_, i) => (totals[AREAS[i].key] ?? 0) > 0).length, N)}`} label="Áreas" />
+        <StatCell value={totalPlanned} label={t("lw_planejadas")} />
+        <StatCell value={totalDone} label={t("lw_concluidas")} color={totalDone > 0 ? "#22D18B" : undefined} />
+        <StatCell value={`${Math.min(AREAS.filter((_, i) => (totals[AREAS[i].key] ?? 0) > 0).length, N)}`} label={t("lw_areas")} />
       </div>
 
       {/* CSS animations */}

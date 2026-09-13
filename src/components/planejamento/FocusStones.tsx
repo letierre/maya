@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import { useTranslation } from "@/lib/useTranslation";
 
 interface Stone {
   rank: number;
@@ -16,17 +17,18 @@ interface FocusStonesProps {
 const COLORS = ["#7C5CFF", "#5EEAD4", "#F59E0B"];
 
 export function FocusStones({ stones, onEdit }: FocusStonesProps) {
+  const { t } = useTranslation();
   return (
     <div style={{ marginBottom: 20 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
         <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#A78BFA" }}>
-          Pedras da semana
+          {t("fs_pedras_semana")}
         </p>
         <button type="button" onClick={onEdit} style={{
           background: "transparent", border: 0, padding: 0, cursor: "pointer",
           fontSize: 11, fontWeight: 600, color: "#A78BFA", fontFamily: "inherit",
         }}>
-          {stones.length > 0 ? "Editar" : "Definir"}
+          {stones.length > 0 ? t("editar") : t("fs_definir")}
         </button>
       </div>
 
@@ -86,7 +88,7 @@ export function FocusStones({ stones, onEdit }: FocusStonesProps) {
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           fontFamily: "inherit",
         }}>
-          <Plus size={16} /> Definir pedras da semana
+          <Plus size={16} /> {t("fs_definir_pedras")}
         </button>
       )}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Eye, Compass } from "lucide-react";
+import { useTranslation } from "@/lib/useTranslation";
 
 interface PlanningModeToggleProps {
   mode: "view" | "plan";
@@ -8,6 +9,7 @@ interface PlanningModeToggleProps {
 }
 
 export function PlanningModeToggle({ mode, onChange }: PlanningModeToggleProps) {
+  const { t } = useTranslation();
   return (
     <div
       style={{
@@ -48,7 +50,7 @@ export function PlanningModeToggle({ mode, onChange }: PlanningModeToggleProps) 
           }}
         >
           <Eye size={14} />
-          Visualizar
+          {t("plan_visualizar")}
         </button>
         <button
           type="button"
@@ -73,7 +75,7 @@ export function PlanningModeToggle({ mode, onChange }: PlanningModeToggleProps) 
           }}
         >
           <Compass size={14} />
-          Planejar
+          {t("plan_planejar")}
         </button>
       </div>
     </div>

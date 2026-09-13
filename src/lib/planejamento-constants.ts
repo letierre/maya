@@ -1,17 +1,18 @@
 import type { TaskArea } from "@/types";
+import { getLocale } from "@/lib/language";
 
 // ── Áreas da vida ──────────────────────────────────────────────────────────
 
-export const AREA_CONFIG: Record<TaskArea, { emoji: string; hue: number; labelKey: string }> = {
-  saude:           { emoji: "💚", hue: 160, labelKey: "area_saude" },
-  carreira:        { emoji: "💼", hue: 220, labelKey: "area_carreira" },
-  financas:        { emoji: "💰", hue: 85,  labelKey: "area_financas" },
-  relacionamentos: { emoji: "❤️", hue: 15,  labelKey: "area_relacionamentos" },
-  desenvolvimento: { emoji: "🧠", hue: 270, labelKey: "area_desenvolvimento" },
-  familia:         { emoji: "🏡", hue: 40,  labelKey: "area_familia" },
-  lazer:           { emoji: "🌊", hue: 185, labelKey: "area_lazer" },
-  espiritualidade: { emoji: "✨", hue: 300, labelKey: "area_espiritualidade" },
-  outros:          { emoji: "⚪", hue: 200, labelKey: "area_outros" },
+export const AREA_CONFIG: Record<TaskArea, { emoji: string; hue: number; labelKey: string; shortLabelKey: string }> = {
+  saude:           { emoji: "💚", hue: 160, labelKey: "area_saude", shortLabelKey: "area_short_saude" },
+  carreira:        { emoji: "💼", hue: 220, labelKey: "area_carreira", shortLabelKey: "area_short_carreira" },
+  financas:        { emoji: "💰", hue: 85,  labelKey: "area_financas", shortLabelKey: "area_short_financas" },
+  relacionamentos: { emoji: "❤️", hue: 15,  labelKey: "area_relacionamentos", shortLabelKey: "area_short_relacionamentos" },
+  desenvolvimento: { emoji: "🧠", hue: 270, labelKey: "area_desenvolvimento", shortLabelKey: "area_short_desenvolvimento" },
+  familia:         { emoji: "🏡", hue: 40,  labelKey: "area_familia", shortLabelKey: "area_short_familia" },
+  lazer:           { emoji: "🌊", hue: 185, labelKey: "area_lazer", shortLabelKey: "area_short_lazer" },
+  espiritualidade: { emoji: "✨", hue: 300, labelKey: "area_espiritualidade", shortLabelKey: "area_short_espiritualidade" },
+  outros:          { emoji: "⚪", hue: 200, labelKey: "area_outros", shortLabelKey: "area_short_outros" },
 };
 
 export const ALL_AREAS = Object.keys(AREA_CONFIG) as TaskArea[];
@@ -30,6 +31,28 @@ export const AREA_LABELS: Record<TaskArea, string> = {
 export const DAY_KEYS = ["dia_seg", "dia_ter", "dia_qua", "dia_qui", "dia_sex", "dia_sab", "dia_dom"];
 export const DAY_NAMES = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 export const DAY_FULL = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+
+// Segunda-feira de referência (2024-01-01 é segunda) para derivar nomes de dia no idioma atual.
+const REF_MONDAY = new Date("2024-01-01T12:00:00");
+
+/** Nome curto do dia no idioma atual (0=Segunda..6=Domingo). */
+export function dayShortName(i: number): string {
+  const d = new Date(REF_MONDAY);
+  d.setDate(d.getDate() + ((i + 7) % 7));
+  return d.toLocaleDateString(getLocale(), { weekday: "short" }).replace(".", "");
+}
+
+/** Nome completo do dia no idioma atual (0=Segunda..6=Domingo). */
+export function dayFullName(i: number): string {
+  const d = new Date(REF_MONDAY);
+  d.setDate(d.getDate() + ((i + 7) % 7));
+  return d.toLocaleDateString(getLocale(), { weekday: "long" });
+}
+
+/** Nome curto do mês no idioma atual (0=Janeiro..11=Dezembro). */
+export function monthShortName(m: number): string {
+  return new Date(2024, m, 1).toLocaleDateString(getLocale(), { month: "short" }).replace(".", "").toUpperCase();
+}
 
 // ── Meses ──────────────────────────────────────────────────────────────────
 
@@ -59,7 +82,7 @@ export function weekRangeFromDate(baseDate?: string): string {
   mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
   const sun = new Date(mon);
   sun.setDate(mon.getDate() + 6);
-  const fmt = (d: Date) => `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+  const fmt = (d: Date) => `${d.getDate()} ${monthShortName(d.getMonth())}`;
   return `${fmt(mon)} – ${fmt(sun)}`;
 }
 

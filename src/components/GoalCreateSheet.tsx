@@ -3,17 +3,10 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import type { GoalArea } from "@/types";
+import { useTranslation } from "@/lib/useTranslation";
+import { AREA_CONFIG } from "@/lib/planejamento-constants";
 
-const AREAS = [
-  { id: "saude", emoji: "💚", label: "Saúde" },
-  { id: "carreira", emoji: "💼", label: "Carreira" },
-  { id: "financas", emoji: "💰", label: "Finanças" },
-  { id: "relacionamentos", emoji: "❤️", label: "Relac." },
-  { id: "desenvolvimento", emoji: "🧠", label: "Mente" },
-  { id: "familia", emoji: "🏡", label: "Família" },
-  { id: "lazer", emoji: "🌊", label: "Lazer" },
-  { id: "espiritualidade", emoji: "✨", label: "Espirit." },
-];
+const AREA_IDS = ["saude", "carreira", "financas", "relacionamentos", "desenvolvimento", "familia", "lazer", "espiritualidade"] as const;
 
 type Step = 1 | 2 | 3;
 
@@ -23,6 +16,7 @@ export function GoalCreateSheet({ onClose, onCreated, initialArea, source }: {
   initialArea?: GoalArea;
   source?: string;
 }) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<Step>(1);
   const [title, setTitle] = useState("");
   const [area, setArea] = useState(initialArea ?? "saude");
@@ -54,11 +48,11 @@ export function GoalCreateSheet({ onClose, onCreated, initialArea, source }: {
       }),
     });
     if (res.ok) {
-      toast.success("Meta criada!");
+      toast.success(t("goal_criada"));
       onCreated();
       onClose();
     } else {
-      toast.error("Erro ao criar meta");
+      toast.error(t("goal_erro_criar"));
     }
     setSaving(false);
   };
@@ -67,12 +61,12 @@ export function GoalCreateSheet({ onClose, onCreated, initialArea, source }: {
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "max(40px, 8dvh) 20px 20px", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
       <div style={{ width: "100%", maxWidth: 420, maxHeight: "85dvh", overflowY: "auto", background: "#151520", borderRadius: 24, padding: 24, border: "1px solid rgba(167,139,250,0.15)" }}>
         <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>
-          {step === 1 ? "Nova meta" : step === 2 ? "Tipo da meta" : "Compromisso"}
+          {step === 1 ? t("goal_nova_meta") : step === 2 ? t("goal_tipo_meta") : t("goal_compromisso")}
         </h2>
         <p style={{ margin: "0 0 20px", fontSize: 12, color: "#9e96b5" }}>
           {step === 1
-            ? (isPresetArea ? "O que você quer conquistar?" : "O que você quer conquistar?")
-            : step === 2 ? "Como você prefere definir?" : "Opcional — ajuda a manter o foco"}
+            ? t("goal_o_que_conquistar")
+            : step === 2 ? t("goal_como_definir") : t("goal_opcional_foco")}
         </p>
 
         {step === 1 && (
@@ -85,37 +79,37 @@ export function GoalCreateSheet({ onClose, onCreated, initialArea, source }: {
                 background: "rgba(124,92,255,0.1)", border: "1px solid rgba(124,92,255,0.25)",
                 marginBottom: 12,
               }}>
-                <span style={{ fontSize: 14 }}>{AREAS.find(a => a.id === area)?.emoji ?? "💰"}</span>
+                <span style={{ fontSize: 14 }}>{AREA_CONFIG[area as keyof typeof AREA_CONFIG]?.emoji ?? "💰"}</span>
                 <span style={{ fontSize: 11, fontWeight: 600, color: "#A78BFA" }}>
-                  {AREAS.find(a => a.id === area)?.label ?? "Finanças"}
+                  {t(AREA_CONFIG[area as keyof typeof AREA_CONFIG]?.labelKey) ?? t("area_financas")}
                 </span>
               </div>
             )}
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título da meta" autoFocus style={inputS} />
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t("goal_titulo_meta")} autoFocus style={inputS} />
             {/* Show area grid only when not preset */}
             {!isPresetArea && (
               <>
-                <p style={{ fontSize: 10, color: "#A78BFA", margin: "12px 0 6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em" }}>Área da vida</p>
+                <p style={{ fontSize: 10, color: "#A78BFA", margin: "12px 0 6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em" }}>{t("plan_area_vida")}</p>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
-                  {AREAS.map(a => (
-                    <button key={a.id} type="button" onClick={() => setArea(a.id)}
-                      style={{ padding: "10px 4px", borderRadius: 12, border: area === a.id ? "2px solid #7C5CFF" : "1px solid rgba(167,139,250,0.15)", background: area === a.id ? "rgba(124,92,255,0.1)" : "#0B0B10", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: "inherit" }}>
-                      <span style={{ fontSize: 18 }}>{a.emoji}</span>
-                      <span style={{ fontSize: 9, fontWeight: 600, color: area === a.id ? "#A78BFA" : "#9e96b5" }}>{a.label}</span>
+                  {AREA_IDS.map(a => (
+                    <button key={a} type="button" onClick={() => setArea(a)}
+                      style={{ padding: "10px 4px", borderRadius: 12, border: area === a ? "2px solid #7C5CFF" : "1px solid rgba(167,139,250,0.15)", background: area === a ? "rgba(124,92,255,0.1)" : "#0B0B10", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: "inherit" }}>
+                      <span style={{ fontSize: 18 }}>{AREA_CONFIG[a].emoji}</span>
+                      <span style={{ fontSize: 9, fontWeight: 600, color: area === a ? "#A78BFA" : "#9e96b5" }}>{t(AREA_CONFIG[a].shortLabelKey)}</span>
                     </button>
                   ))}
                 </div>
               </>
             )}
-            <textarea value={why} onChange={e => setWhy(e.target.value)} placeholder="Por que isso importa?" rows={2} style={{ ...inputS, marginTop: 12, resize: "none", height: 60 }} />
+            <textarea value={why} onChange={e => setWhy(e.target.value)} placeholder={t("goal_porque_importa")} rows={2} style={{ ...inputS, marginTop: 12, resize: "none", height: 60 }} />
           </>
         )}
 
         {step === 2 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {([
-              { val: "direcao", icon: "🧭", title: "Direção", desc: "Algo que quero cultivar, sem prazo fixo" },
-              { val: "destino", icon: "🎯", title: "Destino", desc: "Um resultado concreto com data definida" },
+              { val: "direcao", icon: "🧭", title: t("goal_direcao"), desc: t("goal_direcao_desc") },
+              { val: "destino", icon: "🎯", title: t("goal_destino"), desc: t("goal_destino_desc") },
             ] as const).map(opt => (
               <button key={opt.val} type="button" onClick={() => setType(opt.val)}
                 style={{ padding: 14, borderRadius: 14, border: type === opt.val ? "2px solid #7C5CFF" : "1px solid rgba(167,139,250,0.15)", background: type === opt.val ? "rgba(124,92,255,0.08)" : "#0B0B10", cursor: "pointer", textAlign: "left", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 12 }}>
@@ -131,22 +125,22 @@ export function GoalCreateSheet({ onClose, onCreated, initialArea, source }: {
 
         {step === 3 && (
           <>
-            <input value={firstStage} onChange={e => setFirstStage(e.target.value)} placeholder="Primeira etapa concreta" autoFocus style={inputS} />
-            <p style={{ fontSize: 10, color: "#9e96b5", margin: "14px 0 10px" }}>Opcional — te ajuda a manter o compromisso</p>
-            <input value={guardianName} onChange={e => setGuardianName(e.target.value)} placeholder="Nome do guardião (alguém que te cobra)" style={{ ...inputS, marginBottom: 8 }} />
-            <input value={reward} onChange={e => setReward(e.target.value)} placeholder="Recompensa ao concluir" style={{ ...inputS, marginBottom: 8 }} />
-            <input value={punishment} onChange={e => setPunishment(e.target.value)} placeholder="Punição se não fizer" style={inputS} />
+            <input value={firstStage} onChange={e => setFirstStage(e.target.value)} placeholder={t("goal_primeira_etapa")} autoFocus style={inputS} />
+            <p style={{ fontSize: 10, color: "#9e96b5", margin: "14px 0 10px" }}>{t("goal_opcional_compromisso")}</p>
+            <input value={guardianName} onChange={e => setGuardianName(e.target.value)} placeholder={t("goal_guardiao")} style={{ ...inputS, marginBottom: 8 }} />
+            <input value={reward} onChange={e => setReward(e.target.value)} placeholder={t("goal_recompensa")} style={{ ...inputS, marginBottom: 8 }} />
+            <input value={punishment} onChange={e => setPunishment(e.target.value)} placeholder={t("goal_punicao")} style={inputS} />
           </>
         )}
 
         <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
           <button type="button" onClick={step === 1 ? onClose : () => setStep((step - 1) as Step)}
             style={{ flex: 1, padding: 14, borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-            {step === 1 ? "Cancelar" : "Voltar"}
+            {step === 1 ? t("cancelar") : t("voltar")}
           </button>
           <button type="button" onClick={step < 3 ? () => setStep((step + 1) as Step) : save} disabled={saving}
             style={{ flex: 2, padding: 14, borderRadius: 14, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.6 : 1 }}>
-            {step === 3 ? (saving ? "Criando..." : "Criar meta") : "Continuar"}
+            {step === 3 ? (saving ? t("goal_criando") : t("goal_criar_meta")) : t("goal_continuar")}
           </button>
         </div>
       </div>

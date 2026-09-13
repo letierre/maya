@@ -6,22 +6,9 @@ import {
   ChevronDown, ChevronRight, Compass,
 } from "lucide-react";
 import { MayaAvatar } from "@/components/MayaAvatar";
-import { AREA_CONFIG, LIFE_AREAS, DAY_NAMES } from "@/lib/planejamento-constants";
+import { AREA_CONFIG, LIFE_AREAS, dayShortName } from "@/lib/planejamento-constants";
+import { useTranslation } from "@/lib/useTranslation";
 import type { PlanningCompanionResponse, SuggestedTask, AreaSuggestion, PlanningStoneSuggestion } from "@/types";
-
-// ── Labels & emojis (same as API route) ──────────────────────────────
-
-const AREA_LABELS_LONG: Record<string, string> = {
-  saude: "Saúde", carreira: "Carreira", financas: "Finanças",
-  relacionamentos: "Relacionamentos", desenvolvimento: "Mente",
-  familia: "Família", lazer: "Lazer", espiritualidade: "Espiritualidade",
-};
-
-const AREA_EMOJIS: Record<string, string> = {
-  saude: "💚", carreira: "💼", financas: "💰",
-  relacionamentos: "❤️", desenvolvimento: "🧠",
-  familia: "🏡", lazer: "🌊", espiritualidade: "✨",
-};
 
 const STONE_COLORS = ["#7C5CFF", "#5EEAD4", "#F59E0B"];
 const STONE_EMOJIS = ["💎", "🪨", "🔮"];
@@ -63,6 +50,7 @@ export function PlanningCompanion({
   onSetStone,
   planMetrics,
 }: PlanningCompanionProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set());
   const [addingTask, setAddingTask] = useState<string | null>(null);
@@ -127,7 +115,7 @@ export function PlanningCompanion({
     setChatMessages((prev) => [...prev, { role: "user", text }]);
     setChatSending(true);
     const reply = await onSendMessage(text, history);
-    setChatMessages((prev) => [...prev, { role: "maya", text: reply || "Hmm, não consegui responder agora. Tenta de novo?" }]);
+    setChatMessages((prev) => [...prev, { role: "maya", text: reply || t("plc_erro_resposta") }]);
     setChatSending(false);
   }, [chatInput, chatSending, chatMessages, onSendMessage]);
 
@@ -140,10 +128,10 @@ export function PlanningCompanion({
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 20 }}>
           <MayaAvatar state="hero" size={200} />
           <p style={{ margin: "12px 0 6px", fontSize: 16, fontWeight: 700, color: "#e0d6ff", textAlign: "center" }}>
-            {firstName ? `${firstName}, vamos planejar sua semana?` : "Vamos planejar sua semana?"}
+            {firstName ? t("plc_vamos_planejar_nome", { name: firstName }) : t("plc_vamos_planejar")}
           </p>
           <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9e96b5", textAlign: "center", maxWidth: 320, lineHeight: 1.5 }}>
-            Eu analiso seu momento atual — diário, check-ins, metas — e ajudo a pensar na melhor estratégia para esta semana.
+            {t("plc_analiso_momento")}
           </p>
           <button
             type="button"
@@ -168,7 +156,7 @@ export function PlanningCompanion({
             onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
           >
             <Compass size={18} />
-            Maya, analise meu plano
+            {t("plc_analise_plano")}
           </button>
         </div>
 
@@ -186,10 +174,10 @@ export function PlanningCompanion({
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 20 }}>
           <MayaAvatar state="processing" size={160} />
           <p style={{ margin: "16px 0 0", fontSize: 14, fontWeight: 600, color: "#A78BFA", textAlign: "center" }}>
-            {firstName ? `Analisando seu momento, ${firstName}...` : "Analisando seu momento..."}
+            {firstName ? t("plc_analisando_nome", { name: firstName }) : t("plc_analisando")}
           </p>
           <p style={{ margin: "6px 0 0", fontSize: 12, color: "#6a657a", textAlign: "center", maxWidth: 280 }}>
-            Estou cruzando seus dados da semana com diário, check-ins e metas ativas.
+            {t("plc_cruzando")}
           </p>
         </div>
         {/* Skeleton cards */}
@@ -274,7 +262,7 @@ export function PlanningCompanion({
             {chatSending && (
               <div style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, color: "#6a657a", fontSize: 12 }}>
                 <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
-                Maya está escrevendo...
+                {t("plc_escrevendo")}
               </div>
             )}
           </div>
@@ -285,7 +273,7 @@ export function PlanningCompanion({
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
-            placeholder="Responda à Maya..."
+            placeholder={t("plc_responda")}
             style={{
               flex: 1, minWidth: 0, padding: "11px 14px", borderRadius: 12,
               border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10",
@@ -310,9 +298,9 @@ export function PlanningCompanion({
       {/* Tabs */}
       <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
         {([
-          { key: "overview" as const, label: "Visão geral", icon: Map, badge: undefined as number | undefined },
-          { key: "areas" as const, label: "Áreas", icon: Layers, badge: companionData?.areaSuggestions?.length as number | undefined },
-          { key: "stones" as const, label: "Pedras", icon: Sparkles, badge: companionData?.suggestedStones?.length as number | undefined },
+          { key: "overview" as const, label: t("plc_visao_geral"), icon: Map, badge: undefined as number | undefined },
+          { key: "areas" as const, label: t("plc_areas"), icon: Layers, badge: companionData?.areaSuggestions?.length as number | undefined },
+          { key: "stones" as const, label: t("plc_pedras"), icon: Sparkles, badge: companionData?.suggestedStones?.length as number | undefined },
         ]).map((tab) => (
           <button
             key={tab.key}
@@ -424,7 +412,7 @@ export function PlanningCompanion({
           ) : (
             <Send size={14} />
           )}
-          Maya, revise meu plano
+          {t("plc_revise_plano")}
         </button>
       </div>
 
@@ -448,14 +436,15 @@ function QuickStats({
   emptyAreas: string[];
   tasksByArea: (area: string) => any[];
 }) {
+  const { t } = useTranslation();
   const totalTasks = LIFE_AREAS.reduce((sum, a) => sum + tasksByArea(a).length, 0);
   const definedStones = stones.filter(Boolean).length;
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-      <StatCard emoji="💎" value={String(definedStones)} label="Pedras" />
-      <StatCard emoji="📋" value={String(totalTasks)} label="Tarefas" />
-      <StatCard emoji="🌱" value={String(emptyAreas.length)} label="Áreas vazias" />
+      <StatCard emoji="💎" value={String(definedStones)} label={t("plc_pedras")} />
+      <StatCard emoji="📋" value={String(totalTasks)} label={t("plc_tarefas")} />
+      <StatCard emoji="🌱" value={String(emptyAreas.length)} label={t("plc_areas_vazias")} />
     </div>
   );
 }
@@ -545,6 +534,7 @@ function OverviewTab({
   emptyAreas: string[];
   tasksByArea: (area: string) => any[];
 }) {
+  const { t } = useTranslation();
   const definedStones = stones.filter(Boolean);
   const totalTasks = LIFE_AREAS.reduce((sum, a) => sum + tasksByArea(a).length, 0);
 
@@ -561,7 +551,7 @@ function OverviewTab({
           }}
         >
           <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 600, color: "#6a657a", letterSpacing: ".04em" }}>
-            Tarefas planejadas
+            {t("plc_tarefas_planejadas")}
           </p>
           <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#e0d6ff", fontFamily: "monospace" }}>
             {totalTasks}
@@ -576,7 +566,7 @@ function OverviewTab({
           }}
         >
           <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 600, color: "#6a657a", letterSpacing: ".04em" }}>
-            Pedras definidas
+            {t("plc_pedras_definidas")}
           </p>
           <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#e0d6ff", fontFamily: "monospace" }}>
             {definedStones.length}/3
@@ -591,7 +581,7 @@ function OverviewTab({
           }}
         >
           <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 600, color: "#6a657a", letterSpacing: ".04em" }}>
-            Áreas vazias
+            {t("plc_areas_vazias")}
           </p>
           <p
             style={{
@@ -614,7 +604,7 @@ function OverviewTab({
           }}
         >
           <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 600, color: "#6a657a", letterSpacing: ".04em" }}>
-            Equilíbrio
+            {t("wm_equilibrio")}
           </p>
           <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#e0d6ff", fontFamily: "monospace" }}>
             {planMetrics.balance}%
@@ -633,7 +623,7 @@ function OverviewTab({
           }}
         >
           <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#A78BFA" }}>
-            Compromisso da semana
+            {t("plan_compromisso_semana")}
           </p>
           {definedStones.map((text, i) => (
             <div
@@ -683,14 +673,16 @@ function OverviewTab({
           }}
         >
           <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#A78BFA" }}>
-            Análise da Maya
+            {t("plc_analise_maya")}
           </p>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "#d0c8e8", lineHeight: 1.55 }}>
             {companionData?.strategicFeedback}
           </p>
           {companionData?.areaSuggestions && companionData.areaSuggestions.length > 0 && (
             <p style={{ margin: "8px 0 0", fontSize: 11, color: "#A78BFA", fontWeight: 600 }}>
-              {companionData.areaSuggestions.length} {companionData.areaSuggestions.length === 1 ? "área" : "áreas"} com sugestões na aba Áreas →
+              {companionData.areaSuggestions.length === 1
+                ? t("plc_1area_sugestao", { count: String(companionData.areaSuggestions.length) })
+                : t("plc_nareas_sugestoes", { count: String(companionData.areaSuggestions.length) })}
             </p>
           )}
         </div>
@@ -707,10 +699,12 @@ function OverviewTab({
           }}
         >
           <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "#FF9F43" }}>
-            ⚠️ {emptyAreas.length} {emptyAreas.length === 1 ? "área está" : "áreas estão"} sem tarefas
+            {emptyAreas.length === 1
+              ? `⚠️ ${t("plc_uma_area_sem")}`
+              : `⚠️ ${t("plc_areas_sem", { count: String(emptyAreas.length) })}`}
           </p>
           <p style={{ margin: 0, fontSize: 12, color: "#9e96b5", lineHeight: 1.45 }}>
-            {emptyAreas.map((a) => `${AREA_EMOJIS[a] || "•"} ${AREA_LABELS_LONG[a] || a}`).join(", ")}
+            {emptyAreas.map((a) => `${AREA_CONFIG[a as keyof typeof AREA_CONFIG]?.emoji || "•"} ${t(AREA_CONFIG[a as keyof typeof AREA_CONFIG]?.labelKey) || a}`).join(", ")}
           </p>
         </div>
       )}
@@ -745,6 +739,7 @@ function AreasTab({
   suggestingArea: string | null;
   onSuggestArea: (area: string) => void;
 }) {
+  const { t } = useTranslation();
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(() => {
     // Auto-expand empty areas and areas with Maya suggestions
     const suggestionAreas =
@@ -779,7 +774,7 @@ function AreasTab({
       const aCount = tasksByArea(a).length;
       const bCount = tasksByArea(b).length;
       if (aCount !== bCount) return bCount - aCount;
-      return (AREA_LABELS_LONG[a] || a).localeCompare(AREA_LABELS_LONG[b] || b);
+      return (t(AREA_CONFIG[a as keyof typeof AREA_CONFIG]?.labelKey) || a).localeCompare(t(AREA_CONFIG[b as keyof typeof AREA_CONFIG]?.labelKey) || b);
     });
   }, [emptyAreas, tasksByArea]);
 
@@ -824,15 +819,15 @@ function AreasTab({
                 fontFamily: "inherit",
               }}
             >
-              <span style={{ fontSize: 22, flexShrink: 0 }}>{AREA_EMOJIS[area] || "•"}</span>
+              <span style={{ fontSize: 22, flexShrink: 0 }}>{AREA_CONFIG[area as keyof typeof AREA_CONFIG]?.emoji || "•"}</span>
               <div style={{ flex: 1, textAlign: "left" }}>
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#e0d6ff" }}>
-                  {AREA_LABELS_LONG[area] || area}
+                  {t(AREA_CONFIG[area as keyof typeof AREA_CONFIG]?.labelKey) || area}
                 </p>
                 <p style={{ margin: "2px 0 0", fontSize: 10, color: "#6a657a" }}>
                   {isEmpty
-                    ? "Nenhuma tarefa"
-                    : `${doneTasks}/${tasks.length} feitas`}
+                    ? t("plan_nenhuma_tarefa")
+                    : t("plc_feitas", { done: String(doneTasks), total: String(tasks.length) })}
                 </p>
               </div>
               {/* Mini gauge */}
@@ -858,7 +853,7 @@ function AreasTab({
                   />
                 </div>
               )}
-              {isEmpty && <span style={{ fontSize: 10, color: "#FF9F43", fontWeight: 600 }}>Vazia</span>}
+              {isEmpty && <span style={{ fontSize: 10, color: "#FF9F43", fontWeight: 600 }}>{t("plc_vazia")}</span>}
               {isExpanded ? (
                 <ChevronDown size={14} color="#6a657a" style={{ flexShrink: 0 }} />
               ) : (
@@ -890,7 +885,7 @@ function AreasTab({
                         gap: 4,
                       }}
                     >
-                      <span>🧠</span> Maya observou
+                      <span>🧠</span> {t("plc_maya_observou")}
                     </p>
                     <p style={{ margin: 0, fontSize: 12, color: "#d0c8e8", lineHeight: 1.5 }}>
                       {effectiveSuggestion.message}
@@ -902,7 +897,7 @@ function AreasTab({
                 {tasks.length > 0 && (
                   <div style={{ marginBottom: effectiveSuggestion ? 10 : 0 }}>
                     <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 600, color: "#6a657a" }}>
-                      Tarefas atuais
+                      {t("plc_tarefas_atuais")}
                     </p>
                     {tasks.map((task: any) => (
                       <div
@@ -933,7 +928,7 @@ function AreasTab({
                         <span style={{ flex: 1 }}>{task.title}</span>
                         {task.day_of_week != null && (
                           <span style={{ fontSize: 9, color: "#5a5470", flexShrink: 0 }}>
-                            {DAY_NAMES[task.day_of_week]}
+                            {dayShortName(task.day_of_week)}
                           </span>
                         )}
                       </div>
@@ -945,7 +940,7 @@ function AreasTab({
                 {effectiveSuggestion?.suggestedTasks && effectiveSuggestion.suggestedTasks.length > 0 && (
                   <div>
                     <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 600, color: "#A78BFA" }}>
-                      Sugestões da Maya
+                      {t("plc_sugestoes_maya")}
                     </p>
                     {effectiveSuggestion.suggestedTasks.map((st: SuggestedTask, i: number) => {
                       const key = `${area}:${st.title}`;
@@ -988,7 +983,7 @@ function AreasTab({
                               flexShrink: 0,
                             }}
                           >
-                            {st.taskType === "crescimento" ? "Crescer" : "Hábito"}
+                            {st.taskType === "crescimento" ? t("plan_crescer") : t("plan_habito")}
                           </span>
                           <button
                             type="button"
@@ -1055,7 +1050,7 @@ function AreasTab({
                     ) : (
                       <Sparkles size={14} />
                     )}
-                    {isSuggesting ? "Maya pensando..." : "Maya, sugira tarefas para esta área"}
+                    {isSuggesting ? t("plc_maya_pensando") : t("plc_sugira_tarefas")}
                   </button>
                 )}
               </div>
@@ -1081,6 +1076,7 @@ function StonesTab({
   settingStone: number | null;
   onSetStone: (rank: number, text: string) => void;
 }) {
+  const { t } = useTranslation();
   const suggestions = companionData?.suggestedStones || [];
 
   // Map suggestions to ranks
@@ -1134,7 +1130,7 @@ function StonesTab({
               <span style={{ fontSize: 26, flexShrink: 0 }}>{STONE_EMOJIS[i]}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 700, color: "#6a657a", letterSpacing: ".06em", textTransform: "uppercase" }}>
-                  Pedra {STONE_LABELS[i]}
+                  {t("plan_pedra", { rank: STONE_LABELS[i] })}
                 </p>
                 {currentText ? (
                   <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#e0d6ff", lineHeight: 1.3 }}>
@@ -1142,7 +1138,7 @@ function StonesTab({
                   </p>
                 ) : (
                   <p style={{ margin: 0, fontSize: 13, color: "#5a5470", fontStyle: "italic" }}>
-                    Não definida
+                    {t("plc_nao_definida")}
                   </p>
                 )}
               </div>
@@ -1162,7 +1158,7 @@ function StonesTab({
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                   <span style={{ fontSize: 12 }}>🧠</span>
                   <span style={{ fontSize: 10, fontWeight: 600, color: "#A78BFA" }}>
-                    Maya sugere
+                    {t("plc_maya_sugere")}
                   </span>
                 </div>
                 <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: "#e0d6ff", lineHeight: 1.4 }}>
@@ -1196,17 +1192,17 @@ function StonesTab({
                   {isSetting ? (
                     <>
                       <Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} />
-                      Definindo...
+                      {t("plc_definindo")}
                     </>
                   ) : currentText ? (
                     <>
                       <Send size={11} />
-                      Substituir minha pedra
+                      {t("plc_substituir_pedra")}
                     </>
                   ) : (
                     <>
                       <Plus size={11} />
-                      Usar esta pedra
+                      {t("plc_usar_pedra")}
                     </>
                   )}
                 </button>
@@ -1216,14 +1212,14 @@ function StonesTab({
             {/* No suggestion — generic hint */}
             {!suggestion && !currentText && (
               <p style={{ margin: "12px 0 0", fontSize: 11, color: "#5a5470" }}>
-                ✨ Defina um foco principal para guiar sua semana.
+                {t("plc_defina_foco")}
               </p>
             )}
 
             {/* Has stone but no matching suggestion */}
             {!suggestion && currentText && (
               <p style={{ margin: "10px 0 0", fontSize: 10, color: "#5a5470" }}>
-                ✅ Sua pedra está definida.
+                {t("plc_pedra_definida_ok")}
               </p>
             )}
           </div>

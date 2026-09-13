@@ -5,7 +5,8 @@ import { useEffect, useState, useMemo } from "react";
 import { Plus, Check, Loader2, ChevronDown, ChevronRight, Target, TrendingUp, Award, Star, Edit3 } from "lucide-react";
 import { toast } from "sonner";
 import type { QuarterlyCycle, KeyResult } from "@/types";
-import { AREA_CONFIG, AREA_LABELS } from "@/lib/planejamento-constants";
+import { AREA_CONFIG } from "@/lib/planejamento-constants";
+import { useTranslation } from "@/lib/useTranslation";
 
 const UNIT_LABELS: Record<string, string> = {
   "%": "%", "count": "x", "kg": "kg", "min": "min", "km": "km", "R$": "R$",
@@ -13,10 +14,11 @@ const UNIT_LABELS: Record<string, string> = {
 
 // Dica de alvo por unidade (para % o alvo é sempre 100).
 const TARGET_HINT: Record<string, string> = {
-  "%": "100", "count": "ex: 20", "kg": "ex: 10", "min": "ex: 30", "km": "ex: 5", "R$": "ex: 1000",
+  "%": "100", "count": "20", "kg": "10", "min": "30", "km": "5", "R$": "1000",
 };
 
 export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals }: { autoOpenCreate?: number; initialCycles?: QuarterlyCycle[]; initialGoals?: any[] }) {
+  const { t } = useTranslation();
   const [cycles, setCycles] = useState<QuarterlyCycle[]>(initialCycles ?? []);
   const [loading, setLoading] = useState(initialCycles === undefined);
   const [showCreate, setShowCreate] = useState(false);
@@ -107,13 +109,13 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
       body: JSON.stringify({ year: newYear, quarter: newQuarter, start_date: start, end_date: end, theme: newTheme || null }),
     });
     if (res.ok) {
-      toast.success("Novo ciclo criado!");
+      toast.success(t("okr_ciclo_criado"));
       setShowCreate(false);
       setNewTheme("");
       fetchCycles();
     } else {
       const err = await res.json();
-      toast.error(err.error || "Erro ao criar ciclo");
+      toast.error(err.error || t("okr_erro_criar"));
     }
   };
 
@@ -125,7 +127,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
   const addKR = async (cycleId: string) => {
     if (!newKRTitle.trim()) return;
     if (newKRUnit !== "%" && (!newKRTarget || newKRTarget <= 0)) {
-      toast.error("Defina um alvo para este resultado");
+      toast.error(t("okr_defina_alvo"));
       return;
     }
     const res = await fetch(`/api/quarterly-cycles/${cycleId}/key-results`, {
@@ -134,7 +136,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
       body: JSON.stringify({ title: newKRTitle.trim(), unit: newKRUnit, target: newKRTarget, linked_goal_id: newKRGoalId || null }),
     });
     if (res.ok) {
-      toast.success("Resultado adicionado!");
+      toast.success(t("okr_resultado_adicionado"));
       setAddingKRFor(null);
       setNewKRTitle("");
       setNewKRUnit("%");
@@ -142,14 +144,14 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
       setNewKRGoalId("");
       fetchCycles();
     } else {
-      toast.error("Erro ao adicionar resultado");
+      toast.error(t("okr_erro_adicionar"));
     }
   };
 
   const updateKRProgress = async (cycleId: string, kr: KeyResult) => {
     const target = editKRUnit === "%" ? 100 : editKRTarget;
-    if (!editKRTitle.trim()) { toast.error("Dê um título ao resultado"); return; }
-    if (editKRUnit !== "%" && (!target || target <= 0)) { toast.error("Defina um alvo para este resultado"); return; }
+    if (!editKRTitle.trim()) { toast.error(t("okr_titulo")); return; }
+    if (editKRUnit !== "%" && (!target || target <= 0)) { toast.error(t("okr_defina_alvo")); return; }
     const res = await fetch(`/api/quarterly-cycles/${cycleId}/key-results/${kr.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -159,7 +161,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
       setEditingKR(null);
       fetchCycles();
     } else {
-      toast.error("Erro ao salvar resultado");
+      toast.error(t("okr_erro_salvar"));
     }
   };
 
@@ -169,13 +171,13 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
   };
 
   const deleteKR = async (cycleId: string, krId: string) => {
-    if (!window.confirm("Excluir este resultado? Essa ação não pode ser desfeita.")) return;
+    if (!window.confirm(t("okr_excluir_confirm"))) return;
     const res = await fetch(`/api/quarterly-cycles/${cycleId}/key-results/${krId}`, { method: "DELETE" });
     if (res.ok) {
       setEditingKR(null);
       fetchCycles();
     } else {
-      toast.error("Erro ao excluir resultado");
+      toast.error(t("okr_erro_excluir"));
     }
   };
 
@@ -205,24 +207,24 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
       }),
     });
     if (res.ok) {
-      toast.success("Review salva!");
+      toast.success(t("okr_review_salva"));
       setReviewingCycle(null);
       fetchCycles();
     } else {
-      toast.error("Erro ao salvar review");
+      toast.error(t("okr_erro_review"));
     }
     setSubmittingReview(false);
   };
 
   const completeCycle = async (cycleId: string) => {
-    if (!window.confirm("Concluir este ciclo? Ele vai para o histórico (você pode reabrir depois).")) return;
+    if (!window.confirm(t("okr_concluir_confirm"))) return;
     const res = await fetch(`/api/quarterly-cycles/${cycleId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "completed" }),
     });
     if (res.ok) {
-      toast.success("Ciclo concluído!");
+      toast.success(t("okr_ciclo_concluido"));
       fetchCycles();
     }
   };
@@ -234,7 +236,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
       body: JSON.stringify({ status: "active" }),
     });
     if (res.ok) {
-      toast.success("Ciclo reaberto!");
+      toast.success(t("okr_ciclo_reaberto"));
       fetchCycles();
     }
   };
@@ -255,12 +257,12 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
   };
 
   const quarterLabel = (q: number) => {
-    const map: Record<number, string> = { 1: "Jan–Mar", 2: "Abr–Jun", 3: "Jul–Set", 4: "Out–Dez" };
+    const map: Record<number, string> = { 1: t("okr_q1"), 2: t("okr_q2"), 3: t("okr_q3"), 4: t("okr_q4") };
     return map[q] || `Q${q}`;
   };
 
   if (loading) {
-    return <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center", padding: 20 }}>Carregando...</p>;
+    return <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center", padding: 20 }}>{t("carregando")}</p>;
   }
 
   return (
@@ -268,9 +270,9 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
       {/* ── Header ─────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>Resultados do trimestre</h2>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>{t("okr_resultados_trimestre")}</h2>
           <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6a657a" }}>
-            A ponte entre suas metas e a semana
+            {t("okr_ponte")}
           </p>
         </div>
         {!activeCycle && (
@@ -282,7 +284,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
               color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
               fontFamily: "inherit", boxShadow: "0 2px 12px rgba(124,92,255,0.3)",
             }}>
-            <Plus size={16} /> Novo ciclo
+            <Plus size={16} /> {t("okr_novo_ciclo")}
           </button>
         )}
       </div>
@@ -327,7 +329,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                     {prog.pct}%
                   </p>
                   <p style={{ margin: 0, fontSize: 9, color: "#6a657a" }}>
-                    {prog.done}/{prog.total} resultados
+                    {t("okr_x_resultados", { done: String(prog.done), total: String(prog.total) })}
                   </p>
                 </div>
               );
@@ -398,7 +400,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                       {/* Inline edit */}
                       {isEditing && (
                         <div style={{ marginTop: 8, padding: "10px", borderRadius: 10, background: "#0f0e1a", border: "1px solid rgba(167,139,250,0.12)" }}>
-                          <input value={editKRTitle} onChange={e => setEditKRTitle(e.target.value)} placeholder="Resultado..." autoFocus
+                          <input value={editKRTitle} onChange={e => setEditKRTitle(e.target.value)} placeholder={t("okr_resultado_placeholder")} autoFocus
                             style={{
                               width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)",
                               background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
@@ -419,14 +421,14 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                               value={editKRUnit === "%" ? 100 : (editKRTarget || "")}
                               onChange={e => setEditKRTarget(Number(e.target.value))}
                               disabled={editKRUnit === "%"}
-                              placeholder="alvo"
+                              placeholder={t("okr_alvo")}
                               style={{
                                 flex: 1, padding: "8px 6px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)",
                                 background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
                                 textAlign: "center", opacity: editKRUnit === "%" ? 0.55 : 1,
                               }} />
                             <input type="number" value={editKRValue} onChange={e => setEditKRValue(Number(e.target.value))}
-                              placeholder="atual"
+                              placeholder={t("okr_atual")}
                               style={{
                                 flex: 1, padding: "8px 6px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)",
                                 background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
@@ -439,7 +441,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                                 flex: 1, padding: "8px 0", borderRadius: 8, border: 0,
                                 background: "#7C5CFF", color: "#fff", fontSize: 11, fontWeight: 600,
                                 cursor: "pointer", fontFamily: "inherit",
-                              }}>Salvar</button>
+                              }}>{t("salvar")}</button>
                             <button type="button" onClick={() => setEditingKR(null)}
                               style={{
                                 flexShrink: 0, width: 40, padding: "8px 0", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)",
@@ -483,7 +485,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
           {/* Empty KRs state */}
           {(!activeCycle.key_results || activeCycle.key_results.length === 0) && (
             <p style={{ margin: "10px 0", fontSize: 12, color: "#5a5470", textAlign: "center" }}>
-              Nenhum resultado definido ainda.
+              {t("okr_nenhum_resultado")}
             </p>
           )}
 
@@ -496,12 +498,12 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                   border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10",
                   color: "#e0d6ff", fontSize: 11, fontFamily: "inherit", boxSizing: "border-box",
                 }}>
-                <option value="">Sem meta vinculada</option>
+                <option value="">{t("okr_sem_meta")}</option>
                 {goals.map((g) => (
                   <option key={g.id} value={g.id}>{g.title}</option>
                 ))}
               </select>
-              <input value={newKRTitle} onChange={e => setNewKRTitle(e.target.value)} placeholder="Resultado..." autoFocus
+              <input value={newKRTitle} onChange={e => setNewKRTitle(e.target.value)} placeholder={t("okr_resultado_placeholder")} autoFocus
                 style={{
                   width: "100%", padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
                   background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
@@ -522,7 +524,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                   value={newKRUnit === "%" ? 100 : (newKRTarget || "")}
                   onChange={e => setNewKRTarget(Number(e.target.value))}
                   disabled={newKRUnit === "%"}
-                  placeholder={TARGET_HINT[newKRUnit] ?? "alvo"}
+                  placeholder={newKRUnit === "%" ? "100" : `${t("okr_ex")} ${TARGET_HINT[newKRUnit] ?? ""}`}
                   style={{
                     flex: 1, padding: "8px 6px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
                     background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none",
@@ -534,7 +536,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                   style={{
                     flex: 1, padding: "10px 12px", borderRadius: 10, border: 0, background: "#7C5CFF", color: "#fff",
                     fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-                  }}>Adicionar</button>
+                  }}>{t("ag_adicionar")}</button>
                 <button type="button" onClick={() => setAddingKRFor(null)}
                   style={{
                     flexShrink: 0, width: 44, padding: "10px 0", borderRadius: 10,
@@ -552,7 +554,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                   background: "rgba(124,92,255,0.03)", cursor: "pointer", color: "#A78BFA",
                   fontSize: 12, fontWeight: 600, fontFamily: "inherit",
                 }}>
-                <Plus size={14} /> Adicionar resultado
+                <Plus size={14} /> {t("okr_adicionar_resultado")}
               </button>
 
               {/* Complete cycle */}
@@ -562,7 +564,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                   background: "rgba(94,234,212,0.04)", cursor: "pointer", color: "#5EEAD4",
                   fontSize: 12, fontWeight: 700, fontFamily: "inherit", whiteSpace: "nowrap",
                 }}>
-                CONCLUIR CICLO
+                {t("okr_concluir_ciclo")}
               </button>
             </div>
           )}
@@ -576,28 +578,28 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
           padding: "18px 18px 14px", marginBottom: 16,
         }}>
           <h3 style={{ margin: "0 0 14px", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>
-            Novo ciclo trimestral
+            {t("okr_novo_ciclo_trimestral")}
           </h3>
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 10, color: "#6a657a", display: "block", marginBottom: 4 }}>Ano</label>
+              <label style={{ fontSize: 10, color: "#6a657a", display: "block", marginBottom: 4 }}>{t("okr_ano")}</label>
               <input type="number" value={newYear} onChange={e => setNewYear(Number(e.target.value))}
                 style={inputS} />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 10, color: "#6a657a", display: "block", marginBottom: 4 }}>Trimestre</label>
+              <label style={{ fontSize: 10, color: "#6a657a", display: "block", marginBottom: 4 }}>{t("okr_trimestre")}</label>
               <select value={newQuarter} onChange={e => setNewQuarter(Number(e.target.value))}
                 style={inputS}>
-                <option value={1}>Q1 (Jan–Mar)</option>
-                <option value={2}>Q2 (Abr–Jun)</option>
-                <option value={3}>Q3 (Jul–Set)</option>
-                <option value={4}>Q4 (Out–Dez)</option>
+                <option value={1}>Q1 ({t("okr_q1")})</option>
+                <option value={2}>Q2 ({t("okr_q2")})</option>
+                <option value={3}>Q3 ({t("okr_q3")})</option>
+                <option value={4}>Q4 ({t("okr_q4")})</option>
               </select>
             </div>
           </div>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 10, color: "#6a657a", display: "block", marginBottom: 4 }}>Tema (opcional)</label>
-            <input value={newTheme} onChange={e => setNewTheme(e.target.value)} placeholder='"Trimestre do crescimento profissional"' style={inputS} />
+            <label style={{ fontSize: 10, color: "#6a657a", display: "block", marginBottom: 4 }}>{t("okr_tema")}</label>
+            <input value={newTheme} onChange={e => setNewTheme(e.target.value)} placeholder={t("okr_tema_placeholder")} style={inputS} />
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button type="button" onClick={() => setShowCreate(false)}
@@ -605,13 +607,13 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                 flex: 1, padding: "12px 0", borderRadius: 14,
                 border: "1px solid rgba(167,139,250,0.2)", background: "transparent",
                 color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-              }}>Cancelar</button>
+              }}>{t("cancelar")}</button>
             <button type="button" onClick={createCycle}
               style={{
                 flex: 2, padding: "12px 0", borderRadius: 14, border: 0,
                 background: "linear-gradient(135deg, #7C5CFF, #A78BFA)", color: "#fff",
                 fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
-              }}>Criar ciclo</button>
+              }}>{t("okr_criar_ciclo")}</button>
           </div>
         </div>
       )}
@@ -624,10 +626,10 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
         }}>
           <span style={{ fontSize: 48, display: "block", marginBottom: 12 }}>🎯</span>
           <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>
-            Nenhum ciclo ainda
+            {t("okr_nenhum_ciclo")}
           </p>
           <p style={{ margin: "0 0 16px", fontSize: 12, color: "#6a657a", maxWidth: 280, marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>
-            Crie seu primeiro ciclo trimestral com resultados para conectar suas metas com sua semana.
+            {t("okr_primeiro_ciclo_desc")}
           </p>
           <button type="button" onClick={() => setShowCreate(true)}
             style={{
@@ -635,7 +637,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
               background: "linear-gradient(135deg, #7C5CFF, #A78BFA)", color: "#fff",
               fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
             }}>
-            Criar primeiro ciclo
+            {t("okr_criar_primeiro")}
           </button>
         </div>
       )}
@@ -644,7 +646,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
       {completedCycles.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#A78BFA" }}>
-            Histórico
+            {t("okr_historico")}
           </p>
           {completedCycles.map(cycle => {
             const isExpanded = expandedCycles.has(cycle.id);
@@ -675,7 +677,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                     <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "#5EEAD4", fontFamily: "monospace" }}>
                       {prog.pct}%
                     </p>
-                    <p style={{ margin: 0, fontSize: 9, color: "#6a657a" }}>{prog.done}/{prog.total} KRs</p>
+                    <p style={{ margin: 0, fontSize: 9, color: "#6a657a" }}>{t("okr_x_krs", { done: String(prog.done), total: String(prog.total) })}</p>
                   </div>
                   {isExpanded ? <ChevronDown size={14} color="#6a657a" /> : <ChevronRight size={14} color="#6a657a" />}
                 </button>
@@ -704,7 +706,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                       }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                           <Award size={14} color="#5EEAD4" />
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#5EEAD4" }}>Review</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#5EEAD4" }}>{t("okr_review")}</span>
                           <div style={{ display: "flex", gap: 1, marginLeft: "auto" }}>
                             {Array.from({ length: 10 }).map((_, i) => (
                               <span key={i} style={{ fontSize: 10, color: i < cycle.review!.overall_score ? "#F59E0B" : "rgba(167,139,250,0.12)" }}>★</span>
@@ -728,7 +730,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                           cursor: "pointer", color: "#5EEAD4", fontSize: 12, fontWeight: 600,
                           fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                         }}>
-                        <Star size={14} /> Fazer review do ciclo
+                        <Star size={14} /> {t("okr_fazer_review")}
                       </button>
                     )}
 
@@ -739,7 +741,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                         cursor: "pointer", color: "#A78BFA", fontSize: 11, fontWeight: 600,
                         fontFamily: "inherit",
                       }}>
-                      Reabrir ciclo
+                      {t("okr_reabrir_ciclo")}
                     </button>
                   </div>
                 )}
@@ -762,23 +764,23 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
             border: "1px solid rgba(167,139,250,0.15)",
           }}>
             <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>
-              Review do ciclo
+              {t("okr_review_ciclo")}
             </h3>
             <p style={{ margin: "0 0 16px", fontSize: 12, color: "#9e96b5" }}>
-              Como foi este trimestre?
+              {t("okr_como_foi")}
             </p>
 
             <textarea value={reviewWin} onChange={e => setReviewWin(e.target.value)}
-              placeholder="🏆 Qual foi sua maior vitória?" rows={2}
+              placeholder={t("okr_maior_vitoria")} rows={2}
               style={{ ...inputS, resize: "none", height: 56, marginBottom: 10, width: "100%", boxSizing: "border-box" }} />
             <textarea value={reviewLearn} onChange={e => setReviewLearn(e.target.value)}
-              placeholder="💡 Principal aprendizado" rows={2}
+              placeholder={t("okr_aprendizado")} rows={2}
               style={{ ...inputS, resize: "none", height: 56, marginBottom: 10, width: "100%", boxSizing: "border-box" }} />
             <textarea value={reviewForward} onChange={e => setReviewForward(e.target.value)}
-              placeholder="➡️ O que levar para o próximo ciclo?" rows={2}
+              placeholder={t("okr_proximo_ciclo")} rows={2}
               style={{ ...inputS, resize: "none", height: 56, marginBottom: 12, width: "100%", boxSizing: "border-box" }} />
 
-            <p style={{ margin: "0 0 8px", fontSize: 11, color: "#9e96b5" }}>Nota geral (1–10)</p>
+            <p style={{ margin: "0 0 8px", fontSize: 11, color: "#9e96b5" }}>{t("okr_nota_geral")}</p>
             <div style={{ display: "flex", gap: 4, marginBottom: 16, flexWrap: "wrap" }}>
               {Array.from({ length: 10 }).map((_, i) => (
                 <button key={i} type="button" onClick={() => setReviewScore(i + 1)}
@@ -796,7 +798,7 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                   flex: 1, padding: 14, borderRadius: 14,
                   border: "1px solid rgba(167,139,250,0.2)", background: "transparent",
                   color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-                }}>Cancelar</button>
+                }}>{t("cancelar")}</button>
               <button type="button" onClick={() => submitReview(reviewingCycle)}
                 disabled={submittingReview || !reviewWin.trim() || !reviewLearn.trim()}
                 style={{
@@ -807,8 +809,8 @@ export function QuarterlyOKRPanel({ autoOpenCreate, initialCycles, initialGoals 
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                 }}>
                 {submittingReview ? (
-                  <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Salvando...</>
-                ) : "Salvar review"}
+                  <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> {t("okr_salvando")}</>
+                ) : t("okr_salvar_review")}
               </button>
             </div>
           </div>

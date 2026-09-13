@@ -1,39 +1,42 @@
 "use client";
 
+import { useTranslation } from "@/lib/useTranslation";
+
 interface WeekMetricsGridProps {
   metrics: { strongest: string; weakest: string; balance: number; variation: number };
 }
 
 export function WeekMetricsGrid({ metrics }: WeekMetricsGridProps) {
+  const { t } = useTranslation();
   return (
     <div style={{
       display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20,
     }}>
       <MetricCard
-        label="Mais forte"
+        label={t("wm_mais_forte")}
         value={metrics.strongest}
         accent="#22D18B"
         icon="💪"
       />
       <MetricCard
-        label="Precisa de atenção"
+        label={t("wm_precisa_atencao")}
         value={metrics.weakest}
         accent="#FF9F43"
         icon="🎯"
       />
       <MetricCard
-        label="Equilíbrio"
+        label={t("wm_equilibrio")}
         value={`${metrics.balance}%`}
         accent="#5EEAD4"
         icon="⚖️"
-        sub={metrics.balance >= 70 ? "Bom balanço" : metrics.balance >= 40 ? "Razoável" : "Concentrado"}
+        sub={metrics.balance >= 70 ? t("wm_bom") : metrics.balance >= 40 ? t("wm_razoavel") : t("wm_concentrado")}
       />
       <MetricCard
-        label="Variação"
+        label={t("wm_variacao")}
         value={metrics.variation > 0 ? `+${metrics.variation}%` : `${metrics.variation}%`}
         accent={metrics.variation > 0 ? "#22D18B" : "#FF5C5C"}
         icon="📊"
-        sub="vs. semana passada"
+        sub={t("wm_vs_semana")}
       />
     </div>
   );

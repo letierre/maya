@@ -1,11 +1,14 @@
 "use client";
 
+import { useTranslation } from "@/lib/useTranslation";
+
 interface MayaStrategyCardProps {
   insight?: { message: string; action?: { label: string; href: string } } | null;
   loading?: boolean;
 }
 
 export function MayaStrategyCard({ insight, loading }: MayaStrategyCardProps) {
+  const { t } = useTranslation();
   if (loading) {
     return (
       <div style={{
@@ -57,7 +60,7 @@ export function MayaStrategyCard({ insight, loading }: MayaStrategyCardProps) {
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: "0 0 2px", fontSize: 9, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "#A78BFA" }}>
-            Maya sugere
+            {t("plc_maya_sugere")}
           </p>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "#e0d6ff", lineHeight: 1.5, letterSpacing: "-0.01em" }}>
             {insight.message}

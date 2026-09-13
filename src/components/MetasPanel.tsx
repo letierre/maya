@@ -7,24 +7,15 @@ import { GoalCreateSheet } from "@/components/GoalCreateSheet";
 import { GoalDetailSheet } from "@/components/GoalDetailSheet";
 import { QuarterlyOKRPanel } from "@/components/QuarterlyOKRPanel";
 import {
-  AREA_CONFIG, AREA_LABELS, LIFE_AREAS,
+  AREA_CONFIG, LIFE_AREAS,
 } from "@/lib/planejamento-constants";
 import { getLocalDate, getWeekMondayDate, getWeekSundayDate } from "@/lib/utils";
+import { useTranslation } from "@/lib/useTranslation";
 import type { QuarterlyCycle, AreaVision } from "@/types";
 
-const CADENCE: Record<string, string> = {
-  daily: "diário", weekly: "semanal", weekdays: "dias úteis", monthly: "mensal", yearly: "anual",
+const CADENCE_KEY: Record<string, string> = {
+  daily: "cadence_daily", weekly: "cadence_weekly", weekdays: "cadence_weekdays", monthly: "cadence_monthly", yearly: "cadence_yearly",
 };
-
-const AREA_FULL_LABELS: Record<string, string> = {
-  saude: "Saúde", carreira: "Carreira", financas: "Finanças",
-  relacionamentos: "Relacionamentos", desenvolvimento: "Mente",
-  familia: "Família", lazer: "Lazer", espiritualidade: "Espiritualidade",
-};
-
-const HINT_RESULTADOS = "💡 Resultados nascem no ciclo do trimestre: crie um resultado (R$, %, x…) e vincule a esta meta para acompanhar o avanço.";
-const HINT_MOTOR = "💡 Hábitos nascem na agenda: adicione um compromisso/tarefa com repetição (diário, semanal…) e vincule a esta meta.";
-const HINT_SEMANA = "💡 Sua semana nasce no planejador: vincule tarefas do plano semanal a esta meta (ou adicione um compromisso/tarefa na agenda).";
 
 const fabItemStyle: React.CSSProperties = {
   width: "100%", display: "flex", alignItems: "center", gap: 12,
@@ -46,6 +37,7 @@ function InfoIcon() {
 
 export function MetasPanel() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [goals, setGoals] = useState<any[]>([]);
   const [visions, setVisions] = useState<AreaVision[]>([]);
   const [cycles, setCycles] = useState<QuarterlyCycle[]>([]);
@@ -206,7 +198,7 @@ export function MetasPanel() {
   };
 
   const deleteVision = async (id: string) => {
-    if (!window.confirm("Excluir esta visão? Essa ação não pode ser desfeita.")) return;
+    if (!window.confirm(t("meta_excluir_visao_confirm"))) return;
     try {
       await fetch(`/api/area-visions?id=${id}`, { method: "DELETE" });
       refresh();
@@ -238,7 +230,7 @@ export function MetasPanel() {
 
   const areasWithGoals = LIFE_AREAS.filter((a) => activeGoals.some((g) => g.area === a));
 
-  if (loading) return <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center", padding: 20 }}>Carregando...</p>;
+  if (loading) return <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center", padding: 20 }}>{t("carregando")}</p>;
 
   return (
     <div style={{ marginBottom: 20 }}>
@@ -269,8 +261,8 @@ export function MetasPanel() {
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
           <span style={{ fontSize: 20 }}>🌳</span>
           <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>Visão 5 anos</p>
-            <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6a657a" }}>O norte que unifica suas metas</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>{t("meta_visao_5anos")}</p>
+            <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6a657a" }}>{t("meta_norte")}</p>
           </div>
           <button type="button" onClick={() => { setVisionArea(""); setVisionDraft(""); setShowVisionModal(true); }}
             style={{
@@ -278,7 +270,7 @@ export function MetasPanel() {
               background: "rgba(124,92,255,0.08)", color: "#A78BFA", fontSize: 11, fontWeight: 600,
               cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
             }}>
-            + Adicionar
+            {t("meta_add")}
           </button>
         </div>
 
@@ -289,7 +281,7 @@ export function MetasPanel() {
               border: "1px dashed rgba(167,139,250,0.3)", background: "transparent",
               color: "#A78BFA", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
             }}>
-            + Escrever minha visão de 5 anos
+            {t("meta_escrever_visao")}
           </button>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
@@ -301,7 +293,7 @@ export function MetasPanel() {
                 <span style={{ fontSize: 14, flexShrink: 0, lineHeight: 1.3 }}>{AREA_CONFIG[v.area as keyof typeof AREA_CONFIG]?.emoji}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#A78BFA", letterSpacing: ".06em", textTransform: "uppercase" }}>
-                    {AREA_FULL_LABELS[v.area]}
+                    {t(AREA_CONFIG[v.area as keyof typeof AREA_CONFIG]?.labelKey)}
                   </span>
                   <span style={{ display: "block", fontSize: 12, color: "#c9c2e0", lineHeight: 1.45, marginTop: 1 }}>{v.statement}</span>
                 </div>
@@ -322,10 +314,10 @@ export function MetasPanel() {
       {/* ── Cascata conectada ────────────────────────────────── */}
       {activeGoals.length === 0 && completedGoals.length === 0 ? (
         <div style={{ textAlign: "center", padding: 32, background: "#1a1530", borderRadius: 18, border: "1px dashed rgba(167,139,250,0.15)" }}>
-          <p style={{ color: "#9e96b5", fontSize: 13, margin: "0 0 12px" }}>Nenhuma meta ainda</p>
+          <p style={{ color: "#9e96b5", fontSize: 13, margin: "0 0 12px" }}>{t("meta_nenhuma")}</p>
           <button type="button" onClick={() => setShowCreate(true)}
             style={{ padding: "8px 16px", borderRadius: 10, border: 0, cursor: "pointer", background: "#7C5CFF", color: "#fff", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
-            + Criar primeira meta
+            {t("meta_criar_primeira")}
           </button>
         </div>
       ) : (
@@ -357,7 +349,7 @@ export function MetasPanel() {
             return (
               <div key={area} style={{ marginBottom: 12 }}>
                 <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "#5a5470" }}>
-                  {conf.emoji} {AREA_FULL_LABELS[area] || AREA_LABELS[area as keyof typeof AREA_LABELS]}
+                  {conf.emoji} {t(AREA_CONFIG[area as keyof typeof AREA_CONFIG]?.labelKey)}
                 </p>
 
                 {areaGoals.map((goal) => {
@@ -392,8 +384,8 @@ export function MetasPanel() {
                               {goal.title}
                             </p>
                             <p style={{ margin: "2px 0 0", fontSize: 10, color: "#9e96b5" }}>
-                              {effective === "avançou" ? "✓ avançou hoje" : effective === "parcial" ? "~ parcial hoje" : effective === "nao" ? "✗ não avançou" : "sem registro hoje"}
-                              {streak >= 1 ? ` · 🔥 ${streak} ${streak === 1 ? "dia" : "dias"}` : ""}
+                              {effective === "avançou" ? t("meta_avancou_hoje") : effective === "parcial" ? t("meta_parcial_hoje") : effective === "nao" ? t("meta_nao_avancou") : t("meta_sem_registro")}
+                              {streak >= 1 ? ` · 🔥 ${streak} ${streak === 1 ? t("an_dia") : t("an_dias")}` : ""}
                             </p>
                           </div>
                           {isOpen ? <ChevronDown size={16} color="#9e96b5" /> : <ChevronRight size={16} color="#9e96b5" />}
@@ -405,7 +397,7 @@ export function MetasPanel() {
                             {/* Porquê */}
                             {goal.why_it_matters ? (
                               <div style={{ padding: "8px 0 6px", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
-                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>Por quê</p>
+                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>{t("meta_porque")}</p>
                                 <p style={{ margin: "3px 0 0", fontSize: 12, color: "#9e96b5", fontStyle: "italic", lineHeight: 1.45 }}>
                                   “{goal.why_it_matters}”
                                 </p>
@@ -416,20 +408,20 @@ export function MetasPanel() {
                             <div style={{ padding: "8px 0 6px", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>
-                                  📊 Resultados do trimestre {krPct != null ? `· ${krPct}%` : ""}
+                                  📊 {t("okr_resultados_trimestre")} {krPct != null ? `· ${krPct}%` : ""}
                                 </p>
                                 {krList.length > 0 && (
-                                  <button type="button" aria-label="O que é isso?" onClick={() => toggleInfo(`${goal.id}:kr`)} style={{ background: "none", border: 0, padding: 0, cursor: "pointer", display: "inline-flex" }}>
+                                  <button type="button" aria-label={t("meta_o_que_e")} onClick={() => toggleInfo(`${goal.id}:kr`)} style={{ background: "none", border: 0, padding: 0, cursor: "pointer", display: "inline-flex" }}>
                                     <InfoIcon />
                                   </button>
                                 )}
                               </div>
                               {krList.length === 0 ? (
-                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{HINT_RESULTADOS}</p>
+                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{t("meta_hint_resultados")}</p>
                               ) : (
                                 <>
                                   {infoOpen.has(`${goal.id}:kr`) && (
-                                    <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{HINT_RESULTADOS}</p>
+                                    <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{t("meta_hint_resultados")}</p>
                                   )}
                                   {krList.map((kr) => {
                                   const pct = kr.target > 0 ? Math.min(100, Math.round((kr.current / kr.target) * 100)) : 0;
@@ -452,23 +444,23 @@ export function MetasPanel() {
                             {/* Motor (hábitos recorrentes) */}
                             <div style={{ padding: "8px 0 6px", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>🔁 Motor (hábitos)</p>
+                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>{t("meta_motor")}</p>
                                 {motorList.length > 0 && (
-                                  <button type="button" aria-label="O que é isso?" onClick={() => toggleInfo(`${goal.id}:motor`)} style={{ background: "none", border: 0, padding: 0, cursor: "pointer", display: "inline-flex" }}>
+                                  <button type="button" aria-label={t("meta_o_que_e")} onClick={() => toggleInfo(`${goal.id}:motor`)} style={{ background: "none", border: 0, padding: 0, cursor: "pointer", display: "inline-flex" }}>
                                     <InfoIcon />
                                   </button>
                                 )}
                               </div>
                               {motorList.length === 0 ? (
-                                <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{HINT_MOTOR}</p>
+                                <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{t("meta_hint_motor")}</p>
                               ) : (
                                 <>
                                   {infoOpen.has(`${goal.id}:motor`) && (
-                                    <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{HINT_MOTOR}</p>
+                                    <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{t("meta_hint_motor")}</p>
                                   )}
                                   {motorList.slice(0, 4).map((m, i) => (
                                     <p key={i} style={{ margin: "3px 0 0", fontSize: 11.5, color: "#c9c2e0" }}>
-                                      🔁 {m.title} <span style={{ color: "#6a657a" }}>· {CADENCE[m.repeat_type] ?? m.repeat_type}</span>
+                                      🔁 {m.title} <span style={{ color: "#6a657a" }}>· {CADENCE_KEY[m.repeat_type] ? t(CADENCE_KEY[m.repeat_type]) : m.repeat_type}</span>
                                     </p>
                                   ))}
                                 </>
@@ -478,19 +470,19 @@ export function MetasPanel() {
                             {/* Semana atual */}
                             <div style={{ padding: "8px 0 6px" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>📅 Semana</p>
+                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>{t("meta_semana")}</p>
                                 {(wkTasks.length > 0 || wkFocus.length > 0) && (
-                                  <button type="button" aria-label="O que é isso?" onClick={() => toggleInfo(`${goal.id}:semana`)} style={{ background: "none", border: 0, padding: 0, cursor: "pointer", display: "inline-flex" }}>
+                                  <button type="button" aria-label={t("meta_o_que_e")} onClick={() => toggleInfo(`${goal.id}:semana`)} style={{ background: "none", border: 0, padding: 0, cursor: "pointer", display: "inline-flex" }}>
                                     <InfoIcon />
                                   </button>
                                 )}
                               </div>
                               {wkTasks.length === 0 && wkFocus.length === 0 ? (
-                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{HINT_SEMANA}</p>
+                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{t("meta_hint_semana")}</p>
                               ) : (
                                 <>
                                   {infoOpen.has(`${goal.id}:semana`) && (
-                                    <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{HINT_SEMANA}</p>
+                                    <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.55 }}>{t("meta_hint_semana")}</p>
                                   )}
                                   {wkFocus.slice(0, 2).map((f, i) => (
                                     <p key={i} style={{ margin: "3px 0 0", fontSize: 11.5, color: "#e0d6ff", fontWeight: 600 }}>🎯 {f}</p>
@@ -511,14 +503,14 @@ export function MetasPanel() {
                                   flex: 1, padding: "8px 0", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
                                   background: "rgba(124,92,255,0.06)", color: "#A78BFA", fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
                                 }}>
-                                Editar meta
+                                {t("meta_editar_meta")}
                               </button>
                               <button type="button" onClick={() => router.push("/agenda")}
                                 style={{
                                   flex: 1, padding: "8px 0", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)",
                                   background: "transparent", color: "#9e96b5", fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
                                 }}>
-                                Ver na agenda
+                                {t("meta_ver_agenda")}
                               </button>
                             </div>
                           </div>
@@ -536,7 +528,7 @@ export function MetasPanel() {
       {completedGoals.length > 0 && (
         <div style={{ marginTop: 14 }}>
           <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "#5a5470" }}>
-            Concluídas ({completedGoals.length})
+            {t("meta_concluidas")} ({completedGoals.length})
           </p>
           {(showAllCompleted ? completedGoals : completedGoals.slice(0, 3)).map((goal) => (
             <div key={goal.id} style={{
@@ -545,18 +537,18 @@ export function MetasPanel() {
             }}>
               <span style={{ flex: 1, fontSize: 12, color: "#9e96b5", textDecoration: "line-through" }}>{goal.title}</span>
               <button type="button" onClick={async () => {
-                if (!window.confirm("Arquivar esta meta?")) return;
+                if (!window.confirm(t("meta_arquivar_confirm"))) return;
                 await fetch(`/api/goals/${goal.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "arquivada" }) });
                 refresh();
               }} style={{ background: "none", border: 0, color: "#5a5470", cursor: "pointer", fontSize: 10, fontWeight: 600, fontFamily: "inherit" }}>
-                Arquivar
+                {t("meta_arquivar")}
               </button>
             </div>
           ))}
           {completedGoals.length > 3 && (
             <button type="button" onClick={() => setShowAllCompleted((v) => !v)}
               style={{ width: "100%", padding: "8px 0", borderRadius: 10, border: "1px solid rgba(167,139,250,0.12)", background: "transparent", cursor: "pointer", color: "#9e96b5", fontSize: 11, fontWeight: 600, fontFamily: "inherit" }}>
-              {showAllCompleted ? "Ver menos" : `Ver todas (${completedGoals.length})`}
+              {showAllCompleted ? t("meta_ver_menos") : t("meta_ver_todas", { count: String(completedGoals.length) })}
             </button>
           )}
         </div>
@@ -566,7 +558,7 @@ export function MetasPanel() {
       {goals.filter((g) => g.status === "ativa").length > 0 && (
         <button type="button" onClick={talkToMaya}
           style={{ width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 14, border: "1px solid rgba(167,139,250,0.15)", background: "rgba(124,92,255,0.06)", cursor: "pointer", color: "#A78BFA", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
-          💜 Conversar com Maya sobre uma meta
+          {t("meta_conversar_maya")}
         </button>
       )}
 
@@ -574,7 +566,7 @@ export function MetasPanel() {
       {showMayaPick && (
         <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ width: "100%", maxWidth: 380, maxHeight: "70dvh", overflowY: "auto", background: "#151520", borderRadius: 24, padding: 24, border: "1px solid rgba(167,139,250,0.15)" }}>
-            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>Qual meta?</h3>
+            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>{t("meta_qual_meta")}</h3>
             {goals.filter((g) => g.status === "ativa").map((g) => (
               <button key={g.id} type="button" onClick={() => { setShowMayaPick(false); router.push(`/insights?draft=Quero falar sobre minha meta: ${g.title}`); }}
                 style={{ width: "100%", textAlign: "left", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.15)", background: "#0B0B10", cursor: "pointer", color: "#e0d6ff", fontSize: 13, fontWeight: 600, fontFamily: "inherit", marginBottom: 8 }}>
@@ -582,7 +574,7 @@ export function MetasPanel() {
               </button>
             ))}
             <button type="button" onClick={() => setShowMayaPick(false)}
-              style={{ width: "100%", marginTop: 8, padding: 12, borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
+              style={{ width: "100%", marginTop: 8, padding: 12, borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{t("cancelar")}</button>
           </div>
         </div>
       )}
@@ -594,32 +586,32 @@ export function MetasPanel() {
           display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
         }}>
           <div style={{ width: "100%", maxWidth: 420, maxHeight: "85dvh", overflowY: "auto", background: "#151520", borderRadius: 24, padding: 24, border: "1px solid rgba(167,139,250,0.15)" }}>
-            <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>Nova visão</h3>
-            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#6a657a" }}>Onde você quer estar em 5 anos?</p>
+            <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>{t("meta_nova_visao")}</h3>
+            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#6a657a" }}>{t("meta_onde_5anos")}</p>
 
             <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#6a657a", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 6 }}>
-              Área da vida
+              {t("plan_area_vida")}
             </label>
             <select value={visionArea} onChange={(e) => setVisionArea(e.target.value)}
               style={{ width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box", marginBottom: 14 }}>
-              <option value="" disabled>Escolha uma área…</option>
+              <option value="" disabled>{t("meta_escolha_area")}</option>
               {LIFE_AREAS.map((a) => (
-                <option key={a} value={a}>{AREA_CONFIG[a as keyof typeof AREA_CONFIG]?.emoji} {AREA_FULL_LABELS[a]}</option>
+                <option key={a} value={a}>{AREA_CONFIG[a as keyof typeof AREA_CONFIG]?.emoji} {t(AREA_CONFIG[a as keyof typeof AREA_CONFIG]?.labelKey)}</option>
               ))}
             </select>
 
             <textarea value={visionDraft} onChange={(e) => setVisionDraft(e.target.value)} rows={6} autoFocus
-              placeholder="Descreva sua visão de 5 anos para esta área..."
+              placeholder={t("meta_descreva_visao")}
               style={{ width: "100%", padding: "14px", borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none", resize: "vertical", boxSizing: "border-box", lineHeight: 1.6 }} />
 
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
               <button type="button" onClick={() => setShowVisionModal(false)}
                 style={{ flex: 1, padding: "14px 0", borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                Cancelar
+                {t("cancelar")}
               </button>
               <button type="button" onClick={saveVision} disabled={savingVision || !visionArea || !visionDraft.trim()}
                 style={{ flex: 2, padding: "14px 0", borderRadius: 14, border: 0, background: (!visionArea || !visionDraft.trim()) ? "#1e1840" : "#7C5CFF", color: (!visionArea || !visionDraft.trim()) ? "#9e96b5" : "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: savingVision ? 0.7 : 1 }}>
-                Salvar visão
+                {t("meta_salvar_visao")}
               </button>
             </div>
           </div>
@@ -640,22 +632,22 @@ export function MetasPanel() {
               <button type="button" onClick={() => { setFabMenuOpen(false); setShowCreate(true); }} style={fabItemStyle}>
                 <span style={{ fontSize: 22, flexShrink: 0 }}>🎯</span>
                 <span style={{ flex: 1, textAlign: "left" }}>
-                  <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>Meta anual</span>
-                  <span style={{ display: "block", fontSize: 11, color: "#6a657a" }}>Um objetivo grande para o ano</span>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>{t("meta_anual")}</span>
+                  <span style={{ display: "block", fontSize: 11, color: "#6a657a" }}>{t("meta_anual_desc")}</span>
                 </span>
               </button>
               <button type="button" onClick={() => { setFabMenuOpen(false); setVisionArea(""); setVisionDraft(""); setShowVisionModal(true); }} style={fabItemStyle}>
                 <span style={{ fontSize: 22, flexShrink: 0 }}>🌳</span>
                 <span style={{ flex: 1, textAlign: "left" }}>
-                  <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>Visão 5 anos</span>
-                  <span style={{ display: "block", fontSize: 11, color: "#6a657a" }}>Onde você quer estar no futuro</span>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>{t("meta_visao_5anos")}</span>
+                  <span style={{ display: "block", fontSize: 11, color: "#6a657a" }}>{t("meta_visao_desc")}</span>
                 </span>
               </button>
               <button type="button" onClick={() => { setFabMenuOpen(false); setCycleCreateTrigger((n) => n + 1); }} style={fabItemStyle}>
                 <span style={{ fontSize: 22, flexShrink: 0 }}>📊</span>
                 <span style={{ flex: 1, textAlign: "left" }}>
-                  <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>Resultados do trimestre</span>
-                  <span style={{ display: "block", fontSize: 11, color: "#6a657a" }}>Ciclo e resultados mensuráveis</span>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>{t("okr_resultados_trimestre")}</span>
+                  <span style={{ display: "block", fontSize: 11, color: "#6a657a" }}>{t("meta_ciclo_desc")}</span>
                 </span>
               </button>
             </div>
