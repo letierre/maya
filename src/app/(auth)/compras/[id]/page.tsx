@@ -8,6 +8,7 @@ import {
   ArrowLeft, Plus, X, Trash2, CheckSquare, Square, Minus, GripVertical, Pencil, Star, ChevronDown,
 } from "lucide-react";
 import type { ShoppingItem, ShoppingList } from "@/types";
+import { useTranslation } from "@/lib/useTranslation";
 
 const MUTED = "#9e96b5";
 const BORDER = "rgba(167,139,250,0.15)";
@@ -31,6 +32,7 @@ export default function ComprasListaPage() {
   const params = useParams();
   const router = useRouter();
   const listId = params.id as string;
+  const { t } = useTranslation();
 
   const [list, setList] = useState<ShoppingList | null>(null);
   const [items, setItems] = useState<ShoppingItem[]>([]);
@@ -222,7 +224,7 @@ export default function ComprasListaPage() {
       await loadItems();
       nameRef.current?.focus();
     } catch {
-      toast.error("Erro ao adicionar");
+      toast.error(t("cp_erro_adicionar"));
     } finally {
       setAdding(false);
     }
@@ -259,7 +261,7 @@ export default function ComprasListaPage() {
       if (!res.ok) throw new Error();
       invalidateFetchCache("/api/shopping-list");
     } catch {
-      toast.error("Erro ao remover");
+      toast.error(t("cp_erro_remover"));
       loadItems();
     }
   };
@@ -282,7 +284,7 @@ export default function ComprasListaPage() {
       }
     }
     if (failed) {
-      toast.error("Erro ao desmarcar alguns itens");
+      toast.error(t("cp_erro_desmarcar"));
       loadItems();
     }
   };
@@ -314,10 +316,10 @@ export default function ComprasListaPage() {
     }
     invalidateFetchCache("/api/shopping-list");
     if (failed) {
-      toast.error("Erro ao remover alguns itens");
+      toast.error(t("cp_erro_remover_alguns"));
       loadItems();
     } else {
-      toast.success(`${toDelete.length} item(ns) removido(s)`);
+      toast.success(`${toDelete.length} ${t("cp_itens_removidos")}`);
     }
   };
   const exitSelection = () => { setSelectionMode(false); setSelectedIds(new Set()); };
@@ -356,7 +358,7 @@ export default function ComprasListaPage() {
       invalidateFetchCache("/api/shopping-list");
       await loadItems();
     } catch {
-      toast.error("Erro ao salvar");
+      toast.error(t("cp_erro_salvar"));
     } finally {
       setSavingEdit(false);
     }
@@ -378,23 +380,23 @@ export default function ComprasListaPage() {
       invalidateFetchCache("/api/shopping-lists");
       await loadList();
     } catch {
-      toast.error("Erro ao salvar lista");
+      toast.error(t("cp_erro_salvar_lista"));
     } finally {
       setSavingMeta(false);
     }
   };
 
   const deleteList = async () => {
-    if (!confirm(`Excluir a lista "${list?.name}" e todos os seus itens?`)) return;
+    if (!confirm(t("cp_excluir_lista_confirm", { name: list?.name || "" }))) return;
     try {
       const res = await fetch(`/api/shopping-lists/${listId}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       invalidateFetchCache("/api/shopping-lists");
       invalidateFetchCache("/api/shopping-list");
-      toast.success("Lista excluída");
+      toast.success(t("cp_lista_excluida"));
       router.push("/compras");
     } catch {
-      toast.error("Erro ao excluir lista");
+      toast.error(t("cp_erro_excluir_lista"));
     }
   };
 
@@ -426,21 +428,21 @@ export default function ComprasListaPage() {
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 className="m-0 text-[24px] font-bold tracking-tight leading-[1.1]" style={{ color: FOREGROUND }}>
-              {list ? `${list.emoji} ${list.name}` : "Carregando..."}
+              {list ? `${list.emoji} ${list.name}` : t("cp_carregando")}
             </h1>
             {list && (
               <p className="m-0 mt-0.5 text-xs" style={{ color: MUTED }}>
-                {uncheckedCount} pendente{uncheckedCount !== 1 ? "s" : ""} · {checkedCount} concluído{checkedCount !== 1 ? "s" : ""}
+                {uncheckedCount} {uncheckedCount !== 1 ? t("cp_pendentes") : t("cp_pendente")} · {checkedCount} {checkedCount !== 1 ? t("cp_concluidos") : t("cp_concluido")}
               </p>
             )}
           </div>
           <button type="button" onClick={() => setShowMeta(true)}
             style={{ padding: "8px 12px", borderRadius: 10, background: "transparent", border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer", color: "#A78BFA", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
-            Editar
+            {t("editar")}
           </button>
           <button type="button" onClick={deleteList}
             style={{ padding: "8px 12px", borderRadius: 10, background: "transparent", border: "1px solid rgba(255,77,77,0.25)", cursor: "pointer", color: "#FF4D4D", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
-            Excluir
+            {t("cp_excluir")}
           </button>
         </div>
       </div>
@@ -454,7 +456,7 @@ export default function ComprasListaPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            placeholder="O que você precisa comprar?"
+            placeholder={t("cp_adicionar_placeholder")}
             style={{ flex: 1, height: 44, borderRadius: 12, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 14, fontFamily: "inherit", padding: "0 14px", outline: "none", boxSizing: "border-box" }}
           />
           <button type="button" onClick={handleAdd} disabled={adding || !name.trim()}
@@ -466,22 +468,22 @@ export default function ComprasListaPage() {
         <button type="button" onClick={() => setExpanded(!expanded)}
           style={{ background: "none", border: 0, cursor: "pointer", color: MUTED, fontSize: 12, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4, marginTop: 6, padding: 0 }}>
           <ChevronDown size={14} style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
-          Detalhes
+          {t("cp_detalhes")}
         </button>
 
         {expanded && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
             <div style={{ display: "flex", gap: 8 }}>
-              <input type="text" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Quantidade (ex.: 2x, 1kg)"
+              <input type="text" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder={t("cp_quantidade_placeholder")}
                 style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
-              <input type="text" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Preço (R$)"
+              <input type="text" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t("cp_preco")}
                 style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
             </div>
-            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nota (marca, cor, link...)"
+            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("cp_nota_placeholder")}
               style={{ height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
             <button type="button" onClick={() => setPriority(!priority)}
               style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, color: priority ? "#fbbf24" : MUTED, padding: 0 }}>
-              <Star size={15} fill={priority ? "#fbbf24" : "none"} /> Prioritário
+              <Star size={15} fill={priority ? "#fbbf24" : "none"} /> {t("cp_prioritario")}
             </button>
           </div>
         )}
@@ -490,30 +492,30 @@ export default function ComprasListaPage() {
       {/* Toolbar */}
       {!loading && items.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 20px 8px", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, color: MUTED }}>{uncheckedCount} pendente{uncheckedCount !== 1 ? "s" : ""}{checkedCount > 0 && ` · ${checkedCount} concluído${checkedCount > 1 ? "s" : ""}`}</span>
+          <span style={{ fontSize: 11, color: MUTED }}>{uncheckedCount} {uncheckedCount !== 1 ? t("cp_pendentes") : t("cp_pendente")}{checkedCount > 0 && ` · ${checkedCount} ${checkedCount > 1 ? t("cp_concluidos") : t("cp_concluido")}`}</span>
           <div style={{ display: "flex", gap: 6 }}>
             {!selectionMode ? (
               <>
                 <button type="button" onClick={() => setSelectionMode(true)} style={{ background: "none", border: 0, cursor: "pointer", fontSize: 11, color: MUTED, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  <CheckSquare size={12} />Selecionar
+                  <CheckSquare size={12} />{t("cp_selecionar")}
                 </button>
                 {checkedCount > 0 && (
                   <button type="button" onClick={handleClearChecked} style={{ background: "none", border: 0, cursor: "pointer", fontSize: 11, color: MUTED, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    <Minus size={12} />Limpar concluídos
+                    <Minus size={12} />{t("cp_limpar_concluidos")}
                   </button>
                 )}
               </>
             ) : (
               <>
                 <button type="button" onClick={allSelected ? deselectAll : selectAll} style={{ background: "none", border: 0, cursor: "pointer", fontSize: 11, color: MUTED, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  <Square size={12} />{allSelected ? "Desmarcar todos" : "Selecionar todos"}
+                  <Square size={12} />{allSelected ? t("cp_desmarcar_todos") : t("cp_selecionar_todos")}
                 </button>
                 {selectedIds.size > 0 && (
                   <button type="button" onClick={deleteSelected} style={{ background: "none", border: 0, cursor: "pointer", fontSize: 11, color: "oklch(0.55 0.18 15)", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600 }}>
-                    <Trash2 size={12} />Excluir ({selectedIds.size})
+                    <Trash2 size={12} />{t("cp_excluir")} ({selectedIds.size})
                   </button>
                 )}
-                <button type="button" onClick={exitSelection} style={{ background: "none", border: 0, cursor: "pointer", fontSize: 11, color: "#A78BFA", fontFamily: "inherit", fontWeight: 600 }}>Cancelar</button>
+                <button type="button" onClick={exitSelection} style={{ background: "none", border: 0, cursor: "pointer", fontSize: 11, color: "#A78BFA", fontFamily: "inherit", fontWeight: 600 }}>{t("cancelar")}</button>
               </>
             )}
           </div>
@@ -524,12 +526,12 @@ export default function ComprasListaPage() {
       <div ref={listRef} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}
         style={{ flex: 1, padding: "0 20px", touchAction: "none" }}>
         {loading ? (
-          <p style={{ textAlign: "center", color: MUTED, fontSize: 13, padding: "24px 0" }}>Carregando...</p>
+          <p style={{ textAlign: "center", color: MUTED, fontSize: 13, padding: "24px 0" }}>{t("cp_carregando")}</p>
         ) : items.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 40 }}>🛒</span>
-            <p style={{ fontWeight: 500, color: FOREGROUND, fontSize: 14, margin: 0 }}>Lista vazia</p>
-            <p style={{ fontSize: 12, color: MUTED, lineHeight: 1.5, margin: 0 }}>Adicione o primeiro item acima.</p>
+            <p style={{ fontWeight: 500, color: FOREGROUND, fontSize: 14, margin: 0 }}>{t("cp_lista_vazia")}</p>
+            <p style={{ fontSize: 12, color: MUTED, lineHeight: 1.5, margin: 0 }}>{t("cp_lista_vazia_sub")}</p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: ITEM_GAP }}>
@@ -653,7 +655,7 @@ export default function ComprasListaPage() {
       {/* Footer — total */}
       {!loading && items.length > 0 && (
         <div style={{ margin: "12px 20px 0", padding: "12px 16px", borderRadius: 14, background: "#1a1530", border: "1px solid rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 12, color: MUTED }}>Total estimado ({uncheckedCount} pendente{uncheckedCount !== 1 ? "s" : ""})</span>
+          <span style={{ fontSize: 12, color: MUTED }}>{t("cp_total_estimado")} ({uncheckedCount} {uncheckedCount !== 1 ? t("cp_pendentes") : t("cp_pendente")})</span>
           <span style={{ fontSize: 15, fontWeight: 700, color: "#5EEAD4" }}>{fmtBRL(totalEstimated)}</span>
         </div>
       )}
@@ -665,28 +667,28 @@ export default function ComprasListaPage() {
           <div onClick={(e) => e.stopPropagation()}
             style={{ width: "100%", maxWidth: 480, background: "#151520", borderRadius: "24px 24px 0 0", padding: "20px 20px max(24px, env(safe-area-inset-bottom))", border: "1px solid rgba(167,139,250,0.2)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <span style={{ fontSize: 16, fontWeight: 700, color: FOREGROUND }}>Editar item</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: FOREGROUND }}>{t("cp_editar_item")}</span>
               <button type="button" onClick={() => setEditing(null)} style={{ background: "none", border: 0, color: MUTED, fontSize: 20, cursor: "pointer", padding: "4px 8px" }}>
                 <X size={18} />
               </button>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Item"
+              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder={t("cp_item")}
                 style={inputStyle} />
               <div style={{ display: "flex", gap: 8 }}>
-                <input type="text" value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} placeholder="Quantidade" style={{ ...inputStyle, flex: 1 }} />
-                <input type="text" inputMode="decimal" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} placeholder="Preço (R$)" style={{ ...inputStyle, flex: 1 }} />
+                <input type="text" value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} placeholder={t("cp_quantidade")} style={{ ...inputStyle, flex: 1 }} />
+                <input type="text" inputMode="decimal" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} placeholder={t("cp_preco")} style={{ ...inputStyle, flex: 1 }} />
               </div>
-              <input type="text" value={editNote} onChange={(e) => setEditNote(e.target.value)} placeholder="Nota" style={inputStyle} />
+              <input type="text" value={editNote} onChange={(e) => setEditNote(e.target.value)} placeholder={t("cp_nota")} style={inputStyle} />
               <button type="button" onClick={() => setEditPriority(!editPriority)}
                 style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14, color: editPriority ? "#fbbf24" : MUTED, padding: 0 }}>
-                <Star size={16} fill={editPriority ? "#fbbf24" : "none"} /> Prioritário
+                <Star size={16} fill={editPriority ? "#fbbf24" : "none"} /> {t("cp_prioritario")}
               </button>
 
               <button type="button" onClick={saveEdit} disabled={savingEdit || !editName.trim()}
                 style={{ width: "100%", marginTop: 4, padding: "13px", borderRadius: 12, border: 0, background: editName.trim() ? PURPLE_HEX : "#1e1840", color: "#fff", fontSize: 14, fontWeight: 700, cursor: editName.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-                {savingEdit ? "Salvando..." : "Salvar"}
+                {savingEdit ? t("salvando") : t("salvar")}
               </button>
             </div>
           </div>
@@ -700,7 +702,7 @@ export default function ComprasListaPage() {
           <div onClick={(e) => e.stopPropagation()}
             style={{ width: "100%", maxWidth: 480, background: "#151520", borderRadius: "24px 24px 0 0", padding: "20px 20px max(24px, env(safe-area-inset-bottom))", border: "1px solid rgba(167,139,250,0.2)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <span style={{ fontSize: 16, fontWeight: 700, color: FOREGROUND }}>Editar lista</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: FOREGROUND }}>{t("cp_editar_lista")}</span>
               <button type="button" onClick={() => setShowMeta(false)} style={{ background: "none", border: 0, color: MUTED, fontSize: 20, cursor: "pointer", padding: "4px 8px" }}>
                 <X size={18} />
               </button>
@@ -715,11 +717,11 @@ export default function ComprasListaPage() {
               ))}
             </div>
 
-            <input type="text" value={metaName} onChange={(e) => setMetaName(e.target.value)} placeholder="Nome da lista" style={inputStyle} />
+            <input type="text" value={metaName} onChange={(e) => setMetaName(e.target.value)} placeholder={t("cp_nome_lista")} style={inputStyle} />
 
             <button type="button" onClick={saveMeta} disabled={savingMeta || !metaName.trim()}
               style={{ width: "100%", marginTop: 12, padding: "13px", borderRadius: 12, border: 0, background: metaName.trim() ? PURPLE_HEX : "#1e1840", color: "#fff", fontSize: 14, fontWeight: 700, cursor: metaName.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-              {savingMeta ? "Salvando..." : "Salvar lista"}
+              {savingMeta ? t("salvando") : t("cp_salvar_lista")}
             </button>
           </div>
         </div>

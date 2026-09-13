@@ -6,6 +6,7 @@ import { cachedFetch, invalidateFetchCache } from "@/lib/fetch-cache";
 import { toast } from "sonner";
 import { Plus, X, ShoppingCart } from "lucide-react";
 import type { ShoppingItem, ShoppingList } from "@/types";
+import { useTranslation } from "@/lib/useTranslation";
 
 const MUTED = "#9e96b5";
 const BORDER = "rgba(167,139,250,0.15)";
@@ -18,6 +19,7 @@ const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", cur
 
 export default function ComprasPage() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [lists, setLists] = useState<ShoppingList[]>([]);
   const [items, setItems] = useState<ShoppingItem[]>([]);
@@ -79,7 +81,7 @@ export default function ComprasPage() {
       invalidateFetchCache("/api/shopping-lists");
       await load();
     } catch {
-      toast.error("Erro ao criar lista");
+      toast.error(t("cp_erro_criar_lista"));
     } finally {
       setCreating(false);
     }
@@ -100,10 +102,10 @@ export default function ComprasPage() {
       <div className="px-6 pt-6 pb-2">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Suas listas</p>
-            <h1 className="mt-1 text-[36px] font-bold tracking-tight leading-[1.05]">Compras</h1>
+            <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{t("cp_suas_listas")}</p>
+            <h1 className="mt-1 text-[36px] font-bold tracking-tight leading-[1.05]">{t("cp_titulo")}</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              {loading ? "..." : `${lists.length} ${lists.length === 1 ? "lista" : "listas"}`}
+              {loading ? "..." : `${lists.length} ${lists.length === 1 ? t("cp_lista") : t("cp_listas")}`}
             </p>
           </div>
         </div>
@@ -113,11 +115,11 @@ export default function ComprasPage() {
       {!loading && lists.length === 0 && (
         <div className="px-8 pt-14 pb-20 text-center">
           <div className="text-5xl mb-4">🛒</div>
-          <h2 className="text-lg font-bold mb-2">Nenhuma lista ainda</h2>
+          <h2 className="text-lg font-bold mb-2">{t("cp_nenhuma_lista")}</h2>
           <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-            Crie listas para o mercado, a casa, móveis ou o que você precisar comprar.
+            {t("cp_nenhuma_lista_sub")}
           </p>
-          <p className="text-xs text-muted-foreground mt-6">Toque no <strong>+</strong> abaixo pra começar</p>
+          <p className="text-xs text-muted-foreground mt-6">{t("cp_toque_mais_a")} <strong>+</strong> {t("cp_toque_mais_b")}</p>
         </div>
       )}
 
@@ -152,7 +154,7 @@ export default function ComprasPage() {
                     <div style={{ width: `${pct}%`, height: "100%", background: PURPLE_HEX }} />
                   </div>
                   <span style={{ fontSize: 11, color: MUTED, whiteSpace: "nowrap" }}>
-                    {s.pending} pendente{s.pending !== 1 ? "s" : ""}
+                    {s.pending} {s.pending !== 1 ? t("cp_pendentes") : t("cp_pendente")}
                     {s.done > 0 && ` · ${s.done} ✓`}
                   </span>
                 </div>
@@ -178,7 +180,7 @@ export default function ComprasPage() {
             display: "flex", alignItems: "center", justifyContent: "center",
             boxShadow: "0 4px 20px rgba(124,92,255,0.4)",
           }}
-          aria-label="Nova lista"
+          aria-label={t("cp_nova_lista")}
         >
           <Plus size={24} color="#fff" />
         </button>
@@ -202,7 +204,7 @@ export default function ComprasPage() {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <span style={{ fontSize: 16, fontWeight: 700, color: FOREGROUND }}>Nova lista</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: FOREGROUND }}>{t("cp_nova_lista")}</span>
               <button type="button" onClick={() => setShowNew(false)}
                 style={{ background: "none", border: 0, color: MUTED, fontSize: 20, cursor: "pointer", padding: "4px 8px" }}>
                 <X size={18} />
@@ -233,7 +235,7 @@ export default function ComprasPage() {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && createList()}
-              placeholder="Nome da lista (ex.: Mercado, Casa nova...)"
+              placeholder={t("cp_nome_lista_placeholder")}
               autoFocus
               style={{
                 width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12,
@@ -252,7 +254,7 @@ export default function ComprasPage() {
                 fontSize: 14, fontWeight: 700, cursor: newName.trim() ? "pointer" : "not-allowed", fontFamily: "inherit",
               }}
             >
-              {creating ? "Criando..." : "Salvar lista"}
+              {creating ? t("cp_criando") : t("cp_salvar_lista")}
             </button>
           </div>
         </div>
