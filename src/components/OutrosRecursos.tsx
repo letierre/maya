@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cachedFetch, safeCachedFetch } from "@/lib/fetch-cache";
 import { calculateStreak } from "@/lib/utils";
+import { useTranslation } from "@/lib/useTranslation";
 
 interface RunningSession {
   id: string;
@@ -112,6 +113,7 @@ function ResourceCard({
 // ── Seção ──────────────────────────────────────────────────────
 
 export function OutrosRecursos() {
+  const { t } = useTranslation();
   const [runPreview, setRunPreview] = useState<string | null>(null);
   const [runSub, setRunSub] = useState("");
   const [runReady, setRunReady] = useState(false);
@@ -141,8 +143,8 @@ export function OutrosRecursos() {
           setRunPreview(`${(s.distance_meters / 1000).toFixed(2)} km`);
           setRunSub(`${formatDuration(s.duration_seconds)} · ${formatPace(s.avg_pace || 0)}`);
         } else {
-          setRunPreview("Comece a correr");
-          setRunSub("Rastreie com GPS");
+          setRunPreview(t("or_comece_correr"));
+          setRunSub(t("or_rastreie_gps"));
         }
       })
       .catch(() => {})
@@ -159,11 +161,11 @@ export function OutrosRecursos() {
         const streak = calculateStreak(dates);
 
         if (lendo > 0) {
-          setReadPreview(`${lendo} livro${lendo !== 1 ? "s" : ""} em leitura`);
-          setReadSub(streak > 0 ? `🔥 ${streak} dia${streak !== 1 ? "s" : ""} seguidos` : "Comece hoje");
+          setReadPreview(lendo === 1 ? t("or_livro_em_leitura", { n: String(lendo) }) : t("or_livros_em_leitura", { n: String(lendo) }));
+          setReadSub(streak > 0 ? (streak === 1 ? t("or_dia_seguido", { n: String(streak) }) : t("or_dias_seguidos", { n: String(streak) })) : t("or_comece_hoje"));
         } else {
-          setReadPreview("Monte sua estante");
-          setReadSub("Adicione um livro");
+          setReadPreview(t("or_monte_estante"));
+          setReadSub(t("or_adicione_livro"));
         }
       })
       .catch(() => {})
@@ -174,11 +176,11 @@ export function OutrosRecursos() {
       .then((data) => {
         const count = (data.porques ?? []).length;
         if (count > 0) {
-          setPorquePreview(`${count} porquê${count !== 1 ? "s" : ""} escritos`);
-          setPorqueSub("O que te move");
+          setPorquePreview(count === 1 ? t("or_porque_escrito", { n: String(count) }) : t("or_porques_escritos", { n: String(count) }));
+          setPorqueSub(t("or_o_que_move"));
         } else {
-          setPorquePreview("Descubra seus porquês");
-          setPorqueSub("O que te move");
+          setPorquePreview(t("or_descubra_porques"));
+          setPorqueSub(t("or_o_que_move"));
         }
       })
       .catch(() => {})
@@ -188,8 +190,8 @@ export function OutrosRecursos() {
     safeCachedFetch<{ date: string }[]>("/api/check-ins")
       .then((list) => {
         const count = (list ?? []).length;
-        setHistPreview(count > 0 ? `${count} check-in${count !== 1 ? "s" : ""}` : "Revise sua jornada");
-        setHistSub(count > 0 ? "Seu histórico completo" : "Comece hoje");
+        setHistPreview(count > 0 ? t("or_checkins", { n: String(count) }) : t("or_revise_jornada"));
+        setHistSub(count > 0 ? t("or_historico_completo") : t("or_comece_hoje"));
       })
       .catch(() => {})
       .finally(() => setHistReady(true));
@@ -203,11 +205,11 @@ export function OutrosRecursos() {
         const listCount = (lists ?? []).length;
         const pending = (items ?? []).filter((i) => !i.checked).length;
         if (listCount > 0) {
-          setComprasPreview(`${listCount} lista${listCount !== 1 ? "s" : ""}`);
-          setComprasSub(pending > 0 ? `${pending} pendente${pending !== 1 ? "s" : ""}` : "Tudo em dia");
+          setComprasPreview(listCount === 1 ? t("or_lista", { n: String(listCount) }) : t("or_listas", { n: String(listCount) }));
+          setComprasSub(pending > 0 ? (pending === 1 ? t("or_pendente", { n: String(pending) }) : t("or_pendentes", { n: String(pending) })) : t("or_tudo_em_dia"));
         } else {
-          setComprasPreview("Crie suas listas");
-          setComprasSub("Mercado, casa, móveis");
+          setComprasPreview(t("or_crie_listas"));
+          setComprasSub(t("or_mercado_casa"));
         }
       })
       .catch(() => {})
@@ -220,13 +222,13 @@ export function OutrosRecursos() {
         className="m-0 mb-2.5 text-[10px] font-bold tracking-[.12em] uppercase"
         style={{ color: "oklch(0.65 0.12 270)", paddingLeft: 4 }}
       >
-        Outros recursos
+        {t("or_titulo")}
       </p>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         <ResourceCard
           emoji="🏃"
-          label="Corrida"
+          label={t("or_lbl_corrida")}
           preview={runPreview}
           sub={runSub}
           href="/corrida"
@@ -235,7 +237,7 @@ export function OutrosRecursos() {
         />
         <ResourceCard
           emoji="📚"
-          label="Leitura"
+          label={t("or_lbl_leitura")}
           preview={readPreview}
           sub={readSub}
           href="/leitura"
@@ -244,7 +246,7 @@ export function OutrosRecursos() {
         />
         <ResourceCard
           emoji="💗"
-          label="Porquês"
+          label={t("or_lbl_porques")}
           preview={porquePreview}
           sub={porqueSub}
           href="/porques"
@@ -253,7 +255,7 @@ export function OutrosRecursos() {
         />
         <ResourceCard
           emoji="📊"
-          label="Histórico"
+          label={t("or_lbl_historico")}
           preview={histPreview}
           sub={histSub}
           href="/historico"
@@ -262,7 +264,7 @@ export function OutrosRecursos() {
         />
         <ResourceCard
           emoji="🛒"
-          label="Compras"
+          label={t("or_lbl_compras")}
           preview={comprasPreview}
           sub={comprasSub}
           href="/compras"

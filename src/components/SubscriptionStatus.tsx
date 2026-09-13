@@ -1,5 +1,6 @@
 "use client";
 import { getLocale } from "@/lib/language";
+import { useTranslation } from "@/lib/useTranslation";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -50,6 +51,7 @@ const ACCENT_2 = "#A78BFA";
  */
 export function TrialBanner() {
   const { sub, loading } = useSubscription();
+  const { t } = useTranslation();
 
   if (loading || !sub) return null;
   if (sub.status !== "trialing" || !sub.trialEndsAt) return null;
@@ -69,10 +71,10 @@ export function TrialBanner() {
     >
       <span style={{ fontSize: 18, lineHeight: 1 }}>⏳</span>
       <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>
-        {left === 1 ? "Último dia de teste grátis" : `${left} dias de teste grátis restantes`}
+        {left === 1 ? t("ss_ultimo_dia") : t("ss_dias_teste", { n: String(left) })}
       </span>
       <span style={{ fontSize: 11, color: "#9e96b5", whiteSpace: "nowrap" }}>
-        até {formatDate(sub.trialEndsAt)}
+        {t("ss_ate", { date: formatDate(sub.trialEndsAt) ?? "" })}
       </span>
     </div>
   );
@@ -85,12 +87,13 @@ export function TrialBanner() {
 export function PlanCard() {
   const { sub, loading } = useSubscription();
   const router = useRouter();
+  const { t } = useTranslation();
 
   if (loading || !sub) {
-    return <p style={{ margin: 0, fontSize: 13, color: "#9e96b5" }}>Carregando plano…</p>;
+    return <p style={{ margin: 0, fontSize: 13, color: "#9e96b5" }}>{t("ss_carregando")}</p>;
   }
 
-  const planLabel = sub.plan === "annual" ? "Anual" : sub.plan === "monthly" ? "Mensal" : null;
+  const planLabel = sub.plan === "annual" ? t("ss_anual") : sub.plan === "monthly" ? t("ss_mensal") : null;
 
   const openPortal = async () => {
     try {
@@ -101,37 +104,38 @@ export function PlanCard() {
   };
 
   let emoji = "🌱";
-  let title = "Sem plano ativo";
+  let title = t("ss_sem_plano");
   let detail: string | null = null;
-  let actionLabel: string | null = "Conhecer planos";
+  let actionLabel: string | null = t("ss_conhecer_planos");
   let onAction = () => router.push("/assinar");
 
   if (sub.status === "trialing") {
     emoji = "⏳";
-    title = "Teste grátis";
+    title = t("ss_teste_gratis");
+    const left = daysLeft(sub.trialEndsAt ?? "");
     detail = sub.trialEndsAt
-      ? `${daysLeft(sub.trialEndsAt)} ${daysLeft(sub.trialEndsAt) === 1 ? "dia restante" : "dias restantes"} · sem cartão`
-      : "Em andamento";
-    actionLabel = "Assinar agora";
+      ? `${left} ${t(left === 1 ? "ss_dia_restante" : "ss_dias_restantes")} · ${t("ss_sem_cartao")}`
+      : t("ss_em_andamento");
+    actionLabel = t("ss_assinar_agora");
     onAction = () => router.push("/assinar");
   } else if (sub.status === "active") {
     emoji = "💜";
-    title = planLabel ? `Plano ${planLabel} ativo` : "Assinatura ativa";
+    title = planLabel ? t("ss_plano_ativo", { label: planLabel }) : t("ss_assinatura_ativa");
     const renew = formatDate(sub.currentPeriodEnd);
-    detail = renew ? `Renova em ${renew}` : "Assinatura ativa";
-    actionLabel = "Gerenciar assinatura";
+    detail = renew ? t("ss_renova_em", { date: renew }) : t("ss_assinatura_ativa");
+    actionLabel = t("ss_gerenciar");
     onAction = openPortal;
   } else if (sub.status === "past_due") {
     emoji = "⚠️";
-    title = "Pagamento pendente";
-    detail = "Atualize seu cartão para não perder o acesso.";
-    actionLabel = "Atualizar pagamento";
+    title = t("ss_pagamento_pendente");
+    detail = t("ss_atualize_cartao");
+    actionLabel = t("ss_atualizar_pagamento");
     onAction = openPortal;
   } else if (sub.status === "canceled") {
     emoji = "🌱";
-    title = "Plano cancelado";
-    detail = "Reative para continuar sua jornada.";
-    actionLabel = "Reativar plano";
+    title = t("ss_plano_cancelado");
+    detail = t("ss_reative");
+    actionLabel = t("ss_reativar_plano");
     onAction = () => router.push("/assinar");
   }
 

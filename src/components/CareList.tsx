@@ -7,9 +7,11 @@ import type { CareSignal } from "@/lib/care-signals";
 import { getLocalDate } from "@/lib/utils";
 import { onCareDataChanged } from "@/lib/care-events";
 import { cachedFetch } from "@/lib/fetch-cache";
+import { useTranslation } from "@/lib/useTranslation";
 
 export function CareList() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [items, setItems] = useState<CareSignal[]>([]);
   const [dismissed, setDismissed] = useState(false);
 
@@ -72,16 +74,16 @@ export function CareList() {
               <p
                 className="m-0 text-[10px] font-bold tracking-[.14em] uppercase text-white/65"
               >
-                Maya sugere
+                {t("plc_maya_sugere")}
               </p>
               <h3 className="m-0 mt-1 text-[16px] font-bold text-white leading-tight tracking-tight">
-                O que cuidar nos próximos dias
+                {t("cl_cuidar_dias")}
               </h3>
             </div>
             <button
               type="button"
               onClick={dismiss}
-              aria-label="Dispensar"
+              aria-label={t("cl_dispensar")}
               className="size-6 rounded-full flex items-center justify-center border-0 cursor-pointer text-white/50 hover:text-white/80"
               style={{ background: "rgba(255,255,255,.1)" }}
             >

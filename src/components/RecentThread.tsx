@@ -2,6 +2,7 @@
 
 import { getMoodLabel, getMoodById } from "@/lib/checkin-moods";
 import { NEGATIVE_MOODS } from "@/lib/dashboard-constants";
+import { useTranslation } from "@/lib/useTranslation";
 
 function formatMood(moodId: string, gender: string): string {
   const chip = getMoodById(moodId);
@@ -26,8 +27,9 @@ interface RecentThreadProps {
 }
 
 export function RecentThread({ days, userGender }: RecentThreadProps) {
+  const { t } = useTranslation();
   const last3 = days.slice(-3).reverse(); // [today, yesterday, 2d ago]
-  const labels = ["Hoje", "Ontem", "Anteontem"];
+  const labels = [t("rt_hoje"), t("rt_ontem"), t("rt_anteontem")];
 
   return (
     <div className="px-3.5 pt-2">
@@ -43,7 +45,7 @@ export function RecentThread({ days, userGender }: RecentThreadProps) {
             className="m-0 text-[10px] font-bold tracking-[.12em] uppercase"
             style={{ color: "#5EEAD4" }}
           >
-            O Fio · últimos dias
+            {t("rt_titulo")}
           </p>
         </div>
 
@@ -134,7 +136,7 @@ export function RecentThread({ days, userGender }: RecentThreadProps) {
         </div>
 
         <p className="m-0 mt-3 text-center text-[10px]" style={{ color: "oklch(0.4 0.03 270)" }}>
-          Deslize para ver mais ↓
+          {t("rt_deslize")}
         </p>
       </div>
     </div>

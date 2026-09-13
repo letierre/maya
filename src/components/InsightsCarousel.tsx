@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
+import { useTranslation } from "@/lib/useTranslation";
 
 interface Slide {
   eyebrow: string;
@@ -14,21 +15,31 @@ interface Slide {
   accent: string;
 }
 
-const SLIDES: Slide[] = [
+interface SlideMeta {
+  eyebrow: string;
+  title: string;
+  body: string;
+  cta: string;
+  ctaHref: string | null;
+  bg: string;
+  accent: string;
+}
+
+const SLIDE_META: SlideMeta[] = [
   {
-    eyebrow: "MAYA DETECTOU",
-    title: "Padrões que você não vê",
-    body: "A Maya cruza seu sono, humor e gastos para revelar conexões ocultas.",
-    cta: "Ver análise",
+    eyebrow: "ic_eyebrow_detectou",
+    title: "ic_title_padroes",
+    body: "ic_body_padroes",
+    cta: "ic_cta_analise",
     ctaHref: "/analise",
     bg: "linear-gradient(135deg,#2D1B69 0%,#1A1035 100%)",
     accent: "oklch(.55 .2 270)",
   },
   {
-    eyebrow: "CONVERSE",
-    title: "Falar com Maya é o centro do app",
-    body: "Ela te conhece. Conte o que está acontecendo.",
-    cta: "Conversar",
+    eyebrow: "ic_eyebrow_converse",
+    title: "ic_title_converse",
+    body: "ic_body_converse",
+    cta: "ic_cta_conversar",
     ctaHref: "/insights",
     bg: "linear-gradient(135deg,#134E4A 0%,#0F2E2C 100%)",
     accent: "oklch(.7 .12 175)",
@@ -51,18 +62,27 @@ function CarouselArtwork({ accent }: { accent: string }) {
 
 export function InsightsCarousel() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [idx, setIdx] = useState(0);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
+  const slides: Slide[] = SLIDE_META.map((s) => ({
+    ...s,
+    eyebrow: t(s.eyebrow),
+    title: t(s.title),
+    body: t(s.body),
+    cta: t(s.cta),
+  }));
+
   // Auto-advance every 8s
   useEffect(() => {
-    const id = setInterval(() => setIdx((i) => (i + 1) % SLIDES.length), 8000);
+    const id = setInterval(() => setIdx((i) => (i + 1) % SLIDE_META.length), 8000);
     return () => clearInterval(id);
   }, []);
 
-  const prev = useCallback(() => setIdx((i) => (i - 1 + SLIDES.length) % SLIDES.length), []);
-  const next = useCallback(() => setIdx((i) => (i + 1) % SLIDES.length), []);
+  const prev = useCallback(() => setIdx((i) => (i - 1 + SLIDE_META.length) % SLIDE_META.length), []);
+  const next = useCallback(() => setIdx((i) => (i + 1) % SLIDE_META.length), []);
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -86,7 +106,7 @@ export function InsightsCarousel() {
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        {SLIDES.map((s, i) => (
+        {slides.map((s, i) => (
           <div
             key={i}
             className="px-[22px] py-5 text-white min-h-[144px] overflow-hidden"
@@ -144,21 +164,21 @@ export function InsightsCarousel() {
           type="button"
           className="absolute left-0 top-0 bottom-0 w-[30%] z-10 cursor-pointer"
           style={{ background: "transparent" }}
-          aria-label="Slide anterior"
+          aria-label={t("ic_slide_anterior")}
           onClick={prev}
         />
         <button
           type="button"
           className="absolute right-0 top-0 bottom-0 w-[30%] z-10 cursor-pointer"
           style={{ background: "transparent" }}
-          aria-label="Próximo slide"
+          aria-label={t("ic_proximo_slide")}
           onClick={next}
         />
       </div>
 
       {/* Dots */}
       <div className="flex justify-center gap-1.5 mt-2">
-        {SLIDES.map((_, i) => (
+        {slides.map((_, i) => (
           <span
             key={i}
             className="h-[5px] rounded-full transition-[width] duration-300"

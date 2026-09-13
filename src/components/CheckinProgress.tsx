@@ -3,25 +3,26 @@
 import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
 import type { CheckIn } from "@/types";
+import { useTranslation } from "@/lib/useTranslation";
 
-const HABIT_CHIP: Record<string, [string, (ci: CheckIn) => string]> = {
-  took_medication: ["💊", () => "Remédios"],
-  talked_to_someone: ["🗣️", () => "Conversa"],
-  meditation_prayer_breathing: ["🧘", () => "Pausa"],
-  meditation: ["🧘", () => "Meditou"],
-  prayer: ["🙏", () => "Orou"],
-  breathing: ["🌬️", () => "Respirou"],
-  creative_activity: ["🎨", () => "Criatividade"],
-  ate_well: ["🍽️", () => "Comeu bem"],
-  bowel_movement: ["🚽", () => "Banheiro"],
-  exercise_walk: ["🏃", () => "Caminhou"],
-  walked: ["🚶", () => "Caminhou"],
-  ran: ["🏃", () => "Correu"],
-  strength_training: ["🏋️", () => "Musculação"],
-  read: ["📖", () => "Leu"],
-  slept_well: ["😴", () => "Sono"],
-  did_something_enjoyable: ["😊", () => "Gostou"],
-  worked_on_goals: ["🎯", () => "Metas"],
+const HABIT_CHIP: Record<string, [string, string]> = {
+  took_medication: ["💊", "cp_habit_remedios"],
+  talked_to_someone: ["🗣️", "cp_habit_conversa"],
+  meditation_prayer_breathing: ["🧘", "cp_habit_pausa"],
+  meditation: ["🧘", "cp_habit_meditou"],
+  prayer: ["🙏", "cp_habit_orou"],
+  breathing: ["🌬️", "cp_habit_respirou"],
+  creative_activity: ["🎨", "cp_habit_criatividade"],
+  ate_well: ["🍽️", "cp_habit_comeu_bem"],
+  bowel_movement: ["🚽", "cp_habit_banheiro"],
+  exercise_walk: ["🏃", "cp_habit_caminhou"],
+  walked: ["🚶", "cp_habit_caminhou"],
+  ran: ["🏃", "cp_habit_correu"],
+  strength_training: ["🏋️", "cp_habit_musculacao"],
+  read: ["📖", "cp_habit_leu"],
+  slept_well: ["😴", "cp_habit_sono"],
+  did_something_enjoyable: ["😊", "cp_habit_gostou"],
+  worked_on_goals: ["🎯", "cp_habit_metas"],
 };
 
 interface CheckinProgressProps {
@@ -40,6 +41,7 @@ export function CheckinProgress({
   totalHabits,
 }: CheckinProgressProps) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const waterLabel = (() => {
     const ml = (todayCheckIn.water_cups ?? 0) * 250;
@@ -56,7 +58,7 @@ export function CheckinProgress({
     )
     .map((k) => ({
       emoji: HABIT_CHIP[k]?.[0] ?? "•",
-      value: HABIT_CHIP[k]?.[1]?.(todayCheckIn) ?? k,
+      value: HABIT_CHIP[k]?.[1] ? t(HABIT_CHIP[k][1]) : k,
     }));
 
   return (
@@ -66,7 +68,7 @@ export function CheckinProgress({
           className="m-0 text-[10px] font-bold tracking-[.12em] uppercase"
           style={{ color: "#A78BFA" }}
         >
-          Cuidados de hoje
+          {t("cuidados_de_hoje")}
         </p>
         <span className="text-[11px] font-semibold tabular-nums" style={{ color: "#A78BFA" }}>
           {positivePct}%
@@ -103,7 +105,7 @@ export function CheckinProgress({
           </div>
         </div>
         <p className="m-0 mt-1 text-[10px]" style={{ color: "oklch(.55 .03 270)" }}>
-          {positiveCount} cuidados feitos · {totalHabits - positiveCount} pendentes
+          {t(positiveCount === 1 ? "cp_cuidado_feito" : "cp_cuidados_feitos", { n: String(positiveCount) })} · {t(totalHabits - positiveCount === 1 ? "dash_pendente" : "dash_pendentes", { n: String(totalHabits - positiveCount) })}
         </p>
       </div>
 
@@ -141,7 +143,7 @@ export function CheckinProgress({
         style={{ color: "#A78BFA" }}
       >
         <Pencil className="w-3 h-3" />
-        Editar check-in
+        {t("cp_editar_checkin")}
       </button>
 
       {/* Nitro shimmer keyframes */}

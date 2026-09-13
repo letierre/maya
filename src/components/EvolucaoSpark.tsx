@@ -96,7 +96,7 @@ export function EvolucaoSpark({ data, loading }: EvolucaoSparkProps) {
             className="m-0 text-[10px] font-bold tracking-[.12em] uppercase"
             style={{ color: "#A78BFA" }}
           >
-            Evolução · 14d
+            {t("ev_titulo")}
           </p>
         </div>
 
@@ -110,7 +110,7 @@ export function EvolucaoSpark({ data, loading }: EvolucaoSparkProps) {
                 {sparkAvg.toFixed(1)}
               </span>
               <span className="text-[10.5px]" style={{ color: "oklch(0.55 0.03 270)" }}>
-                média{sparkTrend ? ` · ${sparkTrend}` : ""}
+                {t("ev_media")}{sparkTrend ? ` · ${sparkTrend}` : ""}
               </span>
             </div>
             <div className="mt-2">
@@ -119,7 +119,7 @@ export function EvolucaoSpark({ data, loading }: EvolucaoSparkProps) {
           </>
         ) : (
           <p className="m-0 text-[11px]" style={{ color: "oklch(0.55 0.03 270)" }}>
-            Faça mais check-ins para ver sua evolução
+            {t("ev_sem_dados")}
           </p>
         )}
       </div>

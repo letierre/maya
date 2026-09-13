@@ -58,7 +58,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("checkout") === "success") {
-      toast.success("Assinatura ativa! 🎉 Seu plano já está liberado.");
+      toast.success(t("dash_assinatura_ativa"));
       router.replace("/dashboard");
     }
   }, [router]);
@@ -374,7 +374,7 @@ export default function DashboardPage() {
           className="m-0 mb-2.5 text-[10px] font-bold tracking-[.12em] uppercase"
           style={{ color: "oklch(0.65 0.12 270)", paddingLeft: 4 }}
         >
-          Seus espaços
+          {t("dash_seus_espacos")}
         </p>
         <div className="grid grid-cols-2 gap-2">
           <DiarioPreview loading={loading} />
@@ -403,13 +403,13 @@ export default function DashboardPage() {
             boxShadow: "0 4px 20px oklch(0.55 0.2 270 / 0.35)",
           }}
         >
-          {todayCheckIn ? "Editar check-in de hoje" : "✓ Registrar meu dia"}
+          {todayCheckIn ? t("dash_editar_checkin") : t("dash_registrar_dia")}
         </button>
         <p
           className="text-center m-0 mt-1.5 text-[11px]"
           style={{ color: "oklch(0.55 0.03 270)" }}
         >
-          {todayCheckIn ? "Maya vai conectar os pontos." : "É assim que me atualizo."}
+          {todayCheckIn ? t("dash_conectar_pontos") : t("dash_como_atualizo")}
         </p>
       </div>
 
@@ -436,6 +436,7 @@ export default function DashboardPage() {
 // ── Module preview sub-components (inline — thin wrappers) ─────
 
 function DiarioPreview({ loading }: { loading: boolean }) {
+  const { t } = useTranslation();
   const [preview, setPreview] = useState<string | null>(null);
   const [sub, setSub] = useState<string>("");
   const [ready, setReady] = useState(false);
@@ -448,11 +449,11 @@ function DiarioPreview({ loading }: { loading: boolean }) {
           const today = getLocalDate();
           const isToday = e.date === today;
           const text = e.content?.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
-          setPreview(text ? text.slice(0, 60) + (text.length > 60 ? "…" : "") : e.title || "Entrada do dia");
-          setSub(isToday ? "Hoje" : new Date(e.date + "T12:00:00").toLocaleDateString(getLocale(), { day: "numeric", month: "short" }));
+          setPreview(text ? text.slice(0, 60) + (text.length > 60 ? "…" : "") : e.title || t("dash_entrada_dia"));
+          setSub(isToday ? t("ag_hoje") : new Date(e.date + "T12:00:00").toLocaleDateString(getLocale(), { day: "numeric", month: "short" }));
         } else {
-          setPreview("Escreva seu dia");
-          setSub("Nova entrada");
+          setPreview(t("dash_escreva_dia"));
+          setSub(t("dash_nova_entrada"));
         }
         setReady(true);
       })
@@ -462,7 +463,7 @@ function DiarioPreview({ loading }: { loading: boolean }) {
   return (
     <ModuloPreviewCard
       emoji="📖"
-      label="Diário"
+      label={t("dash_diario")}
       preview={preview}
       sub={sub}
       href="/diario"
@@ -473,24 +474,25 @@ function DiarioPreview({ loading }: { loading: boolean }) {
 }
 
 function SonoPreview({ loading, recentSleep }: { loading: boolean; recentSleep: SleepLog | null }) {
+  const { t } = useTranslation();
   const hrs = recentSleep?.duration_min
     ? Math.floor((recentSleep.duration_min / 60) * 10) / 10
     : null;
   const q = recentSleep?.quality ?? null;
   const qualityLabel =
     q == null ? null
-    : q >= 5 ? "Ótimo"
-    : q >= 4 ? "Bom"
-    : q >= 3 ? "Ok"
-    : q >= 2 ? "Ruim"
-    : "Péssimo";
+    : q >= 5 ? t("dash_otimo")
+    : q >= 4 ? t("dash_bom")
+    : q >= 3 ? t("dash_ok")
+    : q >= 2 ? t("dash_ruim")
+    : t("dash_pessimo");
 
   return (
     <ModuloPreviewCard
       emoji="😴"
-      label="Sono"
-      preview={hrs ? `${hrs}h dormidas` : "Registre seu sono"}
-      sub={qualityLabel ? `Qualidade: ${qualityLabel}` : "Como dormiu ontem?"}
+      label={t("dash_sono")}
+      preview={hrs ? t("dash_horas_dormidas", { hrs: String(hrs) }) : t("dash_registre_sono")}
+      sub={qualityLabel ? t("dash_qualidade", { q: qualityLabel }) : t("dash_como_dormiu")}
       href="/sono"
       accent="#8b5cf6"
       loading={loading}
@@ -523,14 +525,15 @@ function FinancasPreview({ loading, todaySpending, monthDailyAvg, currency }: {
   monthDailyAvg: number | null;
   currency: string;
 }) {
+  const { t } = useTranslation();
   return (
     <ModuloPreviewCard
       emoji="💰"
-      label="Finanças"
-      preview={todaySpending != null ? `${fmtCurrency(todaySpending, currency)} hoje` : "Sem gastos hoje"}
+      label={t("dash_financas")}
+      preview={todaySpending != null ? t("dash_gasto_hoje", { amount: fmtCurrency(todaySpending, currency) }) : t("dash_sem_gastos")}
       sub={todaySpending != null
-        ? (monthDailyAvg != null ? `Média ${fmtCurrency(monthDailyAvg, currency)}/dia` : "Gastos de hoje")
-        : "Registre suas despesas"}
+        ? (monthDailyAvg != null ? t("dash_media_dia", { amount: fmtCurrency(monthDailyAvg, currency) }) : t("dash_gastos_hoje_sub"))
+        : t("dash_registre_despesas")}
       href="/financas"
       accent="#fbbf24"
       loading={loading}
@@ -539,6 +542,7 @@ function FinancasPreview({ loading, todaySpending, monthDailyAvg, currency }: {
 }
 
 function MetasPreview({ loading }: { loading: boolean }) {
+  const { t } = useTranslation();
   const [preview, setPreview] = useState<string | null>(null);
   const [sub, setSub] = useState<string>("");
   const [ready, setReady] = useState(false);
@@ -554,16 +558,16 @@ function MetasPreview({ loading }: { loading: boolean }) {
               (sum, g) => sum + (g.goal_stages?.filter((s) => s.status === "concluida").length || 0), 0
             );
             const pct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
-            setPreview(`${active.length} meta${active.length !== 1 ? "s" : ""} ativa${active.length !== 1 ? "s" : ""}`);
-            setSub(`${pct}% concluído · ${doneStages}/${totalStages} etapas`);
+            setPreview(active.length === 1 ? t("dash_meta_ativa", { count: String(active.length) }) : t("dash_metas_ativas", { count: String(active.length) }));
+            setSub(t("dash_etapas_concluidas", { pct: String(pct), done: String(doneStages), total: String(totalStages) }));
           } else {
             const done = goals.filter((g) => g.status === "concluida").length;
-            setPreview(done > 0 ? `${done} meta${done !== 1 ? "s" : ""} concluída${done !== 1 ? "s" : ""}` : "Crie sua primeira meta");
-            setSub(done > 0 ? "Todas completas! 🎉" : "Comece agora");
+            setPreview(done > 0 ? (done === 1 ? t("dash_meta_concluida", { count: String(done) }) : t("dash_metas_concluidas", { count: String(done) })) : t("dash_crie_meta"));
+            setSub(done > 0 ? t("dash_todas_completas") : t("dash_comece_agora"));
           }
         } else {
-          setPreview("Crie sua primeira meta");
-          setSub("Comece agora");
+          setPreview(t("dash_crie_meta"));
+          setSub(t("dash_comece_agora"));
         }
         setReady(true);
       })
@@ -573,7 +577,7 @@ function MetasPreview({ loading }: { loading: boolean }) {
   return (
     <ModuloPreviewCard
       emoji="🎯"
-      label="Metas"
+      label={t("dash_metas")}
       preview={preview}
       sub={sub}
       href="/agenda?tab=metas"
@@ -584,15 +588,16 @@ function MetasPreview({ loading }: { loading: boolean }) {
 }
 
 function PlanejamentoPreview({ loading, todayTasks }: { loading: boolean; todayTasks: WeeklyTask[] }) {
+  const { t } = useTranslation();
   const done = todayTasks.filter((t) => t.status === "concluida").length;
   const total = todayTasks.length;
 
   return (
     <ModuloPreviewCard
       emoji="📋"
-      label="Plano"
-      preview={total > 0 ? `${done}/${total} tarefas` : "Sem tarefas hoje"}
-      sub={total > 0 ? (done === total ? "Tudo feito! ✨" : `${total - done} pendentes`) : "Planeje sua semana"}
+      label={t("dash_plano")}
+      preview={total > 0 ? t("dash_tarefas", { done: String(done), total: String(total) }) : t("dash_sem_tarefas_hoje")}
+      sub={total > 0 ? (done === total ? t("dash_tudo_feito") : (total - done === 1 ? t("dash_pendente", { n: String(total - done) }) : t("dash_pendentes", { n: String(total - done) }))) : t("dash_planeje_semana")}
       href="/agenda?tab=semana"
       accent="#7C5CFF"
       loading={loading}
@@ -601,6 +606,7 @@ function PlanejamentoPreview({ loading, todayTasks }: { loading: boolean; todayT
 }
 
 function NutricaoPreview({ loading }: { loading: boolean }) {
+  const { t } = useTranslation();
   const [preview, setPreview] = useState<string | null>(null);
   const [sub, setSub] = useState<string>("");
   const [ready, setReady] = useState(false);
@@ -611,13 +617,13 @@ function NutricaoPreview({ loading }: { loading: boolean }) {
     safeCachedFetch<Array<{ date: string; meal_type: string }>>(`/api/meals?date=${today}&tz=${encodeURIComponent(userTz)}`)
       .then((meals) => {
         const count = meals?.length ?? 0;
-        setPreview(count > 0 ? `${count}/4 refeições` : "Nenhuma refeição");
+        setPreview(count > 0 ? t("dash_refeicoes", { count: String(count) }) : t("dash_nenhuma_refeicao"));
         if (count > 0) {
           const types = new Set(meals!.map((m) => m.meal_type));
           const missing = 4 - types.size;
-          setSub(missing > 0 ? `${missing} refeição pendente` : "Todas registradas! 🎉");
+          setSub(missing > 0 ? (missing === 1 ? t("dash_refeicao_pendente", { n: String(missing) }) : t("dash_refeicoes_pendentes", { n: String(missing) })) : t("dash_todas_registradas"));
         } else {
-          setSub("Registre sua primeira");
+          setSub(t("dash_registre_primeira"));
         }
         setReady(true);
       })
@@ -627,7 +633,7 @@ function NutricaoPreview({ loading }: { loading: boolean }) {
   return (
     <ModuloPreviewCard
       emoji="🥗"
-      label="Nutrição"
+      label={t("dash_nutricao")}
       preview={preview}
       sub={sub}
       href="/nutricao"
