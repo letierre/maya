@@ -56,3 +56,10 @@ export async function callLLM(
   const textBlock = (data.content || []).find((b: any) => b.type === "text");
   return textBlock?.text || "";
 }
+
+/** Linha de prompt que define o idioma da resposta da IA (fallback pt). */
+export function responseLanguageLine(lang?: string | null): string {
+  if (lang === "es") return "Responda sempre em espanhol natural, com acentos e gramática corretos.";
+  if (lang === "en") return "Always respond in natural English, with correct grammar and punctuation.";
+  return "Responda sempre em português brasileiro natural, com acentos e gramática corretos.";
+}

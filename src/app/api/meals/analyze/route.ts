@@ -5,7 +5,15 @@ import { NextResponse } from "next/server";
 import { callLLM, toImageBlock } from "@/lib/llm";
 import type { Macros } from "@/types";
 
-const SYSTEM_JSON = `Você é um analisador nutricional. Retorne APENAS um JSON válido, sem texto adicional.
+function langName(lang: string): string {
+  if (lang === "es") return "espanhol";
+  if (lang === "en") return "inglês";
+  return "português";
+}
+
+function buildSystemJson(lang: string): string {
+  const l = langName(lang);
+  return `Você é um analisador nutricional. Retorne APENAS um JSON válido, sem texto adicional.
 
 Formato exato:
 {
@@ -17,7 +25,7 @@ Formato exato:
     "calorias_kcal": 0
   },
   "classificacao": "equilibrada",
-  "observacao_curta": "breve observação em português",
+  "observacao_curta": "breve observação em ${l}",
   "beneficios": ["benefício 1", "benefício 2"]
 }
 
@@ -31,14 +39,15 @@ Regras de classificação (escolha UMA):
 - "alta_sal": alimentos muito salgados ou processados com alto teor de sódio (pipoca salgada, salgadinhos, embutidos, fast food, enlatados). Use quando sal/sódio for o destaque negativo.
 - "vegetais_baixo": predominantemente vegetais e/ou muito baixa caloria.
 Identifique cada alimento com cuidado e NÃO invente itens. Se um alimento não estiver claro na foto, não chute um nome: inclua apenas o que consegue ver com confiança. Se não conseguir identificar com confiança, use "nao_identificada".
-Observação em português, 1-2 frases, tom POSITIVO e encorajador — celebre algo bom da refeição (proteína presente, variedade, escolha consciente, etc.). Não critique nem liste o que faltou.
-Benefícios: liste 1-3 frases curtas em português, cada uma destacando um benefício real de um alimento CLARAMENTE identificado na refeição (ex: "A cenoura é rica em betacaroteno, boa para a visão"). Cite apenas alimentos que você realmente viu. Se não houver benefício claro, retorne lista vazia [].
+Observação em ${l}, 1-2 frases, tom POSITIVO e encorajador — celebre algo bom da refeição (proteína presente, variedade, escolha consciente, etc.). Não critique nem liste o que faltou.
+Benefícios: liste 1-3 frases curtas em ${l}, cada uma destacando um benefício real de um alimento CLARAMENTE identificado na refeição (ex: "A cenoura é rica em betacaroteno, boa para a visão"). Cite apenas alimentos que você realmente viu. Se não houver benefício claro, retorne lista vazia [].
 NUNCA use markdown (**), travessão (—) ou caracteres especiais na observação — apenas texto plano com vírgula e ponto final.`;
+}
 
-async function callVision(photos: string[], description: string): Promise<string> {
+async function callVision(photos: string[], description: string, lang: string): Promise<string> {
   const hasMultiple = photos.length > 1;
 
-  const system = `${SYSTEM_JSON}
+  const system = `${buildSystemJson(lang)}
 ${hasMultiple ? `ATENÇÃO: Você receberá ${photos.length} fotos da MESMA refeição. Se mostrarem ITENS DIFERENTES, some todos. Se forem ângulos do MESMO item, NÃO duplique.` : ""}`;
 
   const textPrompt = description
@@ -54,7 +63,7 @@ ${hasMultiple ? `ATENÇÃO: Você receberá ${photos.length} fotos da MESMA refe
   return callLLM(system, [{ type: "text", text: textPrompt }, ...imageBlocks], { maxTokens: 2000, model: "claude-sonnet-5" });
 }
 
-async function callTextOnly(description: string, items: string[]): Promise<string> {
+async function callTextOnly(description: string, items: string[], lang: string): Promise<string> {
   const itemsStr = items.length > 0
     ? `Itens informados: ${items.join(", ")}. `
     : "";
@@ -65,7 +74,7 @@ async function callTextOnly(description: string, items: string[]): Promise<strin
       ? `Analise esta refeição baseado na descrição: "${description}". Estime os macros e calorias. Retorne APENAS o JSON.`
       : `Analise esta refeição. Sem detalhes específicos, faça a melhor estimativa possível. Retorne APENAS o JSON.`;
 
-  return callLLM(SYSTEM_JSON, prompt, { maxTokens: 400, temperature: 0.3 });
+  return callLLM(buildSystemJson(lang), prompt, { maxTokens: 400, temperature: 0.3 });
 }
 
 const MACROS_SYSTEM = `Você é um nutricionista. Retorne APENAS um JSON válido, sem texto adicional, no formato:
@@ -173,12 +182,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "photosBase64, description ou items obrigatorios" }, { status: 400 });
     }
 
+    const adminPrefs = getSupabaseAdmin();
+    const { data: prefs } = await adminPrefs.from("user_preferences").select("context").eq("user_id", user.id).maybeSingle();
+    const lang = ((prefs?.context as { language?: string } | undefined)?.language as string) || "pt";
+
     let raw: string;
     if (hasPhotos) {
-      raw = await callVision(photosBase64, description || "");
+      raw = await callVision(photosBase64, description || "", lang);
     } else {
       const itemNames = items || [];
-      raw = await callTextOnly(description || "", itemNames);
+      raw = await callTextOnly(description || "", itemNames, lang);
     }
 
     const analysis = parseAnalysis(raw);

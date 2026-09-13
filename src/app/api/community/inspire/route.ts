@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { callLLM } from "@/lib/llm";
 import { getLocalDate } from "@/lib/utils";
+import { tUser } from "@/lib/server-i18n";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
@@ -22,6 +23,8 @@ export async function GET() {
 
   const { data: prefs } = await admin.from("user_preferences").select("context").eq("user_id", userId).maybeSingle();
   const userName = ((prefs?.context as any)?.name as string) || session.user.user_metadata?.name || "";
+  const lang = ((prefs?.context as any)?.language as string) || "pt";
+  const L = (key: string) => tUser(lang, key);
 
   // Determine mood sentiment
   const negativeSet = new Set(["triste", "ansiosa", "cansada", "sobrecarregada", "irritada", "desanimada", "estressada", "raiva", "culpada"]);
@@ -55,10 +58,10 @@ export async function GET() {
 
   const greeting = userName ? `${userName}` : "";
   const moodContext = hasNegative
-    ? "Vi que seu humor não está dos melhores. Separei algumas coisas que a comunidade compartilhou e que talvez te façam bem."
-    : "Separei algumas inspirações da comunidade que combinam com seu momento.";
+    ? L("inspire_mood_negative")
+    : L("inspire_mood_positive");
   const fallbackMessage = scored.length === 0
-    ? `${userName || "Ei"}, ainda não encontrei nada que combine com seu momento. Mas a comunidade está crescendo — que tal ser o primeiro a compartilhar algo hoje?`
+    ? `${userName || L("inspire_hey")}, ${L("inspire_fallback")}`
     : undefined;
 
   return NextResponse.json({

@@ -1,5 +1,6 @@
 import type { CheckIn, DiaryEntry } from "@/types";
 import { habitAnswered } from "@/lib/checkin-answered";
+import { responseLanguageLine } from "@/lib/llm";
 
 interface UserContext {
   name: string;
@@ -17,10 +18,12 @@ interface AnalysisInput {
   streak: number;
   totalCheckIns: number;
   positiveRate: number;
+  language?: string;
 }
 
 export function buildAnalysisPrompt(input: AnalysisInput): string {
-  const { profile, checkIns, diaryEntries, memories, streak, totalCheckIns, positiveRate } = input;
+  const { profile, checkIns, diaryEntries, memories, streak, totalCheckIns, positiveRate, language } = input;
+  const langLine = responseLanguageLine(language);
 
   const last7CheckIns = checkIns.slice(0, 7);
   const lastDiary = diaryEntries.slice(0, 5);
@@ -79,6 +82,7 @@ export function buildAnalysisPrompt(input: AnalysisInput): string {
 6. Respeite o gênero da pessoa na linguagem.
 7. Máximo 3 parágrafos curtos. Seja breve, não vomite dados.
 8. NUNCA diga frases como "procure ajuda profissional" de forma genérica. Se for mesmo necessário, diga de forma pessoal e com um caminho concreto (ex: CVV 188).
+9. ${langLine}
 
 ## PERFIL
 ${nameLine}

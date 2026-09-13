@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
     // Buscar preferências
     const { data: prefs } = await admin
-      .from("preferences")
+      .from("user_preferences")
       .select("context")
       .eq("user_id", user.id)
       .single();

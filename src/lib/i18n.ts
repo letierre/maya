@@ -2328,6 +2328,10 @@ const translations: Record<Lang, Record<string, string>> = {
     sw_nova_versao: "Nova versão disponível! Toque para atualizar ✨",
     push_nao_suportado: "Push não suportado neste navegador",
     push_vapid_nao_configurada: "VAPID key não configurada",
+    inspire_hey: "Ei",
+    inspire_mood_negative: "Vi que seu humor não está dos melhores. Separei algumas coisas que a comunidade compartilhou e que talvez te façam bem.",
+    inspire_mood_positive: "Separei algumas inspirações da comunidade que combinam com seu momento.",
+    inspire_fallback: "ainda não encontrei nada que combine com seu momento. Mas a comunidade está crescendo — que tal ser o primeiro a compartilhar algo hoje?",
   },
 
   es: {
@@ -4638,6 +4642,10 @@ const translations: Record<Lang, Record<string, string>> = {
     sw_nova_versao: "¡Nueva versión disponible! Toca para actualizar ✨",
     push_nao_suportado: "Push no compatible con este navegador",
     push_vapid_nao_configurada: "Clave VAPID no configurada",
+    inspire_hey: "Oye",
+    inspire_mood_negative: "Vi que tu ánimo no está de lo mejor. Separé algunas cosas que la comunidad compartió y que quizás te hagan bien.",
+    inspire_mood_positive: "Separé algunas inspiraciones de la comunidad que combinan con tu momento.",
+    inspire_fallback: "todavía no encontré nada que combine con tu momento. Pero la comunidad está creciendo — ¿qué tal ser el primero en compartir algo hoy?",
   },
 
   en: {
@@ -6948,6 +6956,10 @@ const translations: Record<Lang, Record<string, string>> = {
     sw_nova_versao: "New version available! Tap to update ✨",
     push_nao_suportado: "Push not supported in this browser",
     push_vapid_nao_configurada: "VAPID key not configured",
+    inspire_hey: "Hey",
+    inspire_mood_negative: "I noticed you're not feeling your best. I picked some things the community shared that might do you good.",
+    inspire_mood_positive: "I picked some inspiration from the community that fits your moment.",
+    inspire_fallback: "I couldn't find anything that matches your moment yet. But the community is growing — how about being the first to share something today?",
   },
 };
 

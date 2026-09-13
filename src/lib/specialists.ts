@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getLocalDate } from "@/lib/utils";
-import { callLLM } from "@/lib/llm";
+import { callLLM, responseLanguageLine } from "@/lib/llm";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -23,11 +23,13 @@ export interface SpecialistResult {
 
 export type SpecialistInsights = Partial<Record<SpecialistName, SpecialistResult>>;
 
-const SPECIALIST_SYSTEM = `Você é um especialista analisando dados de bem-estar de um usuário.
+function specialistSystem(lang?: string | null): string {
+  return `Você é um especialista analisando dados de bem-estar de um usuário.
 Analise apenas os dados fornecidos. Seja objetivo e conciso.
 Responda APENAS em JSON válido com este formato exato — sem texto fora do JSON:
 {"patterns":["padrão 1"],"concerns":["preocupação 1"],"strengths":["ponto forte 1"],"summary":"resumo em 1-2 frases"}
-Máximo 3 itens por campo. Escreva em português brasileiro.`;
+Máximo 3 itens por campo. ${responseLanguageLine(lang)}`;
+}
 
 function parseResult(text: string): SpecialistResult {
   try {
@@ -276,17 +278,22 @@ export async function analyzeAllSpecialists(userId: string): Promise<SpecialistI
   const mem = (memories ?? []).map((m: Record<string, unknown>) => String(m.fact));
   const wp = (weeklyPlans ?? [])[0] as Record<string, unknown> | null ?? null;
 
+  // Idioma do usuário para o resumo dos especialistas
+  const { data: prefs } = await admin.from("user_preferences").select("context").eq("user_id", userId).maybeSingle();
+  const lang = (prefs?.context as { language?: string } | undefined)?.language;
+  const system = specialistSystem(lang);
+
   // Run all 8 specialists in parallel
   const names: SpecialistName[] = ["psychology", "sleep", "nutrition", "physical", "goals", "finance", "spirituality", "philosophy"];
   const calls = [
-    callLLM(SPECIALIST_SYSTEM, promptPsychology(ci), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(SPECIALIST_SYSTEM, promptSleep(sl, ci), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(SPECIALIST_SYSTEM, promptNutrition(ml), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(SPECIALIST_SYSTEM, promptPhysical(ci), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(SPECIALIST_SYSTEM, promptGoals(goalsWithStages, ci, wp), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(SPECIALIST_SYSTEM, promptFinance(tx, bu), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(SPECIALIST_SYSTEM, promptSpirituality(ci), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(SPECIALIST_SYSTEM, promptPhilosophy(goalsWithStages, di, mem), { maxTokens: 350, temperature: 0.3 }),
+    callLLM(system, promptPsychology(ci), { maxTokens: 350, temperature: 0.3 }),
+    callLLM(system, promptSleep(sl, ci), { maxTokens: 350, temperature: 0.3 }),
+    callLLM(system, promptNutrition(ml), { maxTokens: 350, temperature: 0.3 }),
+    callLLM(system, promptPhysical(ci), { maxTokens: 350, temperature: 0.3 }),
+    callLLM(system, promptGoals(goalsWithStages, ci, wp), { maxTokens: 350, temperature: 0.3 }),
+    callLLM(system, promptFinance(tx, bu), { maxTokens: 350, temperature: 0.3 }),
+    callLLM(system, promptSpirituality(ci), { maxTokens: 350, temperature: 0.3 }),
+    callLLM(system, promptPhilosophy(goalsWithStages, di, mem), { maxTokens: 350, temperature: 0.3 }),
   ];
 
   const settled = await Promise.allSettled(calls);

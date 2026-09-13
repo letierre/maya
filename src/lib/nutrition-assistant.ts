@@ -1,6 +1,7 @@
 import type { Meal, CheckIn } from "@/types";
 import { sumMacros, getDailyKcalGoal } from "@/lib/meal-utils";
 import { getLocalDate, getLocalDateFromISO } from "@/lib/utils";
+import { responseLanguageLine } from "@/lib/llm";
 
 export interface NutritionContext {
   todayMeals: Meal[];
@@ -9,6 +10,7 @@ export interface NutritionContext {
   checkIns: CheckIn[];
   kcalGoal: number;
   userName: string;
+  language?: string;
 }
 
 export function buildNutritionContext(
@@ -36,6 +38,7 @@ export function buildNutritionContext(
     checkIns,
     kcalGoal,
     userName: "",
+    language: (preferencesContext?.language as string) || undefined,
   };
 }
 
@@ -139,7 +142,7 @@ REGRAS DE OURO:
 TOM:
 - Direto, informativo e prático
 - Use emojis com moderação (apenas relacionados a comida: 🥗🍳🥑)
-- Sempre responda em português
+- ${responseLanguageLine(ctx.language)}
 - Seja breve (2-5 frases por resposta)
 - Não pergunte como o usuário está se sentindo
 - Não ofereça apoio emocional

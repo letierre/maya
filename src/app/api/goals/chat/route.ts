@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
 import { getWeekMondayDate } from "@/lib/utils";
-import { callLLM } from "@/lib/llm";
+import { callLLM, responseLanguageLine } from "@/lib/llm";
 import type { Goal, GoalStage, GoalAction } from "@/types";
 
 const AREA_LABELS: Record<string, string> = {
@@ -21,7 +21,8 @@ function buildGoalsCoachPrompt(
   goals: (Goal & { goal_stages: (GoalStage & { goal_actions: GoalAction[] })[] })[],
   weekPlan: { main_focus: string; focus_goal_ids: string[] } | null,
   weekReview: { biggest_win: string; blocked_lesson: string; week_score: number } | null,
-  currentHour: number
+  currentHour: number,
+  language: string
 ): string {
   const greeting = currentHour < 12 ? "manhã" : currentHour < 18 ? "tarde" : "noite";
 
@@ -92,7 +93,7 @@ ${alerts.length ? `## ⚠️ ALERTAS\n${alerts.join("\n")}` : ""}
 
 ## DIRETRIZES DE COMPORTAMENTO
 - Tom: caloroso, direto, empático — como um coach que realmente se importa
-- Linguagem: português brasileiro natural, não formal
+- ${responseLanguageLine(language)}
 - Quando cobrar metas inativas: faça com carinho mas sem deixar escapar
 - Quando detectar estagnação: pergunte "o que está travando?" antes de dar soluções
 - Celebre pequenas vitórias explicitamente, não apenas registre
@@ -154,7 +155,10 @@ export async function POST(req: Request) {
     10
   );
 
-  const systemPrompt = buildGoalsCoachPrompt(userName, goals, weekPlan, weekReview, brHour);
+  const { data: prefs } = await admin.from("user_preferences").select("context").eq("user_id", userId).maybeSingle();
+  const lang = ((prefs?.context as Record<string, unknown> | undefined)?.language as string) || "pt";
+
+  const systemPrompt = buildGoalsCoachPrompt(userName, goals, weekPlan, weekReview, brHour, lang);
 
   try {
     const reply = await callLLMWithHistory(systemPrompt, messages.slice(-20));
