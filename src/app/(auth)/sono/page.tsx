@@ -247,7 +247,7 @@ function ManualLogModal({ onClose, onSaved, lang }: { onClose: () => void; onSav
               color: showQualityGuide ? P : "oklch(0.50 0.03 270)",
               transition: "color .2s ease",
             }}
-            aria-label="Guia de qualidade"
+            aria-label={tFn(lang, "sono_qualidade_guia")}
           >
             ℹ️
           </button>
@@ -1368,7 +1368,7 @@ export default function SonoPage() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Moon className="size-5" style={{ color: P }} />
-            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-0.02em" }}>Sono</h1>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-0.02em" }}>{tFn(lang, "sono_titulo")}</h1>
           </div>
         </div>
         <p style={{ margin: "4px 0 0 35px", fontSize: 13, color: "#9e96b5" }}>
@@ -1394,10 +1394,10 @@ export default function SonoPage() {
             {/* Stats grid */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {[
-                { icon: "🌙", label: tFn(lang, "sono_avg_noite"), value: stats!.avgDurationMin > 0 ? formatDuration(stats!.avgDurationMin) : "–", sub: "média da semana", color: "#e0d6ff" },
+                { icon: "🌙", label: tFn(lang, "sono_avg_noite"), value: stats!.avgDurationMin > 0 ? formatDuration(stats!.avgDurationMin) : "–", sub: tFn(lang, "sono_media_semana"), color: "#e0d6ff" },
                 { icon: "⭐", label: tFn(lang, "sono_avg_qualidade"), value: stats!.avgQuality > 0 ? `${stats!.avgQuality}/5` : "–", sub: stats!.avgQuality > 0 ? QUALITY_EMOJI[Math.round(stats!.avgQuality)] : "", color: qualityColor(stats!.avgQuality) },
-                { icon: "📊", label: tFn(lang, "sono_consistencia"), value: `${stats!.consistencyScore}`, sub: "de 100", color: scoreColor(stats!.consistencyScore) },
-                { icon: "🎯", label: "Meta de sono", value: config ? `${calcWindowHours(config.bedtime, config.wake_time)}h` : "–", sub: stats!.avgDurationMin > 0 ? `${formatDuration(stats!.avgDurationMin)} médio` : "sem dados", color: "#5EEAD4" },
+                { icon: "📊", label: tFn(lang, "sono_consistencia"), value: `${stats!.consistencyScore}`, sub: tFn(lang, "sono_de_100"), color: scoreColor(stats!.consistencyScore) },
+                { icon: "🎯", label: tFn(lang, "sono_meta"), value: config ? `${calcWindowHours(config.bedtime, config.wake_time)}h` : "–", sub: stats!.avgDurationMin > 0 ? `${formatDuration(stats!.avgDurationMin)} ${tFn(lang, "sono_medio")}` : tFn(lang, "sono_sem_dados"), color: "#5EEAD4" },
               ].map((card) => (
                 <div key={card.label} style={{
                   background: "oklch(0.16 0.012 270)",
@@ -1432,12 +1432,12 @@ export default function SonoPage() {
                 <span style={{ fontSize: 28 }}>🌟</span>
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "#A78BFA" }}>
-                    Melhor noite da semana
+                    {tFn(lang, "sono_melhor_noite_semana")}
                   </p>
                   <p style={{ margin: "2px 0 0", fontSize: 13, color: "#e0d6ff" }}>
                     {new Date(stats!.bestNight.date + "T12:00:00").toLocaleDateString(dateLocale(lang), { weekday: "long", day: "numeric" })}
                     {" · "}{stats!.bestNight.duration_min ? formatDuration(stats!.bestNight.duration_min) : ""}
-                    {stats!.bestNight.quality ? ` · qualidade ${stats!.bestNight.quality}/5` : ""}
+                    {stats!.bestNight.quality ? ` · ${tFn(lang, "sono_qualidade_val")} ${stats!.bestNight.quality}/5` : ""}
                   </p>
                 </div>
                 <span style={{ fontSize: 24 }}>

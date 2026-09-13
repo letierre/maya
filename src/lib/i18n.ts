@@ -478,6 +478,13 @@ const translations: Record<Lang, Record<string, string>> = {
     sono_ciclo_6: "6 ciclos · 9h",
     sono_tendencia_30d: "Tendência 30 dias",
     sono_media: "Média",
+    sono_titulo: "Sono",
+    sono_media_semana: "média da semana",
+    sono_de_100: "de 100",
+    sono_medio: "médio",
+    sono_sem_dados: "sem dados",
+    sono_melhor_noite_semana: "Melhor noite da semana",
+    sono_qualidade_val: "qualidade",
 
     // Áreas da vida
     area_saude: "Saúde",
@@ -2422,6 +2429,13 @@ const translations: Record<Lang, Record<string, string>> = {
     sono_ciclo_6: "6 ciclos (9h)",
     sono_tendencia_30d: "Tendencia 30 días",
     sono_media: "Media",
+    sono_titulo: "Sueño",
+    sono_media_semana: "promedio de la semana",
+    sono_de_100: "de 100",
+    sono_medio: "promedio",
+    sono_sem_dados: "sin datos",
+    sono_melhor_noite_semana: "Mejor noche de la semana",
+    sono_qualidade_val: "calidad",
 
     // Areas
     area_saude: "Salud",
@@ -4362,6 +4376,13 @@ const translations: Record<Lang, Record<string, string>> = {
     sono_ciclo_6: "6 cycles (9h)",
     sono_tendencia_30d: "30-day trend",
     sono_media: "Average",
+    sono_titulo: "Sleep",
+    sono_media_semana: "weekly average",
+    sono_de_100: "of 100",
+    sono_medio: "avg",
+    sono_sem_dados: "no data",
+    sono_melhor_noite_semana: "Best night of the week",
+    sono_qualidade_val: "quality",
 
     // Areas
     area_saude: "Health",
