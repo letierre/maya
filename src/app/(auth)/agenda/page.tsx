@@ -1,5 +1,6 @@
 "use client";
 import { getLocale } from "@/lib/language";
+import { useTranslation } from "@/lib/useTranslation";
 
 import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -10,7 +11,7 @@ import {
 import { getLocalDate } from "@/lib/utils";
 import { celebrate } from "@/lib/celebrate";
 import { isRepeatingItem, repeatMatches, dedupeByDateTitle, occKey, seriesDeleteParams } from "@/lib/agenda-repeat";
-import { AREA_CONFIG, AREA_LABELS } from "@/lib/planejamento-constants";
+import { AREA_CONFIG } from "@/lib/planejamento-constants";
 import type { AgendaItem, EisenhowerPriority, TaskArea } from "@/types";
 import { MetasPanel } from "@/components/MetasPanel";
 import { PlanejamentoPanel } from "@/components/PlanejamentoPanel";
@@ -21,16 +22,23 @@ import { toast } from "sonner";
 
 function formatDateLabel(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
-  const weekday = d.toLocaleDateString(getLocale(), { weekday: "long" });
-  const dayName = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-  return `${dayName}, ${d.getDate()} de ${d.toLocaleDateString(getLocale(), { month: "long" })}`;
+  const s = d.toLocaleDateString(getLocale(), { weekday: "long", day: "numeric", month: "long" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function weekRangeLabel(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
   const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-  return `${mon.getDate()} de ${mon.toLocaleDateString(getLocale(), { month: "long" })} – ${sun.getDate()} de ${sun.toLocaleDateString(getLocale(), { month: "long" })}`;
+  const fmt = (x: Date) => x.toLocaleDateString(getLocale(), { day: "numeric", month: "long" });
+  return `${fmt(mon)} – ${fmt(sun)}`;
+}
+
+// Nomes curtos dos dias da semana no idioma atual (0=Seg..6=Dom).
+function shortWeekday(i: number): string {
+  const d = new Date(2024, 0, 1 + i); // 2024-01-01 é segunda-feira
+  const s = d.toLocaleDateString(getLocale(), { weekday: "short" });
+  return s.charAt(0).toUpperCase() + s.slice(1).replace(".", "");
 }
 
 function shiftDate(dateStr: string, days: number): string {
@@ -121,16 +129,17 @@ function buildDayItems(all: AgendaItem[], date: string): AgendaItem[] {
   return result;
 }
 
-const PRIORITY_CONFIG: Record<EisenhowerPriority, { icon: typeof AlertCircle; color: string; label: string; shortLabel: string }> = {
-  importante_urgente:          { icon: AlertCircle, color: "#FF4D4D", label: "Urgente e importante", shortLabel: "Crítico" },
-  importante_nao_urgente:      { icon: Star, color: "#FF9F43", label: "Importante, não urgente", shortLabel: "Importante" },
-  nao_importante_urgente:      { icon: Zap,  color: "#FFD43B", label: "Urgente, não importante", shortLabel: "Delegar" },
-  nao_importante_nao_urgente:  { icon: Leaf, color: "#4CD97B", label: "Nem urgente, nem importante", shortLabel: "Depois" },
+const PRIORITY_CONFIG: Record<EisenhowerPriority, { icon: typeof AlertCircle; color: string; labelKey: string; shortLabelKey: string }> = {
+  importante_urgente:          { icon: AlertCircle, color: "#FF4D4D", labelKey: "prio_urgente_importante", shortLabelKey: "prio_short_critico" },
+  importante_nao_urgente:      { icon: Star, color: "#FF9F43", labelKey: "prio_importante_nao_urgente", shortLabelKey: "prio_short_importante" },
+  nao_importante_urgente:      { icon: Zap,  color: "#FFD43B", labelKey: "prio_urgente_nao_importante", shortLabelKey: "prio_short_delegar" },
+  nao_importante_nao_urgente:  { icon: Leaf, color: "#4CD97B", labelKey: "prio_nem_urgente_nem_importante", shortLabelKey: "prio_short_depois" },
 };
 
 // ── PriorityBadge ────────────────────────────────────────────────
 
 function PriorityBadge({ priority }: { priority: EisenhowerPriority }) {
+  const { t } = useTranslation();
   const cfg = PRIORITY_CONFIG[priority];
   const Icon = cfg.icon;
   return (
@@ -139,7 +148,7 @@ function PriorityBadge({ priority }: { priority: EisenhowerPriority }) {
       fontSize: 10, fontWeight: 600, color: cfg.color,
       whiteSpace: "nowrap",
     }}>
-      <Icon size={10} /> {cfg.shortLabel}
+      <Icon size={10} /> {t(cfg.shortLabelKey)}
     </span>
   );
 }
@@ -147,9 +156,10 @@ function PriorityBadge({ priority }: { priority: EisenhowerPriority }) {
 // ── Timeline skeleton (carregando) ───────────────────────────────
 
 function TimelineSkeleton() {
+  const { t } = useTranslation();
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 30, background: "#1a1530", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <p style={{ color: "#9e96b5", fontSize: 13 }}>Carregando...</p>
+      <p style={{ color: "#9e96b5", fontSize: 13 }}>{t("carregando")}</p>
     </div>
   );
 }
@@ -183,6 +193,8 @@ function AgendaPage() {
   const searchParams = useSearchParams();
   const rawTab = searchParams.get("tab");
   const initialTab = parseTab(rawTab);
+
+  const { t: tr } = useTranslation();
 
   const today = getLocalDate();
   const [selectedDate, setSelectedDate] = useState(today);
@@ -284,7 +296,7 @@ function AgendaPage() {
 
     if (editingId && editingIsRepeat) {
       // Editing a repeated occurrence — ask: this one or all?
-      const applyAll = confirm("Aplicar alterações a TODOS os compromissos desta repetição?\n\nOK = Todos\nCancelar = Apenas este");
+      const applyAll = confirm(tr("ag_aplicar_todos"));
       if (applyAll) {
         body.id = editingId;
       } else {
@@ -812,17 +824,17 @@ function AgendaPage() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12, marginBottom: 8 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "#e0d6ff", letterSpacing: "-0.02em" }}>
-              {viewMode === "metas" ? "Metas" : viewMode === "semana" ? "Agenda da semana" : viewMode === "lista" ? "Lista" : "Agenda do dia"}
+              {viewMode === "metas" ? tr("ag_metas") : viewMode === "semana" ? tr("ag_agenda_semana") : viewMode === "lista" ? tr("ag_lista") : tr("ag_agenda_dia")}
             </h1>
             <p style={{ margin: "2px 0 0", fontSize: 13, color: "#A78BFA", fontWeight: 500 }}>
-              {viewMode === "metas" ? "Acompanhe seu progresso" : viewMode === "semana" ? weekRangeLabel(selectedDate) : formatDateLabel(selectedDate)}
+              {viewMode === "metas" ? tr("ag_acompanhe_progresso") : viewMode === "semana" ? weekRangeLabel(selectedDate) : formatDateLabel(selectedDate)}
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {selectedDate !== today && (
               <button type="button" onClick={() => setSelectedDate(today)}
                 style={{ ...navBtnStyle, width: "auto", padding: "0 14px", fontSize: 12, fontWeight: 600 }}>
-                Hoje
+                {tr("ag_hoje")}
               </button>
             )}
             <button type="button"
@@ -847,10 +859,10 @@ function AgendaPage() {
           marginBottom: viewMode === "lista" ? 12 : 16,
         }}>
           {([
-            { key: "dia", icon: Sun, label: "Dia" },
-            { key: "semana", icon: Calendar, label: "Semana" },
-            { key: "metas", icon: Target, label: "Metas" },
-            { key: "lista", icon: List, label: "Lista" },
+            { key: "dia", icon: Sun, label: tr("ag_dia") },
+            { key: "semana", icon: Calendar, label: tr("ag_semana") },
+            { key: "metas", icon: Target, label: tr("ag_metas") },
+            { key: "lista", icon: List, label: tr("ag_lista") },
           ] as const).map(({ key, icon: Icon, label }) => (
             <button key={key} type="button" onClick={() => switchView(key)}
               style={{
@@ -920,10 +932,10 @@ function AgendaPage() {
                   fontFamily: "inherit",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#e0d6ff" }}>Tarefas do dia</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#e0d6ff" }}>{tr("ag_tarefas_dia")}</span>
                     {totalPendingTasks > 0 && (
                       <span style={{ padding: "1px 7px", borderRadius: 9999, fontSize: 10, fontWeight: 600, background: "rgba(167,139,250,0.15)", color: "#A78BFA" }}>
-                        {totalPendingTasks} pendente{totalPendingTasks !== 1 ? "s" : ""}
+                        {totalPendingTasks} {totalPendingTasks !== 1 ? tr("ag_pendentes") : tr("ag_pendente")}
                       </span>
                     )}
                   </div>
@@ -1208,7 +1220,7 @@ function AgendaPage() {
                           </span>
                           {!isTask && roomy && (
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 8, color: priorityCfg.color, whiteSpace: "nowrap", lineHeight: 1 }}>
-                              <PriorityIcon size={8} /> {priorityCfg.shortLabel}
+                              <PriorityIcon size={8} /> {tr(priorityCfg.shortLabelKey)}
                             </span>
                           )}
                         </>
@@ -1258,13 +1270,13 @@ function AgendaPage() {
             )}
 
             {editingItem.notify_minutes && (
-              <p style={{ margin: "0 0 12px", fontSize: 11, color: "#9e96b5" }}>🔔 {editingItem.notify_minutes} min antes</p>
+              <p style={{ margin: "0 0 12px", fontSize: 11, color: "#9e96b5" }}>🔔 {editingItem.notify_minutes} {tr("ag_min_antes")}</p>
             )}
 
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
               <button type="button" onClick={() => openEditor(editingItem)}
                 style={{ flex: 1, padding: 10, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#A78BFA", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                ✏️ Editar
+                ✏️ {tr("editar")}
               </button>
               <button type="button" onClick={() => {
                 const isSynth = editingItem.id.includes("_r_") || editingItem.id.includes("_cross");
@@ -1272,7 +1284,7 @@ function AgendaPage() {
                 if (isSynth || isRepeating) {
                   setDeleteDialog(editingItem);
                 } else {
-                  showConfirm("Excluir este compromisso?", () => {
+                  showConfirm(tr("ag_excluir_compromisso"), () => {
                     fetch(`/api/agenda?id=${realId(editingItem)}`, { method: "DELETE" }).then(() => {
                       setEditingItem(null); fetchItems(selectedDate, true);
                     });
@@ -1280,7 +1292,7 @@ function AgendaPage() {
                 }
               }}
                 style={{ flex: 1, padding: 10, borderRadius: 12, border: 0, background: "rgba(255,92,92,0.1)", color: "#FF5C5C", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                🗑 Excluir
+                🗑 {tr("ag_excluir")}
               </button>
             </div>
             <button type="button" onClick={() => {
@@ -1295,7 +1307,7 @@ function AgendaPage() {
               setEditingItem(null);
             }}
               style={{ width: "100%", marginTop: 8, padding: 10, borderRadius: 12, border: "1px solid rgba(167,139,250,0.15)", background: "rgba(167,139,250,0.05)", color: "#9e96b5", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              📋 Duplicar
+              📋 {tr("ag_duplicar")}
             </button>
           </div>
         </div>
@@ -1307,39 +1319,39 @@ function AgendaPage() {
           style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "60px 20px 20px", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
           <div style={{ width: "100%", maxWidth: 380, background: "#151520", borderRadius: 24, padding: 24, border: "1px solid rgba(167,139,250,0.15)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>Editar tarefa do plano</h3>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#e0d6ff" }}>{tr("ag_editar_tarefa_plano")}</h3>
               <button type="button" onClick={() => setEditingPlanTask(null)} style={{ background: "none", border: 0, color: "#9e96b5", fontSize: 18, cursor: "pointer" }}>✕</button>
             </div>
 
             {/* Title */}
             <input value={planEditTitle} onChange={e => setPlanEditTitle(e.target.value)}
-              placeholder="Título"
+              placeholder={tr("titulo")}
               style={{...modalInput, marginBottom: 12}} autoFocus />
 
             {/* Day selector */}
-            <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>Mover para</label>
+            <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>{tr("ag_mover_para")}</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 16 }}>
-              {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((label, i) => (
+              {[0, 1, 2, 3, 4, 5, 6].map((i) => (
                 <button key={i} type="button" onClick={() => setPlanEditDay(i)}
                   style={{
                     padding: "6px 10px", borderRadius: 9999, border: 0, cursor: "pointer",
                     fontFamily: "inherit", fontSize: 11, fontWeight: 600,
                     background: planEditDay === i ? "#7C5CFF" : "#1e1840",
                     color: planEditDay === i ? "#fff" : "#9e96b5",
-                  }}>{label}</button>
+                  }}>{shortWeekday(i)}</button>
               ))}
             </div>
 
             {/* Actions */}
             <div style={{ display: "flex", gap: 10 }}>
               <button type="button" onClick={async () => {
-                if (!confirm("Excluir esta tarefa?")) return;
+                if (!confirm(tr("ag_excluir_tarefa"))) return;
                 await fetch(`/api/weekly-plans/tasks/${editingPlanTask.id}`, { method: "DELETE" });
                 setAllWeekTasks((prev: any[]) => prev.filter((wt: any) => wt.id !== editingPlanTask.id));
                 setEditingPlanTask(null);
               }}
                 style={{ flex: 1, padding: "12px 0", borderRadius: 14, border: 0, background: "rgba(255,92,92,0.1)", color: "#FF5C5C", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                🗑 Excluir
+                🗑 {tr("ag_excluir")}
               </button>
               <button type="button" onClick={async () => {
                 const updates: Record<string, unknown> = {
@@ -1358,7 +1370,7 @@ function AgendaPage() {
                 }
               }}
                 style={{ flex: 2, padding: "12px 0", borderRadius: 14, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                Salvar
+                {tr("salvar")}
               </button>
             </div>
           </div>
@@ -1398,8 +1410,8 @@ function AgendaPage() {
           }}>
             <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>
               {editingId
-                ? `Editar ${newItemType === "compromisso" ? "compromisso" : "tarefa"}`
-                : newItemType === "compromisso" ? "Novo compromisso" : "Nova tarefa"}
+                ? (newItemType === "compromisso" ? tr("ag_editar_compromisso") : tr("ag_editar_tarefa"))
+                : newItemType === "compromisso" ? tr("ag_novo_compromisso") : tr("ag_nova_tarefa")}
             </h2>
             <p style={{ margin: "0 0 20px", fontSize: 12, color: "#9e96b5" }}>
               {formatDateLabel(selectedDate)}
@@ -1413,29 +1425,29 @@ function AgendaPage() {
                   fontFamily: "inherit", fontSize: 13, fontWeight: 700,
                   background: newItemType === "compromisso" ? "#7C5CFF" : "#1a1530",
                   color: newItemType === "compromisso" ? "#fff" : "#9e96b5",
-                }}>📅 Compromisso</button>
+                }}>📅 {tr("ag_compromisso")}</button>
               <button type="button" onClick={() => setNewItemType("tarefa")}
                 style={{
                   flex: 1, padding: "10px 0", borderRadius: 12, border: 0, cursor: "pointer",
                   fontFamily: "inherit", fontSize: 13, fontWeight: 700,
                   background: newItemType === "tarefa" ? "#7C5CFF" : "#1a1530",
                   color: newItemType === "tarefa" ? "#fff" : "#9e96b5",
-                }}>☑️ Tarefa</button>
+                }}>☑️ {tr("ag_tarefa")}</button>
             </div>
 
             {/* Title */}
             <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Título"
+              placeholder={tr("titulo")}
               style={modalInput} autoFocus />
 
             {/* Emoji */}
             <input value={newEmoji} onChange={(e) => setNewEmoji(e.target.value)}
-              placeholder="Emoji (opcional) — ex: 💪"
+              placeholder={tr("ag_emoji_opcional")}
               style={{ ...modalInput, marginTop: 10 }} />
 
             {/* Date */}
             <div style={{ marginTop: 10 }}>
-              <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>Data</label>
+              <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>{tr("ag_data")}</label>
               <div style={nativeInputWrapper}>
                 <input type="date" value={newDate || selectedDate} onChange={(e) => setNewDate(e.target.value)}
                   style={nativeInputInner} />
@@ -1446,14 +1458,14 @@ function AgendaPage() {
             {newItemType === "compromisso" && (
               <>
                 <div style={{ marginTop: 10 }}>
-                  <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>Início</label>
+                  <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>{tr("ag_inicio")}</label>
                   <div style={nativeInputWrapper}>
                     <input type="time" value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)}
                       style={nativeInputInner} />
                   </div>
                 </div>
                 <div style={{ marginTop: 10 }}>
-                  <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>Fim</label>
+                  <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>{tr("ag_fim")}</label>
                   <div style={nativeInputWrapper}>
                     <input type="time" value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)}
                       style={nativeInputInner} />
@@ -1464,14 +1476,14 @@ function AgendaPage() {
 
             {/* Description */}
             <textarea value={newDescription} onChange={e => setNewDescription(e.target.value)}
-              placeholder="Descrição (opcional)"
+              placeholder={tr("ag_descricao_opcional")}
               rows={2}
               style={{ ...modalInput, marginTop: 10, resize: "none", height: 56 }} />
 
             {/* Área — vincula à Roda da Vida */}
             <div style={{ marginTop: 14 }}>
               <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>
-                Área da Roda da Vida {newArea && <span style={{ color: "#A78BFA" }}>· {AREA_LABELS[newArea as TaskArea]}</span>}
+                {tr("ag_area_roda_vida")} {newArea && <span style={{ color: "#A78BFA" }}>· {tr(AREA_CONFIG[newArea as TaskArea].labelKey)}</span>}
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 4 }}>
                 {(Object.keys(AREA_CONFIG) as TaskArea[]).filter(a => a !== "outros").map(a => {
@@ -1486,7 +1498,7 @@ function AgendaPage() {
                         background: active ? "rgba(124,92,255,0.1)" : "#0B0B10",
                       }}>
                       <span style={{ fontSize: 14 }}>{area?.emoji}</span>
-                      <span style={{ fontSize: 10, fontWeight: 600, color: active ? "#A78BFA" : "#9e96b5" }}>{AREA_LABELS[a]}</span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: active ? "#A78BFA" : "#9e96b5" }}>{tr(AREA_CONFIG[a].labelKey)}</span>
                     </button>
                   );
                 })}
@@ -1496,7 +1508,7 @@ function AgendaPage() {
             {/* Vincular a meta */}
             {(activeGoals.length > 0 || weekPedras.length > 0) && (
               <div style={{ marginTop: 14 }}>
-                <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>Vincular a meta (opcional)</label>
+                <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>{tr("ag_vincular_meta")}</label>
                 <select value={newLinkedGoalId} onChange={e => setNewLinkedGoalId(e.target.value)}
                   style={{
                     ...modalInput, height: 44, appearance: "none",
@@ -1505,16 +1517,16 @@ function AgendaPage() {
                     backgroundPosition: "right 14px center",
                     paddingRight: 36,
                   }}>
-                  <option value="">Nenhuma</option>
+                  <option value="">{tr("ag_nenhuma")}</option>
                   {weekPedras.length > 0 && (
-                    <optgroup label="Pedras da semana">
+                    <optgroup label={tr("ag_pedras_semana")}>
                       {weekPedras.map(p => (
                         <option key={p.id} value={p.id}>{p.title}</option>
                       ))}
                     </optgroup>
                   )}
                   {activeGoals.filter((g: any) => !weekPedras.some(p => p.id === g.id)).length > 0 && (
-                    <optgroup label="Demais metas">
+                    <optgroup label={tr("ag_demais_metas")}>
                       {activeGoals.filter((g: any) => !weekPedras.some(p => p.id === g.id)).map((g: any) => (
                         <option key={g.id} value={g.id}>{g.emoji || "🎯"} {g.title}</option>
                       ))}
@@ -1526,7 +1538,7 @@ function AgendaPage() {
 
             {/* Color picker */}
             <div style={{ marginTop: 14 }}>
-              <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>Cor</label>
+              <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>{tr("ag_cor")}</label>
               <div style={{ display: "flex", gap: 8 }}>
                 {["#7C5CFF", "#FF4D4D", "#FF9F43", "#FFD43B", "#4CD97B", "#5EEAD4", "#F472B6", "#818CF8"].map(c => (
                   <button key={c} type="button" onClick={() => setNewColor(c)}
@@ -1540,14 +1552,14 @@ function AgendaPage() {
             {/* Repeat (só compromisso) */}
             {newItemType === "compromisso" && (
               <div style={{ marginTop: 14 }}>
-                <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>Repetir</label>
+                <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>{tr("ag_repetir")}</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                   {[
-                    { val: "none", label: "Não" },
-                    { val: "daily", label: "Diário" },
-                    { val: "weekdays", label: "Dias úteis" },
-                    { val: "weekly", label: "Semanal" },
-                    { val: "monthly", label: "Mensal" },
+                    { val: "none", label: tr("nao") },
+                    { val: "daily", label: tr("ag_diario") },
+                    { val: "weekdays", label: tr("ag_dias_uteis") },
+                    { val: "weekly", label: tr("ag_semanal") },
+                    { val: "monthly", label: tr("ag_mensal") },
                   ].map(r => (
                     <button key={r.val} type="button" onClick={() => setNewRepeat(r.val)}
                       style={{
@@ -1563,14 +1575,14 @@ function AgendaPage() {
             {/* Notification */}
             {newItemType === "compromisso" && (
               <div style={{ marginTop: 14 }}>
-                <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>Notificação</label>
+                <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>{tr("ag_notificacao")}</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                   {[
-                    { val: null, label: "Nenhum" },
+                    { val: null, label: tr("ag_nenhum") },
                     { val: 5, label: "5 min" },
                     { val: 15, label: "15 min" },
                     { val: 30, label: "30 min" },
-                    { val: 60, label: "1 hora" },
+                    { val: 60, label: tr("ag_1_hora") },
                   ].map(n => (
                     <button key={String(n.val)} type="button" onClick={() => setNewNotify(n.val)}
                       style={{
@@ -1586,7 +1598,7 @@ function AgendaPage() {
             {/* Due date (só tarefa) */}
             {newItemType === "tarefa" && (
               <div style={{ marginTop: 14 }}>
-                <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>Data limite</label>
+                <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>{tr("ag_data_limite")}</label>
                 <div style={nativeInputWrapper}>
                   <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
                     style={nativeInputInner} />
@@ -1596,7 +1608,7 @@ function AgendaPage() {
 
             {/* Priority */}
             <div style={{ marginTop: 14 }}>
-              <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>Prioridade</label>
+              <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>{tr("ag_prioridade")}</label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {(Object.entries(PRIORITY_CONFIG) as [EisenhowerPriority, typeof PRIORITY_CONFIG[EisenhowerPriority]][]).map(([key, cfg]) => {
                   const Icon = cfg.icon;
@@ -1609,7 +1621,7 @@ function AgendaPage() {
                         color: newPriority === key ? cfg.color : "#9e96b5",
                         display: "flex", alignItems: "center", gap: 4,
                       }}>
-                      <Icon size={10} /> {cfg.shortLabel}
+                      <Icon size={10} /> {tr(cfg.shortLabelKey)}
                     </button>
                   );
                 })}
@@ -1623,7 +1635,7 @@ function AgendaPage() {
                   flex: 1, padding: "14px 0", borderRadius: 14,
                   border: "1px solid rgba(167,139,250,0.2)", background: "transparent",
                   cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#9e96b5",
-                }}>Cancelar</button>
+                }}>{tr("cancelar")}</button>
               <button type="button" onClick={handleSave} disabled={saving || !newTitle.trim()}
                 style={{
                   flex: 2, padding: "14px 0", borderRadius: 14, border: 0,
@@ -1631,7 +1643,7 @@ function AgendaPage() {
                   fontFamily: "inherit", fontSize: 14, fontWeight: 700,
                   background: (saving || !newTitle.trim()) ? "#1e1840" : "#7C5CFF",
                   color: (saving || !newTitle.trim()) ? "#9e96b5" : "#fff",
-                }}>{saving ? "Salvando…" : editingId ? "Salvar alterações" : "Adicionar"}</button>
+                }}>{saving ? tr("salvando") : editingId ? tr("ck_salvar_alteracoes") : tr("ag_adicionar")}</button>
             </div>
           </div>
         </div>
@@ -1646,23 +1658,23 @@ function AgendaPage() {
               {deleteDialog.title}
             </p>
             <p style={{ margin: "0 0 18px", fontSize: 12, color: "#9e96b5", lineHeight: 1.5 }}>
-              Este compromisso se repete. O que deseja excluir?
+              {tr("ag_repete_excluir")}
             </p>
             <button type="button" onClick={() => deleteThisOccurrence(deleteDialog)}
               style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.06)", color: "#e0d6ff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              Apenas este
+              {tr("ag_apenas_este")}
             </button>
             <button type="button" onClick={() => deleteThisAndFuture(deleteDialog)}
               style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.06)", color: "#e0d6ff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              Este e os seguintes
+              {tr("ag_este_seguintes")}
             </button>
             <button type="button" onClick={() => deleteAllOccurrences(deleteDialog)}
               style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: 0, background: "rgba(255,92,92,0.12)", color: "#FF5C5C", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-              Todos (passado e futuro)
+              {tr("ag_todos_passado_futuro")}
             </button>
             <button type="button" onClick={() => setDeleteDialog(null)}
               style={{ width: "100%", padding: "10px 0", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              Cancelar
+              {tr("cancelar")}
             </button>
           </div>
         </div>
@@ -1676,11 +1688,11 @@ function AgendaPage() {
             <div style={{ display: "flex", gap: 10 }}>
               <button type="button" onClick={() => { confirmDialog.onCancel?.(); setConfirmDialog(null); }}
                 style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                {confirmDialog.cancelLabel || "Cancelar"}
+                {confirmDialog.cancelLabel || tr("cancelar")}
               </button>
               <button type="button" onClick={() => { confirmDialog.onOk(); setConfirmDialog(null); }}
                 style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: 0, background: confirmDialog.okColor || "#FF5C5C", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                {confirmDialog.okLabel || "Excluir"}
+                {confirmDialog.okLabel || tr("ag_excluir")}
               </button>
             </div>
           </div>
@@ -1719,6 +1731,7 @@ const navBtnStyle: React.CSSProperties = {
 };
 
 function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, refreshItems, loading, toggleAgendaTask }: { allWeekTasks: any[]; compromissos: AgendaItem[]; selectedDate: string; setAllWeekTasks: React.Dispatch<React.SetStateAction<any[]>>; refreshItems: () => void; loading: boolean; toggleAgendaTask: (item: AgendaItem, coords?: { x: number; y: number }) => void }) {
+  const { t: tr } = useTranslation();
   const [goals, setGoals] = useState<any[]>([]);
   const [goalsLoading, setGoalsLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -1747,10 +1760,8 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
 
   const pad2 = (n: number) => String(n).padStart(2, "0");
   const todayStr = getLocalDate();
-  const shortDate = (dateStr: string) => {
-    const [, m, d] = dateStr.split("-");
-    return `${d}/${m}`;
-  };
+  const shortDate = (dateStr: string) =>
+    new Date(dateStr + "T12:00:00").toLocaleDateString(getLocale(), { day: "2-digit", month: "2-digit" });
 
   // Segunda (0) .. Domingo (6) de uma data YYYY-MM-DD
   const dowOf = (dateStr: string): number => {
@@ -1826,7 +1837,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
         setAllWeekTasks((prev: any[]) => prev.map((wt: any) => wt.id === t.id
           ? { ...wt, status: "concluida", day_of_week: dow, _weekStart: weekStart, weekly_plan_id: planId }
           : wt));
-        toast.success(`"${t.title}" concluída hoje`);
+        toast.success(tr("ag_toast_concluida_hoje", { title: t.title }));
         return;
       }
       // fallback: se falhar criar o plano, só marca o status abaixo
@@ -1838,7 +1849,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     });
-    toast.success(newStatus === "concluida" ? `"${t.title}" concluída` : `"${t.title}" reaberta`);
+    toast.success(newStatus === "concluida" ? tr("ag_toast_concluida", { title: t.title }) : tr("ag_toast_reaberta", { title: t.title }));
   };
 
   const moveToToday = async (t: any, dateLabel: string, kind: "overdue" | "open" = "overdue") => {
@@ -1847,11 +1858,11 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
     const { ok, weekStart, dow, planId } = await moveTaskToDay(t, todayStr);
     if (ok) {
       if (kind === "overdue") {
-        toast.warning(`⚠️ ${t.title} estava atrasada`, {
-          description: dateLabel ? `Movida de ${dateLabel} para hoje` : "Movida para hoje",
+        toast.warning(`⚠️ ${tr("ag_toast_atrasada", { title: t.title })}`, {
+          description: dateLabel ? tr("ag_movida_hoje", { date: dateLabel }) : tr("ag_movida_hoje_simples"),
         });
       } else {
-        toast.success(`➕ ${t.title} adicionada ao plano de hoje`);
+        toast.success(`➕ ${tr("ag_toast_adicionada_hoje", { title: t.title })}`);
       }
       // Pequena pausa para o pulso aparecer antes de sair da lista
       setTimeout(() => {
@@ -1998,7 +2009,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
         // é sempre per-ocorrência (nunca PATCH na regra para não concluir a série).
         const keyChanged = titleChanged || dateChanged;
         if (keyChanged) {
-          const applyAll = confirm("Aplicar alterações a TODOS os compromissos desta repetição?\n\nOK = Todos\nCancelar = Apenas este");
+          const applyAll = confirm(tr("ag_aplicar_todos"));
           if (applyAll) {
             await fetch("/api/agenda", {
               method: "PATCH",
@@ -2059,7 +2070,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       }
       setEditingItem(null);
     }
-    toast.success(dayChanged ? `Movida para ${shortDate(editDate)}` : (isWeeklyOpen && editDone ? `"${editTitle.trim()}" concluída hoje` : "Alterações salvas"));
+    toast.success(dayChanged ? tr("ag_movida_para", { date: shortDate(editDate) }) : (isWeeklyOpen && editDone ? tr("ag_toast_concluida_hoje", { title: editTitle.trim() }) : tr("ag_alteracoes_salvas")));
   };
 
   const realItemId = (item: any) => item._origId || item.id;
@@ -2109,17 +2120,17 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
         setDeleteOpts(editingItem);
         return;
       }
-      if (!confirm("Tem certeza que deseja excluir?")) return;
+      if (!confirm(tr("ag_certeza_excluir"))) return;
       await fetch(`/api/agenda?id=${realItemId(editingItem)}`, { method: "DELETE" });
       refreshItems();
       setEditingItem(null);
-      toast.success("Atividade excluída");
+      toast.success(tr("ag_atividade_excluida"));
     } else {
-      if (!confirm("Tem certeza que deseja excluir?")) return;
+      if (!confirm(tr("ag_certeza_excluir"))) return;
       await fetch(`/api/weekly-plans/tasks/${editingItem.id}`, { method: "DELETE" });
       setAllWeekTasks((prev: any[]) => prev.filter((wt: any) => wt.id !== editingItem.id));
       setEditingItem(null);
-      toast.success("Atividade excluída");
+      toast.success(tr("ag_atividade_excluida"));
     }
   };
 
@@ -2133,7 +2144,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
     });
     setAllWeekTasks((prev: any[]) => prev.map((wt: any) => wt.id === editingItem.id ? { ...wt, status: "pulada" } : wt));
     setEditingItem(null);
-    toast.success(`⏭️ "${editingItem.title}" pulada`);
+    toast.success(`⏭️ ${tr("ag_toast_pulada", { title: editingItem.title })}`);
   };
 
   // Reabrir uma tarefa pulada (volta a "pendente")
@@ -2144,7 +2155,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "pendente" }),
     });
-    toast.success(`↩️ "${t.title}" reaberta`);
+    toast.success(`↩️ ${tr("ag_toast_reaberta", { title: t.title })}`);
   };
 
   return (
@@ -2152,7 +2163,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       {/* Atrasadas (overdue weekly plan tasks) */}
       {overdueTasks.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#FF9F43", textTransform: "uppercase", letterSpacing: ".06em" }}>⚠️ Atrasadas</h3>
+          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#FF9F43", textTransform: "uppercase", letterSpacing: ".06em" }}>⚠️ {tr("ag_atrasadas")}</h3>
           {overdueTasks.map((t: any) => {
             const area = AREA_CONFIG_PT[t.area] || { emoji: "⚪" };
             let dateLabel = "";
@@ -2163,7 +2174,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
             } else if (t._weekStart && t.day_of_week == null) {
               // "Em aberto" de semana passada: indica a semana de origem.
               const [, m, d] = t._weekStart.split("-");
-              dateLabel = `sem. ${d}/${m}`;
+              dateLabel = `${tr("ag_sem")} ${d}/${m}`;
             }
             return (
               <div key={t.id} style={{
@@ -2179,9 +2190,9 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
                 <button type="button"
                   onClick={(e) => { e.stopPropagation(); moveToToday(t, dateLabel); }}
                   disabled={movingId === t.id}
-                  title="Mover para esta semana"
+                  title={tr("ag_mover_semana")}
                   style={{ padding: "2px 6px", borderRadius: 6, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(124,92,255,0.06)", color: "#A78BFA", fontSize: 8, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0, whiteSpace: "nowrap", opacity: movingId === t.id ? 0.5 : 1 }}>
-                  {movingId === t.id ? "…" : "Hoje →"}
+                  {movingId === t.id ? "…" : `${tr("ag_hoje")} →`}
                 </button>
               </div>
             );
@@ -2192,7 +2203,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       {/* Em aberto (weekly tasks without day) */}
       {openWeekTasks.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>📋 Em aberto</h3>
+          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>📋 {tr("ag_em_aberto")}</h3>
           {openWeekTasks.map((t: any) => {
             const area = AREA_CONFIG_PT[t.area] || { emoji: "⚪" };
             const done = t.status === "concluida";
@@ -2206,9 +2217,9 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
                 <button type="button"
                   onClick={(e) => { e.stopPropagation(); moveToToday(t, "", "open"); }}
                   disabled={movingId === t.id}
-                  title="Adicionar ao plano de hoje"
+                  title={tr("ag_adicionar_hoje")}
                   style={{ padding: "2px 6px", borderRadius: 6, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(124,92,255,0.06)", color: "#A78BFA", fontSize: 8, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0, whiteSpace: "nowrap", opacity: movingId === t.id ? 0.5 : 1 }}>
-                  {movingId === t.id ? "…" : "Hoje →"}
+                  {movingId === t.id ? "…" : `${tr("ag_hoje")} →`}
                 </button>
               </div>
             );
@@ -2219,7 +2230,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       {/* Compromissos do dia */}
       {todayComp.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>Compromissos do dia</h3>
+          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_compromissos_dia")}</h3>
           {todayComp.map(c => (
             <button key={c.id} type="button" onClick={() => openEditor(c)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)", background: "none", borderLeft: 0, borderRight: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
               <span style={{ fontSize: 12 }}>{c.emoji || "📅"}</span>
@@ -2233,7 +2244,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       {/* Tarefas da agenda */}
       {todayAgendaTarefas.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>Tarefas do dia</h3>
+          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_tarefas_dia")}</h3>
           {todayAgendaTarefas.map(t => {
             const done = t.status === "concluida";
             return (
@@ -2254,7 +2265,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       {/* Tarefas do planejamento */}
       {dayPlanTasks.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>Plano do dia</h3>
+          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_plano_dia")}</h3>
           {dayPlanTasks.map((t: any) => {
             const area = AREA_CONFIG_PT[t.area] || { emoji: "⚪" };
             const done = t.status === "concluida";
@@ -2276,7 +2287,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       {/* Metas ativas */}
       {activeGoals.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>Metas ativas</h3>
+          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_metas_ativas")}</h3>
           {activeGoals.map((g: any) => (
             <button key={g.id} type="button" onClick={() => setDetailGoalId(g.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)", background: "none", borderLeft: 0, borderRight: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
               <span style={{ fontSize: 12 }}>{(AREA_CONFIG_PT as any)[g.area]?.emoji || "🎯"}</span>
@@ -2290,13 +2301,13 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       {/* Puladas (descartadas sem apagar) */}
       {puladaTasks.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#5a5470", textTransform: "uppercase", letterSpacing: ".06em" }}>⏭️ Puladas</h3>
+          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#5a5470", textTransform: "uppercase", letterSpacing: ".06em" }}>⏭️ {tr("ag_puladas")}</h3>
           {puladaTasks.map((t: any) => (
             <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(167,139,250,0.05)" }}>
               <span style={{ flex: 1, fontSize: 11, color: "#5a5470", textDecoration: "line-through", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
               <button type="button" onClick={() => reopenTask(t)}
                 style={{ padding: "2px 8px", borderRadius: 6, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#A78BFA", fontSize: 8, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0, whiteSpace: "nowrap" }}>
-                ↩ Reabrir
+                ↩ {tr("ag_reabrir")}
               </button>
             </div>
           ))}
@@ -2304,7 +2315,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       )}
 
       {todayComp.length === 0 && todayAgendaTarefas.length === 0 && dayPlanTasks.length === 0 && openWeekTasks.length === 0 && overdueTasks.length === 0 && activeGoals.length === 0 && puladaTasks.length === 0 && (
-        <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center", padding: 32 }}>Nenhuma atividade</p>
+        <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center", padding: 32 }}>{tr("ag_nenhuma_atividade")}</p>
       )}
 
       {/* Delete dialog (compromisso repetido) */}
@@ -2316,23 +2327,23 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
               {deleteOpts.title}
             </p>
             <p style={{ margin: "0 0 18px", fontSize: 12, color: "#9e96b5", lineHeight: 1.5 }}>
-              Este compromisso se repete. O que deseja excluir?
+              {tr("ag_repete_excluir")}
             </p>
             <button type="button" onClick={() => deleteThisOccurrence(deleteOpts)}
               style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.06)", color: "#e0d6ff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              Apenas este
+              {tr("ag_apenas_este")}
             </button>
             <button type="button" onClick={() => deleteThisAndFuture(deleteOpts)}
               style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.06)", color: "#e0d6ff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              Este e os seguintes
+              {tr("ag_este_seguintes")}
             </button>
             <button type="button" onClick={() => deleteAllOccurrences(deleteOpts)}
               style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: 0, background: "rgba(255,92,92,0.12)", color: "#FF5C5C", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-              Todos (passado e futuro)
+              {tr("ag_todos_passado_futuro")}
             </button>
             <button type="button" onClick={() => setDeleteOpts(null)}
               style={{ width: "100%", padding: "10px 0", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              Cancelar
+              {tr("cancelar")}
             </button>
           </div>
         </div>
@@ -2345,12 +2356,12 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
         <div onTouchMove={(e) => e.stopPropagation()}
           style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "60px 20px 20px", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
           <div style={{ width: "100%", maxWidth: 400, background: "#151520", borderRadius: 24, padding: 24, border: "1px solid rgba(167,139,250,0.15)" }}>
-            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>Editar</h3>
-            <input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Título" autoFocus
+            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>{tr("editar")}</h3>
+            <input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder={tr("titulo")} autoFocus
               style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 14, fontFamily: "inherit", outline: "none" }} />
             {/* Mudar de dia */}
             <div style={{ marginTop: 12 }}>
-              <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>Mudar de dia</label>
+              <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>{tr("ag_mudar_dia")}</label>
               <div style={{ overflow: "hidden", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10" }}>
                 <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
                   style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", border: "none", outline: "none", background: "transparent", color: "#e0d6ff", fontSize: 14, fontFamily: "inherit" }} />
@@ -2360,25 +2371,25 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
             <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, cursor: "pointer" }}>
               <input type="checkbox" checked={editDone} onChange={e => setEditDone(e.target.checked)}
                 style={{ accentColor: "#7C5CFF", width: 20, height: 20 }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>Concluído</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>{tr("ag_concluido")}</span>
             </label>
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <button type="button" onClick={() => setEditingItem(null)}
-                style={{ flex: 1, padding: 14, borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
+                style={{ flex: 1, padding: 14, borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{tr("cancelar")}</button>
               <button type="button" onClick={saveEdit}
-                style={{ flex: 2, padding: 14, borderRadius: 14, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Salvar</button>
+                style={{ flex: 2, padding: 14, borderRadius: 14, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>{tr("salvar")}</button>
             </div>
             {/* Pular (apenas tarefas do plano semanal) */}
             {!editingItem.item_type && (
               <button type="button" onClick={skipItem}
                 style={{ width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(124,92,255,0.06)", color: "#A78BFA", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                ⏭️ Pular (não vou fazer)
+                ⏭️ {tr("ag_pular_nao_vou")}
               </button>
             )}
             {/* Delete */}
             <button type="button" onClick={deleteItem}
               style={{ width: "100%", marginTop: 8, padding: "12px 0", borderRadius: 14, border: 0, background: "rgba(255,92,92,0.1)", color: "#FF5C5C", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              🗑 Excluir
+              🗑 {tr("ag_excluir")}
             </button>
           </div>
         </div>
