@@ -3,15 +3,16 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cachedFetch } from "@/lib/fetch-cache";
+import { useTranslation } from "@/lib/useTranslation";
 import { Target, ChevronDown } from "lucide-react";
 
 type Objective = "perder_peso" | "manter" | "ganhar_massa" | "melhorar_habitos";
 
-const OBJECTIVES: { id: Objective; label: string; emoji: string; desc: string; kcal: number }[] = [
-  { id: "perder_peso", label: "Perder peso", emoji: "⚖️", desc: "Déficit calórico moderado para emagrecer de forma saudável", kcal: 1600 },
-  { id: "manter", label: "Manter o peso", emoji: "✨", desc: "Equilíbrio para manter o peso atual com saúde", kcal: 2000 },
-  { id: "ganhar_massa", label: "Ganhar massa", emoji: "💪", desc: "Superávit calórico focado em ganho muscular", kcal: 2500 },
-  { id: "melhorar_habitos", label: "Melhorar hábitos", emoji: "🌱", desc: "Foco na qualidade, sem meta rígida de calorias", kcal: 2000 },
+const OBJECTIVES: { id: Objective; labelKey: string; emoji: string; descKey: string; kcal: number }[] = [
+  { id: "perder_peso", labelKey: "nu_obj_perder_peso", emoji: "⚖️", descKey: "nu_obj_perder_peso_desc", kcal: 1600 },
+  { id: "manter", labelKey: "nu_obj_manter", emoji: "✨", descKey: "nu_obj_manter_desc", kcal: 2000 },
+  { id: "ganhar_massa", labelKey: "nu_obj_ganhar_massa", emoji: "💪", descKey: "nu_obj_ganhar_massa_desc", kcal: 2500 },
+  { id: "melhorar_habitos", labelKey: "nu_obj_melhorar_habitos", emoji: "🌱", descKey: "nu_obj_melhorar_habitos_desc", kcal: 2000 },
 ];
 
 interface GoalData {
@@ -29,6 +30,7 @@ async function saveGoal(goal: GoalData, currentContext: Record<string, unknown>)
 }
 
 export function NutritionGoalCard() {
+  const { t } = useTranslation();
   const [goal, setGoal] = useState<GoalData | null>(null);
   const [ctx, setCtx] = useState<Record<string, unknown>>({});
   const [editing, setEditing] = useState(false);
@@ -76,8 +78,8 @@ export function NutritionGoalCard() {
         <CardContent className="p-4 text-center space-y-3">
           <div className="text-3xl">🎯</div>
           <div>
-            <p className="text-sm font-medium">Qual é o seu objetivo?</p>
-            <p className="text-xs text-muted-foreground">Isso ajuda a personalizar sua meta de calorias</p>
+            <p className="text-sm font-medium">{t("nu_qual_objetivo")}</p>
+            <p className="text-xs text-muted-foreground">{t("nu_objetivo_ajuda")}</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {OBJECTIVES.map((obj) => (
@@ -88,8 +90,8 @@ export function NutritionGoalCard() {
                 className="p-3 rounded-xl bg-muted/50 hover:bg-muted text-left transition-colors"
               >
                 <span className="text-lg">{obj.emoji}</span>
-                <p className="text-xs font-medium mt-1">{obj.label}</p>
-                <p className="text-[10px] text-muted-foreground">{obj.desc}</p>
+                <p className="text-xs font-medium mt-1">{t(obj.labelKey)}</p>
+                <p className="text-[10px] text-muted-foreground">{t(obj.descKey)}</p>
               </button>
             ))}
           </div>
@@ -105,14 +107,14 @@ export function NutritionGoalCard() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Target className="size-4 text-primary" />
-            <span className="text-sm font-medium">Seu objetivo</span>
+            <span className="text-sm font-medium">{t("nu_seu_objetivo")}</span>
           </div>
           <button
             type="button"
             onClick={() => setEditing(!editing)}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            {editing ? "Fechar" : "Mudar"}
+            {editing ? t("nu_fechar") : t("nu_mudar")}
           </button>
         </div>
 
@@ -132,7 +134,7 @@ export function NutritionGoalCard() {
                   }`}
                 >
                   <span className="text-lg">{obj.emoji}</span>
-                  <p className="text-xs font-medium mt-0.5">{obj.label}</p>
+                  <p className="text-xs font-medium mt-0.5">{t(obj.labelKey)}</p>
                 </button>
               ))}
             </div>
@@ -140,7 +142,7 @@ export function NutritionGoalCard() {
             {goal.objective !== "melhorar_habitos" && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Meta diária</span>
+                  <span className="text-xs text-muted-foreground">{t("nu_meta_diaria")}</span>
                   <span className="text-sm font-bold tabular-nums">{kcal} kcal</span>
                 </div>
                 <input
@@ -167,11 +169,11 @@ export function NutritionGoalCard() {
           <div className="flex items-center gap-3">
             <span className="text-2xl">{objective?.emoji}</span>
             <div>
-              <p className="text-sm font-medium">{objective?.label}</p>
+              <p className="text-sm font-medium">{objective ? t(objective.labelKey) : ""}</p>
               <p className="text-xs text-muted-foreground">
                 {goal.objective === "melhorar_habitos"
-                  ? "Foco na qualidade, sem meta rígida"
-                  : `Meta: ${kcal} kcal/dia`}
+                  ? t("nu_foco_qualidade")
+                  : t("nu_meta_kcal", { kcal: String(kcal) })}
               </p>
             </div>
           </div>

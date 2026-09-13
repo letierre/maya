@@ -1,5 +1,6 @@
 "use client";
 import { getLocale } from "@/lib/language";
+import { useTranslation } from "@/lib/useTranslation";
 
 import { useEffect, useState } from "react";
 import { mealTypeEmoji, mealTypeLabel, classificationLabel } from "@/lib/meal-utils";
@@ -29,6 +30,7 @@ interface MealCardProps {
 }
 
 export function MealCard({ meal, onClick, onToggleFavorite }: MealCardProps) {
+  const { t } = useTranslation();
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
 
   const primaryPhoto = meal.fotos?.length ? meal.fotos[0] : meal.foto_path;
@@ -100,7 +102,7 @@ export function MealCard({ meal, onClick, onToggleFavorite }: MealCardProps) {
                   fontSize: 10, fontWeight: 600, color: "#fff",
                   background: "rgba(0,0,0,0.5)", padding: "2px 8px", borderRadius: 9999,
                 }}>
-                  Analisar
+                  {t("nu_analisar")}
                 </span>
               </div>
             )}
@@ -126,7 +128,7 @@ export function MealCard({ meal, onClick, onToggleFavorite }: MealCardProps) {
                   padding: "2px 6px", borderRadius: 9999,
                   marginLeft: "auto",
                 }}>
-                  Pendente
+                  {t("nu_pendente")}
                 </span>
               )}
               {onToggleFavorite && (
@@ -138,7 +140,7 @@ export function MealCard({ meal, onClick, onToggleFavorite }: MealCardProps) {
                     background: "none", border: 0, cursor: "pointer",
                     padding: 2, display: "flex",
                   }}
-                  aria-label={meal.favorited ? "Desfavoritar" : "Favoritar"}
+                  aria-label={meal.favorited ? t("nu_desfavoritar") : t("nu_favoritar")}
                 >
                   <Star
                     style={{

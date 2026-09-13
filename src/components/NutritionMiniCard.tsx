@@ -67,9 +67,9 @@ export function NutritionMiniCard() {
             <span className="text-2xl">⏳</span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium">
-                {meals.length} {meals.length > 1 ? "refeições" : "refeição"} {t("pendente_analise").toLowerCase()}
+                {meals.length} {t(meals.length > 1 ? "nu_refeicoes" : "nu_refeicao")} {t("pendente_analise").toLowerCase()}
               </p>
-              <p className="text-xs text-muted-foreground">Toque para analisar</p>
+              <p className="text-xs text-muted-foreground">{t("nu_toque_analisar")}</p>
             </div>
             <span className="text-muted-foreground text-sm">→</span>
           </div>
@@ -135,14 +135,14 @@ export function NutritionMiniCard() {
                 />
               </div>
               <p className="text-[10px] text-muted-foreground">
-                {kcalPct}% da meta diária
+                {t("nu_da_meta_diaria", { pct: String(kcalPct) })}
               </p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{analyzed.length} {analyzed.length > 1 ? "refeições" : "refeição"}</span>
+          <span>{analyzed.length} {t(analyzed.length > 1 ? "nu_refeicoes" : "nu_refeicao")}</span>
           {pending.length > 0 && (
             <>
               <span>·</span>

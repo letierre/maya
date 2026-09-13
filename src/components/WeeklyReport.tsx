@@ -1,6 +1,7 @@
 import { getLocale } from "@/lib/language";
 import { useMemo } from "react";
 import { sumMacros, nutritionScore, mealTypeLabel, mealTypeEmoji } from "@/lib/meal-utils";
+import { useTranslation } from "@/lib/useTranslation";
 import { detectNutrientGaps } from "@/lib/nutrient-data";
 import { getLocalDateFromISO, getWeekMondayDate, getWeekSundayDate } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus, ShoppingCart } from "lucide-react";
@@ -40,6 +41,7 @@ const mutedText: React.CSSProperties = {
 };
 
 export function WeeklyReport({ meals, weekDays, onAddToShoppingList }: { meals: Meal[]; weekDays: WeekDay[]; onAddToShoppingList?: (items: { item_name: string; category: string }[]) => void }) {
+  const { t } = useTranslation();
   const mondayDate = getWeekMondayDate();
   const sundayDate = getWeekSundayDate();
 
@@ -66,13 +68,13 @@ export function WeeklyReport({ meals, weekDays, onAddToShoppingList }: { meals: 
     const avg1 = thisDays > 0 ? Math.round(sumMacros(thisWeekMeals as { macros: NonNullable<Meal["macros"]> }[]).calorias_kcal / thisDays) : 0;
     const avg2 = lastDays > 0 ? Math.round(sumMacros(lastWeekMeals as { macros: NonNullable<Meal["macros"]> }[]).calorias_kcal / lastDays) : 0;
 
-    let t: "up" | "down" | "flat" = "flat";
+    let trendDir: "up" | "down" | "flat" = "flat";
     let pct = 0;
     if (avg1 > 0 && avg2 > 0) {
       pct = Math.round(((avg1 - avg2) / avg2) * 100);
-      t = pct > 5 ? "up" : pct < -5 ? "down" : "flat";
+      trendDir = pct > 5 ? "up" : pct < -5 ? "down" : "flat";
     }
-    return { thisWeekAvg: avg1, lastWeekAvg: avg2, trend: t, trendPct: Math.abs(pct) };
+    return { thisWeekAvg: avg1, lastWeekAvg: avg2, trend: trendDir, trendPct: Math.abs(pct) };
   }, [meals, mondayDate, sundayDate]);
 
   // Distribuição por tipo de refeição — semana atual (Seg-Dom)
@@ -155,14 +157,14 @@ export function WeeklyReport({ meals, weekDays, onAddToShoppingList }: { meals: 
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* ── Comparação semanal ─────────────────────────────── */}
       <div style={cardStyle}>
-        <p style={sectionTitle}>📊 Comparação semanal</p>
+        <p style={sectionTitle}>{t("nu_comparacao_semanal")}</p>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ textAlign: "center", flex: 1 }}>
-            <p style={mutedText}>Esta semana</p>
+            <p style={mutedText}>{t("nu_esta_semana")}</p>
             <p style={{ fontSize: 22, fontWeight: 700, color: "#e0d6ff", fontVariantNumeric: "tabular-nums" }}>
               {thisWeekAvg || "–"}
             </p>
-            <p style={mutedText}>kcal/dia</p>
+            <p style={mutedText}>{t("an_kcal_dia")}</p>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px" }}>
             {trend === "up" ? (
@@ -182,11 +184,11 @@ export function WeeklyReport({ meals, weekDays, onAddToShoppingList }: { meals: 
             )}
           </div>
           <div style={{ textAlign: "center", flex: 1 }}>
-            <p style={mutedText}>Semana passada</p>
+            <p style={mutedText}>{t("nu_semana_passada")}</p>
             <p style={{ fontSize: 18, fontWeight: 600, color: MUTED, fontVariantNumeric: "tabular-nums" }}>
               {lastWeekAvg || "–"}
             </p>
-            <p style={mutedText}>kcal/dia</p>
+            <p style={mutedText}>{t("an_kcal_dia")}</p>
           </div>
         </div>
       </div>
@@ -200,7 +202,7 @@ export function WeeklyReport({ meals, weekDays, onAddToShoppingList }: { meals: 
               background: `${TEAL} / 0.08`,
               border: `1px solid ${TEAL} / 0.18`,
             }}>
-              <p style={mutedText}>🌟 Melhor dia</p>
+              <p style={mutedText}>{t("nu_melhor_dia")}</p>
               <p style={{ fontSize: 13, fontWeight: 500, color: "#e0d6ff" }}>
                 {new Date(bestDay.date + "T12:00:00").toLocaleDateString(getLocale(), { weekday: "short", day: "numeric" })}
               </p>
@@ -213,7 +215,7 @@ export function WeeklyReport({ meals, weekDays, onAddToShoppingList }: { meals: 
               background: `${AMBER} / 0.08`,
               border: `1px solid ${AMBER} / 0.18`,
             }}>
-              <p style={mutedText}>💡 A melhorar</p>
+              <p style={mutedText}>{t("nu_a_melhorar")}</p>
               <p style={{ fontSize: 13, fontWeight: 500, color: "#e0d6ff" }}>
                 {new Date(worstDay.date + "T12:00:00").toLocaleDateString(getLocale(), { weekday: "short", day: "numeric" })}
               </p>
@@ -226,7 +228,7 @@ export function WeeklyReport({ meals, weekDays, onAddToShoppingList }: { meals: 
       {/* ── Distribuição por tipo de refeição ──────────────── */}
       {mealTypeDist.length > 0 && (
         <div style={cardStyle}>
-          <p style={sectionTitle}>🍽️ Distribuição por refeição</p>
+          <p style={sectionTitle}>{t("nu_distribuicao_refeicao")}</p>
           {mealTypeDist.map((d) => (
             <div key={d.tipo} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
@@ -248,7 +250,7 @@ export function WeeklyReport({ meals, weekDays, onAddToShoppingList }: { meals: 
       {/* ── Itens mais frequentes ──────────────────────────── */}
       {topItems.length > 0 && (
         <div style={cardStyle}>
-          <p style={sectionTitle}>🔁 O que mais apareceu</p>
+          <p style={sectionTitle}>{t("nu_o_que_apareceu")}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {topItems.map(([nome, count]) => (
               <span key={nome} style={{
@@ -269,19 +271,19 @@ export function WeeklyReport({ meals, weekDays, onAddToShoppingList }: { meals: 
           background: `${AMBER} / 0.06`,
           border: `1px solid ${AMBER} / 0.18`,
         }}>
-          <p style={sectionTitle}>🔍 Possíveis lacunas</p>
+          <p style={sectionTitle}>{t("nu_possiveis_lacunas")}</p>
           {sparseData && (
             <p style={{
               fontSize: 12, color: "oklch(0.55 0.12 65)", lineHeight: 1.6,
               background: `${AMBER} / 0.12`, borderRadius: 10, padding: "8px 12px",
             }}>
-              Você registrou apenas {analyzedCount} {analyzedCount === 1 ? "refeição" : "refeições"} com análise esta semana. As lacunas abaixo provavelmente subestimam a realidade.
+              {t(analyzedCount === 1 ? "nu_registrou_semana_uma" : "nu_registrou_semana_varias", { n: String(analyzedCount) })}
             </p>
           )}
           <p style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>
             {sparseData
-              ? "Com os dados disponíveis, estes nutrientes provavelmente estão em falta:"
-              : "Baseado nos alimentos registrados esta semana, estes nutrientes podem estar em falta:"}
+              ? t("nu_dados_disponiveis")
+              : t("nu_baseado_semana")}
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {nutrientGaps.map((gap) => (
@@ -291,7 +293,7 @@ export function WeeklyReport({ meals, weekDays, onAddToShoppingList }: { meals: 
                   <span style={{ fontWeight: 500, color: "#e0d6ff" }}>{gap.nutrient}</span>
                 </div>
                 <p style={{ fontSize: 11, color: MUTED, lineHeight: 1.5, margin: 0, paddingLeft: 26 }}>
-                  💡 Experimente: {gap.sources.join(", ")}
+                  💡 {t("nu_experimente")}: {gap.sources.join(", ")}
                 </p>
                 {onAddToShoppingList && gap.sources.length > 0 && (
                   <button
@@ -306,14 +308,14 @@ export function WeeklyReport({ meals, weekDays, onAddToShoppingList }: { meals: 
                     }}
                   >
                     <ShoppingCart style={{ width: 12, height: 12 }} />
-                    Adicionar à lista
+                    {t("nu_adicionar_lista")}
                   </button>
                 )}
               </div>
             ))}
           </div>
           <p style={{ fontSize: 10, color: MUTED, fontStyle: "italic" }}>
-            Análise baseada nos alimentos registrados. Pode não refletir sua ingestão real completa.
+            {t("nu_analise_baseada")}
           </p>
         </div>
       )}

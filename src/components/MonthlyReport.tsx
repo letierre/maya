@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { sumMacros } from "@/lib/meal-utils";
+import { sumMacros, mealTypeLabel, mealTypeEmoji } from "@/lib/meal-utils";
+import { useTranslation } from "@/lib/useTranslation";
 import { detectNutrientGaps } from "@/lib/nutrient-data";
 import { TrendingUp, TrendingDown, Minus, ShoppingCart } from "lucide-react";
-import type { Meal } from "@/types";
+import type { Meal, MealType } from "@/types";
 
 // ── Design tokens ──────────────────────────────────────────────
 const MUTED = "#9e96b5";
@@ -40,13 +41,14 @@ interface MonthData {
 }
 
 export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meals: Meal[]; monthStats: MonthData; onAddToShoppingList?: (items: { item_name: string; category: string }[]) => void }) {
+  const { t } = useTranslation();
   const analysis = useMemo(() => {
     const analyzed = meals.filter((m) => m.macros && m.status_analise === "analisado");
 
     // Variedade: itens únicos
     const allItems = analyzed.flatMap((m) => (m.itens || []).map((i) => i.nome.toLowerCase().trim()));
     const uniqueItems = new Set(allItems);
-    const varietyScore = uniqueItems.size >= 20 ? "Excelente" : uniqueItems.size >= 12 ? "Boa" : uniqueItems.size >= 6 ? "Regular" : "Baixa";
+    const varietyScore = uniqueItems.size >= 20 ? t("nu_excelente") : uniqueItems.size >= 12 ? t("nu_boa") : uniqueItems.size >= 6 ? t("nu_regular") : t("nu_baixa");
     const varietyColor = uniqueItems.size >= 20 ? TEAL : uniqueItems.size >= 12 ? AMBER : RED;
 
     // Top itens
@@ -82,7 +84,7 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
       });
       const total = sumMacros(weekMeals);
       weeklyKcal.push({
-        label: `Sem ${w + 1}`,
+        label: `${t("nu_sem")} ${w + 1}`,
         kcal: weekMeals.length > 0 ? Math.round(total.calorias_kcal / Math.max(weekMeals.length, 1)) : 0,
         count: weekMeals.length,
       });
@@ -108,7 +110,7 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
       weeklyKcal,
       trend,
     };
-  }, [meals]);
+  }, [meals, t]);
 
   if (monthStats.total === 0) return null;
 
@@ -117,7 +119,7 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
       {/* ── Variedade alimentar ────────────────────────────── */}
       <div style={cardStyle}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p style={sectionTitle}>🥗 Variedade alimentar</p>
+          <p style={sectionTitle}>{t("nu_variedade_alimentar")}</p>
           <span style={{ fontSize: 13, fontWeight: 700, color: analysis.varietyColor }}>
             {analysis.varietyScore}
           </span>
@@ -125,7 +127,7 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
           <span style={{ fontSize: 24, fontWeight: 700, color: FOREGROUND }}>{analysis.uniqueItems.size}</span>
           <span style={mutedText}>
-            {analysis.uniqueItems.size === 1 ? "alimento diferente" : "alimentos diferentes"} no mês
+            {analysis.uniqueItems.size === 1 ? t("nu_alimento_diferente") : t("nu_alimentos_diferentes")}
           </span>
         </div>
         {analysis.uniqueItems.size < 12 && (
@@ -133,7 +135,7 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
             fontSize: 12, color: MUTED, lineHeight: 1.6,
             background: "oklch(.22 .015 270 / .5)", borderRadius: 10, padding: "8px 12px",
           }}>
-            Quanto mais variada a alimentação, mais nutrientes diferentes seu corpo recebe. Tente incluir algo novo essa semana.
+            {t("nu_variedade_msg")}
           </p>
         )}
       </div>
@@ -142,7 +144,7 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
       {analysis.weeklyKcal.some((w) => w.count > 0) && (
         <div style={cardStyle}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={sectionTitle}>📈 Média kcal por semana</span>
+            <span style={sectionTitle}>{t("nu_media_kcal_semana")}</span>
             {analysis.trend === "up" && <TrendingUp style={{ width: 16, height: 16, color: PURPLE }} />}
             {analysis.trend === "down" && <TrendingDown style={{ width: 16, height: 16, color: TEAL }} />}
             {analysis.trend === "stable" && <Minus style={{ width: 16, height: 16, color: MUTED }} />}
@@ -175,31 +177,15 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
       {/* ── Distribuição por tipo ──────────────────────────── */}
       {analysis.byType.size > 0 && (
         <div style={cardStyle}>
-          <p style={sectionTitle}>🍽️ Distribuição por refeição</p>
+          <p style={sectionTitle}>{t("nu_distribuicao_refeicao")}</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[...analysis.byType.entries()]
               .sort((a, b) => b[1].kcal - a[1].kcal)
               .map(([type, data]) => {
-                const typeLabels: Record<string, string> = {
-                  cafe_da_manha: "Café da manhã",
-                  lanche_manha: "Lanche da manhã",
-                  almoco: "Almoço",
-                  lanche: "Lanche da tarde",
-                  jantar: "Jantar",
-                  lanche_noturno: "Lanche noturno",
-                };
-                const typeEmojis: Record<string, string> = {
-                  cafe_da_manha: "🌅",
-                  lanche_manha: "🥐",
-                  almoco: "☀️",
-                  lanche: "🍪",
-                  jantar: "🌙",
-                  lanche_noturno: "🌃",
-                };
                 return (
                   <div key={type} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                    <span>{typeEmojis[type] || "🍽️"}</span>
-                    <span style={{ flex: 1, color: FOREGROUND }}>{typeLabels[type] || type}</span>
+                    <span>{mealTypeEmoji(type as MealType)}</span>
+                    <span style={{ flex: 1, color: FOREGROUND }}>{mealTypeLabel(type as MealType)}</span>
                     <span style={mutedText}>{data.count}x</span>
                     <span style={{ fontWeight: 600, color: FOREGROUND, width: 64, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                       {Math.round(data.kcal)} kcal
@@ -214,7 +200,7 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
       {/* ── Mais consumidos ────────────────────────────────── */}
       {analysis.topItems.length > 0 && (
         <div style={cardStyle}>
-          <p style={sectionTitle}>⭐ Mais consumidos</p>
+          <p style={sectionTitle}>{t("nu_mais_consumidos")}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {analysis.topItems.map(([name, count]) => (
               <span key={name} style={{
@@ -237,19 +223,19 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
           background: `${AMBER} / 0.06`,
           border: `1px solid ${AMBER} / 0.18`,
         }}>
-          <p style={sectionTitle}>🔍 Possíveis lacunas</p>
+          <p style={sectionTitle}>{t("nu_possiveis_lacunas")}</p>
           {monthStats.total < 15 && (
             <p style={{
               fontSize: 12, color: "oklch(0.55 0.12 65)", lineHeight: 1.6,
               background: `${AMBER} / 0.12`, borderRadius: 10, padding: "8px 12px",
             }}>
-              Você registrou apenas {monthStats.total} {monthStats.total === 1 ? "refeição" : "refeições"} com análise este mês. As lacunas abaixo provavelmente subestimam a realidade.
+              {t(monthStats.total === 1 ? "nu_registrou_mes_uma" : "nu_registrou_mes_varias", { n: String(monthStats.total) })}
             </p>
           )}
           <p style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>
             {monthStats.total < 15
-              ? "Com os dados disponíveis, estes nutrientes provavelmente estão em falta:"
-              : "Baseado nos alimentos registrados, estes nutrientes podem estar em falta:"}
+              ? t("nu_dados_disponiveis")
+              : t("nu_baseado_mes")}
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {analysis.nutrientGaps.map((gap) => (
@@ -259,7 +245,7 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
                   <span style={{ fontWeight: 500, color: FOREGROUND }}>{gap.nutrient}</span>
                 </div>
                 <p style={{ fontSize: 11, color: MUTED, lineHeight: 1.5, margin: 0, paddingLeft: 26 }}>
-                  💡 Experimente: {gap.sources.join(", ")}
+                  💡 {t("nu_experimente")}: {gap.sources.join(", ")}
                 </p>
                 {onAddToShoppingList && gap.sources.length > 0 && (
                   <button
@@ -274,14 +260,14 @@ export function MonthlyReport({ meals, monthStats, onAddToShoppingList }: { meal
                     }}
                   >
                     <ShoppingCart style={{ width: 12, height: 12 }} />
-                    Adicionar à lista
+                    {t("nu_adicionar_lista")}
                   </button>
                 )}
               </div>
             ))}
           </div>
           <p style={{ fontSize: 10, color: MUTED, fontStyle: "italic" }}>
-            Análise baseada nos alimentos registrados. Pode não refletir sua ingestão real completa.
+            {t("nu_analise_baseada")}
           </p>
         </div>
       )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "@/lib/useTranslation";
 import { Loader2, Send, ChefHat, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Message {
@@ -9,21 +10,12 @@ interface Message {
   createdAt?: string;
 }
 
-const WELCOME_MESSAGE: Message = {
-  role: "assistant",
-  content: "Olá! Sou seu assistente de nutrição. Posso analisar seus dados, identificar padrões e tirar dúvidas sobre alimentação. O que quer saber?",
-};
-
-const SUGGESTIONS = [
-  "O que posso melhorar no meu café da manhã?",
-  "Como está minha proteína essa semana?",
-  "Qual alimento nunca como e faria diferença?",
-  "Minhas refeições estão equilibradas?",
-];
-
 const PAGE_SIZE = 200;
 
 export function NutritionChat() {
+  const { t } = useTranslation();
+  const welcomeContent = t("nu_chat_welcome");
+  const suggestions = [t("nu_chat_sug1"), t("nu_chat_sug2"), t("nu_chat_sug3"), t("nu_chat_sug4")];
   const [messages, setMessages] = useState<Message[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [input, setInput] = useState("");
@@ -58,12 +50,12 @@ export function NutritionChat() {
           setHasMore(msgs.length >= PAGE_SIZE);
           setExpanded(true);
         } else {
-          setMessages([WELCOME_MESSAGE]);
+          setMessages([{ role: "assistant", content: welcomeContent }]);
         }
         setHydrated(true);
       })
       .catch(() => {
-        setMessages([WELCOME_MESSAGE]);
+        setMessages([{ role: "assistant", content: welcomeContent }]);
         setHydrated(true);
       });
   }, [loadMessages]);
@@ -105,13 +97,13 @@ export function NutritionChat() {
 
       if (!res.ok) throw new Error();
       const data = await res.json();
-      const reply = data.reply || "Desculpe, não consegui processar isso. Tente novamente.";
+      const reply = data.reply || t("nu_chat_erro_reply");
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
 
       // Persist assistant reply
       persist("assistant", reply);
     } catch {
-      const fallback = "Erro ao processar. Tente novamente.";
+      const fallback = t("nu_chat_erro");
       setMessages((prev) => [...prev, { role: "assistant", content: fallback }]);
       persist("assistant", fallback);
     } finally {
@@ -150,7 +142,7 @@ export function NutritionChat() {
 
   if (!hydrated) return null;
 
-  const showWelcome = messages.length === 1 && messages[0].content === WELCOME_MESSAGE.content;
+  const showWelcome = messages.length === 1 && messages[0].content === welcomeContent;
 
   return (
     <div style={{
@@ -161,12 +153,12 @@ export function NutritionChat() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <ChefHat style={{ width: 16, height: 16, color: "oklch(.58 .18 270)" }} />
-        <span style={{ fontSize: 14, fontWeight: 500, color: "#e0d6ff" }}>Assistente Nutri</span>
+        <span style={{ fontSize: 14, fontWeight: 500, color: "#e0d6ff" }}>{t("nu_chat_assistente")}</span>
         <span style={{
           fontSize: 10, background: "oklch(.58 .18 270 / .12)",
           color: "oklch(.58 .18 270)", padding: "2px 6px", borderRadius: 9999,
         }}>
-          IA
+          {t("nu_ia")}
         </span>
         {!expanded && (
           <button type="button" onClick={() => setExpanded(!expanded)}
@@ -190,9 +182,9 @@ export function NutritionChat() {
                   padding: "4px 12px",
                 }}>
                 {loadingOlder ? (
-                  <><Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> Carregando...</>
+                  <><Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> {t("carregando")}</>
                 ) : (
-                  <><ChevronUp style={{ width: 14, height: 14 }} /> Mensagens anteriores</>
+                  <><ChevronUp style={{ width: 14, height: 14 }} /> {t("nu_chat_anteriores")}</>
                 )}
               </button>
             </div>
@@ -214,7 +206,7 @@ export function NutritionChat() {
           {loading && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: MUTED, padding: "4px 12px" }}>
               <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
-              Analisando...
+              {t("nu_analisando")}
             </div>
           )}
           <div ref={bottomRef} />
@@ -224,7 +216,7 @@ export function NutritionChat() {
       {/* Sugestões */}
       {!expanded && showWelcome && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {SUGGESTIONS.map((s) => (
+          {suggestions.map((s) => (
             <button key={s} type="button" onClick={() => send(s)}
               style={{
                 fontSize: 11, background: "oklch(.22 .015 270 / .6)",
@@ -240,7 +232,7 @@ export function NutritionChat() {
       {/* Input */}
       <div style={{ display: "flex", gap: 8 }}>
         <textarea
-          placeholder="Pergunte sobre sua alimentação..."
+          placeholder={t("nu_chat_placeholder")}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -271,7 +263,7 @@ export function NutritionChat() {
       </div>
 
       <p style={{ fontSize: 10, color: MUTED, textAlign: "center" }}>
-        Assistente virtual — não substitui um nutricionista
+        {t("nu_chat_disclaimer")}
       </p>
     </div>
   );

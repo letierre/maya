@@ -42,10 +42,10 @@ export function NutritionQualityCard({ todayMeals, t }: Props) {
     const gordOk = gordPct >= 15 && gordPct <= 35;
 
     const issues: string[] = [];
-    if (!carbOk) issues.push(carbPct > 65 ? "Carboidratos acima do ideal" : "Carboidratos abaixo do ideal");
-    if (!protOk) issues.push(protPct < 15 ? "Proteína abaixo do ideal" : "Proteína acima do ideal");
-    if (!gordOk) issues.push(gordPct > 35 ? "Gorduras acima do ideal" : "Gorduras abaixo do ideal");
-    if (freq < 3) issues.push("Poucas refeições registradas (ideal: 3+). Se comeu mais, vale anotar para uma análise mais fiel.");
+    if (!carbOk) issues.push(carbPct > 65 ? t("nu_carb_acima") : t("nu_carb_abaixo"));
+    if (!protOk) issues.push(protPct < 15 ? t("nu_prot_abaixo") : t("nu_prot_acima"));
+    if (!gordOk) issues.push(gordPct > 35 ? t("nu_gord_acima") : t("nu_gord_abaixo"));
+    if (freq < 3) issues.push(t("nu_poucas_refeicoes"));
 
     const classCount = new Map<string, number>();
     for (const m of todayMeals) {
@@ -55,7 +55,7 @@ export function NutritionQualityCard({ todayMeals, t }: Props) {
     }
 
     return { carbPct, protPct, gordPct, score, freq, issues, carbOk, protOk, gordOk, classCount };
-  }, [todayMeals]);
+  }, [todayMeals, t]);
 
   if (todayMeals.length === 0) return null;
 
@@ -98,7 +98,7 @@ export function NutritionQualityCard({ todayMeals, t }: Props) {
         <div style={{ padding: "0 16px 16px", display: "flex", flexDirection: "column", gap: 12, fontSize: 13 }}>
           {/* Score */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ color: "#9e96b5" }}>Score:</span>
+            <span style={{ color: "#9e96b5" }}>{t("nu_score")}:</span>
             <span style={{
               fontWeight: 700,
               color: diagnostic.score >= 80
@@ -110,18 +110,18 @@ export function NutritionQualityCard({ todayMeals, t }: Props) {
               {diagnostic.score}/100
             </span>
             <span style={{ fontSize: 11, color: "#9e96b5" }}>
-              ({diagnostic.freq} {diagnostic.freq === 1 ? "refeição" : "refeições"})
+              ({diagnostic.freq} {t(diagnostic.freq === 1 ? "nu_refeicao" : "nu_refeicoes")})
             </span>
           </div>
 
           {/* Balanço de macros */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#9e96b5" }}>Distribuição de macros</p>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#9e96b5" }}>{t("nu_distribuicao_macros")}</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, textAlign: "center", fontSize: 11 }}>
               {(["carb", "prot", "gord"] as const).map((macro) => {
                 const ok = macro === "carb" ? diagnostic.carbOk : macro === "prot" ? diagnostic.protOk : diagnostic.gordOk;
                 const pct = macro === "carb" ? diagnostic.carbPct : macro === "prot" ? diagnostic.protPct : diagnostic.gordPct;
-                const label = macro === "carb" ? "Carbs" : macro === "prot" ? "Prot" : "Gord";
+                const label = macro === "carb" ? t("nu_carbs") : macro === "prot" ? t("nu_prot") : t("nu_gord");
                 const good = "oklch(0.45 0.15 160)";
                 const bad = "oklch(0.50 0.15 15)";
                 return (
@@ -136,14 +136,14 @@ export function NutritionQualityCard({ todayMeals, t }: Props) {
               })}
             </div>
             <p style={{ margin: 0, fontSize: 10, color: "#9e96b5" }}>
-              Ideal: 40-65% carb · 15-30% prot · 15-35% gord
+              {t("nu_ideal_macros")}
             </p>
           </div>
 
           {/* Alertas específicos */}
           {diagnostic.issues.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#9e96b5" }}>O que melhorar</p>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#9e96b5" }}>{t("nu_o_que_melhorar")}</p>
               {diagnostic.issues.map((issue, i) => (
                 <div key={i} style={{
                   display: "flex", alignItems: "center", gap: 8, fontSize: 11,
@@ -159,7 +159,7 @@ export function NutritionQualityCard({ todayMeals, t }: Props) {
           {/* Classificações do dia */}
           {diagnostic.classCount.size > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#9e96b5" }}>Classificações do dia</p>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#9e96b5" }}>{t("nu_classificacoes_dia")}</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                 {[...diagnostic.classCount.entries()].map(([classif, count]) => {
                   const s = CLASSIFICATION_STYLE[classif] || CLASSIFICATION_STYLE.nao_identificada;
@@ -182,7 +182,7 @@ export function NutritionQualityCard({ todayMeals, t }: Props) {
               margin: 0, fontSize: 11, borderRadius: 8, padding: "8px 12px",
               color: "oklch(0.45 0.15 160)", background: "oklch(0.45 0.15 160 / 0.10)",
             }}>
-              Continue assim! Seus macros estão equilibrados e a frequência de refeições está boa.
+              {t("nu_continue_assim")}
             </p>
           )}
         </div>

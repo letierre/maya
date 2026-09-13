@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/useTranslation";
-import { getMealTypeFromHour, mealTypeLabel, mealTypeEmoji } from "@/lib/meal-utils";
+import { getMealTypeFromHour, mealTypeLabel, mealTypeEmoji, classificationLabel } from "@/lib/meal-utils";
 import { compressImage, uploadToCloud } from "@/lib/photo-storage";
 import { invalidateFetchCache } from "@/lib/fetch-cache";
 import { Camera, ImageIcon, X, Plus, Check, ChevronLeft, ChevronDown, Sparkles, Star, Trash2 } from "lucide-react";
@@ -25,14 +25,14 @@ const FOREGROUND = "#e0d6ff";
 const DARK_CARD = "oklch(.17 .015 270 / .6)";
 
 // ── Classification map matching actual API types ─────────────
-const CLASSIFICATION_STYLE: Record<string, { bg: string; text: string; emoji: string; label: string }> = {
-  equilibrada:      { bg: "oklch(0.45 0.15 160 / 0.12)", text: "oklch(0.45 0.15 160)", emoji: "✅", label: "Equilibrada" },
-  leve_proteina:    { bg: "oklch(0.60 0.12 70 / 0.12)",  text: "oklch(0.60 0.12 70)",  emoji: "💪", label: "Leve em proteína" },
-  alta_acucar:      { bg: "oklch(0.50 0.15 15 / 0.12)",  text: "oklch(0.50 0.15 15)",  emoji: "🍬", label: "Alta em açúcar" },
-  alta_gordura:     { bg: "oklch(0.55 0.15 45 / 0.12)",  text: "oklch(0.55 0.15 45)",  emoji: "🍟", label: "Alta em gordura" },
-  alta_sal:         { bg: "oklch(0.58 0.18 270 / 0.12)", text: "oklch(0.58 0.18 270)", emoji: "🧂", label: "Alta em sódio" },
-  vegetais_baixo:   { bg: "oklch(0.50 0.12 220 / 0.12)", text: "oklch(0.50 0.12 220)", emoji: "🥬", label: "Poucos vegetais" },
-  nao_identificada: { bg: "oklch(0.5 0 0 / 0.08)",        text: MUTED,                emoji: "❓", label: "Não identificada" },
+const CLASSIFICATION_STYLE: Record<string, { bg: string; text: string; emoji: string }> = {
+  equilibrada:      { bg: "oklch(0.45 0.15 160 / 0.12)", text: "oklch(0.45 0.15 160)", emoji: "✅" },
+  leve_proteina:    { bg: "oklch(0.60 0.12 70 / 0.12)",  text: "oklch(0.60 0.12 70)",  emoji: "💪" },
+  alta_acucar:      { bg: "oklch(0.50 0.15 15 / 0.12)",  text: "oklch(0.50 0.15 15)",  emoji: "🍬" },
+  alta_gordura:     { bg: "oklch(0.55 0.15 45 / 0.12)",  text: "oklch(0.55 0.15 45)",  emoji: "🍟" },
+  alta_sal:         { bg: "oklch(0.58 0.18 270 / 0.12)", text: "oklch(0.58 0.18 270)", emoji: "🧂" },
+  vegetais_baixo:   { bg: "oklch(0.50 0.12 220 / 0.12)", text: "oklch(0.50 0.12 220)", emoji: "🥬" },
+  nao_identificada: { bg: "oklch(0.5 0 0 / 0.08)",        text: MUTED,                emoji: "❓" },
 };
 
 const BG_GRADIENT: React.CSSProperties = {
@@ -90,7 +90,7 @@ export default function RegistrarRefeicaoPage() {
 
   const handleFile = async (file: File) => {
     if (photos.length >= MAX_PHOTOS) {
-      toast.error(`Máximo de ${MAX_PHOTOS} fotos por refeição`);
+      toast.error(t("nu_max_fotos", { n: String(MAX_PHOTOS) }));
       return;
     }
     try {
@@ -99,7 +99,7 @@ export default function RegistrarRefeicaoPage() {
       setPhotos((prev) => [...prev, compressed]);
       setPhotoPaths((prev) => [...prev, path]);
     } catch {
-      toast.error("Erro ao processar imagem");
+      toast.error(t("nu_erro_processar_imagem"));
     }
   };
 
@@ -240,16 +240,16 @@ export default function RegistrarRefeicaoPage() {
 
   const discardMeal = async () => {
     if (!mealId) return;
-    if (!window.confirm("Excluir esta refeição e recomeçar?")) return;
+    if (!window.confirm(t("nu_excluir_recomecar"))) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/meals?id=${mealId}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
-      toast.success("Refeição excluída");
+      toast.success(t("nu_refeicao_excluida"));
       invalidateFetchCache("/api/meals");
       router.push("/nutricao");
     } catch {
-      toast.error("Erro ao excluir refeição");
+      toast.error(t("nu_erro_excluir_refeicao"));
       setSaving(false);
     }
   };
@@ -278,10 +278,10 @@ export default function RegistrarRefeicaoPage() {
           </button>
           <div>
             <p style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em", fontWeight: 600, color: MUTED, margin: 0 }}>
-              Nutrição
+              {t("nutricao")}
             </p>
             <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1, color: FOREGROUND, margin: "2px 0 0" }}>
-              {stage === "results" ? "Sua refeição" : "Nova refeição"}
+              {stage === "results" ? t("nu_sua_refeicao") : t("nu_nova_refeicao")}
             </h1>
           </div>
         </div>
@@ -352,9 +352,9 @@ export default function RegistrarRefeicaoPage() {
                 }}>
                   <Camera style={{ width: 22, height: 22, color: "#fff", strokeWidth: 1.7 }} />
                 </div>
-                <p style={{ fontSize: 14, fontWeight: 600, color: FOREGROUND, margin: 0 }}>Tire uma foto</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: FOREGROUND, margin: 0 }}>{t("nu_tire_foto")}</p>
                 <p style={{ fontSize: 11, color: MUTED, textAlign: "center", maxWidth: 220, margin: 0 }}>
-                  A Maya identifica ingredientes e estima os macros
+                  {t("nu_maya_identifica")}
                 </p>
                 <div style={{ display: "flex", gap: 6 }}>
                   <button
@@ -365,7 +365,7 @@ export default function RegistrarRefeicaoPage() {
                       display: "inline-flex", alignItems: "center", gap: 4,
                     }}
                   >
-                    <Camera style={{ width: 14, height: 14 }} /> Câmera
+                    <Camera style={{ width: 14, height: 14 }} /> {t("nu_camera")}
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
@@ -375,7 +375,7 @@ export default function RegistrarRefeicaoPage() {
                       display: "inline-flex", alignItems: "center", gap: 4,
                     }}
                   >
-                    <ImageIcon style={{ width: 14, height: 14 }} /> Galeria
+                    <ImageIcon style={{ width: 14, height: 14 }} /> {t("nu_galeria")}
                   </button>
                 </div>
               </div>
@@ -384,7 +384,7 @@ export default function RegistrarRefeicaoPage() {
                 <div style={{ display: "grid", gridTemplateColumns: photos.length === 1 ? "1fr" : "1fr 1fr", gap: 8 }}>
                   {photos.map((p, i) => (
                     <div key={i} style={{ position: "relative", borderRadius: 14, overflow: "hidden" }}>
-                      <img src={p} alt={`Refeição ${i + 1}`} style={{ width: "100%", aspectRatio: photos.length === 1 ? "16/9" : "4/3", objectFit: "cover", display: "block" }} />
+                      <img src={p} alt={`${t("nu_refeicao")} ${i + 1}`} style={{ width: "100%", aspectRatio: photos.length === 1 ? "16/9" : "4/3", objectFit: "cover", display: "block" }} />
                       <button
                         onClick={() => removePhoto(i)}
                         style={{
@@ -408,19 +408,19 @@ export default function RegistrarRefeicaoPage() {
                       }}
                     >
                       <Plus style={{ width: 20, height: 20, color: MUTED }} />
-                      <span style={{ fontSize: 10, color: MUTED }}>Adicionar</span>
+                      <span style={{ fontSize: 10, color: MUTED }}>{t("nu_adicionar")}</span>
                     </button>
                   )}
                 </div>
                 <p style={{ fontSize: 11, color: MUTED, textAlign: "center", marginTop: 8 }}>
-                  {photos.length} de {MAX_PHOTOS} fotos
+                  {photos.length} de {MAX_PHOTOS} {t(photos.length === 1 ? "nu_foto" : "nu_fotos")}
                 </p>
               </div>
             )}
 
             {/* Description */}
             <textarea
-              placeholder="Detalhe ingredientes e quantidades — ex: 1 filé de frango (~120g), 1 concha de arroz, salada. Mais detalhe, melhor a análise."
+              placeholder={t("nu_descricao_ph")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -458,10 +458,10 @@ export default function RegistrarRefeicaoPage() {
                 <MayaAvatar state="processing" size={92} />
                 <div style={{ textAlign: "center" }}>
                   <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.35)", margin: 0 }}>
-                    Maya está olhando…
+                    {t("nu_maya_olhando")}
                   </p>
                   <p style={{ fontSize: 12, color: "rgba(255,255,255,0.78)", textShadow: "0 1px 3px rgba(0,0,0,0.3)", margin: "4px 0 0" }}>
-                    Identificando ingredientes e estimando os macros
+                    {t("nu_identificando")}
                   </p>
                 </div>
               </div>
@@ -496,7 +496,7 @@ export default function RegistrarRefeicaoPage() {
                   display: "inline-flex", alignItems: "center", gap: 4,
                   background: PURPLE_HEX, color: "#fff",
                 }}>
-                  <Check style={{ width: 10, height: 10, strokeWidth: 3 }} /> Analisado
+                  <Check style={{ width: 10, height: 10, strokeWidth: 3 }} /> {t("nu_analisado")}
                 </span>
               </div>
             )}
@@ -505,16 +505,16 @@ export default function RegistrarRefeicaoPage() {
             <div>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", margin: "0 0 8px 4px" }}>
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: MUTED, margin: 0 }}>
-                  Macros estimados
+                  {t("nu_macros_estimados")}
                 </p>
-                <span style={{ fontSize: 10, color: MUTED }}>toque para corrigir</span>
+                <span style={{ fontSize: 10, color: MUTED }}>{t("nu_toque_corrigir")}</span>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6 }}>
                 {([
-                  { key: "calorias_kcal" as keyof Macros, label: "Kcal", color: "oklch(0.60 0.12 70)" },
-                  { key: "carboidratos_g" as keyof Macros, label: "Carb", color: "oklch(0.55 0.15 45)", suffix: "g" },
-                  { key: "proteinas_g" as keyof Macros, label: "Prot", color: "oklch(0.50 0.15 15)", suffix: "g" },
-                  { key: "gorduras_g" as keyof Macros, label: "Gord", color: PURPLE_OKLCH, suffix: "g" },
+                  { key: "calorias_kcal" as keyof Macros, label: t("nu_kcal"), color: "oklch(0.60 0.12 70)" },
+                  { key: "carboidratos_g" as keyof Macros, label: t("nu_carbs"), color: "oklch(0.55 0.15 45)", suffix: "g" },
+                  { key: "proteinas_g" as keyof Macros, label: t("nu_prot"), color: "oklch(0.50 0.15 15)", suffix: "g" },
+                  { key: "gorduras_g" as keyof Macros, label: t("nu_gord"), color: PURPLE_OKLCH, suffix: "g" },
                 ]).map(({ key, label, color, suffix }) => (
                   <div key={key} style={{
                     borderRadius: 14, textAlign: "center", padding: "8px 4px",
@@ -547,10 +547,10 @@ export default function RegistrarRefeicaoPage() {
             <div>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: MUTED, margin: 0 }}>
-                  Identificados
+                  {t("nu_identificados")}
                 </p>
                 <span style={{ fontSize: 11, color: MUTED }}>
-                  {analysisItems.length} {analysisItems.length === 1 ? "item" : "itens"}
+                  {analysisItems.length} {t(analysisItems.length === 1 ? "nu_item" : "nu_itens")}
                 </span>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -591,7 +591,7 @@ export default function RegistrarRefeicaoPage() {
                       if (e.key === "Escape") { setAddingItem(false); setNewItemName(""); }
                     }}
                     onBlur={() => { if (newItemName.trim()) addItem(); setAddingItem(false); setNewItemName(""); }}
-                    placeholder="novo item"
+                    placeholder={t("nu_novo_item")}
                     style={{
                       padding: "4px 12px", borderRadius: 9999, fontSize: 12, fontFamily: "inherit",
                       background: DARK_CARD, border: `1px solid ${PURPLE_OKLCH} / .35`,
@@ -608,7 +608,7 @@ export default function RegistrarRefeicaoPage() {
                       background: "transparent", color: MUTED,
                     }}
                   >
-                    <Plus style={{ width: 10, height: 10 }} /> Adicionar
+                    <Plus style={{ width: 10, height: 10 }} /> {t("nu_adicionar")}
                   </button>
                 )}
               </div>
@@ -618,7 +618,7 @@ export default function RegistrarRefeicaoPage() {
             {classInfo && (
               <div>
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: MUTED, margin: "0 0 6px 4px" }}>
-                  Classificação
+                  {t("nu_classificacao")}
                 </p>
                 <span style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
@@ -626,7 +626,7 @@ export default function RegistrarRefeicaoPage() {
                   background: classInfo.bg, color: classInfo.text, border: `1px solid ${classInfo.text} / .18`,
                 }}>
                   <span style={{ fontSize: 14 }}>{classInfo.emoji}</span>
-                  {classInfo.label}
+                  {classificationLabel(analysisClass!)}
                 </span>
                 {analysisObs && (
                   <p style={{ fontSize: 12, color: MUTED, lineHeight: 1.45, fontStyle: "italic", margin: "6px 0 0" }}>
@@ -640,7 +640,7 @@ export default function RegistrarRefeicaoPage() {
             {analysisBenefits.length > 0 && (
               <div>
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: MUTED, margin: "0 0 6px 4px" }}>
-                  Benefícios
+                  {t("nu_beneficios")}
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {analysisBenefits.map((b, i) => (
@@ -675,7 +675,7 @@ export default function RegistrarRefeicaoPage() {
                 width: 16, height: 16,
                 fill: favorited ? "#fbbf24" : "none",
               }} />
-              {favorited ? "Favoritada" : "Favoritar refeição"}
+              {favorited ? t("nu_favoritada") : t("nu_favoritar_refeicao")}
             </button>
           </div>
         )}
@@ -691,10 +691,10 @@ export default function RegistrarRefeicaoPage() {
         {stage === "capture" && (
           <>
             <span style={{ flex: 1, fontSize: 11, color: MUTED, fontFamily: "monospace" }}>
-              {photos.length > 0 && `${photos.length} foto${photos.length > 1 ? "s" : ""}`}
+              {photos.length > 0 && `${photos.length} ${t(photos.length > 1 ? "nu_fotos" : "nu_foto")}`}
               {photos.length > 0 && description.trim() && " · "}
-              {description.trim() && "1 descrição"}
-              {!photos.length && !description.trim() && "Adicione foto ou descrição"}
+              {description.trim() && t("nu_uma_descricao")}
+              {!photos.length && !description.trim() && t("nu_adicionar_foto_descricao")}
             </span>
             <button
               onClick={handleSave}
@@ -712,7 +712,7 @@ export default function RegistrarRefeicaoPage() {
                 opacity: saving || (!photos.length && !description.trim()) ? 0.5 : 1,
               }}
             >
-              {photos.length > 0 ? "Analisar" : "Salvar"}
+              {photos.length > 0 ? t("nu_analisar") : t("salvar")}
               <Sparkles style={{ width: 14, height: 14 }} />
             </button>
           </>
@@ -720,7 +720,7 @@ export default function RegistrarRefeicaoPage() {
 
         {stage === "analyzing" && (
           <p style={{ flex: 1, fontSize: 13, color: MUTED, textAlign: "center", fontStyle: "italic", margin: 0 }}>
-            Analisando sua refeição...
+            {t("nu_analisando_refeicao")}
           </p>
         )}
 
@@ -729,7 +729,7 @@ export default function RegistrarRefeicaoPage() {
             <button
               onClick={discardMeal}
               disabled={saving}
-              title="Excluir refeição"
+              title={t("nu_excluir_refeicao")}
               style={{
                 width: 40, height: 40, borderRadius: 12, flexShrink: 0,
                 border: `1px solid oklch(0.50 0.15 15 / .3)`,
@@ -748,7 +748,7 @@ export default function RegistrarRefeicaoPage() {
                 background: "transparent", color: MUTED, flexShrink: 0,
               }}
             >
-              Salvar sem análise
+              {t("nu_salvar_sem_analise")}
             </button>
             <button
               onClick={confirmAnalysis}
@@ -762,7 +762,7 @@ export default function RegistrarRefeicaoPage() {
                 opacity: saving ? 0.5 : 1,
               }}
             >
-              {saving ? "Salvando..." : "Confirmar e salvar"}
+              {saving ? t("salvando") : t("nu_confirmar_salvar")}
               <Check style={{ width: 14, height: 14, strokeWidth: 2.5 }} />
             </button>
           </>

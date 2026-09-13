@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { mealTypeEmoji } from "@/lib/meal-utils";
+import { useTranslation } from "@/lib/useTranslation";
 import { getLocalDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -47,6 +48,7 @@ function getFrequentMeals(meals: Meal[], minCount = 2): FrequentMeal[] {
 }
 
 export function QuickAddMeals({ meals }: { meals: Meal[] }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [adding, setAdding] = useState<string | null>(null);
 
@@ -73,20 +75,20 @@ export function QuickAddMeals({ meals }: { meals: Meal[] }) {
       });
 
       if (res.ok) {
-        toast.success(`${mealTypeEmoji(fav.tipo)} Refeição adicionada!`);
+        toast.success(`${mealTypeEmoji(fav.tipo)} ${t("nu_refeicao_adicionada")}`);
         router.refresh();
       } else {
-        toast.error("Erro ao adicionar");
+        toast.error(t("nu_erro_adicionar"));
       }
     } catch {
-      toast.error("Erro ao adicionar");
+      toast.error(t("nu_erro_adicionar"));
     }
     setAdding(null);
   };
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">⭐ Suas refeições favoritas</p>
+      <p className="text-sm font-medium">{t("nu_suas_refeicoes")}</p>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {frequent.map((fav, i) => {
           const key = `${fav.tipo}:${fav.itens.join("|")}`;
@@ -109,7 +111,7 @@ export function QuickAddMeals({ meals }: { meals: Meal[] }) {
                 </span>
                 <span className="flex items-center gap-0.5 text-xs text-primary font-medium">
                   <Plus className="size-3" />
-                  {isLoading ? "..." : "Add"}
+                  {isLoading ? "..." : t("nu_add")}
                 </span>
               </div>
             </button>

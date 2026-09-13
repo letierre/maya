@@ -1,5 +1,6 @@
 import React from "react";
 import { sumMacros, nutritionScore, DEFAULT_DAILY_KCAL } from "@/lib/meal-utils";
+import { useTranslation } from "@/lib/useTranslation";
 import type { Meal } from "@/types";
 
 // ── Design tokens ──────────────────────────────────────────────
@@ -7,6 +8,7 @@ const MUTED = "#9e96b5";
 const BORDER = "rgba(167,139,250,0.15)";
 
 export function NutritionSummary({ meals, label, kcalGoal = DEFAULT_DAILY_KCAL }: { meals: Meal[]; label: string; kcalGoal?: number }) {
+  const { t } = useTranslation();
   const analyzed = meals.filter((m) => m.macros && m.status_analise === "analisado");
   const total = sumMacros(analyzed);
   const hasData = analyzed.length > 0;
@@ -45,14 +47,14 @@ export function NutritionSummary({ meals, label, kcalGoal = DEFAULT_DAILY_KCAL }
         <p style={{ fontSize: 13, fontWeight: 600, color: "#e0d6ff" }}>{label}</p>
         {hasData && (
           <span style={{ fontSize: 11, color: MUTED }}>
-            {analyzed.length} {analyzed.length === 1 ? "refeição" : "refeições"}
+            {analyzed.length} {t(analyzed.length === 1 ? "nu_refeicao" : "nu_refeicoes")}
           </span>
         )}
       </div>
 
       {!hasData ? (
         <p style={{ fontSize: 13, color: MUTED, textAlign: "center", padding: "16px 0" }}>
-          Nenhuma refeição analisada neste período.
+          {t("nu_nenhuma_analisada")}
         </p>
       ) : (
         <>
@@ -76,7 +78,7 @@ export function NutritionSummary({ meals, label, kcalGoal = DEFAULT_DAILY_KCAL }
                   />
                 </div>
                 <p style={{ fontSize: 10, color: MUTED }}>
-                  {kcalPct}% da meta · {kcalGoal} kcal
+                  {t("nu_da_meta", { pct: String(kcalPct), kcal: String(kcalGoal) })}
                 </p>
               </div>
             </div>
@@ -117,17 +119,17 @@ export function NutritionSummary({ meals, label, kcalGoal = DEFAULT_DAILY_KCAL }
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, textAlign: "center", fontSize: 11 }}>
             <div>
               <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: "oklch(0.60 0.12 70)", marginRight: 4, verticalAlign: "middle" }} />
-              <span style={{ color: MUTED }}>Carbs</span>
+              <span style={{ color: MUTED }}>{t("nu_carbs")}</span>
               <p style={{ fontWeight: 600, color: "#e0d6ff", fontVariantNumeric: "tabular-nums" }}>{total.carboidratos_g}g</p>
             </div>
             <div>
               <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: "oklch(0.50 0.15 15)", marginRight: 4, verticalAlign: "middle" }} />
-              <span style={{ color: MUTED }}>Prot</span>
+              <span style={{ color: MUTED }}>{t("nu_prot")}</span>
               <p style={{ fontWeight: 600, color: "#e0d6ff", fontVariantNumeric: "tabular-nums" }}>{total.proteinas_g}g</p>
             </div>
             <div>
               <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: "oklch(0.55 0.15 45)", marginRight: 4, verticalAlign: "middle" }} />
-              <span style={{ color: MUTED }}>Gord</span>
+              <span style={{ color: MUTED }}>{t("nu_gord")}</span>
               <p style={{ fontWeight: 600, color: "#e0d6ff", fontVariantNumeric: "tabular-nums" }}>{total.gorduras_g}g</p>
             </div>
           </div>

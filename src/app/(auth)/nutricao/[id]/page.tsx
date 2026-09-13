@@ -1,5 +1,6 @@
 "use client";
 import { getLocale } from "@/lib/language";
+import { useTranslation } from "@/lib/useTranslation";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -121,6 +122,7 @@ function toDatetimeLocal(isoStr: string): string {
 // ── Page ───────────────────────────────────────────────────────
 
 export default function MealDetailPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
@@ -182,7 +184,7 @@ export default function MealDetailPage() {
     } catch {
       // Rollback
       setMeal((prev) => prev ? { ...prev, favorited: !newFav } : prev);
-      toast.error("Erro ao favoritar");
+      toast.error(t("nu_erro_favoritar"));
     }
   };
 
@@ -191,14 +193,14 @@ export default function MealDetailPage() {
     try {
       const res = await fetch(`/api/meals?id=${id}`, { method: "DELETE" });
       if (!res.ok) {
-        toast.error("Erro ao deletar refeição");
+        toast.error(t("nu_erro_excluir_refeicao"));
         return;
       }
-      toast.success("Refeição deletada");
+      toast.success(t("nu_refeicao_excluida"));
       invalidateFetchCache("/api/meals");
       router.push("/nutricao");
     } catch {
-      toast.error("Erro ao deletar refeição");
+      toast.error(t("nu_erro_excluir_refeicao"));
     } finally {
       setDeleting(false);
       setShowDeleteConfirm(false);
@@ -260,9 +262,9 @@ export default function MealDetailPage() {
       setMacros(analyzed.macros || null);
       setClassif(analyzed.classificacao || "nao_identificada");
       setObs(analyzed.observacao || "");
-      toast.success("Refeição analisada!");
+      toast.success(t("nu_refeicao_analisada"));
     } catch {
-      toast.error("Erro ao analisar refeição");
+      toast.error(t("nu_erro_analisar_refeicao"));
     } finally {
       setAnalyzing(false);
     }
@@ -290,7 +292,7 @@ export default function MealDetailPage() {
       });
 
       if (!res.ok) throw new Error();
-      toast.success("Refeição atualizada");
+      toast.success(t("refeicao_atualizada"));
       setEditing(false);
       setMeal((prev) =>
         prev
@@ -309,7 +311,7 @@ export default function MealDetailPage() {
           : prev
       );
     } catch {
-      toast.error("Erro ao salvar");
+      toast.error(t("nu_erro_salvar"));
     } finally {
       setSaving(false);
     }
@@ -317,7 +319,7 @@ export default function MealDetailPage() {
 
   const handlePhotoAdd = async (file: File) => {
     if (photos.length + photoPaths.length >= MAX_PHOTOS) {
-      toast.error(`Máximo de ${MAX_PHOTOS} fotos por refeição`);
+      toast.error(t("nu_max_fotos", { n: String(MAX_PHOTOS) }));
       return;
     }
     try {
@@ -326,7 +328,7 @@ export default function MealDetailPage() {
       setPhotos((prev) => [...prev, compressed]);
       setPhotoPaths((prev) => [...prev, path]);
     } catch {
-      toast.error("Erro ao processar imagem");
+      toast.error(t("nu_erro_processar_imagem"));
     }
   };
 
@@ -355,7 +357,7 @@ export default function MealDetailPage() {
   if (loading) {
     return (
       <div style={{ minHeight: "100dvh", ...BG_GRADIENT, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: MUTED, fontSize: 13 }}>Carregando...</p>
+        <p style={{ color: MUTED, fontSize: 13 }}>{t("carregando")}</p>
       </div>
     );
   }
@@ -364,9 +366,9 @@ export default function MealDetailPage() {
     return (
       <div style={{ minHeight: "100dvh", ...BG_GRADIENT, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
         <div style={{ fontSize: 48 }}>🍽️</div>
-        <p style={{ color: MUTED }}>Refeição não encontrada</p>
+        <p style={{ color: MUTED }}>{t("nu_refeicao_nao_encontrada")}</p>
         <button type="button" style={btnPrimary} onClick={() => router.push("/nutricao")}>
-          Voltar
+          {t("voltar")}
         </button>
       </div>
     );
@@ -386,7 +388,7 @@ export default function MealDetailPage() {
             <button
               type="button"
               onClick={() => router.push("/nutricao")}
-              aria-label="Voltar"
+              aria-label={t("voltar")}
               style={{
                 width: 36, height: 36, borderRadius: "50%",
                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -407,7 +409,7 @@ export default function MealDetailPage() {
 
           {editing ? (
             <button type="button" style={btnPrimary} onClick={handleSave} disabled={saving}>
-              {saving ? "Salvando..." : "Salvar"}
+              {saving ? t("salvando") : t("salvar")}
             </button>
           ) : (
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -417,7 +419,7 @@ export default function MealDetailPage() {
                 style={{
                   background: "none", border: 0, cursor: "pointer", padding: 4, display: "flex",
                 }}
-                aria-label={meal.favorited ? "Desfavoritar" : "Favoritar"}
+                aria-label={meal.favorited ? t("nu_desfavoritar") : t("nu_favoritar")}
               >
                 <Star style={{
                   width: 20, height: 20,
@@ -433,11 +435,11 @@ export default function MealDetailPage() {
                   disabled={analyzing}
                 >
                   {analyzing ? <Loader2 className="animate-spin" style={{ width: 14, height: 14 }} /> : <Sparkles style={{ width: 14, height: 14 }} />}
-                  Analisar
+                  {t("nu_analisar")}
                 </button>
               )}
               <button type="button" style={btnSm} onClick={() => setEditing(true)}>
-                Editar
+                {t("editar")}
               </button>
               <button type="button" style={{ ...btnSm, color: RED, borderColor: "oklch(0.50 0.15 15 / 0.25)" }} onClick={() => setShowDeleteConfirm(true)}>
                 <Trash2 style={{ width: 14, height: 14 }} />
@@ -456,7 +458,7 @@ export default function MealDetailPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     {displayPhotos.map((p, i) => (
                       <div key={i} style={{ position: "relative" }}>
-                        <img src={p} alt={`Refeição ${i + 1}`} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 12 }} />
+                        <img src={p} alt={`${t("nu_refeicao")} ${i + 1}`} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 12 }} />
                         <button
                           type="button"
                           onClick={() => removePhoto(i)}
@@ -482,34 +484,34 @@ export default function MealDetailPage() {
                         }}
                       >
                         <Plus style={{ width: 20, height: 20 }} />
-                        <span style={{ fontSize: 10 }}>Adicionar</span>
+                        <span style={{ fontSize: 10 }}>{t("nu_adicionar")}</span>
                       </button>
                     )}
                   </div>
                   {displayPhotos.length < MAX_PHOTOS && (
                     <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                       <button type="button" style={{ ...btnSm, fontSize: 11 }} onClick={() => cameraInputRef.current?.click()}>
-                        <Camera style={{ width: 14, height: 14 }} /> Câmera
+                        <Camera style={{ width: 14, height: 14 }} /> {t("nu_camera")}
                       </button>
                       <button type="button" style={{ ...btnSm, fontSize: 11 }} onClick={() => fileInputRef.current?.click()}>
-                        <ImageIcon style={{ width: 14, height: 14 }} /> Galeria
+                        <ImageIcon style={{ width: 14, height: 14 }} /> {t("nu_galeria")}
                       </button>
                     </div>
                   )}
                   <p style={{ fontSize: 11, color: MUTED, textAlign: "center" }}>
-                    {displayPhotos.length} de {MAX_PHOTOS} fotos
+                    {displayPhotos.length} de {MAX_PHOTOS} {t("nu_fotos")}
                   </p>
                 </div>
               ) : (
                 <div style={{ textAlign: "center", padding: "24px 0", display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ fontSize: 48 }}>📸</div>
-                  <p style={{ fontSize: 13, color: MUTED }}>Adicionar foto</p>
+                  <p style={{ fontSize: 13, color: MUTED }}>{t("nu_adicionar_foto")}</p>
                   <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
                     <button type="button" style={btnOutline} onClick={() => cameraInputRef.current?.click()}>
-                      <Camera style={{ width: 16, height: 16 }} /> Câmera
+                      <Camera style={{ width: 16, height: 16 }} /> {t("nu_camera")}
                     </button>
                     <button type="button" style={btnOutline} onClick={() => fileInputRef.current?.click()}>
-                      <ImageIcon style={{ width: 16, height: 16 }} /> Galeria
+                      <ImageIcon style={{ width: 16, height: 16 }} /> {t("nu_galeria")}
                     </button>
                   </div>
                 </div>
@@ -531,7 +533,7 @@ export default function MealDetailPage() {
                 }}
               >
                 {mealTypeEmoji(mealType)} {mealTypeLabel(mealType)}
-                <span style={{ fontSize: 11, textDecoration: "underline" }}>Alterar tipo</span>
+                <span style={{ fontSize: 11, textDecoration: "underline" }}>{t("nu_alterar_tipo")}</span>
               </button>
               {showTypePicker && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -569,7 +571,7 @@ export default function MealDetailPage() {
 
             {/* Description */}
             <textarea
-              placeholder="Descreva a refeição..."
+              placeholder={t("nu_descreva_refeicao")}
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -578,7 +580,7 @@ export default function MealDetailPage() {
 
             {/* Itens */}
             <div style={cardStyle}>
-              <p style={sectionTitle}>Itens</p>
+              <p style={sectionTitle}>{t("nu_itens_titulo")}</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {items.map((item, idx) => (
                   <span key={idx} style={{
@@ -609,7 +611,7 @@ export default function MealDetailPage() {
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <input
-                  placeholder="Adicionar item"
+                  placeholder={t("nu_adicionar_item")}
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addItem()}
@@ -620,7 +622,7 @@ export default function MealDetailPage() {
                   }}
                 />
                 <button type="button" style={{ ...btnSm, flexShrink: 0 }} onClick={addItem}>
-                  Adicionar
+                  {t("nu_adicionar")}
                 </button>
               </div>
             </div>
@@ -628,13 +630,13 @@ export default function MealDetailPage() {
             {/* Macros */}
             {macros && (
               <div style={cardStyle}>
-                <p style={sectionTitle}>Macros</p>
+                <p style={sectionTitle}>{t("nu_macros")}</p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13 }}>
                   {([
-                    { key: "carboidratos_g", label: "Carboidratos", suffix: "g" },
-                    { key: "proteinas_g", label: "Proteínas", suffix: "g" },
-                    { key: "gorduras_g", label: "Gorduras", suffix: "g" },
-                    { key: "calorias_kcal", label: "Calorias", suffix: " kcal" },
+                    { key: "carboidratos_g", label: t("nu_carboidratos"), suffix: "g" },
+                    { key: "proteinas_g", label: t("nu_proteinas"), suffix: "g" },
+                    { key: "gorduras_g", label: t("nu_gorduras"), suffix: "g" },
+                    { key: "calorias_kcal", label: t("nu_calorias"), suffix: " kcal" },
                   ] as const).map(({ key, label }) => (
                     <div key={key} style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -661,7 +663,7 @@ export default function MealDetailPage() {
             {/* Classificação */}
             {classif && (
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 13, color: MUTED }}>Classificação:</span>
+                <span style={{ fontSize: 13, color: MUTED }}>{t("nu_classificacao")}:</span>
                 {(() => {
                   const s = CLASSIFICATION_STYLE[classif] || CLASSIFICATION_STYLE.nao_identificada;
                   return (
@@ -696,7 +698,7 @@ export default function MealDetailPage() {
                 }
               }}
             >
-              Cancelar
+              {t("cancelar")}
             </button>
           </>
         ) : (
@@ -711,7 +713,7 @@ export default function MealDetailPage() {
                 {meal.fotos.map((p, i) => {
                   const src = photoUrl(p);
                   return src ? (
-                    <img key={i} src={src} alt={`Refeição ${i + 1}`} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 16 }} />
+                    <img key={i} src={src} alt={`${t("nu_refeicao")} ${i + 1}`} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 16 }} />
                   ) : null;
                 })}
               </div>
@@ -740,7 +742,7 @@ export default function MealDetailPage() {
             {/* Items */}
             {meal.itens && meal.itens.length > 0 && (
               <div style={cardStyle}>
-                <p style={sectionTitle}>Itens</p>
+                <p style={sectionTitle}>{t("nu_itens_titulo")}</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {meal.itens.map((item, i) => (
                     <span key={i} style={{
@@ -758,22 +760,22 @@ export default function MealDetailPage() {
             {/* Macros */}
             {meal.macros && (
               <div style={cardStyle}>
-                <p style={sectionTitle}>Macros</p>
+                <p style={sectionTitle}>{t("nu_macros")}</p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 10, padding: "8px 12px", background: "oklch(.22 .015 270 / .3)" }}>
-                    <span style={{ color: MUTED }}>Carboidratos</span>
+                    <span style={{ color: MUTED }}>{t("nu_carboidratos")}</span>
                     <span style={{ fontWeight: 500, color: FOREGROUND }}>{meal.macros.carboidratos_g}g</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 10, padding: "8px 12px", background: "oklch(.22 .015 270 / .3)" }}>
-                    <span style={{ color: MUTED }}>Proteínas</span>
+                    <span style={{ color: MUTED }}>{t("nu_proteinas")}</span>
                     <span style={{ fontWeight: 500, color: FOREGROUND }}>{meal.macros.proteinas_g}g</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 10, padding: "8px 12px", background: "oklch(.22 .015 270 / .3)" }}>
-                    <span style={{ color: MUTED }}>Gorduras</span>
+                    <span style={{ color: MUTED }}>{t("nu_gorduras")}</span>
                     <span style={{ fontWeight: 500, color: FOREGROUND }}>{meal.macros.gorduras_g}g</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 10, padding: "8px 12px", background: "oklch(.22 .015 270 / .3)" }}>
-                    <span style={{ color: MUTED }}>Calorias</span>
+                    <span style={{ color: MUTED }}>{t("nu_calorias")}</span>
                     <span style={{ fontWeight: 500, color: FOREGROUND }}>{meal.macros.calorias_kcal} kcal</span>
                   </div>
                 </div>
@@ -783,7 +785,7 @@ export default function MealDetailPage() {
             {/* Benefits */}
             {meal.beneficios && meal.beneficios.length > 0 && (
               <div style={cardStyle}>
-                <p style={sectionTitle}>✨ Benefícios</p>
+                <p style={sectionTitle}>✨ {t("nu_beneficios")}</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {meal.beneficios.map((b, i) => (
                     <p key={i} style={{ fontSize: 13, color: FOREGROUND, lineHeight: 1.5, margin: 0 }}>{b}</p>
@@ -815,7 +817,7 @@ export default function MealDetailPage() {
 
             {!meal.itens?.length && !meal.macros && !meal.texto_livre && (
               <p style={{ color: MUTED, fontStyle: "italic", textAlign: "center", padding: "32px 0" }}>
-                Nenhum detalhe registrado
+                {t("nu_nenhum_detalhe")}
               </p>
             )}
           </>
@@ -841,10 +843,10 @@ export default function MealDetailPage() {
             <div style={{ textAlign: "center" }}>
               <span style={{ fontSize: 40 }}>🗑️</span>
               <h3 style={{ fontSize: 16, fontWeight: 700, color: FOREGROUND, margin: "8px 0 4px" }}>
-                Deletar refeição
+                {t("nu_excluir_refeicao")}
               </h3>
               <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.5 }}>
-                Tem certeza que deseja deletar esta refeição? Esta ação não pode ser desfeita.
+                {t("nu_excluir_refeicao_confirm")}
               </p>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -858,7 +860,7 @@ export default function MealDetailPage() {
                   color: FOREGROUND, fontSize: 14, fontWeight: 600,
                   cursor: "pointer", fontFamily: "inherit",
                 }}>
-                Cancelar
+                {t("cancelar")}
               </button>
               <button
                 type="button"
@@ -870,7 +872,7 @@ export default function MealDetailPage() {
                   fontSize: 14, fontWeight: 600, cursor: "pointer",
                   fontFamily: "inherit", opacity: deleting ? 0.6 : 1,
                 }}>
-                {deleting ? "Deletando..." : "Deletar"}
+                {deleting ? t("nu_excluindo") : t("nu_excluir")}
               </button>
             </div>
           </div>

@@ -178,14 +178,14 @@ function NutricaoPage() {
         }),
       });
       if (res.ok) {
-        toast.success(`${mealTypeEmoji(fav.tipo_refeicao)} Refeição adicionada!`);
+        toast.success(`${mealTypeEmoji(fav.tipo_refeicao)} ${t("nu_refeicao_adicionada")}`);
         // Refresh today's meals (sem cache)
         invalidateFetchCache("/api/meals");
         cachedFetch<unknown[]>("/api/meals").then((data) => {
           if (Array.isArray(data)) setMeals(data as Meal[]);
         });
       } else {
-        toast.error("Erro ao adicionar");
+        toast.error(t("nu_erro_adicionar"));
       }
     } catch {
       toast.error("Erro ao adicionar");
@@ -202,10 +202,10 @@ function NutricaoPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        toast.success(`${data.length} item(ns) adicionado(s) à lista! 🛒`);
+        toast.success(t("nu_itens_adicionados", { n: String(data.length) }));
         invalidateFetchCache("/api/shopping-list");
       } else {
-        toast.error("Erro ao adicionar");
+        toast.error(t("nu_erro_adicionar"));
       }
     } catch {
       toast.error("Erro ao adicionar");
@@ -340,7 +340,7 @@ function NutricaoPage() {
             {todayDisplay}
           </p>
           <h1 style={{ marginTop: 4, fontSize: 36, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.05, color: "#e0d6ff" }}>
-            Nutrição
+            {t("nutricao")}
           </h1>
         </div>
         <button type="button" onClick={() => router.push("/compras")}
@@ -361,9 +361,9 @@ function NutricaoPage() {
           border: `1px solid ${BORDER}`, padding: 3,
         }}>
           {([
-            { key: "dia", icon: Sun, label: "Dia" },
-            { key: "semana", icon: Calendar, label: "Semana" },
-            { key: "mes", icon: Calendar, label: "Mês" },
+            { key: "dia", icon: Sun, label: t("nu_dia") },
+            { key: "semana", icon: Calendar, label: t("nu_semana") },
+            { key: "mes", icon: Calendar, label: t("nu_mes") },
           ] as const).map(({ key, icon: Icon, label }) => (
             <button key={key} type="button" onClick={() => switchTab(key as TabView)}
               style={{
@@ -396,7 +396,7 @@ function NutricaoPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <p style={{ fontSize: 14, fontWeight: 500, color: "#e0d6ff", display: "flex", alignItems: "center", gap: 6 }}>
                 <Star style={{ width: 16, height: 16, color: "#fbbf24", fill: "#fbbf24" }} />
-                Refeições favoritas
+                {t("nu_refeicoes_favoritas")}
               </p>
               <div style={{
                 display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4,
@@ -431,7 +431,7 @@ function NutricaoPage() {
                           alignItems: "center", justifyContent: "center",
                           padding: 0,
                         }}
-                        aria-label="Remover dos favoritos"
+                        aria-label={t("nu_remover_favoritos")}
                       >
                         <X style={{ width: 12, height: 12, color: MUTED }} />
                       </button>
@@ -456,14 +456,14 @@ function NutricaoPage() {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <span style={{ fontSize: 11, color: MUTED }}>
-                            {fav.macros ? `${fav.macros.calorias_kcal} kcal` : "Sem macros"}
+                            {fav.macros ? `${fav.macros.calorias_kcal} kcal` : t("nu_sem_macros")}
                           </span>
                           <span style={{
                             fontSize: 10, fontWeight: 600, color: "#A78BFA",
                             display: "inline-flex", alignItems: "center", gap: 2,
                           }}>
                             <Plus style={{ width: 12, height: 12 }} />
-                            {isLoading ? "..." : "Add"}
+                            {isLoading ? "..." : t("nu_add")}
                           </span>
                         </div>
                       </button>
@@ -479,7 +479,7 @@ function NutricaoPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <p style={{ fontSize: 14, fontWeight: 500, color: "#e0d6ff", display: "flex", alignItems: "center", gap: 6 }}>
                 <Clock style={{ width: 16, height: 16, color: "#A78BFA" }} />
-                Recentes
+                {t("nu_recentes")}
               </p>
               <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none", msOverflowStyle: "none" }}>
                 {recentMeals.map((m) => {
@@ -505,7 +505,7 @@ function NutricaoPage() {
                       </div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <span style={{ fontSize: 11, color: MUTED }}>
-                          {m.macros ? `${m.macros.calorias_kcal} kcal` : "Sem macros"}
+                          {m.macros ? `${m.macros.calorias_kcal} kcal` : t("nu_sem_macros")}
                         </span>
                         <span style={{ fontSize: 10, fontWeight: 600, color: "#A78BFA", display: "inline-flex", alignItems: "center", gap: 2 }}>
                           <Plus style={{ width: 12, height: 12 }} />
@@ -527,7 +527,7 @@ function NutricaoPage() {
                 fontSize: 12, color: MUTED, background: "oklch(.22 .015 270 / .5)",
                 borderRadius: 12, padding: "10px 12px", lineHeight: 1.6,
               }}>
-                Você registrou {todayMeals.length} {todayMeals.length === 1 ? "refeição" : "refeições"} hoje — o resumo reflete apenas o que foi anotado. Se comeu mais, vale registrar para uma análise mais completa.
+                {t(todayMeals.length === 1 ? "nu_registrou_uma" : "nu_registrou_varias", { n: String(todayMeals.length) })}
               </p>
             )}
             {todayMeals.length === 0 ? (
@@ -575,7 +575,7 @@ function NutricaoPage() {
 
           {/* Lista de refeições da semana */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <p style={sectionTitle}>Refeições da semana</p>
+            <p style={sectionTitle}>{t("nu_refeicoes_semana")}</p>
             {weekDays.flatMap((d) => d.meals).length === 0 ? (
               <p style={emptyState}>{t("nenhuma_refeicao")}</p>
             ) : (
@@ -633,7 +633,7 @@ function NutricaoPage() {
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Sparkles size={18} color="#A78BFA" />
-                <span style={{ fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>Assistente IA</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>{t("nu_assistente_ia")}</span>
               </div>
               <button type="button" onClick={() => setShowChat(false)}
                 style={{ background: "none", border: 0, color: MUTED, fontSize: 20, cursor: "pointer", padding: "4px 8px" }}>

@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { sumMacros, getDailyKcalGoal } from "@/lib/meal-utils";
+import { useTranslation } from "@/lib/useTranslation";
 import { getLocalDateFromISO, getWeekMondayDate, getWeekSundayDate } from "@/lib/utils";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { Lightbulb, Apple, Coffee, Moon, Zap } from "lucide-react";
@@ -16,6 +17,7 @@ interface Tip {
 }
 
 export function NutritionTips() {
+  const { t } = useTranslation();
   const [meals, setMeals] = useState<Meal[]>([]);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [ctx, setCtx] = useState<Record<string, unknown>>({});
@@ -79,8 +81,8 @@ export function NutritionTips() {
     if (protPct < 18 && analyzed.length >= 3) {
       result.push({
         icon: Apple,
-        title: "Experimente mais proteína",
-        body: "Sua proteína está abaixo do ideal. Adicione ovos, frango, peixe, lentilha ou grão-de-bico nas refeições. A proteína ajuda na saciedade e na energia.",
+        title: t("nu_tip_proteina_titulo"),
+        body: t("nu_tip_proteina_body"),
         emoji: "🥚",
       });
     }
@@ -89,8 +91,8 @@ export function NutritionTips() {
     if (sugarCount >= 3) {
       result.push({
         icon: Lightbulb,
-        title: "Menos açúcar, mais energia",
-        body: `Você teve ${sugarCount} refeições com açúcar alto nos últimos dias. Troque por frutas frescas, iogurte natural ou castanhas — dão energia sem o pico de glicose.`,
+        title: t("nu_tip_acucar_titulo"),
+        body: t("nu_tip_acucar_body", { n: String(sugarCount) }),
         emoji: "🍓",
       });
     }
@@ -99,8 +101,8 @@ export function NutritionTips() {
     if (tiredDays >= 2 && fatCount >= 3) {
       result.push({
         icon: Zap,
-        title: "Refeições mais leves podem ajudar",
-        body: "Você tem se sentido cansado(a) e as refeições estão pesadas. Tente incluir mais vegetais, grelhados e saladas — digestão mais leve, mais disposição.",
+        title: t("nu_tip_leves_titulo"),
+        body: t("nu_tip_leves_body"),
         emoji: "🥗",
       });
     }
@@ -110,8 +112,8 @@ export function NutritionTips() {
     if (allItems.size < 6 && recentMeals.length >= 5) {
       result.push({
         icon: Apple,
-        title: "Varie seu cardápio",
-        body: "Você tem comido poucos alimentos diferentes. Quanto mais variada a alimentação, mais nutrientes diferentes seu corpo recebe. Que tal experimentar algo novo hoje?",
+        title: t("nu_tip_varie_titulo"),
+        body: t("nu_tip_varie_body"),
         emoji: "🌈",
       });
     }
@@ -125,8 +127,8 @@ export function NutritionTips() {
     if (sleptBadDays >= 3) {
       result.push({
         icon: Moon,
-        title: "Sono e alimentação andam juntos",
-        body: "Você teve noites difíceis. Evite cafeína após as 16h e tente jantar mais cedo. Alimentos ricos em magnésio (banana, castanhas, aveia) ajudam a relaxar.",
+        title: t("nu_tip_sono_titulo"),
+        body: t("nu_tip_sono_body"),
         emoji: "🍌",
       });
     }
@@ -135,8 +137,8 @@ export function NutritionTips() {
     if (balancedCount >= 5 && analyzed.length >= 6) {
       result.push({
         icon: Lightbulb,
-        title: "Você está no caminho certo!",
-        body: `A maioria das suas refeições está equilibrada. Continue assim — seu corpo agradece. Pequenas consistências criam grandes mudanças.`,
+        title: t("nu_tip_caminho_titulo"),
+        body: t("nu_tip_caminho_body"),
         emoji: "🌟",
       });
     }
@@ -146,8 +148,8 @@ export function NutritionTips() {
       const goal = getDailyKcalGoal(ctx);
       result.push({
         icon: Zap,
-        title: "Tá comendo o suficiente?",
-        body: `Sua média diária está em ${avgKcalPerDay} kcal (meta: ${goal}). Comer pouco pode deixar o metabolismo lento e causar cansaço. Inclua snacks saudáveis entre as refeições.`,
+        title: t("nu_tip_suficiente_titulo"),
+        body: t("nu_tip_suficiente_body", { avg: String(avgKcalPerDay), goal: String(goal) }),
         emoji: "🥜",
       });
     }
@@ -156,8 +158,8 @@ export function NutritionTips() {
     if (saltCount >= 3) {
       result.push({
         icon: Lightbulb,
-        title: "Atenção ao sódio",
-        body: `Você teve ${saltCount} refeições com alto teor de sal nos últimos dias. O excesso de sódio pode causar retenção de líquido e pressão elevada. Prefira temperos naturais e alimentos frescos.`,
+        title: t("nu_tip_sodio_titulo"),
+        body: t("nu_tip_sodio_body", { n: String(saltCount) }),
         emoji: "🧂",
       });
     }
@@ -166,20 +168,20 @@ export function NutritionTips() {
     if (avgMealsPerDay < 2.5 && daysWithMeals >= 3 && avgKcalPerDay >= 1200) {
       result.push({
         icon: Coffee,
-        title: "Registrando todas as refeições?",
-        body: `Você tem registrado em média ${avgMealsPerDay.toFixed(1)} refeições por dia. Se comer mais do que isso, vale anotar tudo — a análise de qualidade fica mais precisa quando os dados estão completos.`,
+        title: t("nu_tip_registrando_titulo"),
+        body: t("nu_tip_registrando_body", { avg: avgMealsPerDay.toFixed(1) }),
         emoji: "📋",
       });
     }
 
     return result.slice(0, 3);
-  }, [meals, checkIns, ctx]);
+  }, [meals, checkIns, ctx, t]);
 
   if (!loaded || tips.length === 0) return null;
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">💡 Para você</p>
+      <p className="text-sm font-medium">{t("nu_para_voce")}</p>
       <div className="space-y-2">
         {tips.map((tip, i) => (
           <Card key={i} style={{ borderRadius: 12, background: "linear-gradient(90deg, oklch(.58 .18 270 / .06), transparent)", border: "1px solid oklch(.58 .18 270 / .12)" }}>

@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { sumMacros } from "@/lib/meal-utils";
+import { useTranslation } from "@/lib/useTranslation";
 import { getLocalDateFromISO } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Zap, Moon, Smile } from "lucide-react";
 import type { Meal, CheckIn } from "@/types";
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function FoodMoodCorrelation({ meals }: Props) {
+  const { t } = useTranslation();
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -92,21 +94,21 @@ export function FoodMoodCorrelation({ meals }: Props) {
 
       const lines: string[] = [];
       if (Math.abs(highAvgKcal - lowAvgKcal) > 150) {
-        lines.push(`${highAvgKcal} vs ${lowAvgKcal} kcal`);
+        lines.push(t("nu_kcal_comp", { a: String(highAvgKcal), b: String(lowAvgKcal) }));
       }
       if (Math.abs(highAvgProt - lowAvgProt) >= 3) {
-        lines.push(`${highAvgProt}% vs ${lowAvgProt}% proteína`);
+        lines.push(t("nu_prot_comp", { a: String(highAvgProt), b: String(lowAvgProt) }));
       }
       if (Math.abs(Number(highAvgMeals) - Number(lowAvgMeals)) >= 0.5) {
-        lines.push(`${highAvgMeals} vs ${lowAvgMeals} refeições/dia`);
+        lines.push(t("nu_refeicoes_comp", { a: highAvgMeals, b: lowAvgMeals }));
       }
 
       if (lines.length > 0) {
         results.push({
-          title: "Energia alta vs baixa",
+          title: t("nu_energia_titulo"),
           emoji: "⚡",
           icon: Zap,
-          body: `Dias com mais energia têm em média:\n${lines.join("\n")}\n\nIsso é uma correlação observada nos seus dados, não uma regra.`,
+          body: `${t("nu_energia_intro")}\n${lines.join("\n")}\n\n${t("nu_energia_disclaimer")}`,
         });
       }
     }
@@ -134,10 +136,10 @@ export function FoodMoodCorrelation({ meals }: Props) {
 
       if (Math.abs(goodLatePct - badLatePct) >= 20) {
         results.push({
-          title: "Sono e horário das refeições",
+          title: t("nu_sono_titulo"),
           emoji: "🌙",
           icon: Moon,
-          body: `Jantar após 21h: ${badLatePct}% dos dias com sono ruim vs ${goodLatePct}% dos dias com sono bom.\n\nComer mais cedo pode ajudar na qualidade do sono.`,
+          body: t("nu_sono_body", { bad: String(badLatePct), good: String(goodLatePct) }),
         });
       }
     }
@@ -152,24 +154,24 @@ export function FoodMoodCorrelation({ meals }: Props) {
 
       if (Math.abs(Number(manyAvgEnergy) - Number(fewAvgEnergy)) >= 0.8) {
         results.push({
-          title: "Frequência de refeições e energia",
+          title: t("nu_frequencia_titulo"),
           emoji: "🍽️",
           icon: Smile,
-          body: `Dias com 4+ refeições: energia média ${manyAvgEnergy}/10\nDias com 2- refeições: energia média ${fewAvgEnergy}/10\n\nComer mais vezes ao dia pode estar associado a mais energia nos seus registros.`,
+          body: t("nu_frequencia_body", { many: manyAvgEnergy, few: fewAvgEnergy }),
         });
       }
     }
 
     return results.length > 0 ? results : null;
-  }, [meals, checkIns, loaded]);
+  }, [meals, checkIns, loaded, t]);
 
   if (!correlations || correlations.length === 0) return null;
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">🔗 Conexões entre sua alimentação e bem-estar</p>
+      <p className="text-sm font-medium">{t("nu_conexoes")}</p>
       <p className="text-[11px] text-muted-foreground">
-        Correlações observadas nos seus registros — não é um diagnóstico.
+        {t("nu_correlacoes")}
       </p>
       <div className="space-y-2">
         {correlations.map((c, i) => (
