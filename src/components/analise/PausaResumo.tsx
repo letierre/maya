@@ -2,9 +2,11 @@
 
 import type { CheckIn } from "@/types";
 import { didPause } from "@/lib/checkin-answered";
+import { useTranslation } from "@/lib/useTranslation";
 import { Section, CARD, MUTED, LILAC, Stat } from "./Section";
 
 export function PausaResumo({ checkIns }: { checkIns: CheckIn[] }) {
+  const { t } = useTranslation();
   const days = checkIns.length;
   const medDays = checkIns.filter((c) => c.meditation === true).length;
   const prayDays = checkIns.filter((c) => c.prayer === true).length;
@@ -14,16 +16,16 @@ export function PausaResumo({ checkIns }: { checkIns: CheckIn[] }) {
   if (pauseDays === 0) return null;
 
   const breakdown = [
-    { emoji: "🧘", label: "meditação", n: medDays },
-    { emoji: "🙏", label: "oração", n: prayDays },
-    { emoji: "🌬️", label: "respiração", n: breatheDays },
+    { emoji: "🧘", label: t("an_meditacao"), n: medDays },
+    { emoji: "🙏", label: t("an_oracao"), n: prayDays },
+    { emoji: "🌬️", label: t("an_respiracao"), n: breatheDays },
   ].filter((b) => b.n > 0);
 
   return (
-    <Section title="Pausa">
+    <Section title={t("an_pausa")}>
       <div style={{ ...CARD }}>
         <div style={{ display: "flex", gap: 8 }}>
-          <Stat value={`${Math.round((pauseDays / days) * 100)}%`} label="dias de pausa" color={LILAC} />
+          <Stat value={`${Math.round((pauseDays / days) * 100)}%`} label={t("an_dias_pausa")} color={LILAC} />
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
           {breakdown.map((b) => (
@@ -38,7 +40,7 @@ export function PausaResumo({ checkIns }: { checkIns: CheckIn[] }) {
                 padding: "4px 10px",
               }}
             >
-              {b.emoji} {b.label} · {b.n} {b.n === 1 ? "dia" : "dias"}
+              {b.emoji} {b.label} · {b.n} {b.n === 1 ? t("an_dia") : t("an_dias")}
             </span>
           ))}
         </div>

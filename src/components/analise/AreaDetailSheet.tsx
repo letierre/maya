@@ -1,19 +1,20 @@
 "use client";
 import { getLocale } from "@/lib/language";
+import { useTranslation } from "@/lib/useTranslation";
 
 // Detalhe por área da Roda da Vida: lista as tarefas (plano semanal) e os
 // itens da agenda (compromissos/atividades) do período selecionado, agrupados
 // pelas 8 áreas. Presentacional — recebe dados + callbacks de toggle.
 
-const AREA_META: Record<string, { label: string; emoji: string; color: string }> = {
-  espiritualidade: { label: "Espiritualidade", emoji: "✨", color: "#F97316" },
-  carreira: { label: "Carreira", emoji: "💼", color: "#5EEAD4" },
-  desenvolvimento: { label: "Mente", emoji: "🧠", color: "#A78BFA" },
-  familia: { label: "Família", emoji: "🏡", color: "#22D18B" },
-  relacionamentos: { label: "Relacionamentos", emoji: "❤️", color: "#EC4899" },
-  financas: { label: "Finanças", emoji: "💰", color: "#F59E0B" },
-  lazer: { label: "Lazer", emoji: "🌊", color: "#38BDF8" },
-  saude: { label: "Saúde", emoji: "💚", color: "#7C5CFF" },
+const AREA_META: Record<string, { labelKey: string; emoji: string; color: string }> = {
+  espiritualidade: { labelKey: "area_espiritualidade", emoji: "✨", color: "#F97316" },
+  carreira: { labelKey: "area_carreira", emoji: "💼", color: "#5EEAD4" },
+  desenvolvimento: { labelKey: "area_desenvolvimento", emoji: "🧠", color: "#A78BFA" },
+  familia: { labelKey: "area_familia", emoji: "🏡", color: "#22D18B" },
+  relacionamentos: { labelKey: "area_relacionamentos", emoji: "❤️", color: "#EC4899" },
+  financas: { labelKey: "area_financas", emoji: "💰", color: "#F59E0B" },
+  lazer: { labelKey: "area_lazer", emoji: "🌊", color: "#38BDF8" },
+  saude: { labelKey: "area_saude", emoji: "💚", color: "#7C5CFF" },
 };
 
 const AREA_ORDER = [
@@ -91,21 +92,22 @@ export function AreaDetailSheet({
   onToggleTask,
   onToggleAgenda,
 }: AreaDetailSheetProps) {
+  const { t } = useTranslation();
   const entries: Entry[] = [];
 
   for (const p of plans) {
-    for (const t of p.weekly_tasks ?? []) {
-      if (!AREA_ORDER.includes(t.area)) continue;
+    for (const task of p.weekly_tasks ?? []) {
+      if (!AREA_ORDER.includes(task.area)) continue;
       entries.push({
-        key: `task-${t.id}`,
-        id: t.id,
+        key: `task-${task.id}`,
+        id: task.id,
         kind: "task",
-        title: t.title,
-        status: t.status,
-        area: t.area,
-        date: addDaysYMD(p.week_start, t.day_of_week),
-        time: fmtTime(t.scheduled_time),
-        typeLabel: "Tarefa",
+        title: task.title,
+        status: task.status,
+        area: task.area,
+        date: addDaysYMD(p.week_start, task.day_of_week),
+        time: fmtTime(task.scheduled_time),
+        typeLabel: t("an_tarefa"),
       });
     }
   }
@@ -121,7 +123,7 @@ export function AreaDetailSheet({
       area: it.area,
       date: it.date,
       time: fmtTime(it.start_time),
-      typeLabel: it.item_type === "compromisso" ? "Compromisso" : "Atividade",
+      typeLabel: t(it.item_type === "compromisso" ? "an_compromisso" : "an_atividade"),
     });
   }
 
@@ -169,7 +171,7 @@ export function AreaDetailSheet({
         <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
           <div style={{ flex: 1 }}>
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>
-              Detalhes por área
+              {t("an_detalhes_area")}
             </h2>
             <p style={{ margin: "2px 0 0", fontSize: 12, color: "#9e96b5" }}>
               📅 {periodLabel}
@@ -178,7 +180,7 @@ export function AreaDetailSheet({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fechar"
+            aria-label={t("ck_fechar")}
             style={{ background: "none", border: 0, color: "#9e96b5", fontSize: 18, cursor: "pointer", padding: 4 }}
           >
             ✕
@@ -186,7 +188,7 @@ export function AreaDetailSheet({
         </div>
 
         {grouped.length === 0 ? (
-          <p style={{ margin: 0, fontSize: 13, color: "#9e96b5" }}>Nenhum item no período selecionado.</p>
+          <p style={{ margin: 0, fontSize: 13, color: "#9e96b5" }}>{t("an_nenhum_item_periodo")}</p>
         ) : (
           grouped.map(({ area, items }) => {
             const meta = AREA_META[area];
@@ -196,7 +198,7 @@ export function AreaDetailSheet({
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                   <span style={{ fontSize: 16, lineHeight: 1 }}>{meta.emoji}</span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: meta.color, flex: 1 }}>
-                    {meta.label}
+                    {t(meta.labelKey)}
                   </span>
                   <span style={{ fontSize: 11, color: "#9e96b5", fontWeight: 600 }}>
                     {doneCount}/{items.length}
@@ -221,7 +223,7 @@ export function AreaDetailSheet({
                     >
                       <button
                         type="button"
-                        aria-label={done ? "Marcar como pendente" : "Marcar como concluída"}
+                        aria-label={done ? t("an_marcar_pendente") : t("an_marcar_concluida")}
                         onClick={() => {
                           const next = done ? "pendente" : "concluida";
                           if (it.kind === "task") onToggleTask(it.id, next);

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
+import { useTranslation } from "@/lib/useTranslation";
 import { nutritionScore, sumMacros, classificationLabel } from "@/lib/meal-utils";
 import { getLocalDateFromISO } from "@/lib/utils";
 import type { Meal, MealClassification } from "@/types";
@@ -9,6 +10,7 @@ import { Section, CARD, MUTED, LILAC, GREEN, RED, Stat } from "./Section";
 
 export function NutricaoResumo({ from, to }: { from: string; to: string }) {
   const [meals, setMeals] = useState<Meal[]>([]);
+  const { t } = useTranslation();
 
   useEffect(() => {
     safeCachedFetch<Meal[]>(`/api/meals?from=${from}&to=${to}`).then((data) => {
@@ -32,7 +34,7 @@ export function NutricaoResumo({ from, to }: { from: string; to: string }) {
   const classEntries = Object.entries(classCounts).sort((a, b) => b[1] - a[1]);
 
   return (
-    <Section title="Nutrição">
+    <Section title={t("nutricao")}>
       <div style={{ ...CARD }}>
         <div style={{ display: "flex", gap: 8 }}>
           <Stat
@@ -40,8 +42,8 @@ export function NutricaoResumo({ from, to }: { from: string; to: string }) {
             label="score"
             color={score >= 70 ? GREEN : score >= 45 ? LILAC : RED}
           />
-          <Stat value={avgKcal} label="kcal/dia" />
-          <Stat value={`${avgProt}g`} label="prot/dia" />
+          <Stat value={avgKcal} label={t("an_kcal_dia")} />
+          <Stat value={`${avgProt}g`} label={t("an_prot_dia")} />
         </div>
         {classEntries.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>

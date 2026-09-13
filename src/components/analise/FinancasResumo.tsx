@@ -1,5 +1,6 @@
 "use client";
 import { getLocale } from "@/lib/language";
+import { useTranslation } from "@/lib/useTranslation";
 
 import { useEffect, useState } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
@@ -31,21 +32,11 @@ function fmt(amount: number, currency: string): string {
 
 // ── Labels ────────────────────────────────────────────────────────────────────
 
-const CAT_LABEL: Record<string, string> = {
-  moradia: "Moradia",
-  alimentacao: "Alimentação",
-  transporte: "Transporte",
-  saude_beleza: "Saúde & Beleza",
-  educacao: "Educação",
-  lazer: "Lazer",
-  pessoal: "Pessoal",
-  servicos_fin: "Serviços financeiros",
-  comunicacao: "Comunicação",
-  doacoes: "Doações",
-  pet: "Pet",
-  personalizada: "Personalizada",
-  outros: "Outros",
-};
+const DEFAULT_CATS = new Set([
+  "moradia", "alimentacao", "transporte", "saude_beleza", "educacao",
+  "lazer", "pessoal", "servicos_fin", "comunicacao", "doacoes", "pet",
+  "personalizada", "outros",
+]);
 
 function monthShort(key: string): string {
   const [y, m] = key.split("-").map(Number);
@@ -79,6 +70,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
   const [budgets, setBudgets] = useState<FinancialBudget[]>([]);
   const [currency, setCurrency] = useState("BRL");
   const [userCats, setUserCats] = useState<UserCategory[]>([]);
+  const { t } = useTranslation();
 
   useEffect(() => {
     safeCachedFetch<FinancialTransaction[]>("/api/financas/transactions?limit=500").then((d) => {
@@ -98,7 +90,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
   if (txs.length === 0 && budgets.length === 0) return null;
 
   const periodDays = PERIOD_DAYS[period];
-  const periodLabel = period === "semana" ? "esta semana" : period === "mes" ? "este mês" : "este trimestre";
+  const periodLabel = t(period === "semana" ? "an_esta_semana" : period === "mes" ? "an_este_mes" : "an_este_trimestre");
   const from = daysAgo(periodDays - 1);
   const to = daysAgo(0);
   const nowMonth = getLocalDate().slice(0, 7);
@@ -107,7 +99,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
   const labelOf = (id: string): string => {
     const uc = userCatById.get(id);
     if (uc) return uc.name;
-    return CAT_LABEL[id] ?? getCatById(id, "despesa").id;
+    return DEFAULT_CATS.has(id) ? t(`fin_cat_${id}`) : getCatById(id, "despesa").id;
   };
   const emojiOf = (id: string): string => {
     const uc = userCatById.get(id);
@@ -160,13 +152,13 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
   let trend: { label: string; saldo: number }[];
   let trendTitle: string;
   if (period === "semana") {
-    trendTitle = "Saldo · por dia";
+    trendTitle = `${t("an_saldo")} · ${t("an_por_dia")}`;
     trend = Array.from({ length: 7 }, (_, i) => {
       const ds = daysAgo(6 - i);
       return { label: weekdayShort(ds), saldo: saldoAt(ds) };
     });
   } else if (period === "mes") {
-    trendTitle = "Saldo · por semana";
+    trendTitle = `${t("an_saldo")} · ${t("an_por_semana")}`;
     const weekMap = new Map<string, number>();
     for (let i = periodDays - 1; i >= 0; i--) {
       const ds = daysAgo(i);
@@ -177,7 +169,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([wk, s]) => ({ label: String(new Date(wk + "T12:00:00").getDate()), saldo: s }));
   } else {
-    trendTitle = "Saldo · por mês";
+    trendTitle = `${t("an_saldo")} · ${t("an_por_mes")}`;
     const monthMap = new Map<string, number>();
     for (let i = periodDays - 1; i >= 0; i--) {
       const ds = daysAgo(i);
@@ -196,11 +188,11 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
   };
 
   return (
-    <Section title="Finanças">
+    <Section title={t("area_financas")}>
       <div style={{ ...CARD }}>
         {/* Saldo do período */}
         <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: MUTED }}>
-          Saldo · {periodLabel}
+          {t("an_saldo")} · {periodLabel}
         </p>
         <p style={{ margin: "2px 0 0", fontSize: 28, fontWeight: 800, color: saldo >= 0 ? GREEN : RED, letterSpacing: "-0.02em" }}>
           {fmt(saldo, currency)}
@@ -209,11 +201,11 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
         {/* Receitas / despesas */}
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
           <div style={pillStyle}>
-            <p style={{ margin: 0, fontSize: 10, color: MUTED, fontWeight: 600 }}>Receitas</p>
+            <p style={{ margin: 0, fontSize: 10, color: MUTED, fontWeight: 600 }}>{t("an_receitas")}</p>
             <p style={{ margin: "3px 0 0", fontSize: 15, fontWeight: 800, color: GREEN }}>{fmt(receitas, currency)}</p>
           </div>
           <div style={pillStyle}>
-            <p style={{ margin: 0, fontSize: 10, color: MUTED, fontWeight: 600 }}>Despesas</p>
+            <p style={{ margin: 0, fontSize: 10, color: MUTED, fontWeight: 600 }}>{t("an_despesas")}</p>
             <p style={{ margin: "3px 0 0", fontSize: 15, fontWeight: 800, color: RED }}>{fmt(despesas, currency)}</p>
           </div>
         </div>
@@ -221,7 +213,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
         {/* Taxa de poupança */}
         {savingsPct != null && (
           <p style={{ margin: "10px 0 0", fontSize: 12, color: FOREGROUND, lineHeight: 1.4 }}>
-            💰 Você poupou <span style={{ fontWeight: 700, color: savingsPct >= 0 ? GREEN : RED }}>{savingsPct}%</span> da sua renda {periodLabel}.
+            💰 {t("an_poupou")} <span style={{ fontWeight: 700, color: savingsPct >= 0 ? GREEN : RED }}>{savingsPct}%</span> {t("an_poupou_renda", { period: periodLabel })}
           </p>
         )}
 
@@ -229,7 +221,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
         {catEntries.length > 0 && (
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid oklch(0.28 0.02 270 / 0.5)" }}>
             <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: MUTED }}>
-              Gastos por categoria
+              {t("an_gastos_categoria")}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {catEntries.map(([id, total]) => {
@@ -259,7 +251,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
         {period === "mes" && budgets.length > 0 && (
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid oklch(0.28 0.02 270 / 0.5)" }}>
             <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: MUTED }}>
-              Orçamento
+              {t("an_orcamento")}
             </p>
             {budgetItems.slice(0, 4).map(({ b, spent, pct, over }) => (
               <div key={b.id} style={{ marginBottom: 8 }}>
@@ -282,7 +274,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
             {/* Total */}
             <div style={{ paddingTop: 10, borderTop: "1px solid oklch(0.28 0.02 270 / 0.5)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                <span style={{ fontSize: 12, fontWeight: 800, color: FOREGROUND }}>Total</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: FOREGROUND }}>{t("an_total")}</span>
                 <span style={{ flex: 1 }} />
                 <span style={{ fontSize: 12, fontWeight: 800, color: totalOver ? RED : FOREGROUND }}>
                   {fmt(totalSpent, currency)}
@@ -297,7 +289,7 @@ export function FinancasResumo({ period }: { period: FinPeriod }) {
                 }} />
               </div>
               <p style={{ margin: "4px 0 0", fontSize: 10, color: totalOver ? RED : MUTED, textAlign: "right" }}>
-                {Math.round(totalPct)}% do orçamento total
+                {t("an_orcamento_total", { pct: String(Math.round(totalPct)) })}
               </p>
             </div>
           </div>

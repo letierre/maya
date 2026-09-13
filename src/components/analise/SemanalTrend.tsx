@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
+import { useTranslation } from "@/lib/useTranslation";
 import { Section, CARD, FOREGROUND, MUTED, PURPLE } from "./Section";
 
 interface RawReview { week_score: number; biggest_win?: string; }
@@ -10,6 +11,7 @@ interface WeeklyPlansResp { plans: RawPlan[]; }
 
 export function SemanalTrend({ from, to }: { from: string; to: string }) {
   const [resp, setResp] = useState<WeeklyPlansResp | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     safeCachedFetch<WeeklyPlansResp>(`/api/weekly-plans?from=${from}&to=${to}`).then((r) => {
@@ -37,7 +39,7 @@ export function SemanalTrend({ from, to }: { from: string; to: string }) {
   const showLabels = entries.length <= 8;
 
   return (
-    <Section title="Ritmo semanal">
+    <Section title={t("an_ritmo_semanal")}>
       <div style={{ ...CARD }}>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 64, marginBottom: 12 }}>
           {entries.map((e) => {

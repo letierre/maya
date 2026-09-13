@@ -1,4 +1,6 @@
 import type { Meal, MealType, MealClassification, Macros, MealItem } from "@/types";
+import { t } from "@/lib/i18n";
+import { getLanguage } from "@/lib/language";
 
 // Meta diária padrão de calorias (personalizável via preferences.context.kcal_goal)
 export const DEFAULT_DAILY_KCAL = 2000;
@@ -24,14 +26,14 @@ export function getMealTypeFromHour(hour: number): MealType {
 // Label legível para cada tipo
 export function mealTypeLabel(type: MealType): string {
   const map: Record<MealType, string> = {
-    cafe_da_manha: "Café da manhã",
-    lanche_manha: "Lanche da manhã",
-    almoco: "Almoço",
-    lanche: "Lanche da tarde",
-    jantar: "Jantar",
-    lanche_noturno: "Lanche noturno",
+    cafe_da_manha: "meal_type_cafe_da_manha",
+    lanche_manha: "meal_type_lanche_manha",
+    almoco: "meal_type_almoco",
+    lanche: "meal_type_lanche",
+    jantar: "meal_type_jantar",
+    lanche_noturno: "meal_type_lanche_noturno",
   };
-  return map[type];
+  return t(getLanguage(), map[type]);
 }
 
 // Emoji para cada tipo
@@ -50,15 +52,15 @@ export function mealTypeEmoji(type: MealType): string {
 // Label para classificação
 export function classificationLabel(c: MealClassification): string {
   const map: Record<MealClassification, string> = {
-    equilibrada: "Equilibrada",
-    leve_proteina: "Leve em proteína",
-    alta_acucar: "Alta em açúcar",
-    alta_gordura: "Alta em gordura",
-    alta_sal: "Alta em sódio",
-    vegetais_baixo: "Vegetais / Baixa caloria",
-    nao_identificada: "Não identificada",
+    equilibrada: "meal_class_equilibrada",
+    leve_proteina: "meal_class_leve_proteina",
+    alta_acucar: "meal_class_alta_acucar",
+    alta_gordura: "meal_class_alta_gordura",
+    alta_sal: "meal_class_alta_sal",
+    vegetais_baixo: "meal_class_vegetais_baixo",
+    nao_identificada: "meal_class_nao_identificada",
   };
-  return map[c];
+  return t(getLanguage(), map[c]);
 }
 
 // Cor da badge para classificação

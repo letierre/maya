@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
+import { useTranslation } from "@/lib/useTranslation";
 import type { QuarterlyCycle } from "@/types";
 import { Section, CARD, FOREGROUND, MUTED, LILAC, GREEN, ProgressBar } from "./Section";
 
@@ -24,6 +25,7 @@ function cyclePct(cycle: QuarterlyCycle): number {
 
 export function OKRProgress({ period }: { period: Period }) {
   const [cycles, setCycles] = useState<QuarterlyCycle[]>([]);
+  const { t } = useTranslation();
 
   useEffect(() => {
     safeCachedFetch<QuarterlyCycle[]>("/api/quarterly-cycles").then((data) => {
@@ -41,7 +43,7 @@ export function OKRProgress({ period }: { period: Period }) {
   if (!hasActive && past.length === 0) return null;
 
   return (
-    <Section title="OKRs do trimestre">
+    <Section title={t("an_okrs_trimestre")}>
       <div style={{ ...CARD }}>
         {hasActive && active && (
           <>
@@ -96,7 +98,7 @@ export function OKRProgress({ period }: { period: Period }) {
           <>
             {hasActive && <div style={{ height: 1, background: "oklch(0.25 0.02 270)", margin: "16px 0 14px" }} />}
             <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: MUTED }}>
-              Trimestres anteriores
+              {t("an_trimestres_anteriores")}
             </p>
             {past.map((c) => (
               <div key={c.id} style={{ marginBottom: 12 }}>

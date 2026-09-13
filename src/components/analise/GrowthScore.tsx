@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
 import { filterActiveAgenda } from "@/lib/agenda-repeat";
+import { useTranslation } from "@/lib/useTranslation";
 import type { QuarterlyCycle } from "@/types";
 import { FOREGROUND, MUTED, PURPLE, CARD } from "./Section";
 
@@ -101,6 +102,7 @@ export function GrowthScore({ from, to }: { from: string; to: string }) {
   const [plans, setPlans] = useState<RawPlan[] | null>(null);
   const [agendaItems, setAgendaItems] = useState<RawAgendaItem[] | null>(null);
   const [ringInfo, setRingInfo] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     safeCachedFetch<GoalSummary[]>("/api/goals").then((d) => setGoals(Array.isArray(d) ? d : []));
@@ -112,10 +114,10 @@ export function GrowthScore({ from, to }: { from: string; to: string }) {
   if (goals === null || cycles === null || plans === null || agendaItems === null) return null;
 
   const pillars: Pillar[] = [
-    { key: "metas", label: "Metas", emoji: "🎯", pct: metasPct(goals) },
+    { key: "metas", label: t("ob_area_metas"), emoji: "🎯", pct: metasPct(goals) },
     { key: "okrs", label: "OKRs", emoji: "📊", pct: okrPct(cycles) },
-    { key: "equilibrio", label: "Equilíbrio", emoji: "⚖️", pct: equilibrioPct(plans, agendaItems) },
-    { key: "ritmo", label: "Ritmo", emoji: "📈", pct: ritmoPct(plans) },
+    { key: "equilibrio", label: t("an_equilibrio"), emoji: "⚖️", pct: equilibrioPct(plans, agendaItems) },
+    { key: "ritmo", label: t("an_ritmo"), emoji: "📈", pct: ritmoPct(plans) },
   ];
 
   const withData = pillars.filter((p) => p.pct != null);
@@ -126,10 +128,10 @@ export function GrowthScore({ from, to }: { from: string; to: string }) {
       <div style={{ display: "flex", justifyContent: "center", padding: "24px 16px" }}>
         <div style={{ ...CARD, textAlign: "center", maxWidth: 320 }}>
           <p style={{ margin: 0, fontSize: 13, color: FOREGROUND, fontWeight: 600 }}>
-            Nenhum dado de crescimento ainda
+            {t("an_growth_empty_title")}
           </p>
           <p style={{ margin: "6px 0 0", fontSize: 12, color: MUTED, lineHeight: 1.5 }}>
-            Complete metas, OKRs ou revisões semanais para ver sua nota de crescimento por aqui.
+            {t("an_growth_empty_desc")}
           </p>
         </div>
       </div>
@@ -152,14 +154,14 @@ export function GrowthScore({ from, to }: { from: string; to: string }) {
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           }}>
             <span style={{ fontSize: 32, fontWeight: 800, color: FOREGROUND, lineHeight: 1 }}>{score}</span>
-            <span style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>Crescimento</span>
+            <span style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{t("an_crescimento")}</span>
           </div>
         </div>
         <button
           type="button"
           onClick={() => setRingInfo((v) => !v)}
-          aria-label="O que é crescimento"
-          title="O que é crescimento"
+          aria-label={t("an_what_is_growth")}
+          title={t("an_what_is_growth")}
           style={{
             position: "absolute", top: 6, right: 6,
             width: 20, height: 20, borderRadius: "50%",
@@ -195,9 +197,7 @@ export function GrowthScore({ from, to }: { from: string; to: string }) {
           background: "oklch(0.2 0.02 270)",
           borderRadius: 10, padding: "8px 10px", textAlign: "center",
         }}>
-          Nota de 0 a 100 que sintetiza seu crescimento: média da conclusão das metas, do
-          progresso dos OKRs, do equilíbrio entre as áreas da vida e do ritmo das revisões
-          semanais. Pilares sem dado não entram na conta.
+          {t("an_growth_info")}
         </p>
       )}
     </div>

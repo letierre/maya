@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
+import { useTranslation } from "@/lib/useTranslation";
 import { LifeWheel } from "@/components/planejamento/LifeWheel";
 import { isRepeatingItem, dedupeByDateTitle } from "@/lib/agenda-repeat";
 import { Section } from "./Section";
@@ -45,6 +46,7 @@ export function AreaBalance({ from, to }: { from: string; to: string }) {
   const [plans, setPlans] = useState<RawPlan[]>([]);
   const [agendaItems, setAgendaItems] = useState<RawAgendaItem[]>([]);
   const [showDetails, setShowDetails] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     safeCachedFetch<WeeklyPlansResp>(`/api/weekly-plans?from=${from}&to=${to}`).then((r) => {
@@ -129,7 +131,7 @@ export function AreaBalance({ from, to }: { from: string; to: string }) {
   };
 
   return (
-    <Section title="Equilíbrio de áreas" subtitle="baseado nas tarefas e compromissos planejados">
+    <Section title={t("an_equilibrio_areas")} subtitle={t("an_equilibrio_sub")}>
       <LifeWheel done={done} totals={totals} />
       <button
         type="button"
@@ -148,7 +150,7 @@ export function AreaBalance({ from, to }: { from: string; to: string }) {
           fontFamily: "inherit",
         }}
       >
-        Ver detalhes por área →
+        {t("an_ver_detalhes_area")}
       </button>
 
       {showDetails && (

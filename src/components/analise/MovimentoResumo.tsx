@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
+import { useTranslation } from "@/lib/useTranslation";
 import { didExercise } from "@/lib/checkin-answered";
 import type { CheckIn } from "@/types";
 import { Section, CARD, MUTED, LILAC, Stat } from "./Section";
@@ -22,6 +23,7 @@ export function MovimentoResumo({
   checkIns: CheckIn[];
 }) {
   const [sessions, setSessions] = useState<RunningSession[]>([]);
+  const { t } = useTranslation();
 
   useEffect(() => {
     safeCachedFetch<RunningSession[]>(`/api/running?from=${from}&to=${to}`).then((data) => {
@@ -44,22 +46,22 @@ export function MovimentoResumo({
 
   const stats: { value: string | number; label: string; color?: string }[] = [];
   if (hasRun) {
-    stats.push({ value: sessions.length, label: "sessões" });
+    stats.push({ value: sessions.length, label: t("an_sessoes") });
     stats.push({ value: totalKm >= 10 ? Math.round(totalKm) : Math.round(totalKm * 10) / 10, label: "km" });
     stats.push({ value: Math.round(totalMin), label: "min" });
   }
   if (hasExercise) {
-    stats.push({ value: `${activeDays}/${days}`, label: "dias ativos", color: LILAC });
+    stats.push({ value: `${activeDays}/${days}`, label: t("an_dias_ativos"), color: LILAC });
   }
 
   const breakdown = [
-    { emoji: "🚶", label: "caminhada", n: walkedDays },
-    { emoji: "🏃", label: "corrida", n: ranDays },
-    { emoji: "🏋️", label: "musculação", n: strengthDays },
+    { emoji: "🚶", label: t("an_caminhada"), n: walkedDays },
+    { emoji: "🏃", label: t("an_corrida"), n: ranDays },
+    { emoji: "🏋️", label: t("an_musculacao"), n: strengthDays },
   ].filter((b) => b.n > 0);
 
   return (
-    <Section title="Movimento">
+    <Section title={t("ob_area_movimento")}>
       <div style={{ ...CARD }}>
         <div style={{ display: "flex", gap: 8 }}>
           {stats.map((s) => (
@@ -80,7 +82,7 @@ export function MovimentoResumo({
                   padding: "4px 10px",
                 }}
               >
-                {b.emoji} {b.label} · {b.n} {b.n === 1 ? "dia" : "dias"}
+                {b.emoji} {b.label} · {b.n} {b.n === 1 ? t("an_dia") : t("an_dias")}
               </span>
             ))}
           </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { safeCachedFetch } from "@/lib/fetch-cache";
+import { useTranslation } from "@/lib/useTranslation";
 import { AREA_CONFIG } from "@/lib/planejamento-constants";
 import type { TaskArea } from "@/types";
 import { Section, CARD, FOREGROUND, MUTED, LILAC, ProgressBar } from "./Section";
@@ -18,6 +19,7 @@ interface GoalSummary {
 
 export function MetasResumo() {
   const [goals, setGoals] = useState<GoalSummary[]>([]);
+  const { t } = useTranslation();
 
   useEffect(() => {
     safeCachedFetch<GoalSummary[]>("/api/goals").then((data) => {
@@ -30,16 +32,16 @@ export function MetasResumo() {
   if (goals.length === 0) return null;
 
   return (
-    <Section title="Suas metas">
+    <Section title={t("an_suas_metas")}>
       <div style={{ ...CARD }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <Badge>{ativas.length} ativas</Badge>
-          <Badge>{concluidas.length} concluídas</Badge>
+          <Badge>{t("an_ativas", { count: String(ativas.length) })}</Badge>
+          <Badge>{t("an_concluidas", { count: String(concluidas.length) })}</Badge>
         </div>
 
         {ativas.length === 0 ? (
           <p style={{ margin: 0, fontSize: 12, color: MUTED }}>
-            Nenhuma meta ativa no momento.
+            {t("an_no_active_goals")}
           </p>
         ) : (
           ativas.slice(0, 5).map((g) => {
