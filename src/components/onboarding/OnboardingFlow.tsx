@@ -10,6 +10,7 @@ import { invalidateFetchCache } from "@/lib/fetch-cache";
 import { useInstallPrompt, IosGuide } from "@/components/InstallAppCard";
 import { LANG_OPTIONS, t as translate, type Lang } from "@/lib/i18n";
 import { setLanguage } from "@/lib/language";
+import { getAttribution } from "@/lib/attribution";
 
 // ── Design tokens (mesmos do check-in) ────────────────────────────────────────
 
@@ -818,6 +819,7 @@ export default function OnboardingFlow() {
       community_name: `${translate(lang as Lang, "cm_anonimo")}${Math.floor(1000 + Math.random() * 9000)}`,
     };
 
+    const attribution = getAttribution();
     const onboarding = {
       goal,
       pain_points: pains,
@@ -826,7 +828,8 @@ export default function OnboardingFlow() {
       gender,
       language: lang,
       ...ctx,
-      // TODO: capturar utm_source/utm_campaign do cadastro quando houver atribuição de anúncios
+      utm_source: attribution.utm_source ?? null,
+      utm_campaign: attribution.utm_campaign ?? null,
     };
 
     const res = await fetch("/api/preferences", {

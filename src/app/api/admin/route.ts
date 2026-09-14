@@ -146,7 +146,25 @@ export async function GET(req: NextRequest) {
     else if (s.status === "past_due") pastDueCount++;
   }
 
-  // 5. Contagens legadas (mantidas para o antigo grid)
+  // 5. Atribuição (UTM) — agrupado por origem; defensivo (tabela pode não existir ainda)
+  let utmSources: { source: string; count: number }[] = [];
+  try {
+    const { data: obRows } = await admin.from("onboarding_responses").select("utm_source");
+    const utmCounts: Record<string, number> = {};
+    for (const o of obRows ?? []) {
+      const s = (o?.utm_source as string | null)?.trim();
+      if (!s) continue;
+      utmCounts[s] = (utmCounts[s] ?? 0) + 1;
+    }
+    utmSources = Object.entries(utmCounts)
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  } catch {
+    utmSources = [];
+  }
+
+  // 6. Contagens legadas (mantidas para o antigo grid)
   const { count: totalPosts } = await admin.from("community_posts").select("*", { count: "exact", head: true }).then(r => ({ count: r.count ?? 0 }));
   const { count: totalComments } = await admin.from("community_comments").select("*", { count: "exact", head: true }).then(r => ({ count: r.count ?? 0 }));
   const { count: totalCheckins } = await admin.from("check_ins").select("*", { count: "exact", head: true }).then(r => ({ count: r.count ?? 0 }));
@@ -175,6 +193,7 @@ export async function GET(req: NextRequest) {
     activeCount,
     canceledCount,
     pastDueCount,
+    utmSources,
     posts: totalPosts,
     comments: totalComments,
     checkins: totalCheckins,

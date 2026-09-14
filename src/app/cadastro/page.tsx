@@ -2,13 +2,13 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { useTranslation } from "@/lib/useTranslation";
-import { Suspense } from "react";
+import { captureAttribution } from "@/lib/attribution";
 
 const P  = "#7C5CFF";
 const PL = "oklch(0.5 0.12 270 / .12)";
@@ -77,6 +77,11 @@ function CadastroInner() {
   const params   = useSearchParams();
   const erroParam = params.get("erro");
   const { t, lang } = useTranslation();
+
+  // Captura UTM/click caso o usuário chegue direto no /cadastro (sem passar na landing).
+  useEffect(() => {
+    captureAttribution();
+  }, []);
 
   const handleCadastro = async (e: React.FormEvent) => {
     e.preventDefault();

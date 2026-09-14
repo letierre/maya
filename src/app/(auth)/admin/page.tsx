@@ -24,6 +24,7 @@ interface Overview {
   activeCount: number;
   canceledCount: number;
   pastDueCount: number;
+  utmSources: { source: string; count: number }[];
   posts: number;
   comments: number;
   checkins: number;
@@ -166,6 +167,18 @@ export default function AdminPage() {
 
             <ChartCard title="Cadastros (30d)" data={data.signupsByDay} color="#A78BFA" />
             <ChartCard title="Ativos por dia — DAU (30d)" data={data.activeByDay} color="#22D18B" />
+
+            {data.utmSources.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <SectionTitle>Aquisição por origem (UTM)</SectionTitle>
+                {data.utmSources.map(u => (
+                  <div key={u.source} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderTop: "1px solid rgba(167,139,250,0.06)" }}>
+                    <span style={{ flex: 1, fontSize: 12, color: "#e0d6ff" }}>{u.source || "(direto)"}</span>
+                    <span style={{ fontSize: 12, color: "#9e96b5", fontWeight: 700 }}>{u.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
               <MiniStat label="Posts" value={data.posts} />

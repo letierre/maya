@@ -1,9 +1,16 @@
 "use client";
 
+import { useEffect } from "react";
 import { useTranslation } from "@/lib/useTranslation";
+import { captureAttribution } from "@/lib/attribution";
 
 export default function LandingPage() {
   const { t } = useTranslation();
+
+  // Captura UTM/click do anúncio na primeira entrada (persiste p/ o onboarding).
+  useEffect(() => {
+    captureAttribution();
+  }, []);
 
   const features = [
     { emoji: "💜", tKey: "lp_feat1_t", dKey: "lp_feat1_d" },
