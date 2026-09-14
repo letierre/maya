@@ -31,9 +31,27 @@ interface Overview {
   mapboxLoads: number;
 }
 
+interface Revenue {
+  activeCount: number;
+  mrrByCurrency: Record<string, number>;
+  activeByCurrency: Record<string, number>;
+  arpuByCurrency: Record<string, number>;
+  canceledTotal: number;
+  canceled30d: number;
+  churnRate: number;
+  ltv: number | null;
+  fetchedAt: string;
+}
+
 type Tab = "overview" | "funnel" | "revenue" | "reports";
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
+const fmtMoney = (currency: string, amount: number) => {
+  const opts = { minimumFractionDigits: 2 };
+  if (currency === "brl") return `R$ ${amount.toLocaleString("pt-BR", opts)}`;
+  if (currency === "usd") return `US$ ${amount.toLocaleString("en-US", opts)}`;
+  return `${currency.toUpperCase()} ${amount.toLocaleString("pt-BR", opts)}`;
+};
 
 export default function AdminPage() {
   const router = useRouter();
@@ -41,6 +59,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<Overview | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
+  const [revenue, setRevenue] = useState<Revenue | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
   const [error, setError] = useState("");
 
@@ -58,6 +77,12 @@ export default function AdminPage() {
     setTab("reports");
     const res = await fetch("/api/admin?type=reports");
     if (res.ok) setReports(await res.json());
+  };
+
+  const loadRevenue = async () => {
+    setTab("revenue");
+    const res = await fetch("/api/admin/revenue");
+    if (res.ok) setRevenue(await res.json());
   };
 
   const deletePost = async (postId: string) => {
@@ -119,7 +144,7 @@ export default function AdminPage() {
         <div style={{ padding: "12px 20px 8px", display: "flex", gap: 8, overflowX: "auto" }}>
           {tabs.map(tb => (
             <button key={tb.key} type="button"
-              onClick={() => tb.key === "reports" ? loadReports() : setTab(tb.key)}
+              onClick={() => { if (tb.key === "reports") loadReports(); else if (tb.key === "revenue") loadRevenue(); else setTab(tb.key); }}
               style={{ padding: "8px 14px", borderRadius: 9999, border: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
                 background: tab === tb.key ? "#7C5CFF" : "#1a1530", color: tab === tb.key ? "#fff" : "#9e96b5" }}>
               {tb.label}
@@ -179,6 +204,31 @@ export default function AdminPage() {
         {/* ── RECEITA ── */}
         {tab === "revenue" && (
           <div style={{ padding: "8px 20px 0" }}>
+            <SectionTitle>Receita (Stripe ao vivo)</SectionTitle>
+            {revenue ? (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {Object.entries(revenue.mrrByCurrency).map(([cur, v]) => (
+                    <MiniStat key={cur} label={`MRR (${cur.toUpperCase()})`} value={fmtMoney(cur, v)} />
+                  ))}
+                  {Object.entries(revenue.arpuByCurrency).map(([cur, v]) => (
+                    <MiniStat key={`arpu-${cur}`} label={`ARPU (${cur.toUpperCase()})`} value={fmtMoney(cur, v)} />
+                  ))}
+                  {Object.keys(revenue.mrrByCurrency).length === 0 && <MiniStat label="MRR" value={fmtMoney("brl", 0)} />}
+                  <MiniStat label="Assinantes ativos" value={revenue.activeCount} />
+                  <MiniStat label="Cancelados (30d)" value={revenue.canceled30d} />
+                  <MiniStat label="Cancelados (total)" value={revenue.canceledTotal} />
+                  <MiniStat label="Churn (30d)" value={pct(revenue.churnRate)} />
+                  <MiniStat label="LTV (R$)" value={revenue.ltv != null ? `R$ ${revenue.ltv.toLocaleString("pt-BR")}` : "—"} />
+                </div>
+                <p style={{ fontSize: 10, color: "#6a657a", marginTop: 8 }}>
+                  Atualizado às {new Date(revenue.fetchedAt).toLocaleTimeString(getLocale())} · ARPU = MRR ÷ ativos
+                </p>
+              </>
+            ) : (
+              <p style={{ fontSize: 12, color: "#9e96b5", padding: 16 }}>{t("carregando")}…</p>
+            )}
+
             <SectionTitle>Assinaturas (banco local)</SectionTitle>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
               <MiniStat label="Ativos" value={data.activeCount} />
@@ -192,9 +242,6 @@ export default function AdminPage() {
               <MiniStat label="Mensal" value={data.planMix.monthly} />
               <MiniStat label="Anual" value={data.planMix.annual} />
             </div>
-            <p style={{ fontSize: 11, color: "#6a657a", lineHeight: 1.5, marginTop: 12 }}>
-              MRR, ARPU e churn (via Stripe ao vivo) chegam na próxima etapa.
-            </p>
           </div>
         )}
 
@@ -243,7 +290,7 @@ function Kpi({ icon, label, value, color }: { icon: React.ReactNode; label: stri
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: number }) {
+function MiniStat({ label, value }: { label: string; value: number | string }) {
   return (
     <div style={{ background: "#1a1530", borderRadius: 12, padding: 12, border: "1px solid rgba(167,139,250,0.08)" }}>
       <div style={{ fontSize: 11, color: "#9e96b5", marginBottom: 4 }}>{label}</div>
