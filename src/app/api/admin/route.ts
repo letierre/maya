@@ -164,6 +164,26 @@ export async function GET(req: NextRequest) {
     utmSources = [];
   }
 
+  // 5.5 Custo de IA estimado (30d) — constantes aproximadas em USD, documentadas.
+  const AI_COST_PER_CHECKIN = 0.04; // batch de 8 especialistas (Haiku) a cada check-in (~US$1,14/mês ÷ 30)
+  const AI_COST_PER_CHAT = 0.01;    // mensagem no chat Maya
+  const AI_COST_PER_PHOTO = 0.02;   // foto de refeição (Sonnet, visão)
+  let aiCost = { usd: 0, checkins30d: 0, chat30d: 0, mealPhotos30d: 0 };
+  try {
+    const checkins30d = (checkins ?? []).filter(c => c.date >= start30).length;
+    const iso30 = new Date(start30 + "T00:00:00.000Z").toISOString();
+    const { count: chat30d } = await admin.from("chat_messages").select("*", { count: "exact", head: true }).gte("created_at", iso30).then(r => ({ count: r.count ?? 0 }));
+    const { count: mealPhotos30d } = await admin.from("meals").select("*", { count: "exact", head: true }).gte("criado_em", iso30).not("foto_path", "is", null).then(r => ({ count: r.count ?? 0 }));
+    aiCost = {
+      usd: +(checkins30d * AI_COST_PER_CHECKIN + chat30d * AI_COST_PER_CHAT + mealPhotos30d * AI_COST_PER_PHOTO).toFixed(2),
+      checkins30d,
+      chat30d,
+      mealPhotos30d,
+    };
+  } catch {
+    /* tabelas chat_messages/meals podem não existir — mantém zeros */
+  }
+
   // 6. Contagens legadas (mantidas para o antigo grid)
   const { count: totalPosts } = await admin.from("community_posts").select("*", { count: "exact", head: true }).then(r => ({ count: r.count ?? 0 }));
   const { count: totalComments } = await admin.from("community_comments").select("*", { count: "exact", head: true }).then(r => ({ count: r.count ?? 0 }));
@@ -194,6 +214,7 @@ export async function GET(req: NextRequest) {
     canceledCount,
     pastDueCount,
     utmSources,
+    aiCost,
     posts: totalPosts,
     comments: totalComments,
     checkins: totalCheckins,

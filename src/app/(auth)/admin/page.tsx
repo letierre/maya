@@ -25,6 +25,7 @@ interface Overview {
   canceledCount: number;
   pastDueCount: number;
   utmSources: { source: string; count: number }[];
+  aiCost: { usd: number; checkins30d: number; chat30d: number; mealPhotos30d: number };
   posts: number;
   comments: number;
   checkins: number;
@@ -164,6 +165,14 @@ export default function AdminPage() {
               <Kpi icon={<Target size={16} />} label="Trial → pago" value={pct(conversion)} color="#7C5CFF" />
               <Kpi icon={<DollarSign size={16} />} label="Assinantes ativos" value={data.activeCount} color="#FF9F43" />
             </div>
+
+            <div style={{ background: "#1a1530", borderRadius: 14, padding: 14, border: "1px solid rgba(167,139,250,0.1)", marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, color: "#9e96b5", fontWeight: 600 }}>Custo de IA (30d, estimado)</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: "#FF9F43" }}>US$ {data.aiCost.usd.toFixed(2)}</span>
+            </div>
+            <p style={{ fontSize: 10, color: "#6a657a", marginTop: 4, marginBottom: 4 }}>
+              ≈ {data.aiCost.checkins30d} check-ins + {data.aiCost.chat30d} chats + {data.aiCost.mealPhotos30d} fotos de refeição
+            </p>
 
             <ChartCard title="Cadastros (30d)" data={data.signupsByDay} color="#A78BFA" />
             <ChartCard title="Ativos por dia — DAU (30d)" data={data.activeByDay} color="#22D18B" />
