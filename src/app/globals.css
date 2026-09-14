@@ -54,6 +54,9 @@
 
 :root {
   /* Maya — dark mode as default */
+  /* Fallback estático de fonte: garante que a Inter carregue mesmo se o hash
+     da classe next/font (__variable_*) divergir entre HTML e CSS (build cache). */
+  --font-inter: "Inter", "Inter Fallback";
   --background: oklch(0.12 0.012 270);
   --foreground: oklch(0.94 0.008 270);
 
