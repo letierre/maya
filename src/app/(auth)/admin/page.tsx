@@ -62,6 +62,7 @@ export default function AdminPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [revenue, setRevenue] = useState<Revenue | null>(null);
+  const [revenueError, setRevenueError] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
   const [error, setError] = useState("");
 
@@ -83,8 +84,10 @@ export default function AdminPage() {
 
   const loadRevenue = async () => {
     setTab("revenue");
+    setRevenueError(false);
     const res = await fetch("/api/admin/revenue");
     if (res.ok) setRevenue(await res.json());
+    else setRevenueError(true);
   };
 
   const deletePost = async (postId: string) => {
@@ -248,7 +251,9 @@ export default function AdminPage() {
                 </p>
               </>
             ) : (
-              <p style={{ fontSize: 12, color: "#9e96b5", padding: 16 }}>{t("carregando")}…</p>
+              <p style={{ fontSize: 12, color: revenueError ? "#FF4D4D" : "#9e96b5", padding: 16 }}>
+                {revenueError ? t("ad_erro_carregar") : `${t("carregando")}…`}
+              </p>
             )}
 
             <SectionTitle>Assinaturas (banco local)</SectionTitle>
