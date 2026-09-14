@@ -423,24 +423,24 @@ function AgendaPage() {
     setWeekLoading(true);
     try {
       const [allTasks, goalsData] = await Promise.all([
-        // Fetch current + 3 past weeks for overdue/open detection
+        // Fetch current + 3 past weeks for overdue/open detection — em PARALELO
+        // (o loop sequencial era o principal gargalo de carregamento do hub).
         (async () => {
-          const tasks: any[] = [];
+          const weeks: string[] = [];
           for (let offset = 0; offset <= 3; offset++) {
             const mon = new Date(date + "T12:00:00");
             mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7) - (offset * 7));
-            const ws = `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
+            weeks.push(`${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`);
+          }
+          const results = await Promise.all(weeks.map(async (ws) => {
             try {
               const res = await fetch(`/api/weekly-plans?week=${ws}`);
-              if (res.ok) {
-                const data = await res.json();
-                if (data.current?.weekly_tasks) {
-                  tasks.push(...data.current.weekly_tasks.map((t: any) => ({ ...t, _weekStart: ws })));
-                }
-              }
-            } catch {}
-          }
-          return tasks;
+              if (!res.ok) return [];
+              const data = await res.json();
+              return (data.current?.weekly_tasks ?? []).map((t: any) => ({ ...t, _weekStart: ws }));
+            } catch { return []; }
+          }));
+          return results.flat();
         })(),
         // Metas são globais — busca uma vez e reusa no restante da sessão.
         goalsCacheRef.current
@@ -2161,10 +2161,9 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   return (
     <div style={{ padding: "0 20px" }}>
       {/* Atrasadas (overdue weekly plan tasks) */}
-      {overdueTasks.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#FF9F43", textTransform: "uppercase", letterSpacing: ".06em" }}>⚠️ {tr("ag_atrasadas")}</h3>
-          {overdueTasks.map((t: any) => {
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#FF9F43", textTransform: "uppercase", letterSpacing: ".06em" }}>⚠️ {tr("ag_atrasadas")}</h3>
+        {overdueTasks.length > 0 ? overdueTasks.map((t: any) => {
             const area = AREA_CONFIG_PT[t.area] || { emoji: "⚪" };
             let dateLabel = "";
             if (t._weekStart && t.day_of_week != null && t.day_of_week >= 0) {
@@ -2196,15 +2195,15 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
                 </button>
               </div>
             );
-          })}
-        </div>
-      )}
+        }) : (
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_atrasadas")}</p>
+        )}
+      </div>
 
       {/* Em aberto (weekly tasks without day) */}
-      {openWeekTasks.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>📋 {tr("ag_em_aberto")}</h3>
-          {openWeekTasks.map((t: any) => {
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>📋 {tr("ag_em_aberto")}</h3>
+        {openWeekTasks.length > 0 ? openWeekTasks.map((t: any) => {
             const area = AREA_CONFIG_PT[t.area] || { emoji: "⚪" };
             const done = t.status === "concluida";
             return (
@@ -2223,29 +2222,29 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
                 </button>
               </div>
             );
-          })}
-        </div>
-      )}
+        }) : (
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_em_aberto")}</p>
+        )}
+      </div>
 
       {/* Compromissos do dia */}
-      {todayComp.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_compromissos_dia")}</h3>
-          {todayComp.map(c => (
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_compromissos_dia")}</h3>
+        {todayComp.length > 0 ? todayComp.map(c => (
             <button key={c.id} type="button" onClick={() => openEditor(c)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)", background: "none", borderLeft: 0, borderRight: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
               <span style={{ fontSize: 12 }}>{c.emoji || "📅"}</span>
               <span style={{ flex: 1, fontSize: 12, color: "#e0d6ff" }}>{c.title}</span>
               {c.start_time && <span style={{ fontSize: 9, color: "#9e96b5", fontFamily: "monospace" }}>{c.start_time.slice(0,5)}</span>}
             </button>
-          ))}
-        </div>
-      )}
+        )) : (
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_compromissos")}</p>
+        )}
+      </div>
 
       {/* Tarefas da agenda */}
-      {todayAgendaTarefas.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_tarefas_dia")}</h3>
-          {todayAgendaTarefas.map(t => {
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_tarefas_dia")}</h3>
+        {todayAgendaTarefas.length > 0 ? todayAgendaTarefas.map(t => {
             const done = t.status === "concluida";
             return (
               <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)" }}>
@@ -2258,15 +2257,15 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
                 {t.start_time && <span style={{ fontSize: 9, color: "#9e96b5", fontFamily: "monospace", flexShrink: 0 }}>{t.start_time.slice(0,5)}</span>}
               </div>
             );
-          })}
-        </div>
-      )}
+        }) : (
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_tarefas")}</p>
+        )}
+      </div>
 
       {/* Tarefas do planejamento */}
-      {dayPlanTasks.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_plano_dia")}</h3>
-          {dayPlanTasks.map((t: any) => {
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_plano_dia")}</h3>
+        {dayPlanTasks.length > 0 ? dayPlanTasks.map((t: any) => {
             const area = AREA_CONFIG_PT[t.area] || { emoji: "⚪" };
             const done = t.status === "concluida";
             return (
@@ -2280,29 +2279,29 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
                 {t.scheduled_time && <span style={{ fontSize: 9, color: "#9e96b5", fontFamily: "monospace" }}>{t.scheduled_time.slice(0,5)}</span>}
               </div>
             );
-          })}
-        </div>
-      )}
+        }) : (
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_plano_dia")}</p>
+        )}
+      </div>
 
       {/* Metas ativas */}
-      {activeGoals.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_metas_ativas")}</h3>
-          {activeGoals.map((g: any) => (
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_metas_ativas")}</h3>
+        {activeGoals.length > 0 ? activeGoals.map((g: any) => (
             <button key={g.id} type="button" onClick={() => setDetailGoalId(g.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)", background: "none", borderLeft: 0, borderRight: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
               <span style={{ fontSize: 12 }}>{(AREA_CONFIG_PT as any)[g.area]?.emoji || "🎯"}</span>
               <span style={{ flex: 1, fontSize: 12, color: "#9e96b5" }}>{g.title}</span>
               <span style={{ fontSize: 9, color: "#A78BFA" }}>{(g.goal_stages?.filter((s: any) => s.status === "concluida").length || 0)}/{g.goal_stages?.length || 0}</span>
             </button>
-          ))}
-        </div>
-      )}
+        )) : (
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_metas")}</p>
+        )}
+      </div>
 
       {/* Puladas (descartadas sem apagar) */}
-      {puladaTasks.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#5a5470", textTransform: "uppercase", letterSpacing: ".06em" }}>⏭️ {tr("ag_puladas")}</h3>
-          {puladaTasks.map((t: any) => (
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#5a5470", textTransform: "uppercase", letterSpacing: ".06em" }}>⏭️ {tr("ag_puladas")}</h3>
+        {puladaTasks.length > 0 ? puladaTasks.map((t: any) => (
             <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(167,139,250,0.05)" }}>
               <span style={{ flex: 1, fontSize: 11, color: "#5a5470", textDecoration: "line-through", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
               <button type="button" onClick={() => reopenTask(t)}
@@ -2310,13 +2309,10 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
                 ↩ {tr("ag_reabrir")}
               </button>
             </div>
-          ))}
-        </div>
-      )}
-
-      {todayComp.length === 0 && todayAgendaTarefas.length === 0 && dayPlanTasks.length === 0 && openWeekTasks.length === 0 && overdueTasks.length === 0 && activeGoals.length === 0 && puladaTasks.length === 0 && (
-        <p style={{ color: "#9e96b5", fontSize: 13, textAlign: "center", padding: 32 }}>{tr("ag_nenhuma_atividade")}</p>
-      )}
+        )) : (
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_puladas")}</p>
+        )}
+      </div>
 
       {/* Delete dialog (compromisso repetido) */}
       {deleteOpts && (
