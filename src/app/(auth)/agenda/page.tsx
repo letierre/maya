@@ -1233,12 +1233,12 @@ function AgendaPage() {
           </div>
         )}
 
-      </div>
-
       {/* ── LISTA ───────────────────────────────────────────── */}
       {viewMode === "lista" && (
         <ListView allWeekTasks={allWeekTasks} compromissos={items} selectedDate={selectedDate} setAllWeekTasks={setAllWeekTasks} refreshItems={() => fetchItems(selectedDate, true)} loading={loading || weekLoading} toggleAgendaTask={toggleTask} />
       )}
+
+      </div>
 
       {/* ── Detail popup for compromisso ────────────────────── */}
       {editingItem && (
@@ -1915,7 +1915,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
     const skelTitle = { width: 90, height: 12, borderRadius: 6, marginBottom: 10, background: "linear-gradient(90deg, #1a1530 25%, #241d45 50%, #1a1530 75%)", backgroundSize: "200% 100%", animation: "shimmerBg 1.4s ease-in-out infinite" };
     const skelRow = { height: 42, borderRadius: 10, marginBottom: 8, background: "linear-gradient(90deg, #151220 25%, #221b3d 50%, #151220 75%)", backgroundSize: "200% 100%", animation: "shimmerBg 1.4s ease-in-out infinite" };
     return (
-      <div style={{ padding: "0 20px" }}>
+      <div>
         {[0, 1, 2].map((s) => (
           <div key={s} style={{ marginBottom: 18 }}>
             <div style={skelTitle} />
@@ -2159,7 +2159,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   };
 
   return (
-    <div style={{ padding: "0 20px" }}>
+    <div>
       {/* Atrasadas (overdue weekly plan tasks) */}
       <div style={{ marginBottom: 12 }}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#FF9F43", textTransform: "uppercase", letterSpacing: ".06em" }}>⚠️ {tr("ag_atrasadas")}</h3>
