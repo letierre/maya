@@ -73,6 +73,12 @@ export async function GET() {
 
     const ctx = (prefs?.context as Record<string, unknown>) || {};
 
+    const { data: role } = await admin
+      .from("user_roles")
+      .select("is_admin")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
     // Avatar: read from DB context — NOT from JWT user_metadata
     const avatarUrl = (ctx.avatar_url as string) || null;
 
@@ -84,6 +90,7 @@ export async function GET() {
       gender: ctx.gender || "nao_dizer",
       language: ctx.language || "pt",
       porques: (ctx.porques as Array<{ id: string; text: string; photoPath: string | null }>) || [],
+      is_admin: role?.is_admin ?? false,
     });
   } catch (error) {
     console.error("GET /api/profile error:", error);

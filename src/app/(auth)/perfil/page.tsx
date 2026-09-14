@@ -116,7 +116,7 @@ export default function PerfilPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userEdited = useRef(false);
-  const autoSaveRef = useRef<ReturnType<typeof setTimeout>>();
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -136,13 +136,11 @@ export default function PerfilPage() {
             }));
           }
         }
+        if (data.is_admin) setIsAdmin(true);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
-
-  // Check admin
-  useEffect(() => { fetch("/api/admin").then(r => { if (r.ok) setIsAdmin(true); }).catch(() => {}); }, []);
 
   useEffect(() => {
     if (!userEdited.current) return;

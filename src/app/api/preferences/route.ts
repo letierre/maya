@@ -56,8 +56,15 @@ export async function GET() {
   const { data: { session }, error: authError } = await supabase.auth.getSession();
   const user = session?.user ?? null;
 
+  // Usuário não logado (ex.: páginas públicas /login e /cadastro usam useTranslation,
+  // que dispara GET /api/preferences) — responde defaults em vez de 401 pra não
+  // poluir o console. Sem PII; a rota continua protegida por RLS/service role.
   if (authError || !user) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    return NextResponse.json({
+      enabled_questions: [...ALL_QUESTION_KEYS],
+      context: {},
+      onboarding_completed: false,
+    });
   }
 
   try {
