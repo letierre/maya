@@ -66,102 +66,194 @@ function CadastroInner() {
   const [email, setEmail]         = useState("");
   const [password, setPassword]   = useState("");
   const [loading, setLoading]     = useState(false);
-  const [waitEmail, setWaitEmail] = useState("");
   const [error, setError]         = useState("");
+  const [stage, setStage]         = useState<"form" | "otp">("form");
+  const [userId, setUserId]       = useState("");
+  const [otp, setOtp]             = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError]   = useState("");
+  const [resendMsg, setResendMsg] = useState("");
   const router   = useRouter();
   const params   = useSearchParams();
   const erroParam = params.get("erro");
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
 
   const handleCadastro = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const supabase = createClient();
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+    const res = await fetch("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, lang }),
     });
+    const json = await res.json();
 
-    if (signUpError) {
-      setError(signUpError.message);
+    if (!res.ok) {
+      setError(
+        json.error === "already_exists"
+          ? t("otp_email_existe")
+          : json.error === "rate_limited"
+          ? t("otp_reenviar_aguarde")
+          : json.error ?? t("lg_erro_generico")
+      );
       setLoading(false);
       return;
     }
 
-    // Supabase auto-confirmed — session available immediately
-    if (data.session) {
-      router.push("/onboarding");
-      return;
-    }
-
-    // Email confirmation required
-    setWaitEmail(email);
+    setUserId(json.userId);
+    setStage("otp");
     setLoading(false);
   };
 
-  /* ── Tela de aguardo ──────────────────────────────────────────── */
-  if (waitEmail) {
+  const doVerify = async (code: string) => {
+    if (otpLoading || code.length !== 6) return;
+    setOtpLoading(true);
+    setOtpError("");
+
+    const res = await fetch("/api/register/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, code }),
+    });
+    const json = await res.json();
+
+    if (!res.ok) {
+      setOtpError(
+        json.error === "invalid_code"
+          ? t("otp_invalido")
+          : json.error === "expired" || json.error === "not_found"
+          ? t("otp_expirado")
+          : json.error === "too_many_attempts"
+          ? t("otp_tentativas")
+          : json.error ?? t("lg_erro_generico")
+      );
+      setOtp("");
+      setOtpLoading(false);
+      return;
+    }
+
+    // Email confirmado — auto-login e segue pro onboarding
+    const supabase = createClient();
+    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+    if (loginError) {
+      setOtpError(loginError.message);
+      setOtpLoading(false);
+      return;
+    }
+    router.push("/onboarding");
+  };
+
+  const handleVerify = (e: React.FormEvent) => {
+    e.preventDefault();
+    doVerify(otp);
+  };
+
+  const handleResend = async () => {
+    setResendMsg("");
+    const res = await fetch("/api/register/resend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, lang }),
+    });
+    const json = await res.json();
+
+    if (res.ok) {
+      setResendMsg(t("otp_reenviado"));
+    } else {
+      setResendMsg(
+        json.error === "wait" || json.error === "too_many_resends" || json.error === "rate_limited"
+          ? t("otp_reenviar_aguarde")
+          : json.error === "not_found"
+          ? t("otp_expirado")
+          : json.error ?? t("lg_erro_generico")
+      );
+    }
+  };
+
+  /* ── Tela de código OTP ───────────────────────────────────────── */
+  if (stage === "otp") {
     return (
       <div style={pageWrap}>
         <div style={{ ...cardStyle, textAlign: "center" }}>
-          <div style={{ fontSize: 56, marginBottom: 18 }}>📬</div>
+          <div style={{ fontSize: 56, marginBottom: 18 }}>🔐</div>
           <h1 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 800, letterSpacing: "-0.025em" }}>
-            {t("cd_verifique_email")}
+            {t("otp_titulo")}
           </h1>
           <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--muted-foreground)", lineHeight: 1.6 }}>
-            {t("cd_enviamos_link")}
+            {t("otp_subtitulo", { email })}
           </p>
-          <div style={{
-            background: PL, borderRadius: 12, border: PB,
-            padding: "10px 16px", marginBottom: 24,
-            fontSize: 15, fontWeight: 700,
-          }}>
-            {waitEmail}
-          </div>
 
-          <div style={{
-            background: "var(--surface)",
-            borderRadius: 16, border: PB,
-            padding: "18px 16px", textAlign: "left", marginBottom: 22,
-          }}>
-            <p style={{ margin: "0 0 12px", fontSize: 13.5, fontWeight: 700 }}>{t("cd_proximos_passos")}</p>
-            {[
-              ["1", "cd_passo1"],
-              ["2", "cd_passo2"],
-              ["3", "cd_passo3"],
-            ].map(([n, txtKey]) => (
-              <div key={n} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
-                <div style={{
-                  width: 26, height: 26, borderRadius: "50%",
-                  background: P, color: "#fff",
-                  fontSize: 12, fontWeight: 800, flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  marginTop: 1,
-                }}>{n}</div>
-                <span style={{ fontSize: 13, lineHeight: 1.5 }}>{t(txtKey)}</span>
-              </div>
-            ))}
-          </div>
+          <form onSubmit={handleVerify} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder={t("otp_placeholder")}
+              value={otp}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                setOtp(v);
+                if (v.length === 6) doVerify(v);
+              }}
+              autoFocus
+              style={{
+                width: "100%",
+                height: 60,
+                borderRadius: 12,
+                border: PB,
+                background: "oklch(0.14 0.012 270)",
+                color: "var(--foreground)",
+                fontSize: 26,
+                fontWeight: 700,
+                textAlign: "center",
+                letterSpacing: 12,
+                fontFamily: "var(--font-sans)",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
 
-          <p style={{ margin: "0 0 12px", fontSize: 12.5, color: "var(--muted-foreground)" }}>
-            {t("cd_nao_achou")} <strong>Spam</strong> {t("cd_ou")} <strong>{t("cd_promocoes")}</strong>.
-          </p>
+            {otpError && (
+              <p style={{ margin: 0, fontSize: 13, color: "oklch(.5 .15 15)", background: "oklch(.55 .1 15 / .1)", padding: "10px 14px", borderRadius: 10 }}>
+                {otpError}
+              </p>
+            )}
+
+            <button type="submit" disabled={otpLoading || otp.length !== 6} style={{ ...btnPrimary, opacity: otpLoading || otp.length !== 6 ? 0.6 : 1 }}>
+              {otpLoading ? t("otp_verificando") : t("otp_verificar")}
+            </button>
+          </form>
+
+          <div style={{ marginTop: 16 }}>
+            <button
+              type="button"
+              onClick={handleResend}
+              style={{
+                background: "none", border: "none", borderRadius: 10,
+                padding: "8px 14px", fontSize: 13.5, cursor: "pointer",
+                color: P, fontWeight: 700, fontFamily: "var(--font-sans)",
+              }}
+            >
+              {t("otp_reenviar")}
+            </button>
+            {resendMsg && (
+              <p style={{ margin: "8px 0 0", fontSize: 12.5, color: "var(--muted-foreground)" }}>{resendMsg}</p>
+            )}
+          </div>
 
           <button
             type="button"
-            onClick={() => setWaitEmail("")}
+            onClick={() => { setStage("form"); setOtp(""); setUserId(""); setOtpError(""); setResendMsg(""); }}
             style={{
               background: "none", border: PB, borderRadius: 10,
               padding: "9px 16px", fontSize: 13, cursor: "pointer",
               color: "var(--muted-foreground)", fontFamily: "var(--font-sans)",
+              marginTop: 12,
             }}
           >
-            {t("cd_errei_email")}
+            {t("otp_errei_email")}
           </button>
         </div>
       </div>
