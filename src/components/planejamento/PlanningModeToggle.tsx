@@ -15,15 +15,15 @@ export function PlanningModeToggle({ mode, onChange }: PlanningModeToggleProps) 
       style={{
         display: "flex",
         justifyContent: "center",
-        marginBottom: 16,
+        marginBottom: 10,
       }}
     >
       <div
         style={{
           display: "inline-flex",
           background: "#12121c",
-          borderRadius: 14,
-          padding: 4,
+          borderRadius: 12,
+          padding: 3,
           border: "1px solid rgba(167,139,250,0.08)",
         }}
       >
@@ -33,9 +33,9 @@ export function PlanningModeToggle({ mode, onChange }: PlanningModeToggleProps) 
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 6,
-            padding: "8px 18px",
-            borderRadius: 11,
+            gap: 5,
+            padding: "6px 14px",
+            borderRadius: 9,
             border: "none",
             background:
               mode === "view"
@@ -43,13 +43,13 @@ export function PlanningModeToggle({ mode, onChange }: PlanningModeToggleProps) 
                 : "transparent",
             color: mode === "view" ? "#fff" : "#6a657a",
             fontFamily: "inherit",
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: mode === "view" ? 600 : 500,
             cursor: "pointer",
             transition: "all .2s",
           }}
         >
-          <Eye size={14} />
+          <Eye size={13} />
           {t("plan_visualizar")}
         </button>
         <button
@@ -58,9 +58,9 @@ export function PlanningModeToggle({ mode, onChange }: PlanningModeToggleProps) 
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 6,
-            padding: "8px 18px",
-            borderRadius: 11,
+            gap: 5,
+            padding: "6px 14px",
+            borderRadius: 9,
             border: "none",
             background:
               mode === "plan"
@@ -68,13 +68,13 @@ export function PlanningModeToggle({ mode, onChange }: PlanningModeToggleProps) 
                 : "transparent",
             color: mode === "plan" ? "#fff" : "#6a657a",
             fontFamily: "inherit",
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: mode === "plan" ? 600 : 500,
             cursor: "pointer",
             transition: "all .2s",
           }}
         >
-          <Compass size={14} />
+          <Compass size={13} />
           {t("plan_planejar")}
         </button>
       </div>
