@@ -88,10 +88,18 @@ export async function proxy(request: NextRequest) {
 
   const isAuthPage = pathname === "/login" || pathname === "/cadastro";
 
-  // Logado tentando acessar login/cadastro → manda pro dashboard
+  // Logado tentando acessar login/cadastro → segue pro onboarding (se ainda não
+  // completou) ou pro dashboard. Sem isso, quem abandonou o onboarding no meio
+  // volta "logado" mas cai direto no dashboard e é preso no paywall.
   if (isAuthPage && user) {
+    const admin = getSupabaseAdmin();
+    const { data: prefs } = await admin
+      .from("user_preferences")
+      .select("onboarding_completed")
+      .eq("user_id", user.id)
+      .maybeSingle();
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = prefs?.onboarding_completed ? "/dashboard" : "/onboarding";
     url.search = "";
     return NextResponse.redirect(url);
   }
