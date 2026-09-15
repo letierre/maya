@@ -15,7 +15,7 @@ export async function PATCH(
   const admin = getSupabaseAdmin();
 
   const allowed = ["title", "area", "task_type", "linked_goal_id", "linked_action_id",
-                   "day_of_week", "scheduled_time", "status", "position", "weekly_plan_id"];
+                   "day_of_week", "scheduled_time", "status", "position", "weekly_plan_id", "stone_rank"];
   const updates: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) updates[key] = body[key];

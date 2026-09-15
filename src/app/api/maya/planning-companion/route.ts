@@ -250,7 +250,7 @@ Você DEVE responder EXATAMENTE neste formato JSON (sem texto antes ou depois):
   * Se uma área tem visão mas está vazia no plano, pergunte com curiosidade: "Sua visão para [área] é linda — quer pensar em algo para essa semana que te aproxime dela?"
   * Conecte pedras sugeridas com a visão: "Essa pedra te aproxima da sua visão de [área]"
   * Se um KR está alinhado com uma visão, mencione essa cascata: visão → KR → pedra
-- Se houver áreas vazias, dê sugestões para CADA uma delas
+- Dê sugestões de tarefas para TODAS as 8 áreas da vida (saúde, carreira, finanças, relacionamentos, mente, família, lazer, espiritualidade) — mesmo as que já têm tarefas
 - Se o diário mencionou algo relevante, conecte ("Você escreveu 'me sinto sobrecarregada' e carreira tem 7 tarefas...")
 - Se metas ativas estão paradas, lembre com leveza
 - Se houver dados da SEMANA PASSADA, USE-OS: compare por área e diga o que fazer de diferente — o que repetir, o que parar, o que começar
@@ -259,7 +259,7 @@ Você DEVE responder EXATAMENTE neste formato JSON (sem texto antes ou depois):
 - NUNCA sugira tarefas genéricas ("Fazer exercício") — sempre contextualize ("Caminhar no parque que você gosta" se isso estiver nas memórias)
 - Se não há informação suficiente para personalizar, seja honesta e encorajadora
 - suggestedStones: sugira 0-3 pedras. Se as pedras atuais já são boas, retorne array vazio
-- areaSuggestions: foque nas áreas VAZIAS primeiro, depois nas que têm poucas tarefas. Considere também áreas dos KRs ativos
+- areaSuggestions: inclua uma entrada para CADA uma das 8 áreas da vida, com 2 a 3 tarefas sugeridas cada. Nas áreas que já têm tarefas, sugira ideias que complementem ou aprofundem o que já existe — não repita títulos já presentes. Considere também áreas dos KRs ativos
 - taskType: "manutencao" para hábitos/rotina, "crescimento" para coisas novas/expansão
 - NUNCA invente dados. Se não sabe algo sobre a pessoa, não finja que sabe.
 - TEXTO PLANO, sem markdown.`;
@@ -488,7 +488,7 @@ export async function POST(request: Request) {
       ? `Sugira tarefas concretas para a área ${AREA_LABELS[focusArea] || focusArea}. Responda APENAS o JSON no formato especificado, sem texto antes ou depois.`
       : `Analise o plano da semana e me ajude como conselheira estratégica. Responda APENAS o JSON no formato especificado, sem texto antes ou depois.`;
 
-    const llmResponse = await callLLM(fullPrompt, userMessage, { maxTokens: focusArea ? 500 : 800, feature: "maya_planning", userId: user.id });
+    const llmResponse = await callLLM(fullPrompt, userMessage, { maxTokens: focusArea ? 500 : 1500, feature: "maya_planning", userId: user.id });
 
     // ── Parse JSON response ──
     let parsed: PlanningCompanionResponse;

@@ -199,16 +199,27 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
     });
   };
 
-  const addTask = async () => {
-    if (!newTaskTitle.trim()) return;
+  const setPlanStone = async (rank: number, text: string | null) => {
+    const value = text || "";
+    const stoneField = rank === 1 ? "main_focus" : rank === 2 ? "main_focus_2" : "main_focus_3";
+    await fetch("/api/weekly-plans", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [stoneField]: value, week_start: currentWeekStart }),
+    });
+  };
 
-    // Create task
+  const addTask = async () => {
+    const title = newTaskTitle.trim();
+    if (!title) return;
+
+    // Create task (marca stone_rank quando definida como pedra)
     const res = await fetch("/api/weekly-plans/tasks", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        title: newTaskTitle.trim(), area: newTaskArea, day_of_week: newTaskDay === -1 ? null : newTaskDay,
+        title, area: newTaskArea, day_of_week: newTaskDay === -1 ? null : newTaskDay,
         task_type: newTaskType, scheduled_time: newTaskTime || null,
         week_start: currentWeekStart,
+        stone_rank: newIsStone ? newStoneRank : null,
       }),
     });
     if (res.ok) {
@@ -220,14 +231,8 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
       alert(`${t("plan_erro_criar_tarefa")}\n${err.error || err.message || JSON.stringify(err)}\nweek: ${currentWeekStart}`);
     }
 
-    // Define as pedra da semana
-    if (newIsStone && currentPlan) {
-      const stoneField = newStoneRank === 1 ? "main_focus" : newStoneRank === 2 ? "main_focus_2" : "main_focus_3";
-      await fetch("/api/weekly-plans", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [stoneField]: newTaskTitle.trim(), week_start: currentWeekStart }),
-      });
-    }
+    // Define a pedra da semana (cria o plano se ainda não existir)
+    if (newIsStone) await setPlanStone(newStoneRank, title);
 
     setShowAddTask(false); setNewTaskTitle(""); setNewTaskTime(""); setNewIsStone(false); setNewStoneRank(1);
     fetchPlan();
@@ -235,11 +240,18 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
 
   const saveReview = async () => {
     if (!reviewWin.trim()) return;
-    await fetch("/api/weekly-plans/review", {
+    const res = await fetch("/api/weekly-plans/review", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ biggest_win: reviewWin, blocked_lesson: reviewBlock, main_learning: reviewLearn, week_score: reviewScore, week_start: currentWeekStart }),
     });
-    setShowReview(false); fetchPlan();
+    if (res.ok) {
+      toast.success(t("plan_revisao_salva"));
+      setShowReview(false);
+      await fetchPlan();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err?.error || t("plan_erro_salvar_revisao"));
+    }
   };
 
   const currentPlan = plan?.current ?? null;
@@ -424,6 +436,36 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
     .filter(Boolean)
     .map((text, i) => ({ rank: i + 1, text: text!, area: undefined as string | undefined }));
 
+  const openReview = () => {
+    if (review) {
+      setReviewWin(review.biggest_win || "");
+      setReviewBlock(review.blocked_lesson || "");
+      setReviewLearn(review.main_learning || "");
+      setReviewScore(review.week_score || 3);
+    } else {
+      setReviewWin(""); setReviewBlock(""); setReviewLearn(""); setReviewScore(3);
+    }
+    setShowReview(true);
+  };
+
+  const openTaskEditor = (task: any) => {
+    setEditingPlanTask(task);
+    setPlanEditTitle(task.title || "");
+    setPlanEditDay(task.day_of_week ?? -1);
+    setPlanEditArea(task.area || "saude");
+    setPlanEditType(task.task_type || "manutencao");
+    setPlanEditTime(task.scheduled_time?.slice(0, 5) || "");
+    setPlanEditStone(!!task.stone_rank);
+    setPlanEditStoneRank(task.stone_rank || 1);
+    setPlanShowMore(false);
+  };
+
+  const openAddTask = (area?: string) => {
+    if (area) setNewTaskArea(area);
+    setNewTaskDay(selectedDay);
+    setShowAddTask(true);
+  };
+
   // Ao entrar no modo planejar, zera a análise anterior para refletir o plano atual
   const handleModeChange = (mode: "view" | "plan") => {
     setPlanningMode(mode);
@@ -451,6 +493,8 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
           onSendMessage={sendPlanningMessage}
           onAddTask={addTaskFromSuggestion}
           onSetStone={setStoneFromSuggestion}
+          onEditTask={openTaskEditor}
+          onOpenAddTask={openAddTask}
           planMetrics={planMetrics}
           activeCycle={activeCycle}
         />
@@ -573,7 +617,7 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
                     }}
                     style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid rgba(167,139,250,0.04)", cursor: "pointer" }}>
                     <button type="button" onClick={(e) => { e.stopPropagation(); toggleTask(task.id, task.status, { x: e.clientX, y: e.clientY }); }}
-                      style={{ width: 18, height: 18, borderRadius: task.task_type === "manutencao" ? "50%" : 4, flexShrink: 0, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}>
+                      style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}>
                       {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10" /></svg>}
                     </button>
                     <span style={{ fontSize: 11 }}>{area.emoji}</span>
@@ -618,7 +662,7 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
                 }}
                 style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: "1px solid rgba(167,139,250,0.04)", cursor: "pointer" }}>
                 <button type="button" onClick={(e) => { e.stopPropagation(); toggleTask(task.id, task.status, { x: e.clientX, y: e.clientY }); }}
-                  style={{ width: 18, height: 18, borderRadius: task.task_type === "manutencao" ? "50%" : 4, flexShrink: 0, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}>
+                  style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}>
                   {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10" /></svg>}
                 </button>
                 <span style={{ fontSize: 11 }}>{area.emoji}</span>
@@ -694,16 +738,23 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
                 ))}
               </div>
             </div>
-            {review.biggest_win && <p style={{ margin: 0, fontSize: 12, color: "#9e96b5" }}>🏆 {review.biggest_win.slice(0, 100)}</p>}
-            {review.main_learning && <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a" }}>💡 {review.main_learning.slice(0, 100)}</p>}
+            {review.biggest_win && <p style={{ margin: 0, fontSize: 12, color: "#9e96b5", lineHeight: 1.45 }}>🏆 {review.biggest_win.slice(0, 120)}</p>}
+            {review.blocked_lesson && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#9e96b5", lineHeight: 1.45 }}>🔒 {review.blocked_lesson.slice(0, 120)}</p>}
+            {review.main_learning && <p style={{ margin: "4px 0 0", fontSize: 11, color: "#6a657a", lineHeight: 1.45 }}>💡 {review.main_learning.slice(0, 120)}</p>}
+            <button type="button" onClick={openReview}
+              style={{ marginTop: 8, padding: "5px 12px", borderRadius: 9999, border: "1px solid rgba(94,234,212,0.2)", background: "transparent", color: "#5EEAD4", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              {t("plan_editar")}
+            </button>
           </div>
         ) : (
-          <button type="button" onClick={() => setShowReview(true)}
+          <button type="button" onClick={openReview}
             style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "1px solid rgba(94,234,212,0.2)", background: "rgba(94,234,212,0.04)", cursor: "pointer", color: "#5EEAD4", fontSize: 13, fontWeight: 700, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <Star size={16} /> {t("plan_fazer_revisao")}
           </button>
         )}
       </div>
+        </>
+      )}
 
       {/* Review Sheet */}
       {showReview && (
@@ -890,13 +941,14 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
                     setEditingPlanTask(null);
                   }
                 } else {
-                  // Save as task (task API)
+                  // Save as task (task API) — inclui stone_rank quando pedra
                   const updates: Record<string, unknown> = {
                     title: planEditTitle.trim() || editingPlanTask.title,
                     day_of_week: planEditDay === -1 ? null : planEditDay,
                     area: planEditArea,
                     task_type: planEditType,
                     scheduled_time: planEditTime || null,
+                    stone_rank: planEditStone ? planEditStoneRank : null,
                   };
                   const res = await fetch(`/api/weekly-plans/tasks/${editingPlanTask.id}`, {
                     method: "PATCH",
@@ -907,16 +959,12 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
                     const updated = await res.json();
                     setTasks((prev: any[]) => prev.map((t: any) => t.id === editingPlanTask.id ? updated : t));
                   }
-                  // If marked as stone, update the weekly plan
-                  if (planEditStone) {
-                    const stoneField = planEditStoneRank === 1 ? "main_focus" : planEditStoneRank === 2 ? "main_focus_2" : "main_focus_3";
-                    await fetch("/api/weekly-plans", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ [stoneField]: planEditTitle.trim(), week_start: currentWeekStart }),
-                    });
-                    fetchPlan(); // Refresh to show updated stones
-                  }
+                  // Sincroniza a pedra: limpa a antiga e define a nova (se houver)
+                  const oldRank: number | null = editingPlanTask.stone_rank || null;
+                  const newRank: number | null = planEditStone ? planEditStoneRank : null;
+                  if (oldRank && oldRank !== newRank) await setPlanStone(oldRank, "");
+                  if (newRank) await setPlanStone(newRank, planEditTitle.trim() || editingPlanTask.title);
+                  if (oldRank !== newRank || newRank) await fetchPlan();
                   setEditingPlanTask(null);
                 }
               }}
@@ -1012,8 +1060,6 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
         </div>
       )}
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
-        </>
-      )}
 
       {/* FAB */}
       <button type="button" onClick={() => { setNewTaskDay(selectedDay); setShowAddTask(true); }}

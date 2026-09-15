@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import {
   Sparkles, Map, Layers, Send, Plus, Check, Loader2,
-  ChevronDown, ChevronRight, Compass,
+  ChevronDown, ChevronRight, Compass, Pencil,
 } from "lucide-react";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { AREA_CONFIG, LIFE_AREAS, dayShortName } from "@/lib/planejamento-constants";
@@ -28,6 +28,8 @@ interface PlanningCompanionProps {
   onSendMessage: (text: string, history: { role: "user" | "assistant"; content: string }[]) => Promise<string>;
   onAddTask: (title: string, area: string, dayOfWeek?: number) => Promise<boolean>;
   onSetStone: (rank: number, text: string) => Promise<void>;
+  onEditTask: (task: any) => void;
+  onOpenAddTask: (area?: string) => void;
   planMetrics: { strongest: string; weakest: string; balance: number; variation: number };
   activeCycle?: import("@/types").QuarterlyCycle | null;
 }
@@ -48,6 +50,8 @@ export function PlanningCompanion({
   onSendMessage,
   onAddTask,
   onSetStone,
+  onEditTask,
+  onOpenAddTask,
   planMetrics,
 }: PlanningCompanionProps) {
   const { t } = useTranslation();
@@ -369,6 +373,8 @@ export function PlanningCompanion({
           addedTasks={addedTasks}
           addingTask={addingTask}
           onAddTask={handleAddTask}
+          onEditTask={onEditTask}
+          onOpenAddTask={onOpenAddTask}
           focusSuggestions={focusSuggestions}
           suggestingArea={suggestingArea}
           onSuggestArea={handleSuggestArea}
@@ -723,6 +729,8 @@ function AreasTab({
   addedTasks,
   addingTask,
   onAddTask,
+  onEditTask,
+  onOpenAddTask,
   focusSuggestions,
   suggestingArea,
   onSuggestArea,
@@ -735,6 +743,8 @@ function AreasTab({
   addedTasks: Set<string>;
   addingTask: string | null;
   onAddTask: (title: string, area: string) => void;
+  onEditTask: (task: any) => void;
+  onOpenAddTask: (area?: string) => void;
   focusSuggestions: Record<string, AreaSuggestion>;
   suggestingArea: string | null;
   onSuggestArea: (area: string) => void;
@@ -804,62 +814,87 @@ function AreasTab({
             }}
           >
             {/* Header */}
-            <button
-              type="button"
-              onClick={() => toggleArea(area)}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "12px 14px",
-                border: 0,
-                background: "transparent",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              <span style={{ fontSize: 22, flexShrink: 0 }}>{AREA_CONFIG[area as keyof typeof AREA_CONFIG]?.emoji || "•"}</span>
-              <div style={{ flex: 1, textAlign: "left" }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#e0d6ff" }}>
-                  {t(AREA_CONFIG[area as keyof typeof AREA_CONFIG]?.labelKey) || area}
-                </p>
-                <p style={{ margin: "2px 0 0", fontSize: 10, color: "#6a657a" }}>
-                  {isEmpty
-                    ? t("plan_nenhuma_tarefa")
-                    : t("plc_feitas", { done: String(doneTasks), total: String(tasks.length) })}
-                </p>
-              </div>
-              {/* Mini gauge */}
-              {!isEmpty && (
-                <div
-                  style={{
-                    width: 40,
-                    height: 4,
-                    borderRadius: 9999,
-                    background: "rgba(167,139,250,0.08)",
-                    overflow: "hidden",
-                    flexShrink: 0,
-                  }}
-                >
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => toggleArea(area)}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "12px 6px 12px 14px",
+                  border: 0,
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                <span style={{ fontSize: 22, flexShrink: 0 }}>{AREA_CONFIG[area as keyof typeof AREA_CONFIG]?.emoji || "•"}</span>
+                <div style={{ flex: 1, textAlign: "left" }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#e0d6ff" }}>
+                    {t(AREA_CONFIG[area as keyof typeof AREA_CONFIG]?.labelKey) || area}
+                  </p>
+                  <p style={{ margin: "2px 0 0", fontSize: 10, color: "#6a657a" }}>
+                    {isEmpty
+                      ? t("plan_nenhuma_tarefa")
+                      : t("plc_feitas", { done: String(doneTasks), total: String(tasks.length) })}
+                  </p>
+                </div>
+                {/* Mini gauge */}
+                {!isEmpty && (
                   <div
                     style={{
-                      height: "100%",
+                      width: 40,
+                      height: 4,
                       borderRadius: 9999,
-                      width: `${tasks.length > 0 ? Math.round((doneTasks / tasks.length) * 100) : 0}%`,
-                      background: `oklch(0.55 0.13 ${hue})`,
-                      transition: "width 0.3s ease",
+                      background: "rgba(167,139,250,0.08)",
+                      overflow: "hidden",
+                      flexShrink: 0,
                     }}
-                  />
-                </div>
-              )}
-              {isEmpty && <span style={{ fontSize: 10, color: "#FF9F43", fontWeight: 600 }}>{t("plc_vazia")}</span>}
-              {isExpanded ? (
-                <ChevronDown size={14} color="#6a657a" style={{ flexShrink: 0 }} />
-              ) : (
-                <ChevronRight size={14} color="#6a657a" style={{ flexShrink: 0 }} />
-              )}
-            </button>
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        borderRadius: 9999,
+                        width: `${tasks.length > 0 ? Math.round((doneTasks / tasks.length) * 100) : 0}%`,
+                        background: `oklch(0.55 0.13 ${hue})`,
+                        transition: "width 0.3s ease",
+                      }}
+                    />
+                  </div>
+                )}
+                {isEmpty && <span style={{ fontSize: 10, color: "#FF9F43", fontWeight: 600 }}>{t("plc_vazia")}</span>}
+                {isExpanded ? (
+                  <ChevronDown size={14} color="#6a657a" style={{ flexShrink: 0 }} />
+                ) : (
+                  <ChevronRight size={14} color="#6a657a" style={{ flexShrink: 0 }} />
+                )}
+              </button>
+              <button
+                type="button"
+                aria-label={t("plan_adicionar_item")}
+                onClick={(e) => { e.stopPropagation(); onOpenAddTask(area); }}
+                style={{
+                  width: 30,
+                  height: 30,
+                  marginRight: 12,
+                  borderRadius: "50%",
+                  border: "1px solid rgba(124,92,255,0.3)",
+                  background: "rgba(124,92,255,0.08)",
+                  color: "#A78BFA",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  transition: "all .15s ease",
+                }}
+              >
+                <Plus size={15} />
+              </button>
+            </div>
 
             {/* Expanded content */}
             {isExpanded && (
@@ -902,6 +937,7 @@ function AreasTab({
                     {tasks.map((task: any) => (
                       <div
                         key={task.id}
+                        onClick={() => onEditTask(task)}
                         style={{
                           display: "flex",
                           alignItems: "center",
@@ -910,6 +946,7 @@ function AreasTab({
                           fontSize: 12,
                           color: task.status === "concluida" ? "#5a5470" : "#9e96b5",
                           textDecoration: task.status === "concluida" ? "line-through" : "none",
+                          cursor: "pointer",
                         }}
                       >
                         {task.status === "concluida" ? (
@@ -919,7 +956,7 @@ function AreasTab({
                             style={{
                               width: 12,
                               height: 12,
-                              borderRadius: task.task_type === "manutencao" ? "50%" : 3,
+                              borderRadius: "50%",
                               border: "1.5px solid rgba(167,139,250,0.3)",
                               flexShrink: 0,
                             }}
@@ -931,6 +968,7 @@ function AreasTab({
                             {dayShortName(task.day_of_week)}
                           </span>
                         )}
+                        <Pencil size={11} color="#6a657a" style={{ flexShrink: 0, opacity: 0.6 }} />
                       </div>
                     ))}
                   </div>
@@ -1020,12 +1058,40 @@ function AreasTab({
                   </div>
                 )}
 
-                {/* Suggest button — any area without suggestions yet */}
-                {!effectiveSuggestion?.suggestedTasks?.length && (
+                {/* Sugerir — enquanto gera, mostra a Maya "preparando ideias" */}
+                {isSuggesting ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "12px",
+                      borderRadius: 12,
+                      border: "1px dashed rgba(124,92,255,0.35)",
+                      background: "rgba(124,92,255,0.06)",
+                    }}
+                  >
+                    <MayaAvatar state="processing" size={44} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#A78BFA" }}>
+                        {t("plc_preparando_ideias")}
+                      </p>
+                      <div
+                        style={{
+                          height: 6,
+                          marginTop: 8,
+                          borderRadius: 9999,
+                          background: "linear-gradient(90deg, rgba(124,92,255,0.08) 25%, rgba(167,139,250,0.35) 50%, rgba(124,92,255,0.08) 75%)",
+                          backgroundSize: "200% 100%",
+                          animation: "shimmer 1.2s linear infinite",
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : !effectiveSuggestion?.suggestedTasks?.length ? (
                   <button
                     type="button"
                     onClick={() => onSuggestArea(area)}
-                    disabled={isSuggesting}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -1039,26 +1105,22 @@ function AreasTab({
                       color: "#A78BFA",
                       fontSize: 12,
                       fontWeight: 600,
-                      cursor: isSuggesting ? "not-allowed" : "pointer",
+                      cursor: "pointer",
                       fontFamily: "inherit",
-                      opacity: isSuggesting ? 0.6 : 1,
                       transition: "all .15s ease",
                     }}
                   >
-                    {isSuggesting ? (
-                      <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
-                    ) : (
-                      <Sparkles size={14} />
-                    )}
-                    {isSuggesting ? t("plc_maya_pensando") : t("plc_sugira_tarefas")}
+                    <Sparkles size={14} />
+                    {t("plc_sugira_tarefas")}
                   </button>
-                )}
+                ) : null}
               </div>
             )}
           </div>
         );
       })}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
     </div>
   );
 }

@@ -18,20 +18,37 @@ export async function POST(req: Request) {
   const admin = getSupabaseAdmin();
   const weekStart = week_start || getWeekMondayDate();
 
-  // Find current week's plan
-  const { data: plan } = await admin
+  // Find (or create) the current week's plan, so a review can always be saved —
+  // even if the user never added a task/pedra for that week.
+  const { data: existing } = await admin
     .from("weekly_plans")
     .select("id")
     .eq("user_id", session.user.id)
     .eq("week_start", weekStart)
-    .single();
+    .maybeSingle();
 
-  if (!plan) return NextResponse.json({ error: "Plano semanal não encontrado" }, { status: 404 });
+  let planId: string;
+  if (existing) {
+    planId = existing.id;
+  } else {
+    const { data: newPlan, error: createErr } = await admin
+      .from("weekly_plans")
+      .upsert(
+        { user_id: session.user.id, week_start: weekStart, main_focus: "" },
+        { onConflict: "user_id,week_start" }
+      )
+      .select("id")
+      .single();
+    if (createErr || !newPlan) {
+      return NextResponse.json({ error: createErr?.message || "Falha ao criar plano" }, { status: 500 });
+    }
+    planId = newPlan.id;
+  }
 
   const { data: review, error } = await admin
     .from("weekly_reviews")
     .upsert(
-      { weekly_plan_id: plan.id, biggest_win, blocked_lesson, main_learning, week_score },
+      { weekly_plan_id: planId, biggest_win, blocked_lesson, main_learning, week_score },
       { onConflict: "weekly_plan_id" }
     )
     .select()

@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
     const body = await req.json();
-    const { title, area, task_type, linked_goal_id, linked_action_id, day_of_week, scheduled_time, week_start } = body;
+    const { title, area, task_type, linked_goal_id, linked_action_id, day_of_week, scheduled_time, week_start, stone_rank } = body;
 
     if (!title || area === undefined) {
       return NextResponse.json({ error: "Campos obrigatórios: title, area" }, { status: 400 });
@@ -68,6 +68,7 @@ export async function POST(req: Request) {
         linked_action_id: linked_action_id || null,
         day_of_week,
         scheduled_time: scheduled_time || null,
+        stone_rank: stone_rank ?? null,
       })
       .select()
       .single();

@@ -2181,7 +2181,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
                 borderTop: "1px solid rgba(167,139,250,0.05)", borderRadius: 8,
                 animation: movingId === t.id ? "agendaMovePulse 0.45s ease" : "none",
               }}>
-                <span style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0, border: "1.5px solid rgba(255,159,67,0.4)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                <span style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, border: "1.5px solid rgba(255,159,67,0.4)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                   onClick={(e) => { e.stopPropagation(); toggleTaskDone(t, { x: e.clientX, y: e.clientY }); }}
                 />
                 <span style={{ flex: 1, fontSize: 11, color: "#FF9F43", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} onClick={() => openEditor(t)}>{t.title}</span>
@@ -2208,7 +2208,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
             const done = t.status === "concluida";
             return (
               <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(167,139,250,0.05)", animation: movingId === t.id ? "agendaMovePulse 0.45s ease" : "none" }}>
-                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: 4, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}
+                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: "50%", border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}
                   onClick={(e) => { e.stopPropagation(); toggleTaskDone(t, { x: e.clientX, y: e.clientY }); }}>
                   {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10"/></svg>}
                 </span>
@@ -2248,7 +2248,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
             const done = t.status === "concluida";
             return (
               <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)" }}>
-                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: 4, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}
+                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: "50%", border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}
                   onClick={(e) => { e.stopPropagation(); toggleAgendaTask(t, { x: e.clientX, y: e.clientY }); }}>
                   {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10"/></svg>}
                 </span>
@@ -2270,7 +2270,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
             const done = t.status === "concluida";
             return (
               <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)" }}>
-                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: 4, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}
+                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: "50%", border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}
                   onClick={(e) => { e.stopPropagation(); toggleTaskDone(t, { x: e.clientX, y: e.clientY }); }}>
                   {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10"/></svg>}
                 </span>
