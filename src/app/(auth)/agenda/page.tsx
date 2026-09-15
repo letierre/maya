@@ -129,6 +129,22 @@ function buildDayItems(all: AgendaItem[], date: string): AgendaItem[] {
   return result;
 }
 
+// Constrói a lista de itens de uma SEMANA inteira (Seg..Dom) a partir da janela
+// em cache — usado pelo hub Lista para mostrar o conteúdo da semana selecionada
+// (mesmo comportamento de navegação do hub Semana).
+function buildWeekItems(all: AgendaItem[], date: string): AgendaItem[] {
+  const mon = new Date(date + "T12:00:00");
+  mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+  const result: AgendaItem[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    const dayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    result.push(...buildDayItems(all, dayStr));
+  }
+  return result;
+}
+
 const PRIORITY_CONFIG: Record<EisenhowerPriority, { icon: typeof AlertCircle; color: string; labelKey: string; shortLabelKey: string }> = {
   importante_urgente:          { icon: AlertCircle, color: "#FF4D4D", labelKey: "prio_urgente_importante", shortLabelKey: "prio_short_critico" },
   importante_nao_urgente:      { icon: Star, color: "#FF9F43", labelKey: "prio_importante_nao_urgente", shortLabelKey: "prio_short_importante" },
@@ -223,6 +239,7 @@ function AgendaPage() {
     }
   };
   const [items, setItems] = useState<AgendaItem[]>([]);
+  const [weekItems, setWeekItems] = useState<AgendaItem[]>([]);
   const [loading, setLoading] = useState(true);
   // Data para a qual `items` já foi carregado — evita renderizar itens de uma data
   // anterior (stale) no instante em que o usuário troca de dia (frame antes do fetch).
@@ -397,6 +414,7 @@ function AgendaPage() {
     if (!force && cached && date >= cached.from && date <= cached.to) {
       // Data já coberta pela janela em cache — constrói o dia sem refetch.
       setItems(buildDayItems(cached.all, date));
+      setWeekItems(buildWeekItems(cached.all, date));
       setLoading(false);
       return;
     }
@@ -405,11 +423,12 @@ function AgendaPage() {
     try {
       // Fetch a window around the selected date to catch repeats and midnight-crossings
       const res = await fetch(`/api/agenda?from=${from}&to=${to}`);
-      if (!res.ok) { setItems([]); setLoading(false); return; }
+      if (!res.ok) { setItems([]); setWeekItems([]); setLoading(false); return; }
       const all: AgendaItem[] = await res.json();
-      if (!Array.isArray(all)) { setItems([]); setLoading(false); return; }
+      if (!Array.isArray(all)) { setItems([]); setWeekItems([]); setLoading(false); return; }
       windowCacheRef.current = { from, to, all };
       setItems(buildDayItems(all, date));
+      setWeekItems(buildWeekItems(all, date));
     } catch { /* silent */ }
     setLoading(false);
   }, []);
@@ -672,12 +691,15 @@ function AgendaPage() {
         body: JSON.stringify({ id: realId(item), status: newStatus }),
       });
       // Sincroniza o cache (sem refetch) para que a continuação pós-meia-noite
-      // e o dia original reflitam o novo status ao navegar.
+      // e o dia original reflitam o novo status ao navegar. Reconstroi também a
+      // lista da semana (hub Lista) a partir do cache já sincronizado.
       if (windowCacheRef.current) {
         windowCacheRef.current = {
           ...windowCacheRef.current,
           all: windowCacheRef.current.all.map(a => a.id === realId(item) ? { ...a, status: newStatus } : a),
         };
+        setItems(buildDayItems(windowCacheRef.current.all, selectedDate));
+        setWeekItems(buildWeekItems(windowCacheRef.current.all, selectedDate));
       }
     }
   };
@@ -827,7 +849,7 @@ function AgendaPage() {
               {viewMode === "metas" ? tr("ag_metas") : viewMode === "semana" ? tr("ag_agenda_semana") : viewMode === "lista" ? tr("ag_lista") : tr("ag_agenda_dia")}
             </h1>
             <p style={{ margin: "2px 0 0", fontSize: 13, color: "#A78BFA", fontWeight: 500 }}>
-              {viewMode === "metas" ? tr("ag_acompanhe_progresso") : viewMode === "semana" ? weekRangeLabel(selectedDate) : formatDateLabel(selectedDate)}
+              {viewMode === "metas" ? tr("ag_acompanhe_progresso") : viewMode === "semana" || viewMode === "lista" ? weekRangeLabel(selectedDate) : formatDateLabel(selectedDate)}
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -839,13 +861,13 @@ function AgendaPage() {
             )}
             <button type="button"
               onClick={() => {
-                const days = activeModule === "planejamento" ? -7 : -1;
+                const days = activeModule === "planejamento" || viewMode === "lista" ? -7 : -1;
                 setSelectedDate(shiftDate(selectedDate, days));
               }}
               style={navBtnStyle}><ChevronLeft size={18} /></button>
             <button type="button"
               onClick={() => {
-                const days = activeModule === "planejamento" ? 7 : 1;
+                const days = activeModule === "planejamento" || viewMode === "lista" ? 7 : 1;
                 setSelectedDate(shiftDate(selectedDate, days));
               }}
               style={navBtnStyle}><ChevronRight size={18} /></button>
@@ -1235,7 +1257,7 @@ function AgendaPage() {
 
       {/* ── LISTA ───────────────────────────────────────────── */}
       {viewMode === "lista" && (
-        <ListView allWeekTasks={allWeekTasks} compromissos={items} selectedDate={selectedDate} setAllWeekTasks={setAllWeekTasks} refreshItems={() => fetchItems(selectedDate, true)} loading={loading || weekLoading} toggleAgendaTask={toggleTask} />
+        <ListView allWeekTasks={allWeekTasks} compromissos={weekItems} selectedDate={selectedDate} setAllWeekTasks={setAllWeekTasks} refreshItems={() => fetchItems(selectedDate, true)} loading={loading || weekLoading} toggleAgendaTask={toggleTask} />
       )}
 
       </div>
@@ -1751,13 +1773,6 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
     refreshGoals();
   }, []); // eslint-disable-line
 
-  function getCurrentWeekMonday(): string {
-    const now = new Date();
-    const mon = new Date(now);
-    mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-    return `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
-  }
-
   const pad2 = (n: number) => String(n).padStart(2, "0");
   const todayStr = getLocalDate();
   const shortDate = (dateStr: string) =>
@@ -1882,28 +1897,21 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   const todayAgendaTarefas = compromissos.filter(c => c.item_type === "tarefa");
 
   const activeGoals = goals.slice(0, 5);
-  const selD = new Date(selectedDate + "T12:00:00");
-  const selDow = selD.getDay() === 0 ? 6 : selD.getDay() - 1;
-  const todayDow = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
-  const currentWeekMonday = getCurrentWeekMonday();
-  const dayPlanTasks = allWeekTasks.filter((t: any) => t.day_of_week === selDow && t._weekStart === weekStartOf(selectedDate) && t.status !== "pulada");
-  // Tarefas sem dia específico ("Em aberto") — pertencem à SEMANA ATUAL. As de
-  // semanas anteriores não rolam para cá: viram "atrasadas".
+  // Segunda-feira (YYYY-MM-DD) da semana selecionada — o hub Lista mostra a
+  // semana inteira, então todo o filtro é relativo a ela (não ao dia de hoje).
+  const selectedWeekMonday = weekStartOf(selectedDate);
+  // Tarefas com dia definido da semana selecionada (todas, ordenadas por dia).
+  const dayPlanTasks = allWeekTasks
+    .filter((t: any) => t._weekStart === selectedWeekMonday && t.day_of_week != null && t.status !== "pulada")
+    .sort((a: any, b: any) => a.day_of_week - b.day_of_week);
+  // Tarefas sem dia específico ("Em aberto") — pertencem à semana selecionada.
   const openWeekTasks = allWeekTasks.filter((t: any) =>
-    t.day_of_week == null && t.status !== "pulada" && t._weekStart === currentWeekMonday
+    t.day_of_week == null && t.status !== "pulada" && t._weekStart === selectedWeekMonday
   );
-  // Overdue tasks: from previous days this week OR past weeks, not completed/skipped.
-  // Inclui "em aberto" de semanas passadas (pertenciam àquela semana e já passou).
+  // Atrasadas: tarefas de semanas ANTERIORES à selecionada, não concluídas/puladas.
   const overdueTasks = allWeekTasks.filter((t: any) => {
     if (t.status === "concluida" || t.status === "pulada") return false;
-    const taskWeek = t._weekStart;
-    // "Em aberto" de semana passada → atrasada.
-    if (t.day_of_week == null) return !!taskWeek && taskWeek < currentWeekMonday;
-    // From a past week (always overdue)
-    if (taskWeek && taskWeek < currentWeekMonday) return true;
-    // From this week but earlier day
-    if (t.day_of_week < todayDow) return true;
-    return false;
+    return !!t._weekStart && t._weekStart < selectedWeekMonday;
   });
   // Tarefas puladas (descartadas sem apagar) — ficam fora das listas ativas
   const puladaTasks = allWeekTasks.filter((t: any) => t.status === "pulada");
@@ -2227,13 +2235,14 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
         )}
       </div>
 
-      {/* Compromissos do dia */}
+      {/* Compromissos da semana */}
       <div style={{ marginBottom: 12 }}>
-        <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_compromissos_dia")}</h3>
+        <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_compromissos_semana")}</h3>
         {todayComp.length > 0 ? todayComp.map(c => (
             <button key={c.id} type="button" onClick={() => openEditor(c)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)", background: "none", borderLeft: 0, borderRight: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
               <span style={{ fontSize: 12 }}>{c.emoji || "📅"}</span>
               <span style={{ flex: 1, fontSize: 12, color: "#e0d6ff" }}>{c.title}</span>
+              <span style={{ fontSize: 9, color: "#6a657a", flexShrink: 0 }}>{shortDate(c.date)}</span>
               {c.start_time && <span style={{ fontSize: 9, color: "#9e96b5", fontFamily: "monospace" }}>{c.start_time.slice(0,5)}</span>}
             </button>
         )) : (
@@ -2241,9 +2250,9 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
         )}
       </div>
 
-      {/* Tarefas da agenda */}
+      {/* Tarefas da agenda (semana) */}
       <div style={{ marginBottom: 12 }}>
-        <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_tarefas_dia")}</h3>
+        <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_tarefas_semana")}</h3>
         {todayAgendaTarefas.length > 0 ? todayAgendaTarefas.map(t => {
             const done = t.status === "concluida";
             return (
@@ -2254,6 +2263,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
                 </span>
                 {t.emoji && <span style={{ fontSize: 12, flexShrink: 0 }}>{t.emoji}</span>}
                 <span style={{ flex: 1, fontSize: 12, color: done ? "#5a5470" : "#e0d6ff", textDecoration: done ? "line-through" : "none", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} onClick={() => openEditor(t)}>{t.title}</span>
+                <span style={{ fontSize: 9, color: "#6a657a", flexShrink: 0 }}>{shortDate(t.date)}</span>
                 {t.start_time && <span style={{ fontSize: 9, color: "#9e96b5", fontFamily: "monospace", flexShrink: 0 }}>{t.start_time.slice(0,5)}</span>}
               </div>
             );
@@ -2262,9 +2272,9 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
         )}
       </div>
 
-      {/* Tarefas do planejamento */}
+      {/* Tarefas do planejamento (semana) */}
       <div style={{ marginBottom: 12 }}>
-        <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_plano_dia")}</h3>
+        <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_plano_semana")}</h3>
         {dayPlanTasks.length > 0 ? dayPlanTasks.map((t: any) => {
             const area = AREA_CONFIG_PT[t.area] || { emoji: "⚪" };
             const done = t.status === "concluida";
@@ -2276,6 +2286,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
                 </span>
                 <span style={{ fontSize: 12 }}>{area.emoji}</span>
                 <span style={{ flex: 1, fontSize: 12, color: done ? "#5a5470" : "#e0d6ff", textDecoration: done ? "line-through" : "none", cursor: "pointer" }} onClick={() => openEditor(t)}>{t.title}</span>
+                <span style={{ fontSize: 9, color: "#6a657a", flexShrink: 0 }}>{shortDate(taskDate(t))}</span>
                 {t.scheduled_time && <span style={{ fontSize: 9, color: "#9e96b5", fontFamily: "monospace" }}>{t.scheduled_time.slice(0,5)}</span>}
               </div>
             );
