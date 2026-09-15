@@ -59,6 +59,7 @@ interface Insights {
   languages: Record<string, number>;
   genders: Record<string, number>;
   modules: ModuleUsage[];
+  pageviews: { module: string; total: number; last24h: number; last7d: number }[];
 }
 
 interface SegRow { key: string; users: number; d7: number | null; d30: number | null; }
@@ -323,6 +324,20 @@ export default function AdminPage() {
                 <p style={{ fontSize: 11, color: "#6a657a", lineHeight: 1.5, marginTop: 10 }}>
                   Usuários únicos por módulo, segmentados por gênero. Inclui quem ainda não concluiu o onboarding como "não informado".
                 </p>
+
+                <SectionTitle>Aberturas (pageviews)</SectionTitle>
+                {insights.pageviews.length === 0 ? (
+                  <p style={{ fontSize: 11, color: "#6a657a", lineHeight: 1.5 }}>
+                    Sem dados ainda — o rastreamento de abertura começa a popular após a migration 056 ser aplicada e os usuários navegarem.
+                  </p>
+                ) : insights.pageviews.map(p => (
+                  <div key={p.module} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderTop: "1px solid rgba(167,139,250,0.06)" }}>
+                    <span style={{ flex: 1, fontSize: 12, color: "#e0d6ff" }}>{p.module}</span>
+                    <span style={{ fontSize: 10, color: "#6a657a" }}>24h: {p.last24h}</span>
+                    <span style={{ fontSize: 10, color: "#6a657a" }}>7d: {p.last7d}</span>
+                    <span style={{ fontSize: 11, color: "#5EEAD4", fontWeight: 700, minWidth: 32, textAlign: "right" }}>{p.total}</span>
+                  </div>
+                ))}
               </>
             )}
           </div>

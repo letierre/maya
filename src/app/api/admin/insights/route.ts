@@ -105,5 +105,27 @@ export async function GET() {
     modules.push({ key: m.key, label: m.label, ...stat });
   }
 
-  return NextResponse.json({ languages, genders, modules });
+  // Pageviews (abertura real) por módulo — defensivo (tabela pode não existir ainda)
+  let pageviews: { module: string; total: number; last24h: number; last7d: number }[] = [];
+  try {
+    const now = Date.now();
+    const iso24 = new Date(now - 86400000).toISOString();
+    const iso7 = new Date(now - 7 * 86400000).toISOString();
+    const { data: events } = await admin.from("app_events").select("module, created_at").eq("event_name", "pageview");
+    const agg: Record<string, { total: number; last24h: number; last7d: number }> = {};
+    for (const e of events ?? []) {
+      if (!e.module) continue;
+      const a = (agg[e.module] ??= { total: 0, last24h: 0, last7d: 0 });
+      a.total++;
+      if (e.created_at >= iso24) a.last24h++;
+      if (e.created_at >= iso7) a.last7d++;
+    }
+    pageviews = Object.entries(agg)
+      .map(([module, v]) => ({ module, ...v }))
+      .sort((a, b) => b.total - a.total);
+  } catch {
+    pageviews = [];
+  }
+
+  return NextResponse.json({ languages, genders, modules, pageviews });
 }
