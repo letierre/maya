@@ -61,11 +61,24 @@ interface Insights {
   modules: ModuleUsage[];
 }
 
-type Tab = "overview" | "users" | "modules" | "funnel" | "revenue" | "reports";
+interface SegRow { key: string; users: number; d7: number | null; d30: number | null; }
+
+interface Patterns {
+  hours: number[];
+  streaks: { label: string; count: number }[];
+  retentionByLang: SegRow[];
+  retentionByGender: SegRow[];
+  utmConversion: { source: string; trial: number; paid: number; rate: number | null }[];
+  cooccurrence: { a: string; b: string; labelA: string; labelB: string; shared: number; jaccard: number }[];
+}
+
+type Tab = "overview" | "users" | "modules" | "patterns" | "funnel" | "revenue" | "reports";
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const LANG_LABELS: [string, string][] = [["pt", "Português"], ["es", "Espanhol"], ["en", "Inglês"], ["other", "Não definido"]];
 const GENDER_LABELS: [string, string][] = [["masculino", "Masculino ⚡"], ["feminino", "Feminino 🌸"], ["nao_dizer", "Prefere não dizer 🌱"], ["other", "Não informado"]];
+const langLabel = (k: string) => LANG_LABELS.find(([v]) => v === k)?.[1] ?? k;
+const genderLabel = (k: string) => GENDER_LABELS.find(([v]) => v === k)?.[1] ?? k;
 const fmtMoney = (currency: string, amount: number) => {
   const opts = { minimumFractionDigits: 2 };
   if (currency === "brl") return `R$ ${amount.toLocaleString("pt-BR", opts)}`;
@@ -83,6 +96,8 @@ export default function AdminPage() {
   const [revenueError, setRevenueError] = useState(false);
   const [insights, setInsights] = useState<Insights | null>(null);
   const [insightsError, setInsightsError] = useState(false);
+  const [patterns, setPatterns] = useState<Patterns | null>(null);
+  const [patternsError, setPatternsError] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
   const [error, setError] = useState("");
 
@@ -116,6 +131,14 @@ export default function AdminPage() {
     const res = await fetch("/api/admin/insights");
     if (res.ok) setInsights(await res.json());
     else setInsightsError(true);
+  };
+
+  const loadPatterns = async () => {
+    if (patterns) return; // já carregado
+    setPatternsError(false);
+    const res = await fetch("/api/admin/patterns");
+    if (res.ok) setPatterns(await res.json());
+    else setPatternsError(true);
   };
 
   const deletePost = async (postId: string) => {
@@ -154,10 +177,12 @@ export default function AdminPage() {
   const genderTotal = insights ? Object.values(insights.genders).reduce((a, b) => a + b, 0) : 0;
   const maxModuleTotal = insights ? Math.max(...insights.modules.map(m => m.total), 1) : 1;
   const sortedModules = insights ? [...insights.modules].sort((a, b) => b.total - a.total) : [];
+  const streakTotal = patterns ? patterns.streaks.reduce((a, b) => a + b.count, 0) : 0;
   const tabs: { key: Tab; label: string }[] = [
     { key: "overview", label: "📊 Visão geral" },
     { key: "users", label: "👥 Usuários" },
     { key: "modules", label: "🧩 Módulos" },
+    { key: "patterns", label: "🔍 Padrões" },
     { key: "funnel", label: "🌀 Funil" },
     { key: "revenue", label: "💸 Receita" },
     { key: "reports", label: "🚩 Denúncias" },
@@ -183,7 +208,7 @@ export default function AdminPage() {
         <div style={{ padding: "12px 20px 8px", display: "flex", gap: 8, overflowX: "auto" }}>
           {tabs.map(tb => (
             <button key={tb.key} type="button"
-              onClick={() => { if (tb.key === "reports") loadReports(); else if (tb.key === "revenue") loadRevenue(); else if (tb.key === "users" || tb.key === "modules") { setTab(tb.key); loadInsights(); } else setTab(tb.key); }}
+              onClick={() => { if (tb.key === "reports") loadReports(); else if (tb.key === "revenue") loadRevenue(); else if (tb.key === "users" || tb.key === "modules") { setTab(tb.key); loadInsights(); } else if (tb.key === "patterns") { setTab("patterns"); loadPatterns(); } else setTab(tb.key); }}
               style={{ padding: "8px 14px", borderRadius: 9999, border: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
                 background: tab === tb.key ? "#7C5CFF" : "#1a1530", color: tab === tb.key ? "#fff" : "#9e96b5" }}>
               {tb.label}
@@ -279,8 +304,11 @@ export default function AdminPage() {
               <>
                 <SectionTitle>Módulos mais usados (registros)</SectionTitle>
                 {sortedModules.map((m, i) => (
-                  <ModuleBar key={m.key} rank={i + 1} label={m.label} usage={m} max={maxModuleTotal} />
+                  <ModuleBar key={m.key} rank={i + 1} label={m.label} usage={m} max={maxModuleTotal} baseUsers={data.users} />
                 ))}
+                <p style={{ fontSize: 11, color: "#6a657a", lineHeight: 1.5, marginTop: 2 }}>
+                  👤 = usuários únicos que usaram o módulo; % entre parênteses = taxa de adoção sobre a base total.
+                </p>
 
                 <SectionTitle>Uso por gênero (usuários ativos por módulo)</SectionTitle>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0", fontSize: 10, color: "#6a657a", fontWeight: 700 }}>
@@ -295,6 +323,67 @@ export default function AdminPage() {
                 <p style={{ fontSize: 11, color: "#6a657a", lineHeight: 1.5, marginTop: 10 }}>
                   Usuários únicos por módulo, segmentados por gênero. Inclui quem ainda não concluiu o onboarding como "não informado".
                 </p>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── PADRÕES ── */}
+        {tab === "patterns" && (
+          <div style={{ padding: "8px 20px 0" }}>
+            {!patterns ? (
+              <p style={{ fontSize: 12, color: patternsError ? "#FF4D4D" : "#9e96b5", padding: 16 }}>
+                {patternsError ? t("ad_erro_carregar") : `${t("carregando")}…`}
+              </p>
+            ) : (
+              <>
+                <SectionTitle>Horário de uso (check-ins por hora)</SectionTitle>
+                <div style={{ background: "#1a1530", borderRadius: 14, padding: 14, border: "1px solid rgba(167,139,250,0.1)", marginBottom: 4 }}>
+                  <HourChart hours={patterns.hours} />
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#6a657a", marginTop: 4 }}>
+                    <span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span>
+                  </div>
+                </div>
+                <p style={{ fontSize: 10, color: "#6a657a", marginBottom: 16 }}>Horário local (São Paulo).</p>
+
+                <SectionTitle>Sequência (streak) atual</SectionTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+                  {patterns.streaks.map(s => (
+                    <FunnelBar key={s.label} label={`${s.label} dia(s)`} value={s.count} total={streakTotal} color="#FF9F43" />
+                  ))}
+                </div>
+
+                <SectionTitle>Retenção por idioma</SectionTitle>
+                {patterns.retentionByLang.map(r => (
+                  <SegRow key={r.key} label={langLabel(r.key)} users={r.users} d7={r.d7} d30={r.d30} />
+                ))}
+
+                <SectionTitle>Retenção por gênero</SectionTitle>
+                {patterns.retentionByGender.map(r => (
+                  <SegRow key={r.key} label={genderLabel(r.key)} users={r.users} d7={r.d7} d30={r.d30} />
+                ))}
+
+                <SectionTitle>Conversão por origem (trial → pago)</SectionTitle>
+                {patterns.utmConversion.length === 0 ? (
+                  <p style={{ fontSize: 11, color: "#6a657a" }}>Sem dados de UTM ainda.</p>
+                ) : patterns.utmConversion.map(u => (
+                  <div key={u.source} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderTop: "1px solid rgba(167,139,250,0.06)" }}>
+                    <span style={{ flex: 1, fontSize: 12, color: "#e0d6ff" }}>{u.source}</span>
+                    <span style={{ fontSize: 10, color: "#6a657a" }}>{u.paid + u.trial} sub</span>
+                    <span style={{ fontSize: 11, color: "#FF9F43", fontWeight: 700, minWidth: 44, textAlign: "right" }}>{u.rate == null ? "—" : pct(u.rate)}</span>
+                  </div>
+                ))}
+
+                <SectionTitle>Correlação entre módulos</SectionTitle>
+                {patterns.cooccurrence.length === 0 ? (
+                  <p style={{ fontSize: 11, color: "#6a657a" }}>Sem sobreposição suficiente entre módulos.</p>
+                ) : patterns.cooccurrence.map(c => (
+                  <div key={c.a + c.b} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderTop: "1px solid rgba(167,139,250,0.06)" }}>
+                    <span style={{ flex: 1, fontSize: 12, color: "#e0d6ff" }}>{c.labelA} ↔ {c.labelB}</span>
+                    <span style={{ fontSize: 10, color: "#6a657a" }}>{c.shared} em comum</span>
+                    <span style={{ fontSize: 11, color: "#5EEAD4", fontWeight: 700, minWidth: 40, textAlign: "right" }}>{pct(c.jaccard)}</span>
+                  </div>
+                ))}
               </>
             )}
           </div>
@@ -443,8 +532,9 @@ function FunnelBar({ label, value, total, color }: { label: string; value: numbe
   );
 }
 
-function ModuleBar({ rank, label, usage, max }: { rank: number; label: string; usage: ModuleUsage; max: number }) {
+function ModuleBar({ rank, label, usage, max, baseUsers }: { rank: number; label: string; usage: ModuleUsage; max: number; baseUsers: number }) {
   const ratio = max > 0 ? usage.total / max : 0;
+  const adoption = baseUsers > 0 ? usage.activeUsers / baseUsers : 0;
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 3 }}>
@@ -457,7 +547,7 @@ function ModuleBar({ rank, label, usage, max }: { rank: number; label: string; u
       <div style={{ display: "flex", gap: 12, marginTop: 3, fontSize: 10, color: "#6a657a" }}>
         <span>24h: {usage.last24h}</span>
         <span>7d: {usage.last7d}</span>
-        <span>👤 {usage.activeUsers}</span>
+        <span>👤 {usage.activeUsers} ({pct(adoption)})</span>
       </div>
     </div>
   );
@@ -470,6 +560,31 @@ function GenderRow({ label, byGender }: { label: string; byGender: Record<string
       <span style={{ minWidth: 40, textAlign: "right", fontSize: 11, color: "#9e96b5" }}>{byGender.masculino ?? 0}</span>
       <span style={{ minWidth: 40, textAlign: "right", fontSize: 11, color: "#9e96b5" }}>{byGender.feminino ?? 0}</span>
       <span style={{ minWidth: 40, textAlign: "right", fontSize: 11, color: "#9e96b5" }}>{byGender.nao_dizer ?? 0}</span>
+    </div>
+  );
+}
+
+function HourChart({ hours }: { hours: number[] }) {
+  const W = 320, H = 80;
+  const max = Math.max(...hours, 1);
+  const bw = W / 24;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }} preserveAspectRatio="none">
+      {hours.map((v, i) => {
+        const h = v === 0 ? 1 : Math.max((v / max) * (H - 10), 1);
+        return <rect key={i} x={i * bw} y={H - h} width={bw - 1.5} height={h} fill="#22D18B" rx={1} />;
+      })}
+    </svg>
+  );
+}
+
+function SegRow({ label, users, d7, d30 }: { label: string; users: number; d7: number | null; d30: number | null }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderTop: "1px solid rgba(167,139,250,0.06)" }}>
+      <span style={{ flex: 1, fontSize: 12, color: "#e0d6ff" }}>{label}</span>
+      <span style={{ fontSize: 10, color: "#6a657a", minWidth: 42, textAlign: "right" }}>{users} 👤</span>
+      <span style={{ fontSize: 11, color: "#5EEAD4", minWidth: 42, textAlign: "right" }}>D7 {d7 == null ? "—" : pct(d7)}</span>
+      <span style={{ fontSize: 11, color: "#A78BFA", minWidth: 52, textAlign: "right" }}>D30 {d30 == null ? "—" : pct(d30)}</span>
     </div>
   );
 }
