@@ -230,6 +230,19 @@ export async function analyzeAllSpecialists(userId: string): Promise<SpecialistI
   const admin = getSupabaseAdmin();
   const today = getLocalDate();
 
+  // Já analisou hoje? Retorna o cache — o objetivo é rodar UMA vez por dia,
+  // após o check-in (com os dados do dia), em vez de re-análise redundante a cada
+  // edição de check-in ou refeição logada. Todos os disparos (check-in, refeição,
+  // botão manual) passam por aqui e ficam idempotentes.
+  const { count: todayCount } = await admin
+    .from("specialist_insights")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("date", today);
+  if ((todayCount ?? 0) >= 8) {
+    return (await getLatestInsights(userId)) ?? {};
+  }
+
   const d14 = new Date();
   d14.setDate(d14.getDate() - 14);
   const since14 = d14.toISOString().split("T")[0];

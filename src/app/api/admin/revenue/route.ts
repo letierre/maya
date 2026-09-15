@@ -31,6 +31,23 @@ async function listSubs(stripe: Stripe, status: string): Promise<Stripe.Subscrip
   return out;
 }
 
+// Lista as cobranças dos últimos N dias (expandindo balance_transaction para ler a fee).
+async function listCharges(stripe: Stripe, createdAfter: number): Promise<Stripe.Charge[]> {
+  const out: Stripe.Charge[] = [];
+  let startingAfter: string | undefined;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const params: Record<string, unknown> = { created: { gte: createdAfter }, limit: 100, expand: ["data.balance_transaction"] };
+    if (startingAfter) params.starting_after = startingAfter;
+    const res = await stripe.charges.list(params as Stripe.ChargeListParams);
+    out.push(...res.data);
+    if (!res.has_more || res.data.length === 0) break;
+    startingAfter = res.data[res.data.length - 1].id;
+    if (out.length >= 1000) break;
+  }
+  return out;
+}
+
 // GET /api/admin/revenue — MRR/ARPU/churn direto do Stripe (admin only)
 export async function GET() {
   const supabase = await createServerSupabaseClient();
@@ -48,10 +65,12 @@ export async function GET() {
 
   try {
     const stripe = getStripe();
+    const thirtyDaysAgo = Math.floor(Date.now() / 1000) - 30 * 86400;
 
-    const [active, canceled] = await Promise.all([
+    const [active, canceled, charges] = await Promise.all([
       listSubs(stripe, "active"),
       listSubs(stripe, "canceled"),
+      listCharges(stripe, thirtyDaysAgo),
     ]);
 
     // MRR por moeda (plano anual vira equivalente mensal ÷12).
@@ -77,7 +96,6 @@ export async function GET() {
     }
 
     // Churn: cancelados nos últimos 30 dias + total.
-    const thirtyDaysAgo = Date.now() / 1000 - 30 * 86400;
     let canceled30d = 0;
     for (const sub of canceled) {
       const at = (sub as { canceled_at?: number | null }).canceled_at ?? 0;
@@ -91,6 +109,24 @@ export async function GET() {
     const brlArpu = arpuByCurrency["brl"] ?? 0;
     const ltv = churnRate > 0 && brlArpu > 0 ? Math.round(brlArpu / churnRate) : null;
 
+    // Taxas Stripe (30d): soma das fees de cobranças bem-sucedidas + volume bruto.
+    const feesCents: Record<string, number> = {};
+    const grossCents: Record<string, number> = {};
+    let charges30d = 0;
+    for (const ch of charges) {
+      if (ch.status !== "succeeded") continue;
+      const currency = (ch.currency || "brl").toLowerCase();
+      const gross = ch.amount ?? 0;
+      const fee = (ch.balance_transaction as Stripe.BalanceTransaction | null | undefined)?.fee ?? 0;
+      charges30d++;
+      grossCents[currency] = (grossCents[currency] ?? 0) + gross;
+      feesCents[currency] = (feesCents[currency] ?? 0) + fee;
+    }
+    const feesByCurrency: Record<string, number> = {};
+    for (const c of Object.keys(feesCents)) feesByCurrency[c] = Math.round(asMajor(feesCents[c]) * 100) / 100;
+    const grossByCurrency: Record<string, number> = {};
+    for (const c of Object.keys(grossCents)) grossByCurrency[c] = Math.round(asMajor(grossCents[c]) * 100) / 100;
+
     const data = {
       activeCount,
       mrrByCurrency,
@@ -100,6 +136,9 @@ export async function GET() {
       canceled30d,
       churnRate,
       ltv,
+      feesByCurrency,
+      grossByCurrency,
+      charges30d,
       fetchedAt: new Date().toISOString(),
     };
 

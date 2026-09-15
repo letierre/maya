@@ -42,6 +42,9 @@ interface Revenue {
   canceled30d: number;
   churnRate: number;
   ltv: number | null;
+  feesByCurrency: Record<string, number>;
+  grossByCurrency: Record<string, number>;
+  charges30d: number;
   fetchedAt: string;
 }
 
@@ -468,6 +471,22 @@ export default function AdminPage() {
               <p style={{ fontSize: 12, color: revenueError ? "#FF4D4D" : "#9e96b5", padding: 16 }}>
                 {revenueError ? t("ad_erro_carregar") : `${t("carregando")}…`}
               </p>
+            )}
+
+            {revenue && (
+              <>
+                <SectionTitle>Taxas Stripe (30d)</SectionTitle>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+                  {Object.entries(revenue.feesByCurrency).map(([cur, v]) => (
+                    <MiniStat key={`fee-${cur}`} label={`Fees (${cur.toUpperCase()})`} value={fmtMoney(cur, v)} />
+                  ))}
+                  {Object.keys(revenue.feesByCurrency).length === 0 && <MiniStat label="Fees" value={fmtMoney("brl", 0)} />}
+                  <MiniStat label="Cobranças (30d)" value={revenue.charges30d} />
+                  {Object.entries(revenue.grossByCurrency).map(([cur, v]) => (
+                    <MiniStat key={`gross-${cur}`} label={`Volume (${cur.toUpperCase()})`} value={fmtMoney(cur, v)} />
+                  ))}
+                </div>
+              </>
             )}
 
             <SectionTitle>Assinaturas (banco local)</SectionTitle>
