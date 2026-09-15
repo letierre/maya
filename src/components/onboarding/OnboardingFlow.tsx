@@ -177,13 +177,19 @@ function OptionButton({ active, onClick, children }: {
       fontFamily: "inherit", fontSize: 14.5, fontWeight: 600,
       display: "flex", alignItems: "center", gap: 10, padding: "0 16px",
       textAlign: "left", transition: "all .15s ease",
-      background: active ? "oklch(0.5 0.12 270 / .18)" : CARD,
-      backdropFilter: "blur(8px)",
-      color: active ? TEXT : "oklch(0.85 0.02 270)",
-      outline: active ? `2px solid oklch(0.5 0.12 270 / .5)` : `1px solid ${BORDER}`,
-      boxShadow: active ? "0 3px 10px -2px oklch(0.5 0.12 270 / .55)" : "0 1px 3px oklch(0.2 0.02 270 / .06)",
+      background: active ? ACCENT : CARD,
+      color: active ? "#fff" : "oklch(0.85 0.02 270)",
+      outline: active ? "none" : `1px solid ${BORDER}`,
+      boxShadow: active ? "0 6px 20px -6px oklch(0.5 0.12 270 / .7)" : "0 1px 3px oklch(0.2 0.02 270 / .06)",
     }}>
       {children}
+      {active && (
+        <span style={{
+          marginLeft: "auto", display: "flex", alignItems: "center", justifyContent: "center",
+          width: 22, height: 22, borderRadius: 9999, background: "#fff",
+          color: ACCENT, fontSize: 13, fontWeight: 800, flexShrink: 0,
+        }}>✓</span>
+      )}
     </button>
   );
 }
@@ -423,14 +429,24 @@ function PreferencesScreen({ lang, areas, toggleArea, onNext, onPrev }: {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {AREAS.map((a) => (
           <button key={a.id} type="button" onClick={() => toggleArea(a.id)} style={{
+            position: "relative",
             minHeight: 74, borderRadius: 14, border: 0, cursor: "pointer",
             fontFamily: "inherit", fontSize: 14, fontWeight: 600,
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
             padding: "10px 8px", transition: "all .15s ease",
-            background: areas.includes(a.id) ? "oklch(0.5 0.12 270 / .18)" : CARD,
-            color: areas.includes(a.id) ? TEXT : MUTED,
-            outline: areas.includes(a.id) ? `2px solid oklch(0.5 0.12 270 / .5)` : `1px solid ${BORDER}`,
+            background: areas.includes(a.id) ? ACCENT : CARD,
+            color: areas.includes(a.id) ? "#fff" : MUTED,
+            outline: areas.includes(a.id) ? "none" : `1px solid ${BORDER}`,
+            boxShadow: areas.includes(a.id) ? "0 6px 18px -6px oklch(0.5 0.12 270 / .7)" : "none",
           }}>
+            {areas.includes(a.id) && (
+              <span style={{
+                position: "absolute", top: 6, right: 8,
+                width: 18, height: 18, borderRadius: 9999, background: "#fff",
+                color: ACCENT, fontSize: 12, fontWeight: 800,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>✓</span>
+            )}
             <span style={{ fontSize: 26, lineHeight: 1 }}>{a.emoji}</span>
             <span>{tr(lang, a.labelKey)}</span>
           </button>
@@ -546,14 +562,24 @@ function DemoStep({ lang, selected, toggle, waterCups, setWaterCups, onNext, onP
           const active = selected.has(h.key);
           return (
             <button key={h.key} type="button" onClick={() => toggle(h.key)} style={{
+              position: "relative",
               minHeight: 76, borderRadius: 14, border: 0, cursor: "pointer",
               fontFamily: "inherit", fontSize: 13, fontWeight: 600,
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
               padding: "10px 8px", transition: "all .15s ease",
-              background: active ? "oklch(0.5 0.12 270 / .18)" : CARD,
-              color: active ? TEXT : MUTED,
-              outline: active ? `2px solid oklch(0.5 0.12 270 / .5)` : `1px solid ${BORDER}`,
+              background: active ? ACCENT : CARD,
+              color: active ? "#fff" : MUTED,
+              outline: active ? "none" : `1px solid ${BORDER}`,
+              boxShadow: active ? "0 6px 18px -6px oklch(0.5 0.12 270 / .7)" : "none",
             }}>
+              {active && (
+                <span style={{
+                  position: "absolute", top: 6, right: 8,
+                  width: 18, height: 18, borderRadius: 9999, background: "#fff",
+                  color: ACCENT, fontSize: 12, fontWeight: 800,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>✓</span>
+              )}
               <span style={{ fontSize: 24, lineHeight: 1 }}>{h.emoji}</span>
               <span>{tr(lang, h.labelKey)}</span>
             </button>
@@ -861,17 +887,26 @@ export default function OnboardingFlow() {
   const showBack = stepIdx > 0 && step !== "processing" && step !== "value" && step !== "notifications" && step !== "install";
 
   return (
-    <main style={{
+    <main className="ob-root" style={{
       minHeight: "100dvh", background: BG, color: TEXT,
       fontFamily: "var(--font-sans)", overflowX: "hidden", position: "relative",
     }}>
+      <style>{`
+        @keyframes obScreenIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .ob-root button { transition: transform .12s ease, opacity .12s ease; }
+        .ob-root button:active { transform: scale(0.96); opacity: .85; }
+      `}</style>
       {showProgress && <ProgressBar stepIdx={stepIdx} total={STEPS.length} lang={lang} />}
       {showBack && <BackButton lang={lang} onClick={goPrev} />}
 
-      <div style={{
+      <div key={step} style={{
         minHeight: "100dvh", boxSizing: "border-box", maxWidth: 460, margin: "0 auto",
         padding: "110px 26px 140px",
         display: "flex", flexDirection: "column", justifyContent: "center",
+        animation: "obScreenIn .3s ease",
       }}>
         {step === "welcome" && <WelcomeScreen lang={lang} setLang={setLang} onNext={goNext} />}
         {step === "goal" && <GoalScreen lang={lang} goal={goal} setGoal={setGoal} onNext={goNext} onPrev={goPrev} />}

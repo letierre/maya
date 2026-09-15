@@ -154,11 +154,6 @@ export default function DashboardPage() {
       cachedFetch<SleepLog[]>("/api/sleep?limit=7"),
     ])
       .then(([checkInsData, prefsData, profileData, sleepData]) => {
-        if (!prefsData.onboarding_completed) {
-          router.push("/onboarding");
-          return;
-        }
-
         setEnabledKeys(prefsData.enabled_questions || []);
 
         if (Array.isArray(checkInsData)) {
