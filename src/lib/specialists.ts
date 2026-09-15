@@ -286,14 +286,14 @@ export async function analyzeAllSpecialists(userId: string): Promise<SpecialistI
   // Run all 8 specialists in parallel
   const names: SpecialistName[] = ["psychology", "sleep", "nutrition", "physical", "goals", "finance", "spirituality", "philosophy"];
   const calls = [
-    callLLM(system, promptPsychology(ci), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(system, promptSleep(sl, ci), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(system, promptNutrition(ml), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(system, promptPhysical(ci), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(system, promptGoals(goalsWithStages, ci, wp), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(system, promptFinance(tx, bu), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(system, promptSpirituality(ci), { maxTokens: 350, temperature: 0.3 }),
-    callLLM(system, promptPhilosophy(goalsWithStages, di, mem), { maxTokens: 350, temperature: 0.3 }),
+    callLLM(system, promptPsychology(ci), { maxTokens: 350, temperature: 0.3, feature: "checkin", userId }),
+    callLLM(system, promptSleep(sl, ci), { maxTokens: 350, temperature: 0.3, feature: "checkin", userId }),
+    callLLM(system, promptNutrition(ml), { maxTokens: 350, temperature: 0.3, feature: "checkin", userId }),
+    callLLM(system, promptPhysical(ci), { maxTokens: 350, temperature: 0.3, feature: "checkin", userId }),
+    callLLM(system, promptGoals(goalsWithStages, ci, wp), { maxTokens: 350, temperature: 0.3, feature: "checkin", userId }),
+    callLLM(system, promptFinance(tx, bu), { maxTokens: 350, temperature: 0.3, feature: "checkin", userId }),
+    callLLM(system, promptSpirituality(ci), { maxTokens: 350, temperature: 0.3, feature: "checkin", userId }),
+    callLLM(system, promptPhilosophy(goalsWithStages, di, mem), { maxTokens: 350, temperature: 0.3, feature: "checkin", userId }),
   ];
 
   const settled = await Promise.allSettled(calls);

@@ -5,6 +5,7 @@ import { buildMayaSystemPrompt } from "@/lib/maya";
 import { fetchMayaContext, toMayaInput } from "@/lib/maya-context";
 import { relativeDayLabel } from "@/lib/utils";
 import { toImageBlock } from "@/lib/llm";
+import { logAiUsage } from "@/lib/ai-usage";
 import { NextResponse } from "next/server";
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -27,7 +28,8 @@ async function fetchImageAsBase64(path: string): Promise<string> {
 async function chatLLM(
   system: string,
   messages: { role: string; content: string; image_urls?: string[] }[],
-  maxTokens = 400
+  maxTokens = 400,
+  meta?: { userId: string; feature: string }
 ): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY || "";
 
@@ -72,6 +74,18 @@ async function chatLLM(
   }
 
   const data = await response.json();
+
+  // Log do custo real (fire-and-forget) — tokens exatos da resposta.
+  if (meta?.userId) {
+    logAiUsage({
+      userId: meta.userId,
+      feature: meta.feature,
+      model: "claude-haiku-4-5-20251001",
+      inputTokens: data.usage?.input_tokens ?? 0,
+      outputTokens: data.usage?.output_tokens ?? 0,
+    });
+  }
+
   return data.content?.[0]?.text || "";
 }
 
@@ -143,7 +157,7 @@ export async function POST(request: Request) {
       tz: clientTz,
     }));
 
-    const rawReply = await chatLLM(systemPrompt, anthropicMessages, 1000);
+    const rawReply = await chatLLM(systemPrompt, anthropicMessages, 1000, { userId: user.id, feature: "maya_chat" });
     // Belt-and-suspenders: strip any "[dia HH:MM]" timestamp tokens Maya may echo
     // (e.g. "[21:06]", "[hoje 23:07]", "[ontem 14:30]", "[há 3 dias 09:10]").
     // These are internal rhythm context only — never shown to the user.
@@ -159,7 +173,8 @@ export async function POST(request: Request) {
       chatLLM(
         "Extraia fatos pessoais como JSON array. Responda APENAS com o array JSON.",
         [{ role: "user", content: factPrompt }],
-        150
+        150,
+        { userId: user.id, feature: "maya_facts" }
       )
         .then((raw) => {
           try {

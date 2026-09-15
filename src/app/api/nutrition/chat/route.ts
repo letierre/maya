@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     // Concatena o historico no userMessage
     const userMessage = messages.map((m) => `${m.role}: ${m.content}`).join("\n\n");
 
-    const reply = await callLLM(systemPrompt, userMessage, { maxTokens: 500, temperature: 0.5 });
+    const reply = await callLLM(systemPrompt, userMessage, { maxTokens: 500, temperature: 0.5, feature: "nutrition_chat", userId: user.id });
 
     return NextResponse.json({ reply });
   } catch (error) {

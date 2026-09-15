@@ -168,7 +168,7 @@ export async function POST(request: Request) {
 
     const userMessage = lang === "pt" ? "Gere o espelho da semana." : lang === "es" ? "Genera el espejo de la semana." : "Generate the weekly mirror.";
 
-    const text = await callLLM(prompt, userMessage, { maxTokens: 600, temperature: 0.7 });
+    const text = await callLLM(prompt, userMessage, { maxTokens: 600, temperature: 0.7, feature: "reflect_weekly", userId: user.id });
 
     return NextResponse.json({
       narrative: text,

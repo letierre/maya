@@ -70,14 +70,14 @@ export async function POST() {
     const analysis = await callLLM(
       systemPrompt,
       analysisPrompt,
-      { maxTokens: 500, temperature: 0.7 }
+      { maxTokens: 500, temperature: 0.7, feature: "analysis", userId: user.id }
     );
 
     // Extract new facts from the analysis (fire and forget)
     const userName = (user.user_metadata?.name as string) || "";
     const factPrompt = buildFactExtractionPrompt(analysis, { name: userName });
 
-    callLLM("Extraia fatos pessoais como JSON array. Responda APENAS com o array JSON.", factPrompt, { maxTokens: 150, temperature: 0.7 })
+    callLLM("Extraia fatos pessoais como JSON array. Responda APENAS com o array JSON.", factPrompt, { maxTokens: 150, temperature: 0.7, feature: "facts", userId: user.id })
       .then((raw) => {
         try {
           const jsonStart = raw.indexOf("[");

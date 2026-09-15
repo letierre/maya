@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getLocalDate, getLocalDateFromISO } from "@/lib/utils";
+import { costUsd } from "@/lib/ai-usage";
 import { NextRequest, NextResponse } from "next/server";
 
 type Admin = ReturnType<typeof getSupabaseAdmin>;
@@ -164,24 +165,52 @@ export async function GET(req: NextRequest) {
     utmSources = [];
   }
 
-  // 5.5 Custo de IA estimado (30d) — constantes aproximadas em USD, documentadas.
-  const AI_COST_PER_CHECKIN = 0.04; // batch de 8 especialistas (Haiku) a cada check-in (~US$1,14/mês ÷ 30)
-  const AI_COST_PER_CHAT = 0.01;    // mensagem no chat Maya
-  const AI_COST_PER_PHOTO = 0.02;   // foto de refeição (Sonnet, visão)
-  let aiCost = { usd: 0, checkins30d: 0, chat30d: 0, mealPhotos30d: 0 };
+  // 5.5 Custo de IA (30d) — REAL a partir de ai_usage (tokens × preço); fallback estimado.
+  let aiCost = { usd: 0, usd7d: 0, calls: 0, tokens: 0, byFeature: [] as { feature: string; calls: number; usd: number }[], estimated: true };
   try {
-    const checkins30d = (checkins ?? []).filter(c => c.date >= start30).length;
-    const iso30 = new Date(start30 + "T00:00:00.000Z").toISOString();
-    const { count: chat30d } = await admin.from("chat_messages").select("*", { count: "exact", head: true }).gte("created_at", iso30).then(r => ({ count: r.count ?? 0 }));
-    const { count: mealPhotos30d } = await admin.from("meals").select("*", { count: "exact", head: true }).gte("criado_em", iso30).not("foto_path", "is", null).then(r => ({ count: r.count ?? 0 }));
-    aiCost = {
-      usd: +(checkins30d * AI_COST_PER_CHECKIN + chat30d * AI_COST_PER_CHAT + mealPhotos30d * AI_COST_PER_PHOTO).toFixed(2),
-      checkins30d,
-      chat30d,
-      mealPhotos30d,
-    };
+    const iso30 = new Date(Date.now() - 30 * 86400000).toISOString();
+    const iso7 = new Date(Date.now() - 7 * 86400000).toISOString();
+    const { data: usage } = await admin.from("ai_usage").select("feature, model, input_tokens, output_tokens, created_at").gte("created_at", iso30);
+    if (usage && usage.length > 0) {
+      let usd = 0, usd7d = 0, tokens = 0;
+      const byFeature: Record<string, { calls: number; usd: number }> = {};
+      for (const u of usage) {
+        const c = costUsd(u.model, u.input_tokens ?? 0, u.output_tokens ?? 0);
+        usd += c;
+        tokens += (u.input_tokens ?? 0) + (u.output_tokens ?? 0);
+        if (u.created_at >= iso7) usd7d += c;
+        const b = (byFeature[u.feature] ??= { calls: 0, usd: 0 });
+        b.calls++;
+        b.usd += c;
+      }
+      aiCost = {
+        usd: +usd.toFixed(2),
+        usd7d: +usd7d.toFixed(2),
+        calls: usage.length,
+        tokens,
+        byFeature: Object.entries(byFeature).map(([feature, v]) => ({ feature, calls: v.calls, usd: +v.usd.toFixed(2) })).sort((a, b) => b.usd - a.usd),
+        estimated: false,
+      };
+    } else {
+      // Fallback estimado (até haver dados reais de tokens)
+      const AI_COST_PER_CHECKIN = 0.04; // batch de 8 especialistas (Haiku) por check-in
+      const AI_COST_PER_CHAT = 0.01;    // mensagem no chat Maya
+      const AI_COST_PER_PHOTO = 0.02;   // foto de refeição (Sonnet, visão)
+      const checkins30d = (checkins ?? []).filter(c => c.date >= start30).length;
+      const iso30Est = new Date(start30 + "T00:00:00.000Z").toISOString();
+      const { count: chat30d } = await admin.from("chat_messages").select("*", { count: "exact", head: true }).gte("created_at", iso30Est).then(r => ({ count: r.count ?? 0 }));
+      const { count: mealPhotos30d } = await admin.from("meals").select("*", { count: "exact", head: true }).gte("criado_em", iso30Est).not("foto_path", "is", null).then(r => ({ count: r.count ?? 0 }));
+      aiCost = {
+        usd: +(checkins30d * AI_COST_PER_CHECKIN + chat30d * AI_COST_PER_CHAT + mealPhotos30d * AI_COST_PER_PHOTO).toFixed(2),
+        usd7d: 0,
+        calls: 0,
+        tokens: 0,
+        byFeature: [],
+        estimated: true,
+      };
+    }
   } catch {
-    /* tabelas chat_messages/meals podem não existir — mantém zeros */
+    /* tabela ai_usage pode não existir — mantém zeros (estimated: true) */
   }
 
   // 6. Contagens legadas (mantidas para o antigo grid)

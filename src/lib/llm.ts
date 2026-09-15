@@ -3,6 +3,8 @@
  * Supports text-only and multimodal (image) messages.
  */
 
+import { logAiUsage } from "@/lib/ai-usage";
+
 type ContentBlock =
   | { type: "text"; text: string }
   | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
@@ -20,7 +22,7 @@ export function toImageBlock(dataUrl: string): ContentBlock {
 export async function callLLM(
   systemPrompt: string,
   userMessage: string | ContentBlock[],
-  options?: { maxTokens?: number; temperature?: number; model?: string }
+  options?: { maxTokens?: number; temperature?: number; model?: string; feature?: string; userId?: string }
 ): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY || "";
   const maxTokens = options?.maxTokens ?? 500;
@@ -51,6 +53,18 @@ export async function callLLM(
   }
 
   const data = await response.json();
+
+  // Log do custo real (fire-and-forget) — tokens exatos da resposta.
+  if (options?.userId) {
+    logAiUsage({
+      userId: options.userId,
+      feature: options.feature ?? "general",
+      model,
+      inputTokens: data.usage?.input_tokens ?? 0,
+      outputTokens: data.usage?.output_tokens ?? 0,
+    });
+  }
+
   // Modelos com thinking (Sonnet/Opus 5) devolvem blocos de thinking antes do
   // texto; extrai o primeiro bloco de texto real, não `content[0]`.
   const textBlock = (data.content || []).find((b: any) => b.type === "text");

@@ -16,6 +16,7 @@ async function generateNudgeViaLLM(
   triggerDescription: string,
   templateMessage: string,
   recentChatTopics: string,
+  userId: string,
 ): Promise<string> {
   // Persona única — a MESMA Maya do chat/home/planejamento (buildMayaSystemPrompt),
   // com memórias, metas, check-ins e especialistas já embutidos no prompt.
@@ -43,7 +44,7 @@ ${chatBlock}
 Mensagem template (use como inspiração, melhore-a): "${templateMessage}"`;
 
   try {
-    const result = await callLLM(system, userPrompt, { maxTokens: 120, temperature: 0.75 });
+    const result = await callLLM(system, userPrompt, { maxTokens: 120, temperature: 0.75, feature: "maya_nudge", userId });
     const cleaned = result.replace(/^["']|["']$/g, "").trim();
     if (cleaned && cleaned.length >= 10) return cleaned;
   } catch (err) {
@@ -158,6 +159,7 @@ export async function GET() {
         triggerDesc,
         bestNudge.message || bestNudge.description,
         chatSummary || "",
+        user.id,
       );
 
       // Cache for today with enhanced message

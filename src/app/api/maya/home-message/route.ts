@@ -141,7 +141,7 @@ export async function GET(req: NextRequest) {
     let usedFallback = false;
 
     try {
-      message = await callLLM(system, userPrompt, { maxTokens: 150, temperature: 0.75 });
+      message = await callLLM(system, userPrompt, { maxTokens: 150, temperature: 0.75, feature: "maya_home", userId: user.id });
       // Clean up common LLM artifacts
       message = message.replace(/^["']|["']$/g, "").trim();
       if (!message || message.length < 10) {

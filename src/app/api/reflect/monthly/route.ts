@@ -381,7 +381,7 @@ export async function POST(request: Request) {
 
     let text = "";
     try {
-      text = (await callLLM(systemPrompt, userMessage, { maxTokens: 500, temperature: 0.7 })).trim();
+      text = (await callLLM(systemPrompt, userMessage, { maxTokens: 500, temperature: 0.7, feature: "reflect_monthly", userId: user.id })).trim();
     } catch (err) {
       console.error("Monthly portrait AI error:", err);
       return NextResponse.json({ narrative: null });

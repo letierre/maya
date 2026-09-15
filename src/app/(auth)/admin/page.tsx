@@ -25,7 +25,7 @@ interface Overview {
   canceledCount: number;
   pastDueCount: number;
   utmSources: { source: string; count: number }[];
-  aiCost: { usd: number; checkins30d: number; chat30d: number; mealPhotos30d: number };
+  aiCost: { usd: number; usd7d: number; calls: number; tokens: number; byFeature: { feature: string; calls: number; usd: number }[]; estimated: boolean };
   posts: number;
   comments: number;
   checkins: number;
@@ -230,12 +230,24 @@ export default function AdminPage() {
             </div>
 
             <div style={{ background: "#1a1530", borderRadius: 14, padding: 14, border: "1px solid rgba(167,139,250,0.1)", marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 12, color: "#9e96b5", fontWeight: 600 }}>Custo de IA (30d, estimado)</span>
+              <span style={{ fontSize: 12, color: "#9e96b5", fontWeight: 600 }}>Custo de IA (30d{data.aiCost.estimated ? ", estimado" : ""})</span>
               <span style={{ fontSize: 18, fontWeight: 800, color: "#FF9F43" }}>US$ {data.aiCost.usd.toFixed(2)}</span>
             </div>
             <p style={{ fontSize: 10, color: "#6a657a", marginTop: 4, marginBottom: 4 }}>
-              ≈ {data.aiCost.checkins30d} check-ins + {data.aiCost.chat30d} chats + {data.aiCost.mealPhotos30d} fotos de refeição
+              {data.aiCost.estimated
+                ? "estimado — ainda sem dados reais de tokens"
+                : `US$ ${data.aiCost.usd7d.toFixed(2)} nos últimos 7d · ${data.aiCost.calls} chamadas · ${(data.aiCost.tokens / 1000).toFixed(0)}k tokens`}
             </p>
+            {!data.aiCost.estimated && data.aiCost.byFeature.length > 0 && (
+              <div style={{ marginBottom: 4 }}>
+                {data.aiCost.byFeature.slice(0, 6).map(f => (
+                  <div key={f.feature} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderTop: "1px solid rgba(167,139,250,0.06)", fontSize: 11 }}>
+                    <span style={{ color: "#e0d6ff" }}>{f.feature}</span>
+                    <span style={{ color: "#9e96b5" }}>{f.calls} chamadas · US$ {f.usd.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <ChartCard title="Cadastros (30d)" data={data.signupsByDay} color="#A78BFA" />
             <ChartCard title="Ativos por dia — DAU (30d)" data={data.activeByDay} color="#22D18B" />

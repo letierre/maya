@@ -468,7 +468,7 @@ export async function POST(request: Request) {
     // ── Conversational follow-up (responder à Maya) ──
     if (followUp) {
       const chatPrompt = systemPrompt + buildPlanningChatPrompt(followUp, history);
-      const chatResponse = await callLLM(chatPrompt, `Responda ao usuário. Responda APENAS o JSON no formato especificado, sem texto antes ou depois.`, { maxTokens: 400 });
+      const chatResponse = await callLLM(chatPrompt, `Responda ao usuário. Responda APENAS o JSON no formato especificado, sem texto antes ou depois.`, { maxTokens: 400, feature: "maya_planning", userId: user.id });
       let reply = "";
       try {
         const jsonMatch = chatResponse.match(/\{[\s\S]*\}/);
@@ -488,7 +488,7 @@ export async function POST(request: Request) {
       ? `Sugira tarefas concretas para a área ${AREA_LABELS[focusArea] || focusArea}. Responda APENAS o JSON no formato especificado, sem texto antes ou depois.`
       : `Analise o plano da semana e me ajude como conselheira estratégica. Responda APENAS o JSON no formato especificado, sem texto antes ou depois.`;
 
-    const llmResponse = await callLLM(fullPrompt, userMessage, { maxTokens: focusArea ? 500 : 800 });
+    const llmResponse = await callLLM(fullPrompt, userMessage, { maxTokens: focusArea ? 500 : 800, feature: "maya_planning", userId: user.id });
 
     // ── Parse JSON response ──
     let parsed: PlanningCompanionResponse;

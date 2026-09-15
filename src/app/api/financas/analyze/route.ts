@@ -133,7 +133,7 @@ IMPORTANTE: responda SEMPRE com o JSON válido, mesmo que precise estimar a cate
     const text = await callLLM(systemPrompt, [
       { type: "text", text: "Extraia todas as transações desta imagem e retorne o JSON." },
       toImageBlock(imageDataUrl),
-    ], { maxTokens: 1200, temperature: 0.1 });
+    ], { maxTokens: 1200, temperature: 0.1, feature: "financas", userId: session.user.id });
 
     try {
       const parsed = JSON.parse(extractJson(text));

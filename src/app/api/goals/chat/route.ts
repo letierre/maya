@@ -105,11 +105,12 @@ ${alerts.length ? `## ⚠️ ALERTAS\n${alerts.join("\n")}` : ""}
 
 async function callLLMWithHistory(
   system: string,
-  messages: { role: string; content: string }[]
+  messages: { role: string; content: string }[],
+  userId: string
 ): Promise<string> {
   // Concatena o historico de mensagens no userMessage
   const userMessage = messages.map((m) => `${m.role}: ${m.content}`).join("\n\n");
-  return callLLM(system, userMessage, { maxTokens: 600, temperature: 0.7 });
+  return callLLM(system, userMessage, { maxTokens: 600, temperature: 0.7, feature: "goals_chat", userId });
 }
 
 export async function POST(req: Request) {
@@ -161,7 +162,7 @@ export async function POST(req: Request) {
   const systemPrompt = buildGoalsCoachPrompt(userName, goals, weekPlan, weekReview, brHour, lang);
 
   try {
-    const reply = await callLLMWithHistory(systemPrompt, messages.slice(-20));
+    const reply = await callLLMWithHistory(systemPrompt, messages.slice(-20), userId);
     return NextResponse.json({ reply });
   } catch (err) {
     console.error("Goals chat error:", err);

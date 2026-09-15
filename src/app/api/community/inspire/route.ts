@@ -45,7 +45,7 @@ export async function GET() {
       const llmResult = await callLLM(
         "Você é a Maya, uma curadora empática. Retorne APENAS um JSON array com os índices dos 3 posts mais relevantes para o momento do usuário. Ex: [2,5,0]. Priorize posts que mais se conectam emocionalmente com o estado atual.",
         `Momento do usuário: humor=[${moodStr}] feeling="${lastFeeling}" humorNegativo=${hasNegative}\n\nPosts:\n${postList}`,
-        { maxTokens: 50, temperature: 0.5 }
+        { maxTokens: 50, temperature: 0.5, feature: "community_inspire", userId }
       );
       const indices = JSON.parse(llmResult.match(/\[[\d,\s]+\]/)?.[0] || "[]") as number[];
       scored = candidates.map((p: any, i: number) => ({ ...p, content: p.content?.slice(0, 200) || "", like_count: p.community_likes?.[0]?.count ?? 0, score: indices.includes(i) ? 2 : 1 })).sort((a, b) => b.score - a.score).slice(0, 3);

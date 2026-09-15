@@ -44,7 +44,7 @@ Benefícios: liste 1-3 frases curtas em ${l}, cada uma destacando um benefício 
 NUNCA use markdown (**), travessão (—) ou caracteres especiais na observação — apenas texto plano com vírgula e ponto final.`;
 }
 
-async function callVision(photos: string[], description: string, lang: string): Promise<string> {
+async function callVision(photos: string[], description: string, lang: string, userId: string): Promise<string> {
   const hasMultiple = photos.length > 1;
 
   const system = `${buildSystemJson(lang)}
@@ -60,10 +60,10 @@ ${hasMultiple ? `ATENÇÃO: Você receberá ${photos.length} fotos da MESMA refe
     return toImageBlock(dataUrl);
   });
 
-  return callLLM(system, [{ type: "text", text: textPrompt }, ...imageBlocks], { maxTokens: 2000, model: "claude-sonnet-5" });
+  return callLLM(system, [{ type: "text", text: textPrompt }, ...imageBlocks], { maxTokens: 2000, model: "claude-sonnet-5", feature: "nutrition", userId });
 }
 
-async function callTextOnly(description: string, items: string[], lang: string): Promise<string> {
+async function callTextOnly(description: string, items: string[], lang: string, userId: string): Promise<string> {
   const itemsStr = items.length > 0
     ? `Itens informados: ${items.join(", ")}. `
     : "";
@@ -74,7 +74,7 @@ async function callTextOnly(description: string, items: string[], lang: string):
       ? `Analise esta refeição baseado na descrição: "${description}". Estime os macros e calorias. Retorne APENAS o JSON.`
       : `Analise esta refeição. Sem detalhes específicos, faça a melhor estimativa possível. Retorne APENAS o JSON.`;
 
-  return callLLM(buildSystemJson(lang), prompt, { maxTokens: 400, temperature: 0.3 });
+  return callLLM(buildSystemJson(lang), prompt, { maxTokens: 400, temperature: 0.3, feature: "nutrition", userId });
 }
 
 const MACROS_SYSTEM = `Você é um nutricionista. Retorne APENAS um JSON válido, sem texto adicional, no formato:
@@ -86,10 +86,10 @@ const MACROS_SYSTEM = `Você é um nutricionista. Retorne APENAS um JSON válido
 }
 Estime os 4 valores (números MAIORES QUE ZERO) com base nos alimentos e quantidades informados. Nunca omita um campo nem retorne 0 — use porções típicas quando a quantidade não for especificada.`;
 
-async function callMacrosOnly(items: string[], description: string): Promise<string> {
+async function callMacrosOnly(items: string[], description: string, userId: string): Promise<string> {
   const itemsStr = items.length > 0 ? `Alimentos identificados: ${items.join(", ")}. ` : "";
   const prompt = `Estime os macros desta refeição. ${itemsStr}${description ? `Descrição do usuário: "${description}". ` : ""}Retorne APENAS o JSON.`;
-  return callLLM(MACROS_SYSTEM, prompt, { maxTokens: 300, temperature: 0.2 });
+  return callLLM(MACROS_SYSTEM, prompt, { maxTokens: 300, temperature: 0.2, feature: "nutrition", userId });
 }
 
 function extractJson(text: string): string {
@@ -188,10 +188,10 @@ export async function POST(request: Request) {
 
     let raw: string;
     if (hasPhotos) {
-      raw = await callVision(photosBase64, description || "", lang);
+      raw = await callVision(photosBase64, description || "", lang, user.id);
     } else {
       const itemNames = items || [];
-      raw = await callTextOnly(description || "", itemNames, lang);
+      raw = await callTextOnly(description || "", itemNames, lang, user.id);
     }
 
     const analysis = parseAnalysis(raw);
@@ -208,7 +208,7 @@ export async function POST(request: Request) {
       analysis.macros.gorduras_g <= 0;
     if (macrosIncompletos && (analysis.itens.length > 0 || hasDescription)) {
       try {
-        const macrosRaw = await callMacrosOnly(analysis.itens.map((i: { nome: string }) => i.nome), description || "");
+        const macrosRaw = await callMacrosOnly(analysis.itens.map((i: { nome: string }) => i.nome), description || "", user.id);
         const macrosText = parseMacrosOnly(macrosRaw);
         if (macrosText) analysis.macros = macrosText;
       } catch {
