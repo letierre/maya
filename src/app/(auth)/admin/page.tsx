@@ -45,9 +45,27 @@ interface Revenue {
   fetchedAt: string;
 }
 
-type Tab = "overview" | "funnel" | "revenue" | "reports";
+interface ModuleUsage {
+  key: string;
+  label: string;
+  total: number;
+  last24h: number;
+  last7d: number;
+  activeUsers: number;
+  byGender: Record<string, number>;
+}
+
+interface Insights {
+  languages: Record<string, number>;
+  genders: Record<string, number>;
+  modules: ModuleUsage[];
+}
+
+type Tab = "overview" | "users" | "modules" | "funnel" | "revenue" | "reports";
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
+const LANG_LABELS: [string, string][] = [["pt", "Português"], ["es", "Espanhol"], ["en", "Inglês"], ["other", "Não definido"]];
+const GENDER_LABELS: [string, string][] = [["masculino", "Masculino ⚡"], ["feminino", "Feminino 🌸"], ["nao_dizer", "Prefere não dizer 🌱"], ["other", "Não informado"]];
 const fmtMoney = (currency: string, amount: number) => {
   const opts = { minimumFractionDigits: 2 };
   if (currency === "brl") return `R$ ${amount.toLocaleString("pt-BR", opts)}`;
@@ -63,6 +81,8 @@ export default function AdminPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [revenue, setRevenue] = useState<Revenue | null>(null);
   const [revenueError, setRevenueError] = useState(false);
+  const [insights, setInsights] = useState<Insights | null>(null);
+  const [insightsError, setInsightsError] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
   const [error, setError] = useState("");
 
@@ -88,6 +108,14 @@ export default function AdminPage() {
     const res = await fetch("/api/admin/revenue");
     if (res.ok) setRevenue(await res.json());
     else setRevenueError(true);
+  };
+
+  const loadInsights = async () => {
+    if (insights) return; // já carregado
+    setInsightsError(false);
+    const res = await fetch("/api/admin/insights");
+    if (res.ok) setInsights(await res.json());
+    else setInsightsError(true);
   };
 
   const deletePost = async (postId: string) => {
@@ -122,8 +150,14 @@ export default function AdminPage() {
   }
 
   const conversion = data.activeCount / Math.max(data.trialCount + data.activeCount + data.canceledCount + data.pastDueCount, 1);
+  const langTotal = insights ? Object.values(insights.languages).reduce((a, b) => a + b, 0) : 0;
+  const genderTotal = insights ? Object.values(insights.genders).reduce((a, b) => a + b, 0) : 0;
+  const maxModuleTotal = insights ? Math.max(...insights.modules.map(m => m.total), 1) : 1;
+  const sortedModules = insights ? [...insights.modules].sort((a, b) => b.total - a.total) : [];
   const tabs: { key: Tab; label: string }[] = [
     { key: "overview", label: "📊 Visão geral" },
+    { key: "users", label: "👥 Usuários" },
+    { key: "modules", label: "🧩 Módulos" },
     { key: "funnel", label: "🌀 Funil" },
     { key: "revenue", label: "💸 Receita" },
     { key: "reports", label: "🚩 Denúncias" },
@@ -149,7 +183,7 @@ export default function AdminPage() {
         <div style={{ padding: "12px 20px 8px", display: "flex", gap: 8, overflowX: "auto" }}>
           {tabs.map(tb => (
             <button key={tb.key} type="button"
-              onClick={() => { if (tb.key === "reports") loadReports(); else if (tb.key === "revenue") loadRevenue(); else setTab(tb.key); }}
+              onClick={() => { if (tb.key === "reports") loadReports(); else if (tb.key === "revenue") loadRevenue(); else if (tb.key === "users" || tb.key === "modules") { setTab(tb.key); loadInsights(); } else setTab(tb.key); }}
               style={{ padding: "8px 14px", borderRadius: 9999, border: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
                 background: tab === tb.key ? "#7C5CFF" : "#1a1530", color: tab === tb.key ? "#fff" : "#9e96b5" }}>
               {tb.label}
@@ -199,6 +233,70 @@ export default function AdminPage() {
               <MiniStat label="Diários" value={data.diary} />
               <MiniStat label="Mapbox (mês)" value={data.mapboxLoads} />
             </div>
+          </div>
+        )}
+
+        {/* ── USUÁRIOS ── */}
+        {tab === "users" && (
+          <div style={{ padding: "8px 20px 0" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <Kpi icon={<Activity size={16} />} label="Ativos hoje (DAU)" value={data.dau} color="#22D18B" />
+              <Kpi icon={<Activity size={16} />} label="Ativos 7d (WAU)" value={data.wau} color="#5EEAD4" />
+            </div>
+
+            {!insights ? (
+              <p style={{ fontSize: 12, color: insightsError ? "#FF4D4D" : "#9e96b5", padding: 16 }}>
+                {insightsError ? t("ad_erro_carregar") : `${t("carregando")}…`}
+              </p>
+            ) : (
+              <>
+                <SectionTitle>Idioma</SectionTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+                  {LANG_LABELS.map(([k, label]) => (
+                    <FunnelBar key={k} label={label} value={insights.languages[k] ?? 0} total={langTotal} color="#7C5CFF" />
+                  ))}
+                </div>
+
+                <SectionTitle>Gênero</SectionTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {GENDER_LABELS.map(([k, label]) => (
+                    <FunnelBar key={k} label={label} value={insights.genders[k] ?? 0} total={genderTotal} color="#FF9F43" />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── MÓDULOS ── */}
+        {tab === "modules" && (
+          <div style={{ padding: "8px 20px 0" }}>
+            {!insights ? (
+              <p style={{ fontSize: 12, color: insightsError ? "#FF4D4D" : "#9e96b5", padding: 16 }}>
+                {insightsError ? t("ad_erro_carregar") : `${t("carregando")}…`}
+              </p>
+            ) : (
+              <>
+                <SectionTitle>Módulos mais usados (registros)</SectionTitle>
+                {sortedModules.map((m, i) => (
+                  <ModuleBar key={m.key} rank={i + 1} label={m.label} usage={m} max={maxModuleTotal} />
+                ))}
+
+                <SectionTitle>Uso por gênero (usuários ativos por módulo)</SectionTitle>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0", fontSize: 10, color: "#6a657a", fontWeight: 700 }}>
+                  <span style={{ flex: 1 }}>Módulo</span>
+                  <span style={{ minWidth: 40, textAlign: "right" }}>⚡ M</span>
+                  <span style={{ minWidth: 40, textAlign: "right" }}>🌸 F</span>
+                  <span style={{ minWidth: 40, textAlign: "right" }}>🌱 ND</span>
+                </div>
+                {sortedModules.map(m => (
+                  <GenderRow key={m.key} label={m.label} byGender={m.byGender} />
+                ))}
+                <p style={{ fontSize: 11, color: "#6a657a", lineHeight: 1.5, marginTop: 10 }}>
+                  Usuários únicos por módulo, segmentados por gênero. Inclui quem ainda não concluiu o onboarding como "não informado".
+                </p>
+              </>
+            )}
           </div>
         )}
 
@@ -341,6 +439,37 @@ function FunnelBar({ label, value, total, color }: { label: string; value: numbe
       <div style={{ height: 10, borderRadius: 6, background: "#151220", overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${Math.max(ratio * 100, 1)}%`, background: color, borderRadius: 6 }} />
       </div>
+    </div>
+  );
+}
+
+function ModuleBar({ rank, label, usage, max }: { rank: number; label: string; usage: ModuleUsage; max: number }) {
+  const ratio = max > 0 ? usage.total / max : 0;
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 3 }}>
+        <span style={{ fontSize: 12, color: "#e0d6ff", fontWeight: 600 }}>{rank}. {label}</span>
+        <span style={{ fontSize: 11, color: "#9e96b5", fontWeight: 700 }}>{usage.total}</span>
+      </div>
+      <div style={{ height: 8, borderRadius: 4, background: "#151220", overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${Math.max(ratio * 100, 1)}%`, background: "#7C5CFF", borderRadius: 4 }} />
+      </div>
+      <div style={{ display: "flex", gap: 12, marginTop: 3, fontSize: 10, color: "#6a657a" }}>
+        <span>24h: {usage.last24h}</span>
+        <span>7d: {usage.last7d}</span>
+        <span>👤 {usage.activeUsers}</span>
+      </div>
+    </div>
+  );
+}
+
+function GenderRow({ label, byGender }: { label: string; byGender: Record<string, number> }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 0", borderTop: "1px solid rgba(167,139,250,0.06)" }}>
+      <span style={{ flex: 1, fontSize: 12, color: "#e0d6ff" }}>{label}</span>
+      <span style={{ minWidth: 40, textAlign: "right", fontSize: 11, color: "#9e96b5" }}>{byGender.masculino ?? 0}</span>
+      <span style={{ minWidth: 40, textAlign: "right", fontSize: 11, color: "#9e96b5" }}>{byGender.feminino ?? 0}</span>
+      <span style={{ minWidth: 40, textAlign: "right", fontSize: 11, color: "#9e96b5" }}>{byGender.nao_dizer ?? 0}</span>
     </div>
   );
 }
