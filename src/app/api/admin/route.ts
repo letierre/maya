@@ -29,12 +29,12 @@ async function requireAdmin(): Promise<{ ok: boolean; status: number; admin: Adm
 }
 
 // Lista todos os usuários de auth (paginação do GoTrue, máx. 1000/página).
-async function getAllUsers(admin: Admin): Promise<{ created_at: string }[]> {
-  const out: { created_at: string }[] = [];
+async function getAllUsers(admin: Admin): Promise<{ id: string; email: string; created_at: string }[]> {
+  const out: { id: string; email: string; created_at: string }[] = [];
   for (let page = 1; page <= 50; page++) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
     if (error || !data?.users?.length) break;
-    for (const u of data.users) out.push({ created_at: u.created_at ?? "" });
+    for (const u of data.users) out.push({ id: u.id ?? "", email: u.email ?? "", created_at: u.created_at ?? "" });
     if (data.users.length < 1000) break;
   }
   return out;
@@ -64,6 +64,8 @@ export async function GET(req: NextRequest) {
   // 1. Usuários (auth.users) → total + série de cadastros (últimos 30d)
   const users = await getAllUsers(admin);
   const totalUsers = users.length;
+  const emailByUser = new Map<string, string>();
+  for (const u of users) if (u.id) emailByUser.set(u.id, u.email);
   const signupsByDay: { date: string; count: number }[] = [];
   const signupCounts: Record<string, number> = {};
   for (let i = 0; i < 30; i++) {
@@ -221,6 +223,38 @@ export async function GET(req: NextRequest) {
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
   const { count: mapboxLoads } = await admin.from("mapbox_usage").select("*", { count: "exact", head: true }).gte("created_at", monthStart.toISOString()).then(r => ({ count: r.count ?? 0 }));
 
+  // 7. Sinais de risco (últimos 7 dias) + erros (24h) — defensivo (tabelas podem não existir)
+  let safetyFlags: { id: string; date: string; user_id: string; email: string }[] = [];
+  try {
+    const since7 = shiftYMD(today, -6);
+    const { data: flags } = await admin
+      .from("safety_flags")
+      .select("id, user_id, date, created_at")
+      .gte("date", since7)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    safetyFlags = (flags ?? []).map((f) => ({
+      id: f.id,
+      date: f.date,
+      user_id: f.user_id,
+      email: emailByUser.get(f.user_id) ?? "?",
+    }));
+  } catch { safetyFlags = []; }
+
+  let errors24h = 0;
+  let recentErrors: { path: string; message: string; created_at: string }[] = [];
+  try {
+    const iso24 = new Date(Date.now() - 86400000).toISOString();
+    const { count } = await admin.from("error_logs").select("*", { count: "exact", head: true }).gte("created_at", iso24);
+    errors24h = count ?? 0;
+    const { data: errs } = await admin
+      .from("error_logs")
+      .select("path, message, created_at")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    recentErrors = errs ?? [];
+  } catch { errors24h = 0; recentErrors = []; }
+
   return NextResponse.json({
     users: totalUsers,
     signupsByDay,
@@ -249,6 +283,9 @@ export async function GET(req: NextRequest) {
     checkins: totalCheckins,
     diary: totalDiary,
     mapboxLoads,
+    safetyFlags,
+    errors24h,
+    recentErrors,
   });
 }
 

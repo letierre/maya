@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getLocalDate, getTimezoneOffset } from "@/lib/utils";
 import { ateWellFromMeals } from "@/lib/meal-utils";
 import { analyzeAllSpecialists } from "@/lib/specialists";
+import { sendPushToAdmins } from "@/lib/push-send";
+import { logError } from "@/lib/error-log";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -212,6 +214,8 @@ export async function POST(req: NextRequest) {
       await invalidateMayaNudgeCache(admin, user.id);
       // Fire-and-forget: refresh all specialist insights
       analyzeAllSpecialists(user.id).catch(() => {});
+      // Fire-and-forget: alerta de segurança se houver sinal de risco
+      flagSafetyIfNeeded(admin, user.id, row.date, row.suicidal_thoughts);
 
       return NextResponse.json(updated);
     }
@@ -228,15 +232,49 @@ export async function POST(req: NextRequest) {
     invalidateMayaNudgeCache(admin, user.id);
     // Fire-and-forget: refresh all specialist insights
     analyzeAllSpecialists(user.id).catch(() => {});
+    // Fire-and-forget: alerta de segurança se houver sinal de risco
+    flagSafetyIfNeeded(admin, user.id, row.date, row.suicidal_thoughts);
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     console.error("POST /api/check-ins error:", error);
+    logError({ path: "api/check-ins POST", message: String(error), userId: user?.id });
     return NextResponse.json(
       { error: "Erro ao salvar check-in", detail: String(error) },
       { status: 500 }
     );
   }
+}
+
+// Alerta os admins (push) quando um check-in marca pensamentos autodestrutivos.
+// Idempotente por usuário/dia: só dispara a primeira vez no dia.
+function flagSafetyIfNeeded(
+  admin: ReturnType<typeof import("@/lib/supabase/admin").getSupabaseAdmin>,
+  userId: string,
+  date: string,
+  flagged: boolean
+) {
+  if (!flagged) return;
+  void (async () => {
+    try {
+      const { count } = await admin
+        .from("safety_flags")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("date", date);
+      if ((count ?? 0) > 0) return; // já alertado hoje
+
+      await admin.from("safety_flags").insert({ user_id: userId, date });
+      await sendPushToAdmins({
+        title: "⚠️ Sinal de risco no check-in",
+        body: `Um usuário marcou pensamentos autodestrutivos hoje (${date}). Toque para ver o painel.`,
+        tag: "safety-flag",
+        data: { url: "/admin" },
+      });
+    } catch {
+      /* best-effort */
+    }
+  })();
 }
 
 // Clears the Maya nudge & home-message caches so the next dashboard load

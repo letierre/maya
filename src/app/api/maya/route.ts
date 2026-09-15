@@ -6,6 +6,7 @@ import { fetchMayaContext, toMayaInput } from "@/lib/maya-context";
 import { relativeDayLabel } from "@/lib/utils";
 import { toImageBlock } from "@/lib/llm";
 import { logAiUsage } from "@/lib/ai-usage";
+import { logError } from "@/lib/error-log";
 import { NextResponse } from "next/server";
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -52,24 +53,31 @@ async function chatLLM(
     })
   );
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: maxTokens,
-      temperature: 0.7,
-      system,
-      messages: anthropicMessages,
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: maxTokens,
+        temperature: 0.7,
+        system,
+        messages: anthropicMessages,
+      }),
+    });
+  } catch (err) {
+    logError({ path: "api/maya chatLLM", message: String(err), userId: meta?.userId, meta: { feature: meta?.feature } });
+    throw err;
+  }
 
   if (!response.ok) {
     const err = await response.text();
+    logError({ path: "api/maya chatLLM", message: `Claude API error (${response.status}): ${err.slice(0, 200)}`, status: response.status, userId: meta?.userId, meta: { feature: meta?.feature } });
     throw new Error(`Claude API error (${response.status}): ${err.slice(0, 200)}`);
   }
 
@@ -201,6 +209,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ reply });
   } catch (error) {
     console.error("POST /api/maya error:", error);
+    logError({ path: "api/maya POST", message: String(error), userId: user?.id });
     return NextResponse.json(
       { error: "Erro ao conversar com Maya", detail: String(error) },
       { status: 500 }

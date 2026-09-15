@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
+import { logError } from "@/lib/error-log";
 
 // Mapeia uma Stripe.Subscription para a linha da tabela `subscriptions`.
 function subscriptionRow(sub: Stripe.Subscription, plan: string) {
@@ -104,6 +105,7 @@ export async function POST(req: NextRequest) {
     }
   } catch (error) {
     console.error("Webhook handler error:", error);
+    logError({ path: "api/stripe/webhook", message: String(error), status: 500 });
     return NextResponse.json({ error: "Erro ao processar webhook" }, { status: 500 });
   }
 

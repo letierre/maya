@@ -31,6 +31,9 @@ interface Overview {
   checkins: number;
   diary: number;
   mapboxLoads: number;
+  safetyFlags: { id: string; date: string; user_id: string; email: string }[];
+  errors24h: number;
+  recentErrors: { path: string; message: string; created_at: string }[];
 }
 
 interface Revenue {
@@ -247,6 +250,30 @@ export default function AdminPage() {
                   <div key={f.feature} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderTop: "1px solid rgba(167,139,250,0.06)", fontSize: 11 }}>
                     <span style={{ color: "#e0d6ff" }}>{f.feature}</span>
                     <span style={{ color: "#9e96b5" }}>{f.calls} chamadas · US$ {f.usd.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {data.safetyFlags.length > 0 && (
+              <div style={{ background: "rgba(255,77,77,0.12)", borderRadius: 14, padding: 14, border: "1px solid rgba(255,77,77,0.35)", marginTop: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#FF4D4D", marginBottom: 6 }}>⚠️ Sinais de risco (7d)</div>
+                {data.safetyFlags.map(f => (
+                  <div key={f.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "5px 0", borderTop: "1px solid rgba(255,77,77,0.15)", fontSize: 12 }}>
+                    <span style={{ color: "#e0d6ff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.email}</span>
+                    <span style={{ color: "#9e96b5", whiteSpace: "nowrap" }}>{f.date}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {data.errors24h > 0 && (
+              <div style={{ background: "#1a1530", borderRadius: 14, padding: 14, border: "1px solid rgba(255,159,67,0.25)", marginTop: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#FF9F43", marginBottom: 6 }}>Erros (24h): {data.errors24h}</div>
+                {data.recentErrors.slice(0, 5).map((e, i) => (
+                  <div key={i} style={{ padding: "5px 0", borderTop: "1px solid rgba(167,139,250,0.06)", fontSize: 11 }}>
+                    <span style={{ color: "#e0d6ff" }}>{e.path}</span>
+                    <span style={{ color: "#6a657a" }}> — {e.message.slice(0, 90)}</span>
                   </div>
                 ))}
               </div>

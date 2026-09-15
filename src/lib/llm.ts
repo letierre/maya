@@ -4,6 +4,7 @@
  */
 
 import { logAiUsage } from "@/lib/ai-usage";
+import { logError } from "@/lib/error-log";
 
 type ContentBlock =
   | { type: "text"; text: string }
@@ -32,23 +33,30 @@ export async function callLLM(
     ? [{ type: "text" as const, text: userMessage }]
     : userMessage;
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userContent }],
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userContent }],
+      }),
+    });
+  } catch (err) {
+    logError({ path: "lib/llm.callLLM", message: String(err), userId: options?.userId, meta: { feature: options?.feature, model } });
+    throw err;
+  }
 
   if (!response.ok) {
     const err = await response.text();
+    logError({ path: "lib/llm.callLLM", message: `Claude API error (${response.status}): ${err.slice(0, 200)}`, status: response.status, userId: options?.userId, meta: { feature: options?.feature, model } });
     throw new Error(`Claude API error (${response.status}): ${err.slice(0, 200)}`);
   }
 

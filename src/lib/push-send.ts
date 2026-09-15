@@ -16,6 +16,25 @@ export interface PushPayload {
   actions?: { action: string; title: string }[];
 }
 
+/** Lista os user_ids com papel de admin (user_roles.is_admin). Defensivo. */
+export async function getAdminUserIds(): Promise<string[]> {
+  try {
+    const admin = getSupabaseAdmin();
+    const { data } = await admin.from("user_roles").select("user_id").eq("is_admin", true);
+    return (data ?? []).map((r) => r.user_id).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+/** Envia um push para todos os admins. Retorna o total de envios bem-sucedidos. */
+export async function sendPushToAdmins(payload: PushPayload): Promise<number> {
+  const ids = await getAdminUserIds();
+  let sent = 0;
+  for (const id of ids) sent += await sendPushToUser(id, payload);
+  return sent;
+}
+
 /** Send a push notification to all subscriptions of a user. Returns count of successful sends. */
 export async function sendPushToUser(userId: string, payload: PushPayload): Promise<number> {
   const admin = getSupabaseAdmin();
