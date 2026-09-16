@@ -5,7 +5,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Shield, Users, Activity, TrendingUp, Target, DollarSign } from "lucide-react";
+import { ArrowLeft, Trash2, Shield, Users, Activity, TrendingUp, Target, DollarSign, ClipboardList } from "lucide-react";
 
 interface Report { id: string; post_id: string; reason: string | null; created_at: string; community_posts: { id: string; content: string; display_name: string; created_at: string } | null; }
 
@@ -79,7 +79,18 @@ interface Patterns {
   cooccurrence: { a: string; b: string; labelA: string; labelB: string; shared: number; jaccard: number }[];
 }
 
-type Tab = "overview" | "users" | "modules" | "patterns" | "funnel" | "revenue" | "reports";
+interface OnboardingMetrics {
+  total: number;
+  goal: Record<string, number>;
+  pains: Record<string, number>;
+  tinderAgreed: Record<string, number>;
+  areas: Record<string, number>;
+  language: Record<string, number>;
+  gender: Record<string, number>;
+  context: Record<string, { sim: number; nao: number }>;
+}
+
+type Tab = "overview" | "users" | "modules" | "patterns" | "funnel" | "revenue" | "reports" | "onboarding";
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const LANG_LABELS: [string, string][] = [["pt", "Português"], ["es", "Espanhol"], ["en", "Inglês"], ["other", "Não definido"]];
@@ -93,6 +104,43 @@ const fmtMoney = (currency: string, amount: number) => {
   return `${currency.toUpperCase()} ${amount.toLocaleString("pt-BR", opts)}`;
 };
 
+// ── Rótulos das respostas do onboarding (pt, admin) ──────────────────
+const GOAL_LABELS: [string, string][] = [
+  ["sono", "😴 Dormir melhor"], ["leveza", "😌 Me sentir mais leve"], ["alimentacao", "🥗 Comer melhor"],
+  ["meta", "🎯 Alcançar uma meta"], ["dinheiro", "💰 Organizar meu dinheiro"],
+  ["movimento", "🏃 Me movimentar mais"], ["equilibrio", "🌱 Equilíbrio no geral"],
+];
+const PAIN_LABELS: [string, string][] = [
+  ["nao_sei", "🤷 Não sei o que funciona pra mim"], ["espalhado", "🧩 Minha vida está espalhada"],
+  ["sem_tempo", "⏰ Sem tempo / esqueço de me cuidar"], ["desisto", "🔁 Começo e desisto na 1ª semana"],
+  ["sem_rumo", "🧭 Me sinto sem rumo"], ["sem_progresso", "📉 Não vejo meu progresso"],
+  ["sozinho", "🕳️ Me sinto sozinho(a) nessa"],
+];
+const AREA_LABELS: [string, string][] = [
+  ["sono", "😴 Sono"], ["humor", "😊 Humor"], ["habitos", "✅ Hábitos"], ["metas", "🎯 Metas"],
+  ["dinheiro", "💰 Dinheiro"], ["alimentacao", "🥗 Alimentação"], ["movimento", "🏃 Movimento"], ["leitura", "📖 Leitura"],
+];
+const TINDER_LABELS: [string, string][] = [
+  ["ob_tinder_1", "1. Começo a me cuidar e largo na 1ª semana"],
+  ["ob_tinder_2", "2. Não sei se o que faço funciona"],
+  ["ob_tinder_3", "3. Tanta coisa que não acompanho nada"],
+  ["ob_tinder_4", "4. Queria alguém que prestasse atenção em mim"],
+];
+const CTX_LABELS: [string, string][] = [
+  ["has_medication", "💊 Toma medicação"],
+  ["has_faith", "🙏 Tem fé/espiritualidade"],
+  ["has_creative_hobby", "🎨 Hobby criativo"],
+  ["track_suicidal_thoughts", "🧠 Acompanhar pensamentos difíceis"],
+];
+
+// Filtra e ordena (desc) os contadores pelos rótulos conhecidos.
+function sortedBars(counts: Record<string, number>, labels: [string, string][]): { key: string; label: string; value: number }[] {
+  return labels
+    .map(([key, label]) => ({ key, label, value: counts?.[key] ?? 0 }))
+    .filter((e) => e.value > 0)
+    .sort((a, b) => b.value - a.value);
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -105,6 +153,8 @@ export default function AdminPage() {
   const [insightsError, setInsightsError] = useState(false);
   const [patterns, setPatterns] = useState<Patterns | null>(null);
   const [patternsError, setPatternsError] = useState(false);
+  const [onboarding, setOnboarding] = useState<OnboardingMetrics | null>(null);
+  const [onboardingError, setOnboardingError] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
   const [error, setError] = useState("");
 
@@ -146,6 +196,14 @@ export default function AdminPage() {
     const res = await fetch("/api/admin/patterns");
     if (res.ok) setPatterns(await res.json());
     else setPatternsError(true);
+  };
+
+  const loadOnboarding = async () => {
+    if (onboarding) return; // já carregado
+    setOnboardingError(false);
+    const res = await fetch("/api/admin/onboarding");
+    if (res.ok) setOnboarding(await res.json());
+    else setOnboardingError(true);
   };
 
   const deletePost = async (postId: string) => {
@@ -191,6 +249,7 @@ export default function AdminPage() {
     { key: "modules", label: "🧩 Módulos" },
     { key: "patterns", label: "🔍 Padrões" },
     { key: "funnel", label: "🌀 Funil" },
+    { key: "onboarding", label: "📋 Onboarding" },
     { key: "revenue", label: "💸 Receita" },
     { key: "reports", label: "🚩 Denúncias" },
   ];
@@ -215,7 +274,7 @@ export default function AdminPage() {
         <div style={{ padding: "12px 20px 8px", display: "flex", gap: 8, overflowX: "auto" }}>
           {tabs.map(tb => (
             <button key={tb.key} type="button"
-              onClick={() => { if (tb.key === "reports") loadReports(); else if (tb.key === "revenue") loadRevenue(); else if (tb.key === "users" || tb.key === "modules") { setTab(tb.key); loadInsights(); } else if (tb.key === "patterns") { setTab("patterns"); loadPatterns(); } else setTab(tb.key); }}
+              onClick={() => { if (tb.key === "reports") loadReports(); else if (tb.key === "revenue") loadRevenue(); else if (tb.key === "users" || tb.key === "modules") { setTab(tb.key); loadInsights(); } else if (tb.key === "patterns") { setTab("patterns"); loadPatterns(); } else if (tb.key === "onboarding") { setTab("onboarding"); loadOnboarding(); } else setTab(tb.key); }}
               style={{ padding: "8px 14px", borderRadius: 9999, border: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
                 background: tab === tb.key ? "#7C5CFF" : "#1a1530", color: tab === tb.key ? "#fff" : "#9e96b5" }}>
               {tb.label}
@@ -467,6 +526,91 @@ export default function AdminPage() {
             <p style={{ fontSize: 11, color: "#6a657a", lineHeight: 1.5, marginTop: 10 }}>
               D1 = % que voltou no dia seguinte ao 1º check-in. D7/D30 = % que fez outro check-in dentro de 7/30 dias.
             </p>
+          </div>
+        )}
+
+        {/* ── ONBOARDING ── */}
+        {tab === "onboarding" && (
+          <div style={{ padding: "8px 20px 0" }}>
+            {!onboarding ? (
+              <p style={{ fontSize: 12, color: onboardingError ? "#FF4D4D" : "#9e96b5", padding: 16 }}>
+                {onboardingError ? t("ad_erro_carregar") : `${t("carregando")}…`}
+              </p>
+            ) : (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <Kpi icon={<ClipboardList size={16} />} label="Respostas" value={onboarding.total} color="#A78BFA" />
+                  <Kpi icon={<Target size={16} />} label="Conclusão (da base)" value={data.users > 0 ? pct(onboarding.total / data.users) : "—"} color="#22D18B" />
+                </div>
+                {onboarding.total === 0 && (
+                  <p style={{ fontSize: 12, color: "#9e96b5", padding: "16px 0", lineHeight: 1.5 }}>
+                    Sem respostas ainda — os dados aparecem conforme os usuários concluem o onboarding.
+                  </p>
+                )}
+
+                <SectionTitle>Objetivo principal</SectionTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+                  {sortedBars(onboarding.goal, GOAL_LABELS).map((g) => (
+                    <FunnelBar key={g.key} label={g.label} value={g.value} total={onboarding.total} color="#A78BFA" />
+                  ))}
+                </div>
+
+                <SectionTitle>Dores (múltipla escolha)</SectionTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+                  {sortedBars(onboarding.pains, PAIN_LABELS).map((g) => (
+                    <FunnelBar key={g.key} label={g.label} value={g.value} total={onboarding.total} color="#FF9F43" />
+                  ))}
+                </div>
+
+                <SectionTitle>Frases com que se identificou</SectionTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+                  {sortedBars(onboarding.tinderAgreed, TINDER_LABELS).map((g) => (
+                    <FunnelBar key={g.key} label={g.label} value={g.value} total={onboarding.total} color="#5EEAD4" />
+                  ))}
+                </div>
+
+                <SectionTitle>Áreas de interesse (múltipla)</SectionTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+                  {sortedBars(onboarding.areas, AREA_LABELS).map((g) => (
+                    <FunnelBar key={g.key} label={g.label} value={g.value} total={onboarding.total} color="#7C5CFF" />
+                  ))}
+                </div>
+
+                <SectionTitle>Contexto (perguntas sensíveis)</SectionTitle>
+                <div style={{ marginBottom: 20 }}>
+                  {CTX_LABELS.map(([key, label]) => {
+                    const c = onboarding.context[key] ?? { sim: 0, nao: 0 };
+                    const tot = c.sim + c.nao;
+                    return (
+                      <div key={key} style={{ marginBottom: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                          <span style={{ fontSize: 12, color: "#e0d6ff" }}>{label}</span>
+                          <span style={{ fontSize: 11, color: "#9e96b5" }}>{c.sim} sim · {c.nao} não</span>
+                        </div>
+                        <div style={{ display: "flex", height: 10, borderRadius: 6, background: "#151220", overflow: "hidden" }}>
+                          <div style={{ width: `${tot > 0 ? (c.sim / tot) * 100 : 0}%`, background: "#22D18B", transition: "width .3s ease" }} />
+                          <div style={{ flex: 1, background: "rgba(255,92,92,0.35)" }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <SectionTitle>Idioma</SectionTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+                  {sortedBars(onboarding.language, LANG_LABELS).map((g) => (
+                    <FunnelBar key={g.key} label={g.label} value={g.value} total={onboarding.total} color="#7C5CFF" />
+                  ))}
+                </div>
+
+                <SectionTitle>Gênero</SectionTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {sortedBars(onboarding.gender, GENDER_LABELS).map((g) => (
+                    <FunnelBar key={g.key} label={g.label} value={g.value} total={onboarding.total} color="#FF9F43" />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
 
