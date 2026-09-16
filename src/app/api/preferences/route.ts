@@ -64,6 +64,7 @@ export async function GET() {
       enabled_questions: [...ALL_QUESTION_KEYS],
       context: {},
       onboarding_completed: false,
+      onboarding_draft: null,
     });
   }
 
@@ -82,6 +83,7 @@ export async function GET() {
         enabled_questions: [...ALL_QUESTION_KEYS],
         context: {},
         onboarding_completed: false,
+        onboarding_draft: null,
       });
     }
 
@@ -89,6 +91,7 @@ export async function GET() {
       enabled_questions: normalizeEnabledQuestions(prefs.enabled_questions, prefs.context),
       context: prefs.context || {},
       onboarding_completed: prefs.onboarding_completed,
+      onboarding_draft: prefs.onboarding_draft ?? null,
     });
   } catch (error) {
     console.error("GET /api/preferences error:", error);
@@ -110,7 +113,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { enabled_questions, context, onboarding_completed, onboarding } = body;
+    const { enabled_questions, context, onboarding_completed, onboarding, onboarding_draft } = body;
 
     const admin = getSupabaseAdmin();
 
@@ -127,6 +130,7 @@ export async function POST(req: NextRequest) {
           enabled_questions: enabled_questions ?? undefined,
           context: context ?? undefined,
           onboarding_completed: onboarding_completed ?? undefined,
+          onboarding_draft: onboarding_draft !== undefined ? onboarding_draft : undefined,
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id)
@@ -155,6 +159,7 @@ export async function POST(req: NextRequest) {
         enabled_questions: enabled_questions ?? [...ALL_QUESTION_KEYS],
         context: context ?? {},
         onboarding_completed: onboarding_completed ?? false,
+        onboarding_draft: onboarding_draft ?? null,
       })
       .select()
       .single();

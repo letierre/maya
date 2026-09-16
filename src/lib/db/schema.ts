@@ -83,6 +83,9 @@ export const userPreferences = pgTable("user_preferences", {
   enabledQuestions: text("enabled_questions").array().notNull().default([]),
   context: jsonb("context").notNull().default({}),
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
+  // Rascunho do onboarding (respostas parciais + etapa atual) para retomar de
+  // onde o usuário parou, mesmo que ele saia no meio do fluxo.
+  onboardingDraft: jsonb("onboarding_draft"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

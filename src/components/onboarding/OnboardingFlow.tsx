@@ -746,18 +746,73 @@ export default function OnboardingFlow() {
   const [demo, setDemo] = useState<Set<string>>(new Set());
   const [waterCups, setWaterCups] = useState(0);
   const savedRef = useRef(false);
+  const finishedRef = useRef(false);
+  const [hydrated, setHydrated] = useState(false);
 
   const step = STEPS[stepIdx];
 
-  // Redireciona se já completou o onboarding
+  // Redireciona se já completou o onboarding; senão, retoma do rascunho salvo
+  // (respostas parciais + etapa) para não recomeçar do zero ao voltar ao app.
   useEffect(() => {
     fetch("/api/preferences")
       .then((r) => r.json())
       .then((data) => {
-        if (data.onboarding_completed) router.push("/dashboard");
+        if (data.onboarding_completed) {
+          router.push("/dashboard");
+          return;
+        }
+        const d = data.onboarding_draft;
+        if (d && typeof d === "object") {
+          if (typeof d.goal === "string") setGoal(d.goal);
+          if (Array.isArray(d.pains)) setPains(d.pains);
+          if (Array.isArray(d.tinderAgreed)) setTinderAgreed(d.tinderAgreed);
+          if (typeof d.tinderIdx === "number") setTinderIdx(d.tinderIdx);
+          if (Array.isArray(d.areas)) setAreas(d.areas);
+          if (typeof d.gender === "string") setGender(d.gender);
+          if (typeof d.lang === "string") setLang(d.lang);
+          if (d.ctx && typeof d.ctx === "object") setCtx((c) => ({ ...c, ...d.ctx }));
+          if (Array.isArray(d.demo)) setDemo(new Set(d.demo));
+          if (typeof d.waterCups === "number") setWaterCups(d.waterCups);
+          const idx = STEPS.indexOf(d.step);
+          if (idx >= 0) setStepIdx(idx);
+        }
+        setHydrated(true);
       })
-      .catch(() => {});
+      .catch(() => setHydrated(true));
   }, [router]);
+
+  // Persiste o rascunho (respostas parciais + etapa) com debounce, para que cada
+  // resposta fique salva no banco e o usuário retome de onde parou.
+  const saveDraft = useCallback(() => {
+    fetch("/api/preferences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        onboarding_draft: {
+          step,
+          goal,
+          pains,
+          tinderAgreed,
+          tinderIdx,
+          areas,
+          gender,
+          lang,
+          ctx,
+          demo: Array.from(demo),
+          waterCups,
+        },
+      }),
+    }).catch(() => {});
+  }, [step, goal, pains, tinderAgreed, tinderIdx, areas, gender, lang, ctx, demo, waterCups]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const t = setTimeout(() => {
+      if (finishedRef.current) return;
+      saveDraft();
+    }, 500);
+    return () => clearTimeout(t);
+  }, [hydrated, saveDraft]);
 
   const goNext = useCallback(() => setStepIdx((i) => Math.min(i + 1, STEPS.length - 1)), []);
   const goPrev = useCallback(() => setStepIdx((i) => Math.max(i - 1, 0)), []);
@@ -825,6 +880,9 @@ export default function OnboardingFlow() {
 
   // Completa o onboarding: salva, inicia o trial local (7 dias, sem cartão) e entra no dashboard.
   const handleFinish = async () => {
+    // Impede que o rascunho pendente seja salvo por cima da finalização.
+    finishedRef.current = true;
+
     // 1. Garante o check-in da demo salvo
     saveDemoCheckIn();
 
@@ -866,6 +924,7 @@ export default function OnboardingFlow() {
         context,
         onboarding_completed: true,
         onboarding,
+        onboarding_draft: null,
       }),
     });
 
