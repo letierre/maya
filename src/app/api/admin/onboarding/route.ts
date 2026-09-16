@@ -78,5 +78,25 @@ export async function GET() {
     byDay.push({ date: d, count: dayCounts[d] ?? 0 });
   }
 
-  return NextResponse.json({ total, byDay, goal, pains, tinderAgreed, areas, language, gender, context });
+  // Em andamento (começaram mas não concluíram): rascunho salvo + onboarding não concluído.
+  let inProgress = 0;
+  const dropoffByStep: Record<string, number> = {};
+  try {
+    const { data: drafts } = await admin
+      .from("user_preferences")
+      .select("onboarding_draft")
+      .not("onboarding_draft", "is", null)
+      .eq("onboarding_completed", false);
+    for (const d of drafts ?? []) {
+      const draft = d.onboarding_draft as Record<string, unknown> | null;
+      if (!draft) continue;
+      inProgress++;
+      const step = typeof draft.step === "string" ? draft.step : "(desconhecido)";
+      dropoffByStep[step] = (dropoffByStep[step] ?? 0) + 1;
+    }
+  } catch {
+    // coluna onboarding_draft pode não existir ainda — mantém zeros
+  }
+
+  return NextResponse.json({ total, byDay, goal, pains, tinderAgreed, areas, language, gender, context, inProgress, dropoffByStep });
 }

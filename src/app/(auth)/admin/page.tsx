@@ -89,6 +89,8 @@ interface OnboardingMetrics {
   language: Record<string, number>;
   gender: Record<string, number>;
   context: Record<string, { sim: number; nao: number }>;
+  inProgress: number;
+  dropoffByStep: Record<string, number>;
 }
 
 type Tab = "overview" | "users" | "modules" | "patterns" | "funnel" | "revenue" | "reports" | "onboarding";
@@ -132,6 +134,13 @@ const CTX_LABELS: [string, string][] = [
   ["has_faith", "🙏 Tem fé/espiritualidade"],
   ["has_creative_hobby", "🎨 Hobby criativo"],
   ["track_suicidal_thoughts", "🧠 Acompanhar pensamentos difíceis"],
+];
+const STEP_LABELS: [string, string][] = [
+  ["welcome", "Boas-vindas"], ["goal", "Objetivo"], ["pain", "Dores"], ["social", "Prova social"],
+  ["tinder", "Identificação (frases)"], ["solution", "Solução"], ["comparison", "Comparativo"],
+  ["preferences", "Áreas de interesse"], ["about", "Sobre você"], ["processing", "Processando"],
+  ["demo", "Demo (check-in)"], ["value", "Entrega de valor"], ["notifications", "Notificações"],
+  ["install", "Instalar app"],
 ];
 
 // Filtra e ordena (desc) os contadores pelos rótulos conhecidos.
@@ -545,6 +554,22 @@ export default function AdminPage() {
                 </div>
 
                 <ChartCard title="Respostas por dia (30d)" data={onboarding.byDay} color="#A78BFA" />
+
+                <SectionTitle>Funil de conclusão</SectionTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+                  <FunnelBar label="Cadastros" value={data.users} total={data.users} color="#A78BFA" />
+                  <FunnelBar label="Começaram o onboarding" value={onboarding.total + onboarding.inProgress} total={data.users} color="#7C5CFF" />
+                  <FunnelBar label="Concluíram" value={onboarding.total} total={data.users} color="#22D18B" />
+                </div>
+
+                <SectionTitle>Onde param (não concluíram)</SectionTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+                  {onboarding.inProgress === 0 ? (
+                    <p style={{ fontSize: 11, color: "#6a657a", lineHeight: 1.5 }}>Ninguém parado no meio agora.</p>
+                  ) : sortedBars(onboarding.dropoffByStep, STEP_LABELS).map((g) => (
+                    <FunnelBar key={g.key} label={g.label} value={g.value} total={onboarding.inProgress} color="#FF4D4D" />
+                  ))}
+                </div>
 
                 {onboarding.total === 0 && (
                   <p style={{ fontSize: 12, color: "#9e96b5", padding: "16px 0", lineHeight: 1.5 }}>
