@@ -81,6 +81,7 @@ interface Patterns {
 
 interface OnboardingMetrics {
   total: number;
+  byDay: { date: string; count: number }[];
   goal: Record<string, number>;
   pains: Record<string, number>;
   tinderAgreed: Record<string, number>;
@@ -542,6 +543,9 @@ export default function AdminPage() {
                   <Kpi icon={<ClipboardList size={16} />} label="Respostas" value={onboarding.total} color="#A78BFA" />
                   <Kpi icon={<Target size={16} />} label="Conclusão (da base)" value={data.users > 0 ? pct(onboarding.total / data.users) : "—"} color="#22D18B" />
                 </div>
+
+                <ChartCard title="Respostas por dia (30d)" data={onboarding.byDay} color="#A78BFA" />
+
                 {onboarding.total === 0 && (
                   <p style={{ fontSize: 12, color: "#9e96b5", padding: "16px 0", lineHeight: 1.5 }}>
                     Sem respostas ainda — os dados aparecem conforme os usuários concluem o onboarding.

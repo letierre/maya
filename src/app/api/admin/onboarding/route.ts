@@ -1,6 +1,14 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getLocalDate, getLocalDateFromISO } from "@/lib/utils";
 import { NextResponse } from "next/server";
+
+function pad2(n: number): string { return String(n).padStart(2, "0"); }
+function shiftYMD(dateStr: string, days: number): string {
+  const d = new Date(dateStr + "T12:00:00");
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
 
 // GET /api/admin/onboarding — métricas das respostas do questionário de onboarding
 // (tabela onboarding_responses). Agregados por resposta, sem PII (admin only).
@@ -28,6 +36,11 @@ export async function GET() {
   };
   let total = 0;
 
+  // Série de conclusões por dia (últimos 30d, local)
+  const today = getLocalDate();
+  const dayCounts: Record<string, number> = {};
+  for (let i = 0; i < 30; i++) dayCounts[shiftYMD(today, -29 + i)] = 0;
+
   try {
     const { data } = await admin.from("onboarding_responses").select("*");
     for (const r of data ?? []) {
@@ -40,6 +53,11 @@ export async function GET() {
 
       if (typeof r.language === "string" && r.language) language[r.language] = (language[r.language] ?? 0) + 1;
       if (typeof r.gender === "string" && r.gender) gender[r.gender] = (gender[r.gender] ?? 0) + 1;
+
+      if (r.completed_at) {
+        const day = getLocalDateFromISO(r.completed_at);
+        if (day in dayCounts) dayCounts[day]++;
+      }
 
       const bump = (key: "has_medication" | "has_faith" | "has_creative_hobby" | "track_suicidal_thoughts") => {
         if (r[key] === true) context[key].sim++;
@@ -54,5 +72,11 @@ export async function GET() {
     // tabela onboarding_responses pode não existir ainda — retorna zeros
   }
 
-  return NextResponse.json({ total, goal, pains, tinderAgreed, areas, language, gender, context });
+  const byDay: { date: string; count: number }[] = [];
+  for (let i = 0; i < 30; i++) {
+    const d = shiftYMD(today, -29 + i);
+    byDay.push({ date: d, count: dayCounts[d] ?? 0 });
+  }
+
+  return NextResponse.json({ total, byDay, goal, pains, tinderAgreed, areas, language, gender, context });
 }
