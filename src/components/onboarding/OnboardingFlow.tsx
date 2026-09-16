@@ -802,6 +802,7 @@ export default function OnboardingFlow() {
           waterCups,
         },
       }),
+      keepalive: true,
     }).catch(() => {});
   }, [step, goal, pains, tinderAgreed, tinderIdx, areas, gender, lang, ctx, demo, waterCups]);
 
@@ -812,6 +813,25 @@ export default function OnboardingFlow() {
       saveDraft();
     }, 500);
     return () => clearTimeout(t);
+  }, [hydrated, saveDraft]);
+
+  // Salva imediatamente ao fechar/ocultar o app (ex.: PWA indo pra segundo plano),
+  // pra não perder a última resposta caso o usuário saia antes do debounce.
+  useEffect(() => {
+    if (!hydrated) return;
+    const flush = () => {
+      if (finishedRef.current) return;
+      saveDraft();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", flush);
+    };
   }, [hydrated, saveDraft]);
 
   const goNext = useCallback(() => setStepIdx((i) => Math.min(i + 1, STEPS.length - 1)), []);
