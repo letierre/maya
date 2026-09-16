@@ -72,6 +72,9 @@ export const checkIns = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // Horário em que o humor (mood_tags) foi definido — para a Maya saber
+    // quando aquele humor foi registrado. NULL quando não há humor.
+    moodAt: timestamp("mood_at", { withTimezone: true }),
   },
   (table) => ({
     userDateIdx: uniqueIndex("user_date_idx").on(table.userId, table.date),

@@ -192,18 +192,28 @@ export async function POST(req: NextRequest) {
       row.slept_well = (sleepRes.data?.[0]?.quality ?? 0) >= 3;
     }
 
+    const nowIso = new Date().toISOString();
+    const hasMood = Array.isArray(row.mood_tags) && row.mood_tags.length > 0;
+
     const { data: existing } = await admin
       .from("check_ins")
-      .select("id")
+      .select("id, mood_tags")
       .eq("user_id", user.id)
       .eq("date", row.date)
       .limit(1)
       .single();
 
     if (existing) {
+      // Só mexe em mood_at quando o humor de fato mudou — evita sobrescrever o
+      // horário do humor com uma edição qualquer do check-in (ex.: hábitos).
+      const sortMood = (v: unknown) => (Array.isArray(v) ? [...(v as string[])].sort() : []);
+      const moodChanged =
+        JSON.stringify(sortMood(existing.mood_tags)) !== JSON.stringify(sortMood(row.mood_tags));
+      const moodAtField = moodChanged ? { mood_at: hasMood ? nowIso : null } : {};
+
       const { data: updated, error } = await admin
         .from("check_ins")
-        .update({ ...row, updated_at: new Date().toISOString() })
+        .update({ ...row, ...moodAtField, updated_at: nowIso })
         .eq("id", existing.id)
         .select()
         .single();
@@ -222,7 +232,7 @@ export async function POST(req: NextRequest) {
 
     const { data: created, error } = await admin
       .from("check_ins")
-      .insert(row)
+      .insert({ ...row, mood_at: hasMood ? nowIso : null })
       .select()
       .single();
 

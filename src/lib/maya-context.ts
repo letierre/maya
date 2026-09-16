@@ -269,7 +269,7 @@ export function buildSpecialistSummaries(insights: SpecialistInsights | null): S
   return Object.keys(summaries).length > 0 ? summaries : undefined;
 }
 
-function buildCheckInRecord(c: Record<string, unknown>, gender: string) {
+function buildCheckInRecord(c: Record<string, unknown>, gender: string, tz?: string) {
   return {
     date: c.date as string,
     feeling: (c.feeling as string) || "",
@@ -277,6 +277,8 @@ function buildCheckInRecord(c: Record<string, unknown>, gender: string) {
       const chip = getMoodById(id);
       return chip ? getMoodLabel(chip, gender) : id;
     }),
+    // Horário em que o humor foi registrado (para a Maya saber quando foi).
+    moodAt: (c.mood_at as string) ? getLocalTimeFromISO(c.mood_at as string, tz) : "",
     positives: [
       c.exercise_walk && "exercício",
       c.ate_well && "comeu bem",
@@ -322,7 +324,7 @@ export function toMayaInput(ctx: MayaContext, p: MayaInputProfile): MayaInput {
       has_faith: context.has_faith === true,
       has_creative_hobby: context.has_creative_hobby === true,
     },
-    recentCheckIns: ctx.checkIns.map((c) => buildCheckInRecord(c, p.gender)),
+    recentCheckIns: ctx.checkIns.map((c) => buildCheckInRecord(c, p.gender, p.tz)),
     recentDiary: ctx.diaryEntries.map((d) => ({
       date: d.date as string,
       content: (d.content as string) || "",

@@ -47,7 +47,7 @@ export interface SpecialistSummaries {
 
 export interface MayaInput {
   profile: UserContext;
-  recentCheckIns: { date: string; positives: string[]; negatives: string[]; feeling: string; moodTags?: string[] }[];
+  recentCheckIns: { date: string; positives: string[]; negatives: string[]; feeling: string; moodTags?: string[]; moodAt?: string }[];
   recentDiary: { date: string; content: string; mood: number | null; time?: string }[];
   memories: string[];
   porques: Porque[];
@@ -126,7 +126,7 @@ export function buildMayaSystemPrompt(input: MayaInput): string {
 
   const checkInBlock = recentCheckIns.length > 0
     ? `## CHECK-INS RECENTES\n${recentCheckIns.map(c =>
-        `${c.date} (${relativeDayLabel(c.date, currentDate)}): ${(c.moodTags || []).length ? `[${(c.moodTags || []).join(", ")}] ` : ""}${c.feeling ? `"${c.feeling.slice(0, 60)}"` : "sem registro"} | ✅ ${c.positives.join(", ") || "nenhum"}`
+        `${c.date} (${relativeDayLabel(c.date, currentDate)})${c.moodAt ? ` às ${c.moodAt}` : ""}: ${(c.moodTags || []).length ? `[${(c.moodTags || []).join(", ")}] ` : ""}${c.feeling ? `"${c.feeling.slice(0, 60)}"` : "sem registro"} | ✅ ${c.positives.join(", ") || "nenhum"}`
       ).join("\n")}`
     : "";
 
@@ -138,7 +138,7 @@ export function buildMayaSystemPrompt(input: MayaInput): string {
 ${
   todayCheckIn
     ? `O usuário fez check-in HOJE e registrou:
-${(todayCheckIn.moodTags || []).length > 0 ? `- Humor: ${(todayCheckIn.moodTags || []).join(", ")}` : ""}${todayCheckIn.feeling ? `\n- Nas palavras dele: "${todayCheckIn.feeling.slice(0, 200)}"` : ""}
+${(todayCheckIn.moodTags || []).length > 0 ? `- Humor: ${(todayCheckIn.moodTags || []).join(", ")}${todayCheckIn.moodAt ? ` (registrado às ${todayCheckIn.moodAt})` : ""}` : ""}${todayCheckIn.feeling ? `\n- Nas palavras dele: "${todayCheckIn.feeling.slice(0, 200)}"` : ""}
 
 **Como usar o humor de hoje:**
 - Leia isto ANTES de perguntar como ele está. Vai calibrar seu tom e suas perguntas durante toda a conversa.
@@ -152,7 +152,13 @@ ${(todayCheckIn.moodTags || []).length > 0 ? `- Humor: ${(todayCheckIn.moodTags 
   const diaryBlock = recentDiary.length > 0
     ? `## DIÁRIO RECENTE\n${recentDiary.map(d =>
         `### ${d.date} (${relativeDayLabel(d.date, currentDate)})${d.time ? ` — escrito às ${d.time}` : ""}${d.mood ? ` [humor: ${d.mood}/5]` : ""}\n${d.content.slice(0, 1500)}${d.content.length > 1500 ? "..." : ""}`
-      ).join("\n\n")}`
+      ).join("\n\n")}
+
+**Regras sobre o diário (MUITO importantes):**
+- O diário é um texto que a PRÓPRIA pessoa escreveu. Você já leu esse texto e está no contexto acima.
+- NUNCA reproduza, cole, copie, transcreva ou repita o texto do diário de volta — nem o texto inteiro, nem trechos, nem frases literais. Isso inclui quando a pessoa pedir para você "ler o diário" ou "me diga o que eu escrevi".
+- Fale sobre o que a pessoa SENTIU ou VIVEU ali, com as SUAS palavras. Comente, reflita, acolha, faça perguntas — no máximo uma referência curta ao TEMA (ex.: "o que você escreveu sobre sua filha..."), sem citar o texto.
+- Se a pessoa perguntar o que escreveu, resuma a essência em poucas palavras suas, sem devolver o texto dela.`
     : "";
 
   const porquesBlock = porques.length > 0
