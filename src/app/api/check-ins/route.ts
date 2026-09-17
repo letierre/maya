@@ -110,14 +110,35 @@ export async function POST(req: NextRequest) {
     const todayDow = new Date(checkDate + "T12:00:00").getDay();
     const monDow = todayDow === 0 ? 6 : todayDow - 1; // 0=Mon..6=Sun
 
+    // Segunda-feira da semana do check-in: escopa as tarefas semanais à semana
+    // certa. Antes, qualquer tarefa "concluída" de uma semana ANTIGA (mesmo dia
+    // da semana) marcava "trabalhou nas metas" mesmo sem o usuário ter feito nada hoje.
+    const weekMonday = new Date(checkDate + "T12:00:00");
+    weekMonday.setDate(weekMonday.getDate() + (todayDow === 0 ? -6 : 1 - todayDow));
+    const weekMondayStr = `${weekMonday.getFullYear()}-${String(weekMonday.getMonth() + 1).padStart(2, "0")}-${String(weekMonday.getDate()).padStart(2, "0")}`;
+
+    const weekPlanRes = await admin
+      .from("weekly_plans")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("week_start", weekMondayStr)
+      .maybeSingle();
+    const weekPlanId = (weekPlanRes.data?.id as string | undefined) ?? null;
+
+    // Limites do dia no fuso local (consistente com corrida/refeições abaixo).
+    const dayStart = `${checkDate}T00:00:00${getTimezoneOffset("America/Sao_Paulo", checkDate)}`;
+    const dayEnd = `${checkDate}T23:59:59${getTimezoneOffset("America/Sao_Paulo", checkDate)}`;
+
     const [planRes, agendaRes, actionsRes, runningRes, readingRes, mealsRes, sleepRes] = await Promise.all([
-      // Weekly plan tasks completed today
-      admin.from("weekly_tasks")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("day_of_week", monDow)
-        .eq("status", "concluida")
-        .limit(1),
+      // Tarefas do plano da SEMANA ATUAL concluídas hoje
+      weekPlanId
+        ? admin.from("weekly_tasks")
+            .select("id")
+            .eq("weekly_plan_id", weekPlanId)
+            .eq("day_of_week", monDow)
+            .eq("status", "concluida")
+            .limit(1)
+        : Promise.resolve({ data: [] as { id: string }[], error: null as null }),
       // Agenda items linked to goals, completed today
       admin.from("agenda_items")
         .select("id")
@@ -126,13 +147,14 @@ export async function POST(req: NextRequest) {
         .eq("date", checkDate)
         .not("linked_goal_id", "is", null)
         .limit(1),
-      // Goal actions completed today (via updated_at)
+      // Goal actions completed today (via updated_at), escopadas aos goals do usuário
+      // (goal_actions não tem user_id; chega-se ao usuário via goal_stages → goals)
       admin.from("goal_actions")
         .select("id")
-        .eq("user_id", user.id)
         .eq("status", "concluida")
-        .gte("updated_at", `${checkDate}T00:00:00`)
-        .lte("updated_at", `${checkDate}T23:59:59`)
+        .gte("updated_at", dayStart)
+        .lte("updated_at", dayEnd)
+        .eq("goal_stages.goals.user_id", user.id)
         .limit(1),
       // Corrida registrada hoje (auto-marca "correu")
       admin.from("running_sessions")
