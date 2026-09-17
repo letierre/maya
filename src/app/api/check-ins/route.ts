@@ -130,22 +130,25 @@ export async function POST(req: NextRequest) {
     const dayEnd = `${checkDate}T23:59:59${getTimezoneOffset("America/Sao_Paulo", checkDate)}`;
 
     const [planRes, agendaRes, actionsRes, runningRes, readingRes, mealsRes, sleepRes] = await Promise.all([
-      // Tarefas do plano da SEMANA ATUAL concluídas hoje
+      // Tarefas do plano da SEMANA ATUAL concluídas hoje, LIGADAS a uma meta
+      // (direto via linked_goal_id, ou via uma ação de meta em linked_action_id).
+      // Tarefa avulsa ("limpar a casa", "tirar carne do congelador") não conta.
       weekPlanId
         ? admin.from("weekly_tasks")
             .select("id")
             .eq("weekly_plan_id", weekPlanId)
             .eq("day_of_week", monDow)
             .eq("status", "concluida")
+            .or("linked_goal_id.not.is.null,linked_action_id.not.is.null")
             .limit(1)
         : Promise.resolve({ data: [] as { id: string }[], error: null as null }),
-      // Agenda items linked to goals, completed today
+      // Itens da agenda concluídos hoje, ligados a uma meta (ou a uma ação de meta)
       admin.from("agenda_items")
         .select("id")
         .eq("user_id", user.id)
         .eq("status", "concluida")
         .eq("date", checkDate)
-        .not("linked_goal_id", "is", null)
+        .or("linked_goal_id.not.is.null,linked_action_id.not.is.null")
         .limit(1),
       // Goal actions completed today (via updated_at), escopadas aos goals do usuário
       // (goal_actions não tem user_id; chega-se ao usuário via goal_stages → goals)
