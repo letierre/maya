@@ -1,27 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getStripe } from "@/lib/stripe";
+import { getStripe, periodEndFromSubscription } from "@/lib/stripe";
 import { logError } from "@/lib/error-log";
 
 // Mapeia uma Stripe.Subscription para a linha da tabela `subscriptions`.
 function subscriptionRow(sub: Stripe.Subscription, plan: string) {
-  // A API "dahlia" (2026-08) removeu current_period_end do objeto Subscription;
-  // o fim do período agora vem em billing_schedules[].bill_until.computed_timestamp.
-  const schedules = (sub as Stripe.Subscription & {
-    billing_schedules?: Array<{ bill_until?: { computed_timestamp?: number } }>;
-  }).billing_schedules ?? [];
-  const periodEndTs = schedules.length > 0
-    ? Math.max(...schedules.map((s) => s.bill_until?.computed_timestamp ?? 0))
-    : 0;
-
   return {
     stripe_customer_id: typeof sub.customer === "string" ? sub.customer : (sub.customer?.id ?? null),
     stripe_subscription_id: sub.id,
     plan,
     status: sub.status,
     trial_ends_at: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
-    current_period_end: periodEndTs ? new Date(periodEndTs * 1000).toISOString() : null,
+    current_period_end: periodEndFromSubscription(sub),
     cancel_at_period_end: sub.cancel_at_period_end,
     updated_at: new Date().toISOString(),
   };
@@ -49,8 +40,19 @@ export async function POST(req: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.client_reference_id || session.metadata?.user_id;
-        const subId = typeof session.subscription === "string" ? session.subscription : null;
-        if (!userId || !subId) break;
+        // "dahlia": session.subscription pode vir como string ou como objeto
+        // aninhado (parent.subscription_details.subscription).
+        const rawSub = session.subscription as unknown;
+        const subId: string | null =
+          typeof rawSub === "string"
+            ? rawSub
+            : (rawSub as { id?: string } | null)?.id
+              ?? (session as unknown as { parent?: { subscription_details?: { subscription?: string } } }).parent?.subscription_details?.subscription
+              ?? null;
+        if (!userId || !subId) {
+          console.error("checkout.session.completed sem user_id/subscription:", { userId, subId });
+          break;
+        }
         const sub = await stripe.subscriptions.retrieve(subId);
         await admin.from("subscriptions").upsert(
           { user_id: userId, ...subscriptionRow(sub, session.metadata?.plan || "monthly") },
@@ -58,6 +60,7 @@ export async function POST(req: NextRequest) {
         );
         break;
       }
+      case "customer.subscription.created":
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
@@ -69,10 +72,29 @@ export async function POST(req: NextRequest) {
             .select("user_id, plan")
             .eq("stripe_subscription_id", sub.id)
             .maybeSingle();
-          if (!existing) break;
+          if (!existing) {
+            console.error("webhook: assinatura sem user_id no metadata e sem match no DB:", sub.id);
+            break;
+          }
           userId = existing.user_id;
           plan = existing.plan || plan;
         }
+
+        // Evita que um evento de uma assinatura ANTIGA do usuário (ex.: uma sub
+        // cancelada) sobrescreva o estado de uma assinatura mais nova e ativa.
+        // Um usuário pode ter várias subs no Stripe (migração de preço, plano
+        // antigo) — só a sub ativa deve mandar no status.
+        if (sub.status !== "active") {
+          const { data: stored } = await admin
+            .from("subscriptions")
+            .select("stripe_subscription_id, status")
+            .eq("user_id", userId)
+            .maybeSingle();
+          if (stored?.status === "active" && stored.stripe_subscription_id !== sub.id) {
+            break; // mantém a sub ativa; ignora evento de sub antiga/cancelada
+          }
+        }
+
         await admin.from("subscriptions").upsert(
           { user_id: userId, ...subscriptionRow(sub, plan) },
           { onConflict: "user_id" }
@@ -86,7 +108,10 @@ export async function POST(req: NextRequest) {
         // API "dahlia" removeu invoice.subscription; a sub vem em parent.subscription_details.
         const subRef = invoice.parent?.subscription_details?.subscription ?? null;
         const subId = typeof subRef === "string" ? subRef : (subRef?.id ?? null);
-        if (!subId) break;
+        if (!subId) {
+          console.error("invoice.payment_failed sem subscription:", invoice.id);
+          break;
+        }
         const { data: existing } = await admin
           .from("subscriptions")
           .select("user_id")
