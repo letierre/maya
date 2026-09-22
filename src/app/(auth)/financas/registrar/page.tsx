@@ -502,25 +502,6 @@ export default function FinancasRegistrarPage() {
               </button>
             </div>
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" onClick={() => cameraRef.current?.click()} style={{
-                flex: 1, padding: "11px", borderRadius: 12,
-                border: `1px solid ${BORDER}`, background: SURFACE,
-                cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600,
-                color: TEXT_SEC, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              }}>
-                <Camera size={15} /> {tFn(lang, "fin_camera")}
-              </button>
-              <button type="button" onClick={() => galleryRef.current?.click()} style={{
-                flex: 1, padding: "11px", borderRadius: 12,
-                border: `1px solid ${BORDER}`, background: SURFACE,
-                cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600,
-                color: TEXT_SEC, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              }}>
-                <ImageIcon size={15} /> {tFn(lang, "fin_galeria")}
-              </button>
-            </div>
-
             <button type="button" onClick={analyze} style={{
               width: "100%", padding: "16px 20px", borderRadius: 16, border: 0, cursor: "pointer",
               background: ACCENT, fontFamily: "inherit", fontSize: 16, fontWeight: 700, color: "#fff",
