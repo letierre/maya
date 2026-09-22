@@ -1,7 +1,7 @@
 "use client";
 import { getLocale } from "@/lib/language";
 import { useTranslation } from "@/lib/useTranslation";
-import { withinNextDay } from "@/lib/utils";
+import { withinNextDay, getLocalDate } from "@/lib/utils";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -82,35 +82,77 @@ export function TrialBanner() {
 }
 
 /**
- * Aviso no Perfil: aparece só quando a assinatura ativa está prestes a renovar
- * (≤ 24h). Reforça que é uma renovação — não um recomeço.
+ * Aviso de assinatura (dashboard + Perfil). Aparece quando o usuário precisa de
+ * atenção: assinatura ativa prestes a renovar (≤ 24h) ou cobrança pendente
+ * (past_due). Com `dismissable`, mostra um "x" que persiste por dia (localStorage).
  */
-export function RenewalNotice() {
+export function SubscriptionNotice({ dismissable = false }: { dismissable?: boolean }) {
   const { sub, loading } = useSubscription();
   const { t } = useTranslation();
+  const [dismissed, setDismissed] = useState(false);
 
-  if (loading || !sub) return null;
-  if (sub.status !== "active" || !withinNextDay(sub.currentPeriodEnd)) return null;
+  useEffect(() => {
+    if (!dismissable) return;
+    try {
+      if (localStorage.getItem(`sub_notice_dismissed_${getLocalDate()}`)) setDismissed(true);
+    } catch { /* ignore */ }
+  }, [dismissable]);
+
+  if (loading || !sub || dismissed) return null;
+
+  const renewSoon = sub.status === "active" && withinNextDay(sub.currentPeriodEnd);
+  const pastDue = sub.status === "past_due";
+
+  let emoji = "";
+  let title = "";
+  let body = "";
+  let danger = false;
+
+  if (pastDue) {
+    emoji = "⚠️";
+    title = t("ss_pagamento_pendente");
+    body = t("ss_atualize_cartao");
+    danger = true;
+  } else if (renewSoon) {
+    emoji = "🔄";
+    title = t("ss_renewal_titulo");
+    body = t("ss_renewal_corpo", { date: formatDate(sub.currentPeriodEnd) ?? "" });
+  } else {
+    return null;
+  }
+
+  const dismiss = () => {
+    if (dismissable) {
+      try { localStorage.setItem(`sub_notice_dismissed_${getLocalDate()}`, "1"); } catch { /* ignore */ }
+    }
+    setDismissed(true);
+  };
 
   return (
     <div
       style={{
         display: "flex", alignItems: "flex-start", gap: 10,
-        marginBottom: 12, padding: "12px 14px",
+        padding: "12px 14px",
         borderRadius: 14,
-        background: "oklch(0.5 0.12 270 / .12)",
-        border: "1px solid oklch(0.5 0.12 270 / .35)",
+        background: danger ? "oklch(0.52 0.15 25 / .14)" : "oklch(0.5 0.12 270 / .12)",
+        border: danger ? "1px solid oklch(0.52 0.15 25 / .4)" : "1px solid oklch(0.5 0.12 270 / .35)",
       }}
     >
-      <span style={{ fontSize: 18, lineHeight: 1.2 }}>🔄</span>
+      <span style={{ fontSize: 18, lineHeight: 1.3 }}>{emoji}</span>
       <div style={{ flex: 1 }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#e0d6ff" }}>
-          {t("ss_renewal_titulo")}
-        </p>
-        <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "#9e96b5" }}>
-          {t("ss_renewal_corpo", { date: formatDate(sub.currentPeriodEnd) ?? "" })}
-        </p>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#e0d6ff" }}>{title}</p>
+        <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "#9e96b5" }}>{body}</p>
       </div>
+      {dismissable && (
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label={t("fechar")}
+          style={{ background: "none", border: 0, color: "#9e96b5", fontSize: 18, cursor: "pointer", padding: 2, lineHeight: 1 }}
+        >
+          ✕
+        </button>
+      )}
     </div>
   );
 }

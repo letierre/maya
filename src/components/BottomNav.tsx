@@ -31,7 +31,7 @@ export function BottomNav() {
   const pathname = usePathname();
   const { t } = useTranslation();
   const [hasNudge, setHasNudge] = useState(false);
-  const [renewalSoon, setRenewalSoon] = useState(false);
+  const [subAttention, setSubAttention] = useState(false);
 
   // Check for unread Maya nudge
   useEffect(() => {
@@ -41,11 +41,11 @@ export function BottomNav() {
       .catch(() => {});
   }, []);
 
-  // Bolinha de aviso de renovação no Perfil (assinatura ativa a ≤ 24h de renovar)
+  // Bolinha de aviso no Perfil: renovação próxima (≤ 24h) ou cobrança pendente.
   useEffect(() => {
     fetch("/api/subscription")
       .then(r => r.json())
-      .then(d => { setRenewalSoon(d?.status === "active" && withinNextDay(d?.currentPeriodEnd)); })
+      .then(d => { setSubAttention(d?.status === "past_due" || (d?.status === "active" && withinNextDay(d?.currentPeriodEnd))); })
       .catch(() => {});
   }, []);
 
@@ -129,7 +129,7 @@ export function BottomNav() {
                     }} />
                   )}
                 </div>
-              ) : slug === "perfil" && renewalSoon && Icon ? (
+              ) : slug === "perfil" && subAttention && Icon ? (
                 <div style={{ position: "relative" }}>
                   <Icon size={22} />
                   <span style={{

@@ -12,7 +12,7 @@ import { getUserTimezone } from "@/lib/utils";
 import { LogoutButton } from "@/components/LogoutButton";
 import { InstallAppCard } from "@/components/InstallAppCard";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
-import { PlanCard, RenewalNotice } from "@/components/SubscriptionStatus";
+import { PlanCard, SubscriptionNotice } from "@/components/SubscriptionStatus";
 import { APP_VERSION } from "@/lib/version";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -229,8 +229,10 @@ export default function PerfilPage() {
           </h1>
         </div>
 
-        {/* Aviso de renovação (quando a renovação está próxima) */}
-        <RenewalNotice />
+        {/* Aviso de assinatura (renovação próxima / cobrança pendente) */}
+        <div style={{ marginBottom: 12 }}>
+          <SubscriptionNotice />
+        </div>
 
         {/* Meu plano */}
         <PlanCard />

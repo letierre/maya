@@ -17,7 +17,7 @@ import { CheckinProgress } from "@/components/CheckinProgress";
 import { InsightsCarousel } from "@/components/InsightsCarousel";
 import { EvolucaoSpark } from "@/components/EvolucaoSpark";
 import { CareList } from "@/components/CareList";
-import { TrialBanner } from "@/components/SubscriptionStatus";
+import { TrialBanner, SubscriptionNotice } from "@/components/SubscriptionStatus";
 import type { CheckIn, SleepLog, WeeklyTask } from "@/types";
 
 // LLM endpoints já são cacheados no servidor 1x/dia; cacheamos no cliente por
@@ -333,6 +333,11 @@ export default function DashboardPage() {
     >
       {/* ═══ TRIAL BANNER ═══ */}
       <TrialBanner />
+
+      {/* ═══ AVISO DE ASSINATURA (renovação próxima / cobrança pendente) ═══ */}
+      <div style={{ margin: "0 14px 10px" }}>
+        <SubscriptionNotice dismissable />
+      </div>
 
       {/* ═══ MAYA HERO ═══ */}
       <MayaHero
