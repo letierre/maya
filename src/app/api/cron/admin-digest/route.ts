@@ -15,7 +15,7 @@ function shiftYMD(dateStr: string, days: number): string {
 }
 
 // GET /api/cron/admin-digest — resumo diário por push aos admins.
-// Agendado via pg_cron (migration 058) às 09:00 (São Paulo).
+// Agendado via pg_cron (migration 061) às 21:00 (São Paulo) = 00:00 UTC.
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (secret) {
