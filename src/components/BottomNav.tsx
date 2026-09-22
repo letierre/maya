@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { Home, BarChart3, CalendarDays, User } from "lucide-react";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { useTranslation } from "@/lib/useTranslation";
+import { withinNextDay } from "@/lib/utils";
 
 const NAV_ITEMS: { href: string; icon: React.ComponentType<{ size?: number }> | null; label?: string; labelKey?: string; slug: string }[] = [
   { href: "/dashboard",    icon: Home,        labelKey: "nav_inicio",  slug: "dashboard" },
@@ -30,12 +31,21 @@ export function BottomNav() {
   const pathname = usePathname();
   const { t } = useTranslation();
   const [hasNudge, setHasNudge] = useState(false);
+  const [renewalSoon, setRenewalSoon] = useState(false);
 
   // Check for unread Maya nudge
   useEffect(() => {
     fetch("/api/maya/nudge")
       .then(r => r.json())
       .then(data => { setHasNudge(data.nudges?.length > 0); })
+      .catch(() => {});
+  }, []);
+
+  // Bolinha de aviso de renovação no Perfil (assinatura ativa a ≤ 24h de renovar)
+  useEffect(() => {
+    fetch("/api/subscription")
+      .then(r => r.json())
+      .then(d => { setRenewalSoon(d?.status === "active" && withinNextDay(d?.currentPeriodEnd)); })
       .catch(() => {});
   }, []);
 
@@ -118,6 +128,15 @@ export function BottomNav() {
                       background: "#FF4D4D", border: "1.5px solid #0F0F14",
                     }} />
                   )}
+                </div>
+              ) : slug === "perfil" && renewalSoon && Icon ? (
+                <div style={{ position: "relative" }}>
+                  <Icon size={22} />
+                  <span style={{
+                    position: "absolute", top: -2, right: -2,
+                    width: 10, height: 10, borderRadius: "50%",
+                    background: "#FF4D4D", border: "1.5px solid #0F0F14",
+                  }} />
                 </div>
               ) : Icon ? (
                 <Icon size={22} />

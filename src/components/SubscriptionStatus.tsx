@@ -1,6 +1,7 @@
 "use client";
 import { getLocale } from "@/lib/language";
 import { useTranslation } from "@/lib/useTranslation";
+import { withinNextDay } from "@/lib/utils";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -76,6 +77,40 @@ export function TrialBanner() {
       <span style={{ fontSize: 11, color: "#9e96b5", whiteSpace: "nowrap" }}>
         {t("ss_ate", { date: formatDate(sub.trialEndsAt) ?? "" })}
       </span>
+    </div>
+  );
+}
+
+/**
+ * Aviso no Perfil: aparece só quando a assinatura ativa está prestes a renovar
+ * (≤ 24h). Reforça que é uma renovação — não um recomeço.
+ */
+export function RenewalNotice() {
+  const { sub, loading } = useSubscription();
+  const { t } = useTranslation();
+
+  if (loading || !sub) return null;
+  if (sub.status !== "active" || !withinNextDay(sub.currentPeriodEnd)) return null;
+
+  return (
+    <div
+      style={{
+        display: "flex", alignItems: "flex-start", gap: 10,
+        marginBottom: 12, padding: "12px 14px",
+        borderRadius: 14,
+        background: "oklch(0.5 0.12 270 / .12)",
+        border: "1px solid oklch(0.5 0.12 270 / .35)",
+      }}
+    >
+      <span style={{ fontSize: 18, lineHeight: 1.2 }}>🔄</span>
+      <div style={{ flex: 1 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#e0d6ff" }}>
+          {t("ss_renewal_titulo")}
+        </p>
+        <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "#9e96b5" }}>
+          {t("ss_renewal_corpo", { date: formatDate(sub.currentPeriodEnd) ?? "" })}
+        </p>
+      </div>
     </div>
   );
 }

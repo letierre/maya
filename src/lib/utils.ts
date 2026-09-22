@@ -140,6 +140,13 @@ export function relativeDayLabel(dateStr: string, todayStr?: string): string {
   return `há ${diff} dias`;
 }
 
+/** True se `iso` está no futuro e a ≤ 24h de agora (janela de aviso de renovação). */
+export function withinNextDay(iso: string | null | undefined): boolean {
+  if (!iso) return false;
+  const diff = new Date(iso).getTime() - Date.now();
+  return diff > 0 && diff <= 86_400_000;
+}
+
 /** Formats a Date as YYYY-MM-DD in the user's timezone. */
 export function formatLocalDate(d: Date, tz?: string): string {
   if (typeof window !== "undefined") return dateToYMD(d);
