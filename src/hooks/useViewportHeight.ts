@@ -27,7 +27,6 @@ export function useViewportHeight() {
         setKeyboardOpen(false);
         return;
       }
-      window.scrollTo(0, 0);
       const h = vv.height;
       setViewportH(h);
       setKeyboardOpen(fullHeightRef.current - h > 80);

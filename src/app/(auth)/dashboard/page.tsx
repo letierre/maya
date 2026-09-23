@@ -79,14 +79,16 @@ export default function DashboardPage() {
   const [userGender, setUserGender] = useState(snap?.userGender ?? "");
 
   // Maya nudge (for CTA action)
-  const [mayaNudgeAction, setMayaNudgeAction] = useState<{ label: string; href: string } | null>(snap?.mayaNudgeAction ?? null);
+  const [mayaNudgeAction, setMayaNudgeAction] = useState<{ label: string; href: string } | null>(null);
 
   // Maya home message (from LLM, via /api/maya/home-message)
+  // Refetcha a cada montagem (não restaura do snapshot) para refletir um check-in
+  // feito há instantes — o servidor já invalida o cache diário no POST de check-in.
   const [homeMessage, setHomeMessage] = useState<{
     message: string;
     state?: string;
     action?: { label: string; href: string };
-  } | null>(snap?.homeMessage ?? null);
+  } | null>(null);
 
   // Finance
   const [todaySpending, setTodaySpending] = useState<number | null>(snap?.todaySpending ?? null);

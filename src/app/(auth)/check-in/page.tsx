@@ -739,6 +739,7 @@ export default function CheckInPage() {
         );
       }
       invalidateFetchCache("/api/check-ins");
+      invalidateFetchCache("/api/maya");
       router.push("/dashboard");
       router.refresh();
     } catch {
@@ -847,7 +848,7 @@ export default function CheckInPage() {
       })
       .catch(() => {});
 
-    const timer = setTimeout(() => { invalidateFetchCache("/api/check-ins"); router.push("/dashboard"); router.refresh(); }, 1800);
+    const timer = setTimeout(() => { invalidateFetchCache("/api/check-ins"); invalidateFetchCache("/api/maya"); router.push("/dashboard"); router.refresh(); }, 1800);
     return () => clearTimeout(timer);
   }, [isDone, router]);
 

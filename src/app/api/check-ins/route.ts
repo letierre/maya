@@ -264,7 +264,7 @@ export async function POST(req: NextRequest) {
     if (error) throw error;
 
     // Invalidate Maya nudge cache so next dashboard load reflects today's data
-    invalidateMayaNudgeCache(admin, user.id);
+    await invalidateMayaNudgeCache(admin, user.id);
     // Fire-and-forget: refresh all specialist insights
     analyzeAllSpecialists(user.id).catch(() => {});
     // Fire-and-forget: alerta de segurança se houver sinal de risco

@@ -1,7 +1,7 @@
 "use client";
 import { getLocale } from "@/lib/language";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "@/lib/useTranslation";
 import { Send, ArrowLeft, Plus, Camera, X, Image as ImageIcon, ArrowDown } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -16,7 +16,7 @@ interface Message {
   imageUrls?: string[];
   time: string;
   date: string;
-  seen?: boolean;
+  status?: "sent" | "delivered" | "read";
   synced?: boolean;
   action?: { label: string; href: string } | null;
 }
@@ -44,6 +44,10 @@ async function persistWithRetry(
 }
 
 const CHAT_CACHE_KEY = "maya_chat";
+
+// Depois de quantos ms sem atividade a Maya passa de "online" para
+// "Visto por último ..." (presença estilo WhatsApp).
+const IDLE_MS = 5 * 60 * 1000; // 5 minutos
 
 function formatTime(): string {
   return new Date().toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" });
@@ -147,10 +151,11 @@ function loadProfileCache() {
 }
 
 function Ticks({ status }: { status: "sent" | "delivered" | "read" }) {
-  // White tones on the purple bubble — good contrast like WhatsApp
+  // sent/delivered ficam brancos (como WhatsApp); "read" ganha cor própria
+  // para sinalizar que a Maya leu.
   const color =
     status === "read"
-      ? "rgba(255,255,255,0.9)"
+      ? "#53BDEB"
       : status === "delivered"
         ? "rgba(255,255,255,0.5)"
         : "rgba(255,255,255,0.35)";
@@ -225,6 +230,30 @@ export default function MayaChatPage() {
   const sendingRef = useRef(false);
   const nudgeActionRef = useRef<{ label: string; href: string } | null>(null);
 
+  // ── Presença (online / digitando / visto por último) ──
+  const [presence, setPresence] = useState<"online" | "lastSeen">("online");
+  // Instante da última atividade (mensagem enviada/recebida). Semeado do
+  // histórico no load; atualizado para "agora" a cada nova troca.
+  const lastActivityAtRef = useRef(Date.now());
+
+  // Última mensagem da Maya, para o "Visto por último ...".
+  const lastSeenTime = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role === "assistant" && m.date && m.time) return { date: m.date, time: m.time };
+    }
+    return null;
+  }, [messages]);
+
+  // Vira "Visto por último" após IDLE_MS sem atividade.
+  useEffect(() => {
+    const check = () => {
+      if (Date.now() - lastActivityAtRef.current > IDLE_MS) setPresence("lastSeen");
+    };
+    const id = setInterval(check, 15000);
+    return () => clearInterval(id);
+  }, []);
+
   // ── Chat scroll management ──
   const { handleScroll, isAtBottomRef, unread, jumpToLatest } = useChatScroll({
     containerRef: messagesRef,
@@ -273,6 +302,9 @@ export default function MayaChatPage() {
               )
               .map((m: unknown) => {
                 const msg = m as { role: string; content: string; image_urls?: string[]; created_at: string };
+                // Semeia a última atividade com a mensagem mais recente (o sort
+                // acima é ascendente, então a última iteração é a mais nova).
+                if (msg.created_at) lastActivityAtRef.current = new Date(msg.created_at).getTime();
                 return {
                   role: msg.role as "user" | "assistant",
                   content: msg.content,
@@ -312,6 +344,9 @@ export default function MayaChatPage() {
           localStorage.setItem(CHAT_CACHE_KEY, JSON.stringify(serverMsgs.slice(-50)));
         }
         setHydrated(true);
+        // Se chegou de um nudge (contexto novo agora), a Maya acabou de "falar" → online.
+        if (contextMsg) lastActivityAtRef.current = Date.now();
+        setPresence(Date.now() - lastActivityAtRef.current > IDLE_MS ? "lastSeen" : "online");
       })
       .catch(() => {
         // Server unreachable — use localStorage as fallback
@@ -386,6 +421,20 @@ export default function MayaChatPage() {
     async (parts: string[], baseMessages: Message[]) => {
       sendingRef.current = true;
       let current = [...baseMessages];
+      lastActivityAtRef.current = Date.now();
+      setPresence("online");
+
+      // Maya leu a mensagem e vai começar a digitar → 2 vistos coloridos.
+      setMessages((prev) => {
+        const read = [...prev];
+        for (let i = read.length - 1; i >= 0; i--) {
+          if (read[i].role === "user") {
+            read[i] = { ...read[i], status: "read" };
+            break;
+          }
+        }
+        return read;
+      });
 
       for (let i = 0; i < parts.length; i++) {
         setTyping(true);
@@ -407,18 +456,6 @@ export default function MayaChatPage() {
           await new Promise((r) => setTimeout(r, 400));
         }
       }
-
-      // Mark last user message as seen
-      setMessages((prev) => {
-        const updated = [...prev];
-        for (let i = updated.length - 1; i >= 0; i--) {
-          if (updated[i].role === "user") {
-            updated[i] = { ...updated[i], seen: true };
-            break;
-          }
-        }
-        return updated;
-      });
 
       sendingRef.current = false;
     },
@@ -542,7 +579,7 @@ export default function MayaChatPage() {
       imageUrls: uploadedPaths,
       time: now,
       date: nowDate,
-      seen: false,
+      status: "sent",
     };
     const updated = [...messages, userMsg];
     setMessages(updated);
@@ -552,6 +589,8 @@ export default function MayaChatPage() {
     setUploadingImages(false);
     setSending(true);
     sendingRef.current = true;
+    lastActivityAtRef.current = Date.now();
+    setPresence("online");
 
     // Safety net: keep keyboard open after send
     requestAnimationFrame(() => {
@@ -561,12 +600,13 @@ export default function MayaChatPage() {
     // Persist user message first so DB order is correct
     await persistWithRetry([{ role: "user", content: userMsg.content, image_urls: uploadedPaths }]);
 
-    // Mark as "read" immediately — Maya received the message
+    // Persistiu → "entregue" (2 vistos brancos). Vira "lida" quando a Maya
+    // começar a responder (em deliverParts).
     setMessages((prev) => {
       const updated2 = [...prev];
       for (let i = updated2.length - 1; i >= 0; i--) {
         if (updated2[i].role === "user") {
-          updated2[i] = { ...updated2[i], seen: true };
+          updated2[i] = { ...updated2[i], status: "delivered" };
           break;
         }
       }
@@ -603,6 +643,8 @@ export default function MayaChatPage() {
     } catch {
       setSending(false);
       sendingRef.current = false;
+      // API falhou / sem tokens → a Maya não está de fato "online" agora.
+      setPresence("lastSeen");
       setMessages([
         ...updated,
         {
@@ -675,18 +717,24 @@ export default function MayaChatPage() {
             style={{ fontSize: 11.5, color: "#8A8794" }}
           >
             {hydrated ? (
-              <>
-                <span
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: "#22C55E",
-                    display: "inline-block",
-                  }}
-                />
-                Online
-              </>
+              typing ? (
+                <>{t("maya_digitando")}</>
+              ) : presence === "lastSeen" && lastSeenTime ? (
+                <span>{t("maya_visto_ultimo", { day: getDateLabel(lastSeenTime.date, t), time: lastSeenTime.time })}</span>
+              ) : (
+                <>
+                  <span
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: "50%",
+                      background: "#22C55E",
+                      display: "inline-block",
+                    }}
+                  />
+                  {t("maya_online")}
+                </>
+              )
             ) : (
               "carregando..."
             )}
@@ -759,9 +807,7 @@ export default function MayaChatPage() {
         {/* Message bubbles */}
         {messages.map((msg, i) => {
           const isAssistant = msg.role === "assistant";
-          const status: "sent" | "delivered" | "read" = msg.seen
-            ? "read"
-            : "delivered";
+          const status: "sent" | "delivered" | "read" = msg.status ?? "read";
           const prevMsg = i > 0 ? messages[i - 1] : null;
 
           let separatorLabel: string | null = null;
