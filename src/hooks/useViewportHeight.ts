@@ -27,20 +27,30 @@ export function useViewportHeight() {
         setKeyboardOpen(false);
         return;
       }
-      const h = vv.height;
+      // Reancora a página no topo a cada frame do teclado — impede o iOS de
+      // deixar uma faixa de scroll entre o input e o teclado.
+      window.scrollTo(0, 0);
+      const h = Math.round(vv.height);
+      // "Altura cheia" = a maior altura já vista (sem teclado). Só cresce, para
+      // rotação/troca de teclado não deixarem o valor defasado.
+      if (h > fullHeightRef.current) fullHeightRef.current = h;
       setViewportH(h);
       setKeyboardOpen(fullHeightRef.current - h > 80);
     });
   }, []);
 
   useEffect(() => {
-    fullHeightRef.current = window.innerHeight;
-
     const vv = window.visualViewport;
+    fullHeightRef.current = vv ? Math.round(vv.height) : window.innerHeight;
+
     if (vv) {
       vv.addEventListener("resize", handleViewportChange);
       vv.addEventListener("scroll", handleViewportChange);
     }
+    // Fallback: com resizes-content o window também redimensiona ao abrir/fechar
+    // o teclado — garante que a altura restaure mesmo se o visualViewport não
+    // disparar (a causa da faixa preta).
+    window.addEventListener("resize", handleViewportChange);
 
     // Initial measurement
     handleViewportChange();
@@ -50,6 +60,7 @@ export function useViewportHeight() {
         vv.removeEventListener("resize", handleViewportChange);
         vv.removeEventListener("scroll", handleViewportChange);
       }
+      window.removeEventListener("resize", handleViewportChange);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [handleViewportChange]);
