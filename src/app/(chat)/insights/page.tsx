@@ -17,6 +17,7 @@ interface Message {
   time: string;
   date: string;
   status?: "sent" | "delivered" | "read";
+  createdAt?: number; // epoch ms — usado para o "Visto por último" (Maya)
   synced?: boolean;
   action?: { label: string; href: string } | null;
 }
@@ -74,6 +75,16 @@ function getDateLabel(dateStr: string, t: (key: string) => string): string {
   if (diff === 1) return t("ins_ontem");
   if (diff < 7) return d.toLocaleDateString(getLocale(), { weekday: "long" });
   return d.toLocaleDateString(getLocale(), { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+// "Visto por último {dia} às {hora}" a partir de um timestamp (ms), somando a
+// tolerância de ociosidade para dar a impressão de que a Maya ficou conectada
+// um pouco depois que o usuário saiu.
+function formatLastSeen(ts: number, t: (key: string, vars?: Record<string, string>) => string): string {
+  const d = new Date(ts);
+  const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const time = d.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" });
+  return t("maya_visto_ultimo", { day: getDateLabel(dateStr, t), time });
 }
 
 // ── Sub-components ────────────────────────────────────────────────────
@@ -236,11 +247,11 @@ export default function MayaChatPage() {
   // histórico no load; atualizado para "agora" a cada nova troca.
   const lastActivityAtRef = useRef(Date.now());
 
-  // Última mensagem da Maya, para o "Visto por último ...".
-  const lastSeenTime = useMemo(() => {
+  // Instante (raw) da última mensagem da Maya, para o "Visto por último ...".
+  const lastMayaSeenAt = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i];
-      if (m.role === "assistant" && m.date && m.time) return { date: m.date, time: m.time };
+      if (m.role === "assistant" && m.createdAt) return m.createdAt;
     }
     return null;
   }, [messages]);
@@ -314,6 +325,7 @@ export default function MayaChatPage() {
                     minute: "2-digit",
                   }),
                   date: localDateFromTimestamp(msg.created_at),
+                  createdAt: msg.created_at ? new Date(msg.created_at).getTime() : undefined,
                 };
               })
           : [];
@@ -331,6 +343,7 @@ export default function MayaChatPage() {
               content: contextMsg,
               time: formatTime(),
               date: formatDate(),
+              createdAt: Date.now(),
               synced: false, // will be saved below
             };
             initialMessages = [...serverMsgs, contextEntry];
@@ -447,6 +460,7 @@ export default function MayaChatPage() {
             content: parts[i],
             time: formatTime(),
             date: formatDate(),
+            createdAt: Date.now(),
           },
         ];
         setMessages(current);
@@ -719,8 +733,8 @@ export default function MayaChatPage() {
             {hydrated ? (
               typing ? (
                 <>{t("maya_digitando")}</>
-              ) : presence === "lastSeen" && lastSeenTime ? (
-                <span>{t("maya_visto_ultimo", { day: getDateLabel(lastSeenTime.date, t), time: lastSeenTime.time })}</span>
+              ) : presence === "lastSeen" && lastMayaSeenAt != null ? (
+                <span>{formatLastSeen(lastMayaSeenAt + IDLE_MS, t)}</span>
               ) : (
                 <>
                   <span
