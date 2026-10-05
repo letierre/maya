@@ -355,6 +355,20 @@ export default function EditCheckInPage({
             </section>
           )}
 
+          {/* Ver seus dados */}
+          <button
+            type="button"
+            onClick={() => router.push("/check-in/dados")}
+            style={{
+              width: "100%", height: 52, borderRadius: 16, border: 0,
+              cursor: "pointer", background: "#7C5CFF", color: "#fff",
+              fontFamily: "inherit", fontSize: 15, fontWeight: 600,
+              transition: "filter .15s ease",
+            }}
+          >
+            {t("ck_dados_ver")}
+          </button>
+
           {/* Back */}
           <button
             type="button"

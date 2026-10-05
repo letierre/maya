@@ -140,6 +140,16 @@ export default function HistoricoPage() {
           {t(monthGroups.length === 1 ? "hist_months_one" : "hist_months_other", { count: String(monthGroups.length) })}
           {checkIns.length > 0 && ` · ${t("hist_checkins_total", { count: String(checkIns.length) })}`}
         </p>
+        {checkIns.length > 0 && (
+          <button
+            type="button"
+            onClick={() => router.push("/check-in/dados")}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition"
+            style={{ color: "#A78BFA", background: "var(--surface-3)", border: 0, cursor: "pointer" }}
+          >
+            📊 {t("ck_dados_ver")}
+          </button>
+        )}
       </div>
 
       {/* Empty state */}
