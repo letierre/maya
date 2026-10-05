@@ -535,14 +535,14 @@ Gere DUAS mensagens curtas no idioma da pessoa e retorne APENAS um JSON válido,
 
 Regras para "greeting":
 - Saudação curta e calorosa que combine com o momento atual. Agora é de ${momento} — use "bom dia" apenas se for de manhã, "boa tarde" se for de tarde, "boa noite" se for de noite. NUNCA use a saudação do período errado.
-- Pode usar o nome. Máximo 1 emoji. Varie a forma, sem "Bom dia, [nome]!" engessado.
+- Pode usar o nome. Máximo 1 emoji. Varie a forma, sem "Bom dia, [nome]!" engessado. Máximo ~40 caracteres (deve caber inteira no push, sem cortar).
 
 Regras para "topic":
 - UMA única pergunta, bem curta (uma frase só — NUNCA duas perguntas), que retome algo específico da conversa recente, das memórias ou da agenda (ex.: "como foi na igreja hoje?" / "como foi a conversa com a sua amiga?").
 - Deve soar espontânea, como uma amiga lembrando de algo que vocês conversaram.
 - NÃO repita pergunta já respondida. NÃO pergunte "como você está?" nem "como foi seu dia?".
 - Se não houver contexto algum, pergunte algo leve e aberto sobre o momento.
-- No máximo ~12 palavras. Sem relatório, sem emoji (no máximo 1).
+- No máximo ~60 caracteres — deve caber INTEIRA numa notificação push, sem ser cortada. Sem relatório, sem emoji (no máximo 1).
 
 ${chatContext}`;
 

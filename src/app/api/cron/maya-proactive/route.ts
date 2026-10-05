@@ -53,6 +53,15 @@ function parseProactiveJson(raw: string): { greeting: string; topic: string } | 
   }
 }
 
+/** Encurta no limite de caracteres quebrando na última palavra — evita cortar no meio. */
+function clip(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  const head = lastSpace > max * 0.5 ? cut.slice(0, lastSpace) : cut;
+  return `${head.trimEnd()}…`;
+}
+
 async function sendProactive(
   admin: ReturnType<typeof getSupabaseAdmin>,
   userId: string,
@@ -86,6 +95,10 @@ async function sendProactive(
     greeting = currentHour < 12 ? "Oi, bom dia!" : currentHour < 18 ? "Oi, boa tarde!" : "Oi, boa noite!";
   }
   if (!topic) topic = "Como está sendo o seu dia?";
+
+  // Rede de segurança: garante que caiba numa notificação push sem ser cortada.
+  greeting = clip(greeting, 40);
+  topic = clip(topic, 60);
 
   const g1 = await sendPushToUser(userId, {
     title: "Maya",
