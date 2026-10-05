@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getLocalDate } from "@/lib/utils";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
@@ -395,6 +396,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
   title?: string;
 }) {
   const { t } = useTranslation();
+  const router = useRouter();
   const eyebrowText = eyebrow ?? t("editar_checkin");
   const titleText = title ?? t("ck_what_changed");
   const feelingRef = useRef<HTMLDivElement>(null);
@@ -478,6 +480,17 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
           strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 6 6 18M6 6l12 12" />
         </svg>
+      </button>
+
+      {/* Ver seus dados */}
+      <button type="button" onClick={() => router.push("/check-in/dados")} style={{
+        position: "fixed", top: 14, right: 16, zIndex: 10,
+        height: 36, padding: "0 14px", borderRadius: 9999, border: 0, cursor: "pointer",
+        background: "#7C5CFF", color: "#fff", fontFamily: "inherit",
+        fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 5,
+        boxShadow: "0 1px 3px oklch(0.28 0.02 270 / .06)",
+      }}>
+        <span style={{ fontSize: 14, lineHeight: 1 }}>📊</span> {t("ck_dados_ver")}
       </button>
 
       {/* Header */}
