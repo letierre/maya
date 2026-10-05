@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
 
     // ── Fetch shared context + care signals ──
     const [ctx, careSignals] = await Promise.all([
-      fetchMayaContext(user.id, { checkInLimit: 3, diaryLimit: 3, sleepLimit: 1, chatLimit: 8 }),
+      fetchMayaContext(user.id, { checkInLimit: 7, diaryLimit: 10, sleepLimit: 1, chatLimit: 30 }),
       computeCareSignals(user.id),
     ]);
 
