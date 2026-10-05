@@ -38,6 +38,7 @@ function checkInToAnswers(ci: CheckIn): CheckInAnswers {
     sleep_quality: null,
     sleep_start_time: "",
     sleep_end_time: "",
+    sleep_interruptions: 0,
     took_medication: ci.took_medication ?? false,
     talked_to_someone: ci.talked_to_someone ?? false,
     meditation: ci.meditation ?? false,

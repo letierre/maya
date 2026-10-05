@@ -68,6 +68,15 @@ export async function GET(req: NextRequest) {
   for (const [tz, tzUserIds] of usersByTz) {
     const { time: currentTime, date: todaySP, dow: dayOfWeek } = getLocalNow(tz);
 
+    // Usuários que JÁ registraram sono hoje (ex.: no primeiro check-in do dia) —
+    // não devem receber o lembrete de "registre o sono" (wake) de novo.
+    const { data: sleepDone } = await admin
+      .from("sleep_logs")
+      .select("user_id")
+      .eq("date", todaySP)
+      .in("user_id", tzUserIds);
+    const sleepDoneSet = new Set((sleepDone ?? []).map((s) => s.user_id));
+
     // ── Sleep reminders (user-configured times) ─────────────────────────────
     for (const uid of tzUserIds) {
       const pref = prefsByUser.get(uid);
@@ -99,7 +108,7 @@ export async function GET(req: NextRequest) {
         });
       }
 
-      if (cfg.wake_time) {
+      if (cfg.wake_time && !sleepDoneSet.has(uid)) {
         const [wh, wm] = cfg.wake_time.split(":").map(Number);
         const total = wh * 60 + wm + 30;
         const wakeTime = `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;

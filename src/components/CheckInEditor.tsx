@@ -74,6 +74,7 @@ export interface CheckInAnswers {
   sleep_quality: number | null;
   sleep_start_time: string;
   sleep_end_time: string;
+  sleep_interruptions: number;
   took_medication: boolean;
   talked_to_someone: boolean;
   meditation: boolean;
@@ -105,6 +106,7 @@ export function defaultAnswers(): CheckInAnswers {
     sleep_quality: null,
     sleep_start_time: "",
     sleep_end_time: "",
+    sleep_interruptions: 0,
     took_medication: false,
     talked_to_someone: false,
     meditation: false,
@@ -140,7 +142,7 @@ export function answersEqual(a: CheckInAnswers, b: CheckInAnswers): boolean {
     "took_medication", "talked_to_someone", "meditation", "prayer", "breathing",
     "creative_activity", "walked", "ran", "strength_training", "read",
     "did_something_enjoyable", "worked_on_goals", "bowel_movement", "felt_judged", "ate_well",
-    "sleep_quality", "sleep_start_time", "sleep_end_time",
+    "sleep_quality", "sleep_start_time", "sleep_end_time", "sleep_interruptions",
   ];
   for (const k of keys) if (a[k] !== b[k]) return false;
   if (!arraysEqual(a.mood_tags ?? [], b.mood_tags ?? [])) return false;
@@ -183,6 +185,7 @@ export function saveSleepLogFromAnswers(answers: CheckInAnswers) {
       duration_min: durationMin,
       sleep_start: sleepStart,
       sleep_end: sleepEnd,
+      interruptions: answers.sleep_interruptions ?? 0,
       source: "checkin",
     }),
   }).catch(() => {});

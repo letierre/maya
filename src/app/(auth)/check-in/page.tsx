@@ -319,13 +319,14 @@ const sleepTimeInput: React.CSSProperties = {
 };
 
 function SleepStep({ onAnswer, onPrev }: {
-  onAnswer: (quality: number, startTime: string, endTime: string) => void;
+  onAnswer: (quality: number, startTime: string, endTime: string, interruptions: number) => void;
   onPrev: () => void;
 }) {
   const { t } = useTranslation();
   const [quality, setQuality] = useState<number | null>(null);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [interruptions, setInterruptions] = useState(0);
 
   const label11 = (text: string) => (
     <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
@@ -367,13 +368,13 @@ function SleepStep({ onAnswer, onPrev }: {
             <button key={q} type="button" onClick={() => setQuality(q)} style={{
               flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
               padding: "12px 2px", borderRadius: 14, border: 0, cursor: "pointer",
-              background: quality === q ? "oklch(0.5 0.12 270 / .18)" : "oklch(0.14 0.012 270)",
+              background: quality === q ? "oklch(.58 .18 270)" : "oklch(0.14 0.012 270)",
               backdropFilter: "blur(8px)",
-              outline: quality === q ? "2px solid oklch(0.5 0.12 270 / .5)" : "none",
+              outline: quality === q ? "2px solid oklch(.58 .18 270)" : "none",
               transition: "all .15s ease",
             }}>
               <span style={{ fontSize: 26 }}>{emoji}</span>
-              <span style={{ fontSize: 10, fontWeight: 600, color: quality === q ? "#e0d6ff" : "var(--muted-foreground)" }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: quality === q ? "#fff" : "var(--muted-foreground)" }}>
                 {t(labelKey)}
               </span>
             </button>
@@ -381,13 +382,31 @@ function SleepStep({ onAnswer, onPrev }: {
         </div>
       </div>
 
+      {/* Interruptions */}
+      <div style={{ marginTop: 20 }}>
+        {label11(t("sono_acordou_noite"))}
+        <div style={{ display: "flex", gap: 8 }}>
+          {[0, 1, 2, 3, 4].map((n) => (
+            <button key={n} type="button" onClick={() => setInterruptions(n)} style={{
+              flex: 1, padding: "10px 4px", borderRadius: 12, border: 0, cursor: "pointer",
+              background: interruptions === n ? "oklch(.58 .18 270)" : "oklch(0.18 0.012 270)",
+              fontFamily: "inherit", fontSize: 13, fontWeight: 700,
+              color: interruptions === n ? "#fff" : "oklch(0.58 0.04 270)",
+              transition: "all .15s ease",
+            }}>
+              {n === 4 ? "4+" : n === 0 ? t("nao") : `${n}×`}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <StepFooter
         onPrev={onPrev}
-        onNext={() => quality && onAnswer(quality, startTime, endTime)}
+        onNext={() => quality && onAnswer(quality, startTime, endTime, interruptions)}
         nextLabel={t("ck_sleep_log")}
         nextDisabled={!quality}
         secondary={
-          <button type="button" onClick={() => onAnswer(3, "", "")} style={{
+          <button type="button" onClick={() => onAnswer(3, "", "", 0)} style={{
             background: "transparent", border: 0, cursor: "pointer",
             fontFamily: "inherit", fontSize: 12.5, color: "var(--muted-foreground)",
             textDecoration: "underline", padding: "8px 0", flexShrink: 0,
@@ -779,13 +798,14 @@ export default function CheckInPage() {
     setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 60);
   }, [steps.length]);
 
-  const handleSleepAnswer = useCallback((quality: number, startTime: string, endTime: string) => {
+  const handleSleepAnswer = useCallback((quality: number, startTime: string, endTime: string, interruptions: number) => {
     setAnswers((a) => ({
       ...a,
       slept_well: quality >= 3,
       sleep_quality: quality,
       sleep_start_time: startTime,
       sleep_end_time: endTime,
+      sleep_interruptions: interruptions,
     }));
     setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 60);
   }, [steps.length]);
@@ -828,6 +848,7 @@ export default function CheckInPage() {
           duration_min: durationMin,
           sleep_start: sleepStart,
           sleep_end: sleepEnd,
+          interruptions: data.sleep_interruptions ?? 0,
           source: "checkin",
         }),
       }).catch(() => {});
