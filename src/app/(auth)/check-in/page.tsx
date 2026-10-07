@@ -94,7 +94,7 @@ function CheckInStage({ stepIdx, totalForProgress, isDone, onClose, children }: 
   const progress = Math.min(stepIdx + 1, totalForProgress);
 
   return (
-    <div style={{
+    <div className="ck-root" style={{
       width: "100%", minHeight: "100dvh", overflowX: "hidden",
       fontFamily: "var(--font-sans)", color: "var(--foreground)",
       background: "oklch(0.12 0.012 270)",
@@ -140,10 +140,11 @@ function CheckInStage({ stepIdx, totalForProgress, isDone, onClose, children }: 
         </p>
       )}
 
-      <div style={{
+      <div key={stepIdx} style={{
         minHeight: "100dvh", boxSizing: "border-box",
         padding: "110px 32px 130px",
         display: "flex", flexDirection: "column", justifyContent: "center",
+        animation: "ckScreenIn .3s ease",
       }}>
         {children}
       </div>
@@ -151,6 +152,9 @@ function CheckInStage({ stepIdx, totalForProgress, isDone, onClose, children }: 
       <style>{`
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         @keyframes caret { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+        @keyframes ckScreenIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .ck-root button { transition: transform .12s ease, opacity .12s ease; }
+        .ck-root button:active { transform: scale(0.96); opacity: .85; }
       `}</style>
     </div>
   );
@@ -458,6 +462,13 @@ function HabitStep({ habitKey, context, onAnswer, onSkip, onPrev }: {
   const { t } = useTranslation();
   const base = HABIT_COPY[habitKey] ?? { emoji: "•", labelKey: habitKey, aKey: "sim", bKey: "nao" };
   const label = getHabitLabel(habitKey, context);
+  const [chosen, setChosen] = useState<boolean | null>(null);
+
+  const choose = (v: boolean) => {
+    if (chosen !== null) return;
+    setChosen(v);
+    onAnswer(habitKey, v);
+  };
 
   return (
     <>
@@ -466,12 +477,16 @@ function HabitStep({ habitKey, context, onAnswer, onSkip, onPrev }: {
         {label}
       </h1>
       <div style={{ marginTop: 36, display: "flex", gap: 10 }}>
-        <button type="button" onClick={() => onAnswer(habitKey, true)} style={{
+        <button type="button" onClick={() => choose(true)} style={{
           flex: 1, height: 56, borderRadius: 16, border: 0, cursor: "pointer",
           background: "#7C5CFF", color: "#fff",
           fontFamily: "inherit", fontSize: 16, fontWeight: 600, letterSpacing: "-0.005em",
-          boxShadow: "0 4px 14px -4px oklch(0.5 0.12 270 / .45)",
+          boxShadow: chosen === true
+            ? "0 6px 22px -4px oklch(0.5 0.12 270 / .8)"
+            : "0 4px 14px -4px oklch(0.5 0.12 270 / .45)",
           display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          opacity: chosen === false ? 0.4 : 1,
+          transition: "all .18s ease",
         }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -479,12 +494,16 @@ function HabitStep({ habitKey, context, onAnswer, onSkip, onPrev }: {
           </svg>
           {t(base.aKey)}
         </button>
-        <button type="button" onClick={() => onAnswer(habitKey, false)} style={{
+        <button type="button" onClick={() => choose(false)} style={{
           flex: 1, height: 56, borderRadius: 16,
-          background: "rgba(167,139,250,0.1)", backdropFilter: "blur(8px)",
-          border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer",
+          background: chosen === false ? "oklch(0.5 0.13 270)" : "rgba(167,139,250,0.1)",
+          backdropFilter: "blur(8px)",
+          border: chosen === false ? "2px solid oklch(0.55 0.16 270)" : "1px solid rgba(167,139,250,0.2)",
+          cursor: "pointer",
           fontFamily: "inherit", fontSize: 16, fontWeight: 500,
-          color: "#e0d6ff", letterSpacing: "-0.005em",
+          color: chosen === false ? "#fff" : "#e0d6ff", letterSpacing: "-0.005em",
+          opacity: chosen === true ? 0.4 : 1,
+          transition: "all .18s ease",
         }}>{t(base.bKey)}</button>
       </div>
       <button type="button" onClick={onSkip} style={{
@@ -616,6 +635,14 @@ function GratitudeStep({ initialValue, initialPhotos, onChange, onPhotosChange, 
 
 function ConfirmStep({ onAnswer, onPrev }: { onAnswer: (v: boolean) => void; onPrev: () => void; }) {
   const { t } = useTranslation();
+  const [chosen, setChosen] = useState<boolean | null>(null);
+
+  const choose = (v: boolean) => {
+    if (chosen !== null) return;
+    setChosen(v);
+    onAnswer(v);
+  };
+
   return (
     <>
       <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--text-muted)" }}>
@@ -628,18 +655,27 @@ function ConfirmStep({ onAnswer, onPrev }: { onAnswer: (v: boolean) => void; onP
         {t("ck_confirm_sub")}
       </p>
       <div style={{ marginTop: 36, display: "flex", flexDirection: "column", gap: 8 }}>
-        <button type="button" onClick={() => onAnswer(false)} style={{
+        <button type="button" onClick={() => choose(false)} style={{
           height: 52, borderRadius: 14,
-          background: "rgba(124,92,255,0.1)", backdropFilter: "blur(8px)",
-          border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer",
+          background: chosen === false ? "#7C5CFF" : "rgba(124,92,255,0.1)",
+          backdropFilter: "blur(8px)",
+          border: chosen === false ? "none" : "1px solid rgba(167,139,250,0.2)",
+          cursor: "pointer",
           fontFamily: "inherit", fontSize: 15, fontWeight: 500,
-          color: "#7C5CFF", textAlign: "left", padding: "0 18px",
+          color: chosen === false ? "#fff" : "#7C5CFF", textAlign: "left", padding: "0 18px",
+          opacity: chosen === true ? 0.4 : 1,
+          boxShadow: chosen === false ? "0 4px 14px -4px oklch(0.5 0.12 270 / .5)" : "none",
+          transition: "all .18s ease",
         }}>{t("ck_confirm_no")}</button>
-        <button type="button" onClick={() => onAnswer(true)} style={{
+        <button type="button" onClick={() => choose(true)} style={{
           height: 52, borderRadius: 14,
-          background: "rgba(255,77,77,0.15)", border: "1px solid rgba(255,77,77,0.3)",
+          background: chosen === true ? "rgba(255,77,77,0.35)" : "rgba(255,77,77,0.15)",
+          border: "1px solid rgba(255,77,77,0.3)",
           cursor: "pointer", fontFamily: "inherit", fontSize: 15, fontWeight: 500,
           color: "#FF6B6B", textAlign: "left", padding: "0 18px",
+          opacity: chosen === false ? 0.4 : 1,
+          boxShadow: chosen === true ? "0 4px 14px -4px rgba(255,77,77,0.4)" : "none",
+          transition: "all .18s ease",
         }}>{t("ck_confirm_yes")}</button>
       </div>
       <StepFooter onPrev={onPrev} />
@@ -785,7 +821,7 @@ export default function CheckInPage() {
 
   const handleHabitAnswer = useCallback((key: string, value: boolean) => {
     setAnswers((a) => ({ ...a, [key]: value }));
-    setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 180);
+    setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 320);
   }, [steps.length]);
 
   // Toggle de chips multi-select (meditação/exercício) — não avança sozinho.
@@ -795,7 +831,7 @@ export default function CheckInPage() {
 
   const handleWaterAnswer = useCallback((cups: number) => {
     setAnswers((a) => ({ ...a, water_cups: cups, drank_water: cups >= WATER_GOAL }));
-    setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 60);
+    setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 150);
   }, [steps.length]);
 
   const handleSleepAnswer = useCallback((quality: number, startTime: string, endTime: string, interruptions: number) => {
@@ -807,12 +843,12 @@ export default function CheckInPage() {
       sleep_end_time: endTime,
       sleep_interruptions: interruptions,
     }));
-    setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 60);
+    setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 150);
   }, [steps.length]);
 
   const handleConfirmAnswer = useCallback((value: boolean) => {
     setAnswers((a) => ({ ...a, suicidal_thoughts: value }));
-    setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 180);
+    setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 320);
   }, [steps.length]);
 
   // ── Save on Done ────────────────────────────────────────────────────────────
