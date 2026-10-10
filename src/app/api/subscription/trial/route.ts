@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { sendOryenEvent } from "@/lib/oryen";
 
 const TRIAL_DAYS = 7;
 
@@ -42,6 +43,26 @@ export async function POST() {
     console.error("POST /api/subscription/trial error:", error);
     return NextResponse.json({ error: "Erro ao iniciar trial" }, { status: 500 });
   }
+
+  // Novo usuário virou lead (trial iniciado): dispara user.created para a Oryen.
+  // A atribuição (UTM) já foi gravada pelo /api/preferences chamado antes deste
+  // endpoint no fluxo de onboarding; busca aqui para completar o payload.
+  const { data: attrs } = await admin
+    .from("onboarding_responses")
+    .select("utm_source, utm_campaign")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  sendOryenEvent("user.created", {
+    external_id: user.id,
+    name: (user.user_metadata?.name as string) || null,
+    email: user.email ?? "",
+    phone: null,
+    plan: "monthly",
+    plan_status: "trial",
+    utm_source: (attrs?.utm_source as string) ?? null,
+    utm_campaign: (attrs?.utm_campaign as string) ?? null,
+  });
 
   return NextResponse.json({ started: true, trialEndsAt: data.trial_ends_at });
 }
