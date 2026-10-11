@@ -21,8 +21,13 @@ export function priceIdFor(plan: Plan): string {
 
 /** Fim do período da assinatura. A API "dahlia" (2026-08) removeu
  *  `current_period_end` do objeto Subscription — agora mora em cada item
- *  (`items.data[].current_period_end`). Retorna ISO ou null. */
+ *  (`items.data[].current_period_end`). Lê o campo direto como fallback e
+ *  depois os itens (mais robusto a payloads que não vêm com `items` expandido).
+ *  Retorna ISO ou null. */
 export function periodEndFromSubscription(sub: Stripe.Subscription): string | null {
+  const direct = (sub as unknown as { current_period_end?: number | null }).current_period_end;
+  if (direct) return new Date(direct * 1000).toISOString();
+
   const items = ((sub as unknown as { items?: { data?: Array<{ current_period_end?: number | null }> } }).items?.data ?? []) as Array<{ current_period_end?: number | null }>;
   const ts = items.reduce((max, it) => Math.max(max, it.current_period_end ?? 0), 0);
   return ts ? new Date(ts * 1000).toISOString() : null;

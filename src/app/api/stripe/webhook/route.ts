@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
           console.error("checkout.session.completed sem user_id/subscription:", { userId, subId });
           break;
         }
-        const sub = await stripe.subscriptions.retrieve(subId);
+        const sub = await stripe.subscriptions.retrieve(subId, { expand: ["items.data"] });
         await admin.from("subscriptions").upsert(
           { user_id: userId, ...subscriptionRow(sub, session.metadata?.plan || "monthly") },
           { onConflict: "user_id" }
@@ -95,8 +95,16 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // `current_period_end` (API dahlia) vive em items.data, que não vem
+        // expandido no payload do webhook. Re-busca com items para não gravar
+        // null (quebraria o aviso de "renovação próxima" no Perfil).
+        let enriched = sub;
+        try {
+          enriched = await stripe.subscriptions.retrieve(sub.id, { expand: ["items.data"] });
+        } catch { /* usa o objeto do evento se a re-busca falhar */ }
+
         await admin.from("subscriptions").upsert(
-          { user_id: userId, ...subscriptionRow(sub, plan) },
+          { user_id: userId, ...subscriptionRow(enriched, plan) },
           { onConflict: "user_id" }
         );
         break;

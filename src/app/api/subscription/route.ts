@@ -35,10 +35,12 @@ export async function GET() {
   // assinatura no Stripe, busca o estado REAL e corrige o banco. Cobre falhas
   // de sincronização do webhook (ex.: assinatura ativa que ficou "trialing"/
   // "canceled" porque um evento de sub antiga sobrescreveu a linha).
-  if (sub.stripe_subscription_id && !isSubscriptionActive(status, trialEndsAt)) {
+  // Também re-busca quando current_period_end está ausente (API dahlia), para
+  // auto-curar usuários ativos cuja data de renovação ficou null.
+  if (sub.stripe_subscription_id && (!isSubscriptionActive(status, trialEndsAt) || !currentPeriodEnd)) {
     try {
       const stripe = getStripe();
-      const live = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+      const live = await stripe.subscriptions.retrieve(sub.stripe_subscription_id, { expand: ["items.data"] });
       status = live.status;
       trialEndsAt = live.trial_end ? new Date(live.trial_end * 1000).toISOString() : null;
       currentPeriodEnd = periodEndFromSubscription(live);
