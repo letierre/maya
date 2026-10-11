@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { after } from "next/server";
 import { logError } from "@/lib/error-log";
 
 // Envio de eventos para a Oryen Systems (back-office) via webhook assinado.
@@ -52,6 +53,8 @@ async function postOryen(event: string, body: string): Promise<void> {
     const text = await res.text().catch(() => "");
     throw new Error(`Oryen respondeu ${res.status}: ${text.slice(0, 300)}`);
   }
+
+  console.log(`[oryen] evento "${event}" enviado (${res.status})`);
 }
 
 /**
@@ -71,7 +74,10 @@ export function sendOryenEvent(event: string, data: OryenUserData): void {
   const payload = { org_id: process.env.ORYEN_ORG_ID ?? null, event, data };
   const body = JSON.stringify(payload);
 
-  void (async () => {
+  // `after` (next/server) roda DEPOIS da resposta, mas mantém a função viva no
+  // serverless (Vercel) até concluir. Fire-and-forget puro seria congelado antes
+  // de o fetch sair — o evento nunca chegaria à Oryen.
+  after(async () => {
     try {
       await postOryen(event, body);
     } catch (err) {
@@ -84,5 +90,5 @@ export function sendOryenEvent(event: string, data: OryenUserData): void {
         logError({ path: "oryen-webhook", message: `retry falhou (${event}): ${String(err2)}` });
       }
     }
-  })();
+  });
 }
