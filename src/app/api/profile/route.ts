@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { sendOryenEvent } from "@/lib/oryen";
+import { sendOryenEvent, type OryenUserData } from "@/lib/oryen";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PUT(req: NextRequest) {
@@ -45,15 +45,25 @@ export async function PUT(req: NextRequest) {
         updated_at: new Date().toISOString(),
       });
 
-    // Sincroniza mudanças de perfil com a Oryen (nome/gênero/idioma).
-    if (body.name !== undefined || body.gender !== undefined || body.language !== undefined) {
-      sendOryenEvent("user.updated", {
-        external_id: user.id,
-        ...(body.name !== undefined ? { name: typeof body.name === "string" ? body.name.trim() : null } : {}),
-        ...(body.gender !== undefined ? { gender: body.gender ?? null } : {}),
-        ...(body.language !== undefined ? { language: body.language ?? null } : {}),
-      });
+    // Sincroniza com a Oryen SOMENTE os campos que de fato mudaram (evita
+    // chamadas desnecessárias quando o save não altera nada).
+    const oldName = (user.user_metadata?.name as string) || "";
+    const oldCtx = (prefs?.context as Record<string, unknown>) || {};
+    const changes: OryenUserData = { external_id: user.id };
+    let hasChange = false;
+
+    if (body.name !== undefined) {
+      const newName = typeof body.name === "string" ? body.name.trim() : "";
+      if (newName !== oldName) { changes.name = newName || null; hasChange = true; }
     }
+    if (body.gender !== undefined && body.gender !== oldCtx.gender) {
+      changes.gender = body.gender ?? null; hasChange = true;
+    }
+    if (body.language !== undefined && body.language !== oldCtx.language) {
+      changes.language = body.language ?? null; hasChange = true;
+    }
+
+    if (hasChange) sendOryenEvent("user.updated", changes);
 
     return NextResponse.json({ success: true });
   } catch (error) {
