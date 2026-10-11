@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     const email = (body.email ?? "").trim().toLowerCase();
     const password = typeof body.password === "string" ? body.password : "";
     const lang = body.lang;
+    const name = typeof body.name === "string" ? body.name.trim().slice(0, 80) : "";
 
     if (!EMAIL_RE.test(email)) {
       return NextResponse.json({ error: "invalid_email" }, { status: 400 });
@@ -34,6 +35,7 @@ export async function POST(req: NextRequest) {
       email,
       password,
       email_confirm: false,
+      ...(name ? { user_metadata: { name } } : {}),
     });
 
     if (error) {

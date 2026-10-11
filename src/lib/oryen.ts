@@ -4,17 +4,21 @@ import { logError } from "@/lib/error-log";
 // Envio de eventos para a Oryen Systems (back-office) via webhook assinado.
 // - Assinatura: HMAC-SHA256 (hex) do BODY cru, no header X-Maya-Signature.
 // - Timestamp: segundos unix (Math.floor(Date.now()/1000)) no header X-Maya-Timestamp.
-// - Envio assíncrono (fire-and-forget): nunca bloqueia o fluxo de signup.
+// - Envio assíncrono (fire-and-forget): nunca bloqueia o fluxo do chamador.
 // - Em caso de falha, loga o erro e faz 1 retry após 2s.
 // - Segredo NUNCA hardcoded: lê ORYEN_WEBHOOK_URL / ORYEN_WEBHOOK_SECRET / ORYEN_ORG_ID do env.
 
-export interface OryenEventData {
+// Campos que podem aparecer no `data` de um evento de usuário. Apenas
+// `external_id` é obrigatório; os demais são enviados quando conhecidos/mudaram.
+export interface OryenUserData {
   external_id: string;
   name?: string | null;
-  email: string;
+  email?: string | null;
   phone?: string | null;
+  gender?: string | null;
+  language?: string | null;
   plan?: string | null;
-  plan_status: "trial" | "paid";
+  plan_status?: "trial" | "paid" | null;
   utm_source?: string | null;
   utm_campaign?: string | null;
 }
@@ -55,7 +59,7 @@ async function postOryen(event: string, body: string): Promise<void> {
  * Serializa UMA única string que é usada tanto para assinar quanto para o body,
  * garantindo que a assinatura corresponde exatamente ao que é enviado.
  */
-export function sendOryenEvent(event: string, data: OryenEventData): void {
+export function sendOryenEvent(event: string, data: OryenUserData): void {
   const url = process.env.ORYEN_WEBHOOK_URL;
   const secret = process.env.ORYEN_WEBHOOK_SECRET;
   if (!url || !secret) {

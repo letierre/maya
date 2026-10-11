@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getStripe, periodEndFromSubscription } from "@/lib/stripe";
 import { logError } from "@/lib/error-log";
+import { sendOryenEvent } from "@/lib/oryen";
 
 // Mapeia uma Stripe.Subscription para a linha da tabela `subscriptions`.
 function subscriptionRow(sub: Stripe.Subscription, plan: string) {
@@ -54,10 +55,27 @@ export async function POST(req: NextRequest) {
           break;
         }
         const sub = await stripe.subscriptions.retrieve(subId, { expand: ["items.data"] });
+
+        // Estado anterior para detectar a transição trial → pago (idempotente:
+        // em retry do webhook o status já estará "active" e não dispara de novo).
+        const { data: prev } = await admin
+          .from("subscriptions")
+          .select("status")
+          .eq("user_id", userId)
+          .maybeSingle();
+
         await admin.from("subscriptions").upsert(
           { user_id: userId, ...subscriptionRow(sub, session.metadata?.plan || "monthly") },
           { onConflict: "user_id" }
         );
+
+        if (sub.status === "active" && (prev?.status ?? null) !== "active") {
+          sendOryenEvent("subscription.activated", {
+            external_id: userId,
+            plan: session.metadata?.plan || "monthly",
+            plan_status: "paid",
+          });
+        }
         break;
       }
       case "customer.subscription.created":

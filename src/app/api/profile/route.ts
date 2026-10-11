@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { sendOryenEvent } from "@/lib/oryen";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PUT(req: NextRequest) {
@@ -43,6 +44,16 @@ export async function PUT(req: NextRequest) {
         onboarding_completed: prefs?.onboarding_completed ?? true,
         updated_at: new Date().toISOString(),
       });
+
+    // Sincroniza mudanças de perfil com a Oryen (nome/gênero/idioma).
+    if (body.name !== undefined || body.gender !== undefined || body.language !== undefined) {
+      sendOryenEvent("user.updated", {
+        external_id: user.id,
+        ...(body.name !== undefined ? { name: typeof body.name === "string" ? body.name.trim() : null } : {}),
+        ...(body.gender !== undefined ? { gender: body.gender ?? null } : {}),
+        ...(body.language !== undefined ? { language: body.language ?? null } : {}),
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

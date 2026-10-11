@@ -49,7 +49,7 @@ export async function POST() {
   // endpoint no fluxo de onboarding; busca aqui para completar o payload.
   const { data: attrs } = await admin
     .from("onboarding_responses")
-    .select("utm_source, utm_campaign")
+    .select("utm_source, utm_campaign, gender, language")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -62,6 +62,8 @@ export async function POST() {
     plan_status: "trial",
     utm_source: (attrs?.utm_source as string) ?? null,
     utm_campaign: (attrs?.utm_campaign as string) ?? null,
+    gender: (attrs?.gender as string) ?? null,
+    language: (attrs?.language as string) ?? null,
   });
 
   return NextResponse.json({ started: true, trialEndsAt: data.trial_ends_at });

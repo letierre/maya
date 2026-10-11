@@ -63,6 +63,7 @@ const btnPrimary: React.CSSProperties = {
 };
 
 function CadastroInner() {
+  const [name, setName]           = useState("");
   const [email, setEmail]         = useState("");
   const [password, setPassword]   = useState("");
   const [loading, setLoading]     = useState(false);
@@ -91,7 +92,7 @@ function CadastroInner() {
     const res = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, lang }),
+      body: JSON.stringify({ name, email, password, lang }),
     });
     const json = await res.json();
 
@@ -292,6 +293,19 @@ function CadastroInner() {
         )}
 
         <form onSubmit={handleCadastro} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--muted-foreground)" }}>
+              {t("perfil_nome")}
+            </label>
+            <input
+              type="text"
+              autoComplete="name"
+              placeholder={t("perfil_nome_placeholder")}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--muted-foreground)" }}>
               {t("lg_email")}
