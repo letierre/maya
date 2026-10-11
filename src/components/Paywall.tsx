@@ -46,6 +46,7 @@ export function Paywall() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  const [subPlan, setSubPlan] = useState<string | null>(null);
   // Brasil → R$; fora do Brasil → US$ (público LATAM já está acostumado a ver em dólar).
   const [isBrazil, setIsBrazil] = useState(true);
 
@@ -77,6 +78,7 @@ export function Paywall() {
       .then((d) => {
         setStatus(d.status ?? null);
         setTrialEndsAt(d.trialEndsAt ?? null);
+        setSubPlan(d.plan ?? null);
       })
       .catch(() => {});
   }, []);
@@ -89,6 +91,12 @@ export function Paywall() {
   })();
 
   const copy = COPY[variant];
+
+  // Nome e preço do plano ATUAL do usuário — usado só no estado past_due para
+  // reforçar que a assinatura continua a mesma (não é uma seleção de plano novo).
+  const currentIsAnnual = subPlan === "annual";
+  const planName = currentIsAnnual ? t("pw_anual") : t("pw_mensal");
+  const planPrice = currentIsAnnual ? `${px.annual}${t("pw_ano")}` : `${px.monthly}${t("pw_mes")}`;
 
   const handleCheckout = async () => {
     setLoading(true);
@@ -128,52 +136,72 @@ export function Paywall() {
         {t(copy.subKey)}
       </p>
 
-      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px", marginBottom: 20 }}>
-        <p style={{ margin: "0 0 4px", fontSize: 13.5, color: TEXT, fontStyle: "italic" }}>“{t("pw_depoimento")}”</p>
-        <p style={{ margin: 0, fontSize: 12, color: ACCENT_2, fontWeight: 700 }}>★★★★★</p>
-      </div>
-
-      <div style={{ marginBottom: 20 }}>
-        {/* Plano anual (destaque) */}
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => setPlan("annual")}
-          style={{
-            cursor: "pointer", textAlign: "left",
-            background: plan === "annual" ? "oklch(0.5 0.12 270 / .16)" : CARD,
-            border: plan === "annual" ? `1.5px solid ${ACCENT}` : `1px solid ${BORDER}`,
-            borderRadius: 16, padding: "14px 16px", marginBottom: 10,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 15, fontWeight: 800, color: TEXT }}>{t("pw_anual")}</span>
-            <span style={{ background: ACCENT, color: "#fff", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{t("pw_economize")}</span>
+      {variant === "past_due" ? (
+        <>
+          {/* Plano ATUAL do usuário — reforça que a assinatura continua a mesma,
+              NÃO é uma seleção de plano novo (não reativa nada do zero). */}
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px", marginBottom: 12, textAlign: "left" }}>
+            <p style={{ margin: 0, fontSize: 11.5, color: MUTED, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              {t("pw_past_due_plan_label")}
+            </p>
+            <p style={{ margin: "6px 0 0", fontSize: 16, fontWeight: 800, color: TEXT }}>
+              {planName}
+              <span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}> · {planPrice}</span>
+            </p>
           </div>
-          <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
-            {px.annual}<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>{t("pw_ano")}</span>
-          </p>
-          <p style={{ margin: "2px 0 0", fontSize: 12.5, color: MUTED }}>{px.note}{t("pw_mes")} · {t("pw_cancele")}</p>
-        </div>
 
-        {/* Plano mensal */}
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => setPlan("monthly")}
-          style={{
-            cursor: "pointer", textAlign: "left",
-            background: plan === "monthly" ? "oklch(0.5 0.12 270 / .16)" : CARD,
-            border: plan === "monthly" ? `1.5px solid ${ACCENT}` : `1px solid ${BORDER}`,
-            borderRadius: 16, padding: "14px 16px",
-          }}
-        >
-          <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>{t("pw_mensal")}</span>
-          <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
-            {px.monthly}<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>{t("pw_mes")}</span>
-          </p>
-        </div>
-      </div>
+          <p style={{ margin: "0 0 20px", fontSize: 13.5, color: MUTED, lineHeight: 1.55 }}>{t("pw_past_due_keep")}</p>
+        </>
+      ) : (
+        <>
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px", marginBottom: 20 }}>
+            <p style={{ margin: "0 0 4px", fontSize: 13.5, color: TEXT, fontStyle: "italic" }}>“{t("pw_depoimento")}”</p>
+            <p style={{ margin: 0, fontSize: 12, color: ACCENT_2, fontWeight: 700 }}>★★★★★</p>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            {/* Plano anual (destaque) */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setPlan("annual")}
+              style={{
+                cursor: "pointer", textAlign: "left",
+                background: plan === "annual" ? "oklch(0.5 0.12 270 / .16)" : CARD,
+                border: plan === "annual" ? `1.5px solid ${ACCENT}` : `1px solid ${BORDER}`,
+                borderRadius: 16, padding: "14px 16px", marginBottom: 10,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 15, fontWeight: 800, color: TEXT }}>{t("pw_anual")}</span>
+                <span style={{ background: ACCENT, color: "#fff", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{t("pw_economize")}</span>
+              </div>
+              <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
+                {px.annual}<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>{t("pw_ano")}</span>
+              </p>
+              <p style={{ margin: "2px 0 0", fontSize: 12.5, color: MUTED }}>{px.note}{t("pw_mes")} · {t("pw_cancele")}</p>
+            </div>
+
+            {/* Plano mensal */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setPlan("monthly")}
+              style={{
+                cursor: "pointer", textAlign: "left",
+                background: plan === "monthly" ? "oklch(0.5 0.12 270 / .16)" : CARD,
+                border: plan === "monthly" ? `1.5px solid ${ACCENT}` : `1px solid ${BORDER}`,
+                borderRadius: 16, padding: "14px 16px",
+              }}
+            >
+              <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>{t("pw_mensal")}</span>
+              <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 800, color: TEXT }}>
+                {px.monthly}<span style={{ fontSize: 13, color: MUTED, fontWeight: 600 }}>{t("pw_mes")}</span>
+              </p>
+            </div>
+          </div>
+        </>
+      )}
 
       <button type="button" onClick={variant === "past_due" ? handleRestore : handleCheckout} disabled={loading} style={{
         width: "100%", height: 54, borderRadius: 16, border: 0, cursor: "pointer",
@@ -185,10 +213,12 @@ export function Paywall() {
         {loading ? t("pw_preparando") : t(copy.ctaKey)}
       </button>
 
-      <button type="button" onClick={handleRestore} style={{
-        marginTop: 14, background: "transparent", border: 0, cursor: "pointer",
-        fontFamily: "inherit", fontSize: 13, color: MUTED, textDecoration: "underline",
-      }}>{t("pw_restaurar")}</button>
+      {variant !== "past_due" && (
+        <button type="button" onClick={handleRestore} style={{
+          marginTop: 14, background: "transparent", border: 0, cursor: "pointer",
+          fontFamily: "inherit", fontSize: 13, color: MUTED, textDecoration: "underline",
+        }}>{t("pw_restaurar")}</button>
+      )}
     </div>
   );
 }
