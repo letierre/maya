@@ -3,8 +3,8 @@ import { after } from "next/server";
 import { logError } from "@/lib/error-log";
 
 // Envio de eventos para a Oryen Systems (back-office) via webhook assinado.
-// - Assinatura: HMAC-SHA256 (hex) do BODY cru, no header X-Maya-Signature.
-// - Timestamp: segundos unix (Math.floor(Date.now()/1000)) no header X-Maya-Timestamp.
+// - Assinatura: HMAC-SHA256 (hex) do BODY cru, no header X-Webhook-Signature.
+// - Timestamp: segundos unix (Math.floor(Date.now()/1000)) no header X-Webhook-Timestamp.
 // - Envio assíncrono (fire-and-forget): nunca bloqueia o fluxo do chamador.
 // - Em caso de falha, loga o erro e faz 1 retry após 2s.
 // - Segredo NUNCA hardcoded: lê ORYEN_WEBHOOK_URL / ORYEN_WEBHOOK_SECRET / ORYEN_ORG_ID do env.
@@ -43,8 +43,8 @@ async function postOryen(event: string, body: string): Promise<void> {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Maya-Timestamp": timestamp,
-      "X-Maya-Signature": signature,
+      "X-Webhook-Timestamp": timestamp,
+      "X-Webhook-Signature": signature,
     },
     body,
   });
