@@ -100,19 +100,20 @@ export async function POST(req: NextRequest) {
           plan = existing.plan || plan;
         }
 
+        // Estado anterior da assinatura do usuário — base para transições
+        // idempotentes (churn, past_due, recuperação) e para o guard abaixo.
+        const { data: prev } = await admin
+          .from("subscriptions")
+          .select("stripe_subscription_id, status")
+          .eq("user_id", userId)
+          .maybeSingle();
+
         // Evita que um evento de uma assinatura ANTIGA do usuário (ex.: uma sub
         // cancelada) sobrescreva o estado de uma assinatura mais nova e ativa.
         // Um usuário pode ter várias subs no Stripe (migração de preço, plano
         // antigo) — só a sub ativa deve mandar no status.
-        if (sub.status !== "active") {
-          const { data: stored } = await admin
-            .from("subscriptions")
-            .select("stripe_subscription_id, status")
-            .eq("user_id", userId)
-            .maybeSingle();
-          if (stored?.status === "active" && stored.stripe_subscription_id !== sub.id) {
-            break; // mantém a sub ativa; ignora evento de sub antiga/cancelada
-          }
+        if (sub.status !== "active" && prev?.status === "active" && prev.stripe_subscription_id !== sub.id) {
+          break; // mantém a sub ativa; ignora evento de sub antiga/cancelada
         }
 
         // `current_period_end` (API dahlia) vive em items.data, que não vem
@@ -127,6 +128,57 @@ export async function POST(req: NextRequest) {
           { user_id: userId, ...subscriptionRow(enriched, plan) },
           { onConflict: "user_id" }
         );
+
+        const prevStatus = prev?.status ?? null;
+
+        // Churn: cancelamento efetivo (sub deletada) → etapa "canceled".
+        // Dispara só se o lead estava num estado real (ativo/trial/past_due),
+        // ignorando retry do webhook e subs que nunca chegaram a valer.
+        if (
+          event.type === "customer.subscription.deleted" &&
+          prevStatus !== null &&
+          ["active", "trialing", "past_due"].includes(prevStatus)
+        ) {
+          sendOryenEvent("subscription.canceled", {
+            external_id: userId,
+            plan,
+            plan_status: null,
+            stage: "canceled",
+            stage_changed_at: new Date().toISOString(),
+          });
+        }
+
+        // Cobrança recusada → etapa "past_due". Idempotente com invoice.payment_failed
+        // (o que rodar primeiro faz a transição; o outro não repete o evento).
+        if (
+          event.type === "customer.subscription.updated" &&
+          sub.status === "past_due" &&
+          prevStatus !== null &&
+          prevStatus !== "past_due"
+        ) {
+          sendOryenEvent("subscription.past_due", {
+            external_id: userId,
+            plan,
+            plan_status: "paid",
+            stage: "past_due",
+            stage_changed_at: new Date().toISOString(),
+          });
+        }
+
+        // Recuperação: pagamento voltou a passar (past_due → active) → etapa "active".
+        if (
+          event.type === "customer.subscription.updated" &&
+          sub.status === "active" &&
+          prevStatus === "past_due"
+        ) {
+          sendOryenEvent("subscription.activated", {
+            external_id: userId,
+            plan,
+            plan_status: "paid",
+            stage: "active",
+            stage_changed_at: new Date().toISOString(),
+          });
+        }
         break;
       }
       case "invoice.payment_failed": {
@@ -142,7 +194,7 @@ export async function POST(req: NextRequest) {
         }
         const { data: existing } = await admin
           .from("subscriptions")
-          .select("user_id")
+          .select("user_id, status, plan")
           .eq("stripe_subscription_id", subId)
           .maybeSingle();
         if (existing?.user_id) {
@@ -150,6 +202,18 @@ export async function POST(req: NextRequest) {
             .from("subscriptions")
             .update({ status: "past_due", updated_at: new Date().toISOString() })
             .eq("user_id", existing.user_id);
+          // Move o lead para "past_due". Idempotente: só na transição — a dunning
+          // pode re-disparar este evento várias vezes (e o customer.subscription.updated
+          // também cobre a transição; o que rodar primeiro dispara o evento).
+          if (existing.status !== "past_due") {
+            sendOryenEvent("subscription.past_due", {
+              external_id: existing.user_id,
+              plan: existing.plan ?? null,
+              plan_status: "paid",
+              stage: "past_due",
+              stage_changed_at: new Date().toISOString(),
+            });
+          }
         }
         break;
       }
