@@ -74,6 +74,8 @@ export async function POST(req: NextRequest) {
             external_id: userId,
             plan: session.metadata?.plan || "monthly",
             plan_status: "paid",
+            stage: "active",
+            stage_changed_at: new Date().toISOString(),
           });
         }
         break;

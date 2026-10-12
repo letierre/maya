@@ -64,6 +64,8 @@ export async function POST() {
     utm_campaign: (attrs?.utm_campaign as string) ?? null,
     gender: (attrs?.gender as string) ?? null,
     language: (attrs?.language as string) ?? null,
+    stage: "trial",
+    stage_changed_at: new Date().toISOString(),
   });
 
   return NextResponse.json({ started: true, trialEndsAt: data.trial_ends_at });
