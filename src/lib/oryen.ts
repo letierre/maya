@@ -24,6 +24,17 @@ export interface OryenUserData {
   stage_changed_at?: string | null;
   utm_source?: string | null;
   utm_campaign?: string | null;
+  utm_medium?: string | null;
+  utm_content?: string | null;
+  subscription_id?: string | null;
+  amount_cents?: number | null;
+  currency?: string | null;
+  client?: {
+    ip?: string | null;
+    user_agent?: string | null;
+    fbc?: string | null;
+    fbp?: string | null;
+  } | null;
 }
 
 const RETRY_DELAY_MS = 2_000;

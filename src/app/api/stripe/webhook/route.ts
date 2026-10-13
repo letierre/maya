@@ -1,9 +1,11 @@
+import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getStripe, periodEndFromSubscription } from "@/lib/stripe";
+import { getStripe, periodEndFromSubscription, subscriptionPriceInfo } from "@/lib/stripe";
 import { logError } from "@/lib/error-log";
 import { sendOryenEvent } from "@/lib/oryen";
+import { sendAccessEmail } from "@/lib/email";
 
 // Mapeia uma Stripe.Subscription para a linha da tabela `subscriptions`.
 function subscriptionRow(sub: Stripe.Subscription, plan: string) {
@@ -17,6 +19,30 @@ function subscriptionRow(sub: Stripe.Subscription, plan: string) {
     cancel_at_period_end: sub.cancel_at_period_end,
     updated_at: new Date().toISOString(),
   };
+}
+
+// Gera uma senha aleatória legível (sem caracteres ambíguos) para o primeiro acesso.
+function generatePassword(len = 12): string {
+  const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.randomBytes(len);
+  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
+}
+
+// Busca o id do usuário por email (listUsers paginado). Usado p/ idempotência na
+// criação de conta do checkout — um retry do webhook não pode criar duplicado.
+async function findUserIdByEmail(
+  admin: ReturnType<typeof getSupabaseAdmin>,
+  email: string
+): Promise<string | null> {
+  const target = email.toLowerCase();
+  for (let page = 1; page <= 10; page++) {
+    const { data } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    const users = data?.users ?? [];
+    const found = users.find((u) => (u.email ?? "").toLowerCase() === target);
+    if (found) return found.id;
+    if (users.length < 1000) break;
+  }
+  return null;
 }
 
 // POST /api/stripe/webhook — recebe eventos do Stripe e sincroniza a assinatura.
@@ -40,7 +66,6 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const userId = session.client_reference_id || session.metadata?.user_id;
         // "dahlia": session.subscription pode vir como string ou como objeto
         // aninhado (parent.subscription_details.subscription).
         const rawSub = session.subscription as unknown;
@@ -50,11 +75,50 @@ export async function POST(req: NextRequest) {
             : (rawSub as { id?: string } | null)?.id
               ?? (session as unknown as { parent?: { subscription_details?: { subscription?: string } } }).parent?.subscription_details?.subscription
               ?? null;
+
+        // Fluxo antigo (usuário já logado) traz user_id no client_reference_id/metadata.
+        let userId = session.client_reference_id || session.metadata?.user_id || null;
+
+        // Fluxo novo (vindo do quiz/checkout, sem conta): cria o usuário a partir
+        // do email do Stripe e envia os dados de acesso. Idempotente em retry.
+        if (!userId) {
+          const email = (session.customer_details?.email || session.customer_email || "").trim().toLowerCase();
+          const { data: existingSub } = subId
+            ? await admin.from("subscriptions").select("user_id").eq("stripe_subscription_id", subId).maybeSingle()
+            : { data: null };
+          if (existingSub?.user_id) {
+            userId = existingSub.user_id; // retry: conta já criada
+          } else if (email) {
+            userId = (await findUserIdByEmail(admin, email)) ?? null;
+            if (!userId) {
+              const password = generatePassword();
+              const name = session.customer_details?.name?.trim().slice(0, 80) || undefined;
+              const { data: created, error: createErr } = await admin.auth.admin.createUser({
+                email,
+                password,
+                email_confirm: true,
+                ...(name ? { user_metadata: { name } } : {}),
+              });
+              if (createErr || !created.user) {
+                console.error("checkout: falha ao criar conta:", createErr);
+                throw createErr ?? new Error("Falha ao criar conta");
+              }
+              userId = created.user.id;
+              // Fire-and-forget: não derruba o webhook se o email falhar.
+              sendAccessEmail({ to: email, password, loginUrl: `${req.nextUrl.origin}/login` }).catch((e) => {
+                logError({ path: "checkout-access-email", message: String(e) });
+              });
+            }
+          }
+        }
+
         if (!userId || !subId) {
           console.error("checkout.session.completed sem user_id/subscription:", { userId, subId });
           break;
         }
+
         const sub = await stripe.subscriptions.retrieve(subId, { expand: ["items.data"] });
+        const { plan, amount_cents, currency } = subscriptionPriceInfo(sub);
 
         // Estado anterior para detectar a transição trial → pago (idempotente:
         // em retry do webhook o status já estará "active" e não dispara de novo).
@@ -65,16 +129,32 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
 
         await admin.from("subscriptions").upsert(
-          { user_id: userId, ...subscriptionRow(sub, session.metadata?.plan || "monthly") },
+          { user_id: userId, ...subscriptionRow(sub, plan) },
           { onConflict: "user_id" }
         );
 
         if (sub.status === "active" && (prev?.status ?? null) !== "active") {
+          // Atribuição capturada no /api/checkout (metadata da sessão): browser + UTMs.
+          const meta = session.metadata ?? {};
           sendOryenEvent("subscription.activated", {
             external_id: userId,
-            plan: session.metadata?.plan || "monthly",
+            email: session.customer_details?.email || session.customer_email || null,
+            subscription_id: subId,
+            plan,
             plan_status: "paid",
             stage: "active",
+            amount_cents,
+            currency,
+            utm_source: meta.utm_source || null,
+            utm_medium: meta.utm_medium || null,
+            utm_campaign: meta.utm_campaign || null,
+            utm_content: meta.utm_content || null,
+            client: {
+              ip: meta.client_ip || null,
+              user_agent: meta.client_user_agent || null,
+              fbc: meta.fbc || null,
+              fbp: meta.fbp || null,
+            },
             stage_changed_at: new Date().toISOString(),
           });
         }
@@ -85,11 +165,10 @@ export async function POST(req: NextRequest) {
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
         let userId = sub.metadata?.user_id;
-        let plan = sub.metadata?.plan || "monthly";
         if (!userId) {
           const { data: existing } = await admin
             .from("subscriptions")
-            .select("user_id, plan")
+            .select("user_id")
             .eq("stripe_subscription_id", sub.id)
             .maybeSingle();
           if (!existing) {
@@ -97,7 +176,6 @@ export async function POST(req: NextRequest) {
             break;
           }
           userId = existing.user_id;
-          plan = existing.plan || plan;
         }
 
         // Estado anterior da assinatura do usuário — base para transições
@@ -124,12 +202,27 @@ export async function POST(req: NextRequest) {
           enriched = await stripe.subscriptions.retrieve(sub.id, { expand: ["items.data"] });
         } catch { /* usa o objeto do evento se a re-busca falhar */ }
 
+        const { plan, amount_cents, currency } = subscriptionPriceInfo(enriched);
+
+        // Email do usuário para o evento (Oryen/Meta CAPI).
+        let email: string | null = null;
+        const { data: userData } = await admin.auth.admin.getUserById(userId);
+        email = userData?.user?.email ?? null;
+
         await admin.from("subscriptions").upsert(
           { user_id: userId, ...subscriptionRow(enriched, plan) },
           { onConflict: "user_id" }
         );
 
         const prevStatus = prev?.status ?? null;
+        const base = {
+          external_id: userId,
+          email,
+          subscription_id: sub.id,
+          plan,
+          amount_cents,
+          currency,
+        };
 
         // Churn: cancelamento efetivo (sub deletada) → etapa "canceled".
         // Dispara só se o lead estava num estado real (ativo/trial/past_due),
@@ -140,8 +233,7 @@ export async function POST(req: NextRequest) {
           ["active", "trialing", "past_due"].includes(prevStatus)
         ) {
           sendOryenEvent("subscription.canceled", {
-            external_id: userId,
-            plan,
+            ...base,
             plan_status: null,
             stage: "canceled",
             stage_changed_at: new Date().toISOString(),
@@ -157,8 +249,7 @@ export async function POST(req: NextRequest) {
           prevStatus !== "past_due"
         ) {
           sendOryenEvent("subscription.past_due", {
-            external_id: userId,
-            plan,
+            ...base,
             plan_status: "paid",
             stage: "past_due",
             stage_changed_at: new Date().toISOString(),
@@ -172,8 +263,7 @@ export async function POST(req: NextRequest) {
           prevStatus === "past_due"
         ) {
           sendOryenEvent("subscription.activated", {
-            external_id: userId,
-            plan,
+            ...base,
             plan_status: "paid",
             stage: "active",
             stage_changed_at: new Date().toISOString(),
@@ -194,7 +284,7 @@ export async function POST(req: NextRequest) {
         }
         const { data: existing } = await admin
           .from("subscriptions")
-          .select("user_id, status, plan")
+          .select("user_id, status")
           .eq("stripe_subscription_id", subId)
           .maybeSingle();
         if (existing?.user_id) {
@@ -206,11 +296,28 @@ export async function POST(req: NextRequest) {
           // pode re-disparar este evento várias vezes (e o customer.subscription.updated
           // também cobre a transição; o que rodar primeiro dispara o evento).
           if (existing.status !== "past_due") {
+            // Mesma carga do customer.subscription.updated: email + preço efetivo.
+            let plan = "monthly";
+            let amount_cents: number | null = null;
+            let currency: string | null = null;
+            try {
+              const s = await stripe.subscriptions.retrieve(subId, { expand: ["items.data"] });
+              const info = subscriptionPriceInfo(s);
+              plan = info.plan;
+              amount_cents = info.amount_cents;
+              currency = info.currency;
+            } catch { /* mantém defaults se a re-busca falhar */ }
+            const { data: userData } = await admin.auth.admin.getUserById(existing.user_id);
+
             sendOryenEvent("subscription.past_due", {
               external_id: existing.user_id,
-              plan: existing.plan ?? null,
+              email: userData?.user?.email ?? null,
+              subscription_id: subId,
+              plan,
               plan_status: "paid",
               stage: "past_due",
+              amount_cents,
+              currency,
               stage_changed_at: new Date().toISOString(),
             });
           }

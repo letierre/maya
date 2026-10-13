@@ -33,6 +33,23 @@ export function periodEndFromSubscription(sub: Stripe.Subscription): string | nu
   return ts ? new Date(ts * 1000).toISOString() : null;
 }
 
+/** Deriva plano, valor e moeda a partir do preço efetivamente cobrado na
+ *  assinatura (o upsell mensal→anual muda o price escolhido; o `metadata.plan`
+ *  não reflete isso). `unit_amount` já vem em centavos. */
+export function subscriptionPriceInfo(sub: Stripe.Subscription): {
+  plan: "monthly" | "annual";
+  amount_cents: number | null;
+  currency: string | null;
+} {
+  const price = sub.items?.data?.[0]?.price ?? null;
+  const interval = price?.recurring?.interval ?? null;
+  return {
+    plan: interval === "year" ? "annual" : "monthly",
+    amount_cents: price?.unit_amount ?? null,
+    currency: price?.currency ?? null,
+  };
+}
+
 // isSubscriptionActive vive em módulo puro (sem importar o SDK Stripe) para poder
 // ser usado no middleware (edge). Reexportado aqui para manter a compatibilidade.
 export { isSubscriptionActive } from "./subscription-status";
