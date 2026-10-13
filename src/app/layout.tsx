@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ServiceWorkerInit } from "@/components/ServiceWorkerInit";
 import { PageViewTracker } from "@/components/PageViewTracker";
+import { MetaPixel } from "@/components/MetaPixel";
 import "./globals.css";
 
 const inter = Inter({
@@ -49,6 +50,7 @@ export default function RootLayout({
       <body className="h-full overflow-hidden flex flex-col">
         <ServiceWorkerInit />
         <PageViewTracker />
+        <MetaPixel />
         <div className="app-frame">{children}</div>
         <Toaster richColors position="top-center" closeButton={false} duration={4000} />
       </body>
