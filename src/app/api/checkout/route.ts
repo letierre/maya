@@ -49,8 +49,8 @@ export async function GET(req: NextRequest) {
   try {
     const checkout = await stripe.checkout.sessions.create({
       mode: "subscription",
-      // NOTE: adaptive_pricing + upsell (mensal→anual) podem conflitar no Checkout;
-      // se o toggle anual não aparecer no teste, desligar o adaptive_pricing aqui.
+      // Só o plano mensal nesta fase (sem upsell). adaptive_pricing cobra na
+      // moeda local do cliente (evita "moeda não suportada").
       adaptive_pricing: { enabled: true },
       line_items: [{ price, quantity: 1 }],
       metadata,
