@@ -70,7 +70,7 @@ async function sendProactive(
   const { tz, today, name, gender, language } = opts;
   const currentHour = getCurrentHour(tz);
 
-  const ctx = await fetchMayaContext(userId, { checkInLimit: 7, diaryLimit: 10, chatLimit: 20 });
+  const ctx = await fetchMayaContext(userId, { checkInLimit: 7, diaryLimit: 10, chatLimit: 20, tz });
   const firstName = (name || "").split(" ")[0];
   const mayaInput = {
     ...toMayaInput(ctx, { name: firstName, gender, language, currentHour, currentDate: today, tz }),

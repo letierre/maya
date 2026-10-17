@@ -29,6 +29,7 @@ export interface FetchMayaContextOptions {
   includeAreaVisions?: boolean;
   includeQuarterly?: boolean;
   includeAgenda?: boolean;
+  tz?: string;              // IANA timezone p/ datas locais (memórias, etc.)
 }
 
 export interface MayaContext {
@@ -49,13 +50,15 @@ export interface MayaContext {
 
 // ── Fetch (uma única rajada de queries compartilhadas) ───────────────
 
-/** Formata uma memória com a data em que foi registrada (AAAA-MM-DD), para que
- *  a Maya saiba QUANDO aprendeu cada fato e consiga priorizar o recente. */
-function formatMemory(m: Record<string, unknown>): string {
+/** Formata uma memória com um RÓTULO RELATIVO ("hoje"/"ontem"/"há N dias") em
+ *  vez de data crua — a Maya recebe o tempo já calculado e não faz conta de
+ *  calendário (que era a causa dela tratar tudo como "ontem"). */
+function formatMemory(m: Record<string, unknown>, todayStr?: string, tz?: string): string {
   const fact = (m.fact as string) || "";
   const createdAt = m.created_at as string | undefined;
   if (!createdAt) return fact;
-  return `${getLocalDateFromISO(createdAt)}: ${fact}`;
+  const day = relativeDayLabel(getLocalDateFromISO(createdAt, tz), todayStr);
+  return day ? `${day}: ${fact}` : fact;
 }
 
 export async function fetchMayaContext(
@@ -63,7 +66,7 @@ export async function fetchMayaContext(
   opts: FetchMayaContextOptions = {},
 ): Promise<MayaContext> {
   const admin = getSupabaseAdmin();
-  const today = getLocalDate();
+  const today = getLocalDate(opts.tz);
   const weekStart = opts.weekStart || getWeekMondayDate();
 
   const keys: string[] = [];
@@ -74,7 +77,7 @@ export async function fetchMayaContext(
   add("prefs", admin.from("user_preferences").select("context").eq("user_id", userId).single());
   add("checkIns", admin.from("check_ins").select("*").eq("user_id", userId).order("date", { ascending: false }).limit(opts.checkInLimit ?? 7));
   add("diaryEntries", admin.from("diary_entries").select("*").eq("user_id", userId).order("date", { ascending: false }).limit(opts.diaryLimit ?? 10));
-  add("memories", admin.from("user_memories").select("fact, created_at").eq("user_id", userId).order("created_at", { ascending: false }));
+  add("memories", admin.from("user_memories").select("fact, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(60));
   add("rawGoals", admin.from("goals")
     .select("*, goal_stages(*, goal_actions(*))")
     .eq("user_id", userId).eq("status", "ativa")
@@ -147,7 +150,7 @@ export async function fetchMayaContext(
       case "prefs": ctx.prefs = res?.data ?? null; break;
       case "checkIns": ctx.checkIns = res?.data ?? []; break;
       case "diaryEntries": ctx.diaryEntries = res?.data ?? []; break;
-      case "memories": ctx.memories = (res?.data ?? []).map((m: any) => formatMemory(m)); break;
+      case "memories": ctx.memories = (res?.data ?? []).map((m: any) => formatMemory(m, today, opts.tz)); break;
       case "rawGoals": ctx.rawGoals = res?.data ?? []; break;
       case "weekPlanRaw": ctx.weekPlanRaw = res?.data ?? null; break;
       case "latestInsights": ctx.latestInsights = res ?? null; break;

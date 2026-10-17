@@ -122,7 +122,7 @@ export async function POST(request: Request) {
     const admin = getSupabaseAdmin();
 
     // ── Contexto único (mesma fonte que home/planejamento/nudge) ──
-    const ctx = await fetchMayaContext(user.id, { includeAreaVisions: true, includeAgenda: true });
+    const ctx = await fetchMayaContext(user.id, { includeAreaVisions: true, includeAgenda: true, tz: clientTz });
     const context = (ctx.prefs?.context ?? {}) as Record<string, unknown>;
 
     // Hora e data no fuso do usuario (do browser, fallback SP)

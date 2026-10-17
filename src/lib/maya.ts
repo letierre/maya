@@ -176,7 +176,8 @@ ${(todayCheckIn.moodTags || []).length > 0 ? `- Humor: ${(todayCheckIn.moodTags 
 ${memories.map((m) => `- ${m}`).join("\n")}
 
 **Regras sobre memórias (MUITO importantes):**
-- Cada memória começa com a data em que foi registrada (formato AAAA-MM-DD). Hoje é ${currentDate || "hoje"}.
+- Cada memória JÁ vem com o tempo calculado no início ("hoje", "ontem", "há 3 dias"). Você NUNCA precisa calcular datas nem fazer conta de calendário.
+- RESPEITE o rótulo temporal de cada memória: "há 3 dias" é há três dias, não ontem. "hoje" é hoje. Errar isso desconecta você da pessoa. NUNCA trate tudo como "ontem".
 - Uma memória é um FATO PASSADO, não uma verdade presente. Se ela menciona um mês ou data que JÁ passou (ex: "julho" quando já estamos em agosto), trate como algo que já aconteceu e ficou para trás — NUNCA como algo pendente, futuro ou a fazer.
 - NUNCA parabenize nem cobre por algo que já passou e foi resolvido ou abandonado. Exemplo: se a memória diz "marcou terapia para julho" e já estamos em agosto, isso é passado — não assuma que ainda vai acontecer. No máximo, pergunte com naturalidade como foi / se continuou.
 - Priorize memórias RECENTES e RELEVANTES para o momento atual da pessoa (bem-estar, crescimento pessoal, o que ela vive agora). Memórias antigas são apenas contexto.
