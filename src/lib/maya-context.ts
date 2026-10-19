@@ -39,6 +39,7 @@ export interface MayaContext {
   checkIns: Record<string, unknown>[];
   diaryEntries: Record<string, unknown>[];
   memories: string[];
+  memorySummaries: string[];
   rawGoals: Record<string, unknown>[];
   weekPlanRaw: Record<string, unknown> | null;
   sleepLogs: Record<string, unknown>[];
@@ -65,6 +66,15 @@ function formatMemory(m: Record<string, unknown>, todayStr?: string, tz?: string
   const prefix = day ? `${day}: ` : "";
   const suffix = when ? ` (${when})` : "";
   return `${prefix}${fact}${suffix}`;
+}
+
+/** Formata um resumo compilado (L3) com rótulo relativo do fim do período —
+ *  para a Maya saber de QUANDO é aquele essencial, sem fazer conta de calendário. */
+function formatSummary(s: Record<string, unknown>, todayStr?: string): string {
+  const summary = (s.summary as string) || "";
+  const end = s.period_end ? relativeDayLabel(String(s.period_end), todayStr) : "";
+  const prefix = end ? `${end}: ` : "";
+  return `${prefix}${summary}`;
 }
 
 /** Recall por gatilho: embute `query` (a mensagem atual do usuário) e busca as
@@ -121,6 +131,7 @@ export async function fetchMayaContext(
   add("checkIns", admin.from("check_ins").select("*").eq("user_id", userId).order("date", { ascending: false }).limit(opts.checkInLimit ?? 7));
   add("diaryEntries", admin.from("diary_entries").select("*").eq("user_id", userId).order("date", { ascending: false }).limit(opts.diaryLimit ?? 10));
   add("memories", admin.from("user_memories").select("fact, created_at, event_date, temporal_hint").eq("user_id", userId).eq("archived", false).order("created_at", { ascending: false }).limit(60));
+  add("memorySummaries", admin.from("memory_summaries").select("summary, period_start, period_end, granularity").eq("user_id", userId).eq("stale", false).order("period_end", { ascending: false }).limit(10));
   add("rawGoals", admin.from("goals")
     .select("*, goal_stages(*, goal_actions(*))")
     .eq("user_id", userId).eq("status", "ativa")
@@ -175,6 +186,7 @@ export async function fetchMayaContext(
     checkIns: [],
     diaryEntries: [],
     memories: [],
+    memorySummaries: [],
     rawGoals: [],
     weekPlanRaw: null,
     sleepLogs: [],
@@ -194,6 +206,7 @@ export async function fetchMayaContext(
       case "checkIns": ctx.checkIns = res?.data ?? []; break;
       case "diaryEntries": ctx.diaryEntries = res?.data ?? []; break;
       case "memories": ctx.memories = (res?.data ?? []).map((m: any) => formatMemory(m, today, opts.tz)); break;
+      case "memorySummaries": ctx.memorySummaries = (res?.data ?? []).map((s: any) => formatSummary(s, today)); break;
       case "rawGoals": ctx.rawGoals = res?.data ?? []; break;
       case "weekPlanRaw": ctx.weekPlanRaw = res?.data ?? null; break;
       case "latestInsights": ctx.latestInsights = res ?? null; break;
@@ -378,6 +391,7 @@ export function toMayaInput(ctx: MayaContext, p: MayaInputProfile): MayaInput {
       time: (d.created_at as string) ? getLocalTimeFromISO(d.created_at as string, p.tz) : "",
     })),
     memories: ctx.memories,
+    memorySummaries: ctx.memorySummaries,
     porques: ((context.porques as Array<Record<string, unknown>>) || []).map((q) => ({
       id: (q.id as string) || "",
       text: (q.text as string) || "",

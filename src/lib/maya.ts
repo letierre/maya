@@ -50,6 +50,7 @@ export interface MayaInput {
   recentCheckIns: { date: string; positives: string[]; negatives: string[]; feeling: string; moodTags?: string[]; moodAt?: string }[];
   recentDiary: { date: string; content: string; mood: number | null; time?: string }[];
   memories: string[];
+  memorySummaries?: string[];
   triggeredMemories?: string[];
   porques: Porque[];
   streak: number;
@@ -116,7 +117,7 @@ const AREA_LABELS: Record<string, string> = {
 };
 
 export function buildMayaSystemPrompt(input: MayaInput): string {
-  const { profile, recentCheckIns, recentDiary, memories, triggeredMemories, porques, streak, currentHour, currentDate, activeGoals, weekPlan, language, specialistSummaries, agenda } = input;
+  const { profile, recentCheckIns, recentDiary, memories, memorySummaries, triggeredMemories, porques, streak, currentHour, currentDate, activeGoals, weekPlan, language, specialistSummaries, agenda } = input;
 
   const timeBlock = currentHour !== undefined ? timeAwarenessBlock(currentHour, currentDate) : "";
 
@@ -183,6 +184,16 @@ ${memories.map((m) => `- ${m}`).join("\n")}
 - NUNCA parabenize nem cobre por algo que já passou e foi resolvido ou abandonado. Exemplo: se a memória diz "marcou terapia para julho" e já estamos em agosto, isso é passado — não assuma que ainda vai acontecer. No máximo, pergunte com naturalidade como foi / se continuou.
 - Priorize memórias RECENTES e RELEVANTES para o momento atual da pessoa (bem-estar, crescimento pessoal, o que ela vive agora). Memórias antigas são apenas contexto.
 - NUNCA liste as memórias. Use naturalmente quando relevante.`
+    : "";
+
+  const summariesBlock = memorySummaries && memorySummaries.length > 0
+    ? `## MEMÓRIA COMPILADA (o essencial de períodos anteriores)
+${memorySummaries.map((s) => `- ${s}`).join("\n")}
+
+**Regras sobre a memória compilada:**
+- São resumos que destilam fatos mais antigos. Use como PANO DE FUNDO do relacionamento — o que você já sabe no fundo, sem recitar.
+- O rótulo no início ("há 14 dias", etc.) diz de quando é o período. NUNCA trate tudo como "ontem" nem faça conta de calendário.
+- NÃO liste nem repita os resumos. Traga naturalmente quando o assunto resgatar algo.`
     : "";
 
   const triggeredBlock = triggeredMemories && triggeredMemories.length > 0
@@ -465,6 +476,7 @@ Durante a conversa, você naturalmente aprende coisas sobre a pessoa. Quando iss
 ${specialistBlock}
 ${porquesBlock}
 ${memoriesBlock}
+${summariesBlock}
 ${triggeredBlock}
 ${goalsBlock}
 ${weekPlanBlock}
