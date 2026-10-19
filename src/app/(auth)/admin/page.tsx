@@ -98,10 +98,11 @@ type Tab = "overview" | "users" | "modules" | "patterns" | "funnel" | "revenue" 
 interface MemoryInspect {
   userId: string;
   email: string | null;
-  counts: { facts: number; active: number; archived: number; withoutVector: number; summaries: number };
+  counts: { total: number; active: number; archived: number; vectorCount: number; withoutVector: number; summaries: number };
   memories: { id: string; fact: string; kind: string; event_date: string | null; temporal_hint: string | null; importance: number; confidence: number; archived: boolean; has_vector: boolean; created_at: string }[];
   summaries: { id: string; summary: string; period_start: string; period_end: string; granularity: string; source_memory_ids: string[]; created_at: string }[];
   ops: { op: string; ref_type: string | null; ref_id: string | null; detail: string | null; meta: Record<string, unknown>; created_at: string }[];
+  errors: { path: string; message: string; created_at: string }[];
   recall: { query: string; matches: { memory_id: string; fact: string; similarity: number }[]; error?: string } | null;
 }
 
@@ -783,12 +784,40 @@ export default function AdminPage() {
             {memory && (
               <>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                  <MiniStat label="Fatos ativos" value={memory.counts.active} />
-                  <MiniStat label="Fatos arquivados" value={memory.counts.archived} />
-                  <MiniStat label="Sem vetor" value={memory.counts.withoutVector} />
+                  <MiniStat label="Total de fatos" value={memory.counts.total} />
+                  <MiniStat label="Ativos" value={memory.counts.active} />
+                  <MiniStat label="Vetores" value={memory.counts.vectorCount} />
                   <MiniStat label="Resumos L3" value={memory.counts.summaries} />
                 </div>
                 {memory.email && <p style={{ fontSize: 11, color: "#6a657a", margin: "0 0 12px", wordBreak: "break-all" }}>{memory.email} · {memory.userId}</p>}
+
+                {memory.counts.total > memory.memories.length && (
+                  <p style={{ fontSize: 11, color: "#FF9F43", margin: "0 0 8px" }}>
+                    ⚠️ Mostrando {memory.memories.length} de {memory.counts.total} fatos — os mais antigos estão acima do teto de exibição.
+                  </p>
+                )}
+
+                {memory.counts.vectorCount === 0 && (
+                  <div style={{ background: "rgba(255,77,77,0.12)", borderRadius: 12, padding: 12, border: "1px solid rgba(255,77,77,0.35)", marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#FF4D4D" }}>Nenhum vetor para este usuário</div>
+                    <div style={{ fontSize: 11, color: "#e0d6ff", lineHeight: 1.5, marginTop: 4 }}>
+                      A camada de embeddings não está gravando. Veja os erros abaixo — quase sempre é o VOYAGE_API_KEY ausente/errado no Vercel (produção).
+                    </div>
+                  </div>
+                )}
+
+                {memory.errors.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <SectionTitle>Erros recentes de memória ({memory.errors.length})</SectionTitle>
+                    {memory.errors.slice(0, 12).map((e, i) => (
+                      <div key={i} style={{ padding: "6px 0", borderTop: "1px solid rgba(167,139,250,0.06)" }}>
+                        <div style={{ fontSize: 10, color: "#FF9F43" }}>{e.path}</div>
+                        <div style={{ fontSize: 11, color: "#e0d6ff", lineHeight: 1.4, marginTop: 1 }}>{e.message.slice(0, 180)}</div>
+                        <div style={{ fontSize: 10, color: "#6a657a", marginTop: 1 }}>{new Date(e.created_at).toLocaleString(getLocale())}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                   <input value={memoryQuery} onChange={(e) => setMemoryQuery(e.target.value)}

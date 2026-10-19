@@ -38,12 +38,18 @@ export async function GET(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "userId ou email não encontrado" }, { status: 404 });
 
   // ── Fatos + status de vetor ─────────────────────────────────────────
-  const [{ data: facts }, { data: vectors }] = await Promise.all([
+  // `count: "exact"` devolve o TOTAL real (ignora o limit), para o contador
+  // não mentir quando o usuário tem mais do que o teto de exibição.
+  const [{ data: facts, count: totalFacts }, { count: activeFacts }, { data: vectors }] = await Promise.all([
     admin.from("user_memories")
-      .select("id, fact, kind, event_date, temporal_hint, importance, confidence, archived, superseded_by, created_at")
+      .select("id, fact, kind, event_date, temporal_hint, importance, confidence, archived, superseded_by, created_at", { count: "exact" })
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(200),
+      .limit(1000),
+    admin.from("user_memories")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("archived", false),
     admin.from("memory_vectors")
       .select("ref_id")
       .eq("user_id", userId)
@@ -54,6 +60,19 @@ export async function GET(req: NextRequest) {
     ...f,
     has_vector: vectorSet.has(f.id),
   }));
+
+  // ── Erros recentes de memória/embeddings (diagnóstico) ──────────────
+  let memErrs: { path: string; message: string; created_at: string }[] = [];
+  try {
+    const { data: errs } = await admin.from("error_logs")
+      .select("path, message, created_at")
+      .or("path.ilike.%memory%,path.ilike.%voyage%,path.ilike.%embed%")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    memErrs = (errs ?? []) as typeof memErrs;
+  } catch {
+    /* error_logs pode não existir */
+  }
 
   // ── Resumos compilados ──────────────────────────────────────────────
   const { data: summaries } = await admin.from("memory_summaries")
@@ -93,20 +112,23 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const activeFacts = memories.filter((m) => !m.archived).length;
+  const total = totalFacts ?? 0;
+  const active = activeFacts ?? 0;
   return NextResponse.json({
     userId,
     email: userEmail,
     counts: {
-      facts: memories.length,
-      active: activeFacts,
-      archived: memories.length - activeFacts,
+      total,
+      active,
+      archived: total - active,
+      vectorCount: vectors?.length ?? 0,
       withoutVector: memories.filter((m) => !m.has_vector).length,
       summaries: summaries?.length ?? 0,
     },
     memories,
     summaries: summaries ?? [],
     ops: ops ?? [],
+    errors: memErrs,
     recall,
   });
 }
