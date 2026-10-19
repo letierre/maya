@@ -4,11 +4,16 @@
  * - `input_type "document"`: para fatos/episódios/resumos que ARMAZENAMOS.
  * - `input_type "query"`:    para a pergunta de busca (mensagem atual do usuário).
  * Usar o tipo errado derruba o recall — mantemos os dois separados de propósito.
+ *
+ * Robustez de rate limit: o tier gratuito do Voyage (sem cartão) é 3 RPM / 10K
+ * TPM. Lote menor (64) + retry com backoff exponencial em 429/5xx evita que um
+ * pico derrube a escrita/recall/backfill.
  */
 
 const VOYAGE_URL = "https://api.voyageai.com/v1/embeddings";
 const MODEL = "voyage-3-large";
-const BATCH = 128; // limite por chamada do voyage-3-large
+const BATCH = 64; // cabe folgado nos 10K tokens/min do tier gratuito
+const MAX_RETRIES = 6;
 
 function apiKey(): string {
   const k = process.env.VOYAGE_API_KEY || "";
@@ -16,28 +21,50 @@ function apiKey(): string {
   return k;
 }
 
-async function voyageEmbed(inputs: string[], inputType: "document" | "query"): Promise<number[][]> {
-  const res = await fetch(VOYAGE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey()}`,
-    },
-    body: JSON.stringify({ model: MODEL, input: inputs, input_type: inputType }),
-  });
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
-  if (!res.ok) {
+async function voyageEmbed(inputs: string[], inputType: "document" | "query"): Promise<number[][]> {
+  let lastStatus = 0;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(VOYAGE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey()}`,
+        },
+        body: JSON.stringify({ model: MODEL, input: inputs, input_type: inputType }),
+      });
+    } catch (err) {
+      throw new Error(`Voyage network error: ${String(err)}`);
+    }
+
+    if (res.ok) {
+      const data = await res.json();
+      const rows = Array.isArray(data?.data) ? data.data : [];
+      // Voyage devolve `index` por item; garante a ordem de entrada.
+      return rows
+        .slice()
+        .sort((a: { index?: number }, b: { index?: number }) => (a.index ?? 0) - (b.index ?? 0))
+        .map((d: { embedding?: number[] }) => d.embedding ?? []);
+    }
+
+    lastStatus = res.status;
+    // 429 (rate limit) e 5xx são transitórios → tenta de novo com backoff.
+    const retriable = res.status === 429 || res.status >= 500;
+    if (retriable && attempt < MAX_RETRIES) {
+      const wait = Math.min(60000, 2000 * Math.pow(2, attempt)); // 2s,4s,8s,16s,32s,60s
+      await sleep(wait);
+      continue;
+    }
+
     const err = await res.text();
     throw new Error(`Voyage API error (${res.status}): ${err.slice(0, 200)}`);
   }
-
-  const data = await res.json();
-  const rows = Array.isArray(data?.data) ? data.data : [];
-  // Voyage devolve `index` por item; garante a ordem de entrada.
-  return rows
-    .slice()
-    .sort((a: { index?: number }, b: { index?: number }) => (a.index ?? 0) - (b.index ?? 0))
-    .map((d: { embedding?: number[] }) => d.embedding ?? []);
+  throw new Error(`Voyage API error (${lastStatus}): limite de tentativas excedido`);
 }
 
 /** Embutir textos a armazenar (fatos/episódios/resumos). */
