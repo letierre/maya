@@ -822,6 +822,7 @@ export default function AdminPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                   <MiniStat label="Total de fatos" value={memory.counts.total} />
                   <MiniStat label="Ativos" value={memory.counts.active} />
+                  <MiniStat label="Vetores ✓" value={memory.counts.vectorCount} />
                   <MiniStat label="Sem vetor" value={memory.counts.withoutVector} />
                   <MiniStat label="Resumos L3" value={memory.counts.summaries} />
                 </div>
