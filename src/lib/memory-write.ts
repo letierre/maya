@@ -177,6 +177,25 @@ async function insertFactWithVector(
   return (data as string) ?? null;
 }
 
+async function logMemoryOp(
+  admin: ReturnType<typeof getSupabaseAdmin>,
+  userId: string,
+  op: "write" | "merge" | "supersede" | "duplicate",
+  opts: { ref_id?: string; detail?: string },
+): Promise<void> {
+  try {
+    await admin.from("memory_ops").insert({
+      user_id: userId,
+      op,
+      ref_type: "fact",
+      ref_id: opts.ref_id ?? null,
+      detail: opts.detail ?? null,
+    });
+  } catch {
+    // best-effort: o log de auditoria nunca derruba a escrita de memória.
+  }
+}
+
 async function decideAction(f: ExtractedFact, candidates: Candidate[], language?: string): Promise<Decision> {
   const system = `Você é o curador da memória de longo prazo da Maya. Decida se um fato novo já está representado nas memórias existentes da pessoa. ${responseLanguageLine(language)}`;
   const user = `Fato novo: "${f.fact}"
@@ -242,7 +261,8 @@ export async function extractAndStoreMemory(opts: {
 
       // Claramente novo → grava direto (sem gastar LLM de dedup).
       if (!best || best.similarity < DEDUP_SIM_THRESHOLD) {
-        await insertFactWithVector(admin, userId, f, vectorStr);
+        const newId = await insertFactWithVector(admin, userId, f, vectorStr);
+        await logMemoryOp(admin, userId, "write", { ref_id: newId ?? undefined, detail: f.fact });
         stored++;
         continue;
       }
@@ -251,6 +271,7 @@ export async function extractAndStoreMemory(opts: {
       const decision = await decideAction(f, candidates, language);
 
       if (decision.action === "duplicate") {
+        await logMemoryOp(admin, userId, "duplicate", { ref_id: decision.target_id ?? undefined, detail: f.fact });
         skipped++;
       } else if (decision.action === "merge" && decision.target_id && decision.merged_text) {
         // Re-embeds o texto fundido (não o fato original).
@@ -260,6 +281,7 @@ export async function extractAndStoreMemory(opts: {
           p_fact: decision.merged_text,
           p_embedding: toPgVector(mergedVec),
         });
+        await logMemoryOp(admin, userId, "merge", { ref_id: decision.target_id, detail: decision.merged_text });
         stored++;
       } else if (decision.action === "supersede") {
         const newId = await insertFactWithVector(admin, userId, f, vectorStr);
@@ -269,10 +291,12 @@ export async function extractAndStoreMemory(opts: {
             .update({ archived: true, superseded_by: newId })
             .eq("id", decision.target_id);
         }
+        await logMemoryOp(admin, userId, "supersede", { ref_id: newId ?? undefined, detail: f.fact });
         stored++;
       } else {
         // "new" ou fallback
-        await insertFactWithVector(admin, userId, f, vectorStr);
+        const newId = await insertFactWithVector(admin, userId, f, vectorStr);
+        await logMemoryOp(admin, userId, "write", { ref_id: newId ?? undefined, detail: f.fact });
         stored++;
       }
     } catch (e) {

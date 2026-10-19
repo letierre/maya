@@ -42,6 +42,7 @@ export async function backfillEmbeddings(): Promise<{ found: number; embedded: n
 
   let embedded = 0;
   let failed = 0;
+  const countByUser = new Map<string, number>();
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     const vec = embeddings[i];
@@ -58,9 +59,24 @@ export async function backfillEmbeddings(): Promise<{ found: number; embedded: n
         p_embedding: toPgVector(vec),
       });
       embedded++;
+      countByUser.set(r.user_id, (countByUser.get(r.user_id) ?? 0) + 1);
     } catch (e) {
       failed++;
       logError({ path: "memory-maintenance backfill", message: String(e), userId: r.user_id });
+    }
+  }
+
+  // Log de auditoria (1 linha por usuário, com a contagem embutida).
+  for (const [uid, count] of countByUser) {
+    try {
+      await admin.from("memory_ops").insert({
+        user_id: uid,
+        op: "backfill",
+        ref_type: "fact",
+        meta: { embedded: count },
+      });
+    } catch {
+      /* best-effort */
     }
   }
 
@@ -132,15 +148,34 @@ async function compileUser(admin: ReturnType<typeof getSupabaseAdmin>, userId: s
   const periodStart = createds.length ? getLocalDateFromISO(createds[0]) : getLocalDate();
   const periodEnd = createds.length ? getLocalDateFromISO(createds[createds.length - 1]) : getLocalDate();
 
-  const { error: insErr } = await admin.from("memory_summaries").insert({
-    user_id: userId,
-    period_start: periodStart,
-    period_end: periodEnd,
-    granularity: spanGranularity(periodStart, periodEnd),
-    summary,
-    source_memory_ids: pending.map((f) => f.id),
-  });
+  const { data: inserted, error: insErr } = await admin
+    .from("memory_summaries")
+    .insert({
+      user_id: userId,
+      period_start: periodStart,
+      period_end: periodEnd,
+      granularity: spanGranularity(periodStart, periodEnd),
+      summary,
+      source_memory_ids: pending.map((f) => f.id),
+    })
+    .select("id")
+    .single();
   if (insErr) throw insErr;
+
+  // Log de auditoria (1 linha por resumo compilado).
+  try {
+    await admin.from("memory_ops").insert({
+      user_id: userId,
+      op: "compile",
+      ref_type: "summary",
+      ref_id: (inserted as { id?: string } | null)?.id ?? null,
+      detail: summary.slice(0, 300),
+      meta: { source_count: pending.length },
+    });
+  } catch {
+    /* best-effort */
+  }
+
   return true;
 }
 

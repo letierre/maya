@@ -93,13 +93,27 @@ interface OnboardingMetrics {
   dropoffByStep: Record<string, number>;
 }
 
-type Tab = "overview" | "users" | "modules" | "patterns" | "funnel" | "revenue" | "reports" | "onboarding";
+type Tab = "overview" | "users" | "modules" | "patterns" | "funnel" | "revenue" | "reports" | "onboarding" | "memory";
+
+interface MemoryInspect {
+  userId: string;
+  email: string | null;
+  counts: { facts: number; active: number; archived: number; withoutVector: number; summaries: number };
+  memories: { id: string; fact: string; kind: string; event_date: string | null; temporal_hint: string | null; importance: number; confidence: number; archived: boolean; has_vector: boolean; created_at: string }[];
+  summaries: { id: string; summary: string; period_start: string; period_end: string; granularity: string; source_memory_ids: string[]; created_at: string }[];
+  ops: { op: string; ref_type: string | null; ref_id: string | null; detail: string | null; meta: Record<string, unknown>; created_at: string }[];
+  recall: { query: string; matches: { memory_id: string; fact: string; similarity: number }[]; error?: string } | null;
+}
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const LANG_LABELS: [string, string][] = [["pt", "Português"], ["es", "Espanhol"], ["en", "Inglês"], ["other", "Não definido"]];
 const GENDER_LABELS: [string, string][] = [["masculino", "Masculino ⚡"], ["feminino", "Feminino 🌸"], ["nao_dizer", "Prefere não dizer 🌱"], ["other", "Não informado"]];
 const langLabel = (k: string) => LANG_LABELS.find(([v]) => v === k)?.[1] ?? k;
 const genderLabel = (k: string) => GENDER_LABELS.find(([v]) => v === k)?.[1] ?? k;
+const OP_COLORS: Record<string, string> = {
+  write: "#22D18B", merge: "#5EEAD4", supersede: "#FF9F43",
+  duplicate: "#6a657a", compile: "#A78BFA", backfill: "#7C5CFF",
+};
 const fmtMoney = (currency: string, amount: number) => {
   const opts = { minimumFractionDigits: 2 };
   if (currency === "brl") return `R$ ${amount.toLocaleString("pt-BR", opts)}`;
@@ -165,6 +179,10 @@ export default function AdminPage() {
   const [patternsError, setPatternsError] = useState(false);
   const [onboarding, setOnboarding] = useState<OnboardingMetrics | null>(null);
   const [onboardingError, setOnboardingError] = useState(false);
+  const [memory, setMemory] = useState<MemoryInspect | null>(null);
+  const [memoryError, setMemoryError] = useState(false);
+  const [memoryInput, setMemoryInput] = useState("");
+  const [memoryQuery, setMemoryQuery] = useState("");
   const [tab, setTab] = useState<Tab>("overview");
   const [error, setError] = useState("");
 
@@ -216,6 +234,18 @@ export default function AdminPage() {
     else setOnboardingError(true);
   };
 
+  const loadMemory = async (q?: string) => {
+    setMemoryError(false);
+    const target = q !== undefined ? q : memoryInput.trim();
+    if (!target) { setMemoryError(true); setMemory(null); return; }
+    const isEmail = target.includes("@");
+    const query = memoryQuery.trim();
+    const url = `/api/admin/memory?${isEmail ? "email" : "userId"}=${encodeURIComponent(target)}${query ? `&query=${encodeURIComponent(query)}` : ""}`;
+    const res = await fetch(url);
+    if (res.ok) setMemory(await res.json());
+    else setMemoryError(true);
+  };
+
   const deletePost = async (postId: string) => {
     const res = await fetch(`/api/admin/posts/${postId}`, { method: "DELETE" });
     if (res.ok) {
@@ -262,6 +292,7 @@ export default function AdminPage() {
     { key: "onboarding", label: "📋 Onboarding" },
     { key: "revenue", label: "💸 Receita" },
     { key: "reports", label: "🚩 Denúncias" },
+    { key: "memory", label: "🧠 Memória" },
   ];
 
   return (
@@ -729,6 +760,104 @@ export default function AdminPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ── MEMÓRIA ── */}
+        {tab === "memory" && (
+          <div style={{ padding: "8px 20px 0" }}>
+            <SectionTitle>Inspecionar memória de um usuário</SectionTitle>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <input value={memoryInput} onChange={(e) => setMemoryInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") loadMemory(); }}
+                placeholder="email ou userId"
+                style={{ flex: 1, background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 10, padding: "10px 12px", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none" }} />
+              <button type="button" onClick={() => loadMemory()}
+                style={{ padding: "10px 16px", borderRadius: 10, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                Buscar
+              </button>
+            </div>
+
+            {memoryError && <p style={{ fontSize: 12, color: "#FF4D4D", padding: "8px 0" }}>Usuário não encontrado (ou sem acesso).</p>}
+
+            {memory && (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                  <MiniStat label="Fatos ativos" value={memory.counts.active} />
+                  <MiniStat label="Fatos arquivados" value={memory.counts.archived} />
+                  <MiniStat label="Sem vetor" value={memory.counts.withoutVector} />
+                  <MiniStat label="Resumos L3" value={memory.counts.summaries} />
+                </div>
+                {memory.email && <p style={{ fontSize: 11, color: "#6a657a", margin: "0 0 12px", wordBreak: "break-all" }}>{memory.email} · {memory.userId}</p>}
+
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  <input value={memoryQuery} onChange={(e) => setMemoryQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") loadMemory(); }}
+                    placeholder="testar recall: escreva uma mensagem…"
+                    style={{ flex: 1, background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 10, padding: "10px 12px", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none" }} />
+                  <button type="button" onClick={() => loadMemory()}
+                    style={{ padding: "10px 14px", borderRadius: 10, border: 0, background: "#22D18B", color: "#0B0B10", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                    Recall
+                  </button>
+                </div>
+
+                {memory.recall && (
+                  <div style={{ marginBottom: 16 }}>
+                    <SectionTitle>Recall para "{memory.recall.query}"</SectionTitle>
+                    {memory.recall.error ? (
+                      <p style={{ fontSize: 11, color: "#FF4D4D" }}>{memory.recall.error}</p>
+                    ) : memory.recall.matches.length === 0 ? (
+                      <p style={{ fontSize: 11, color: "#9e96b5" }}>Nenhuma memória relevante (ou usuário sem vetores).</p>
+                    ) : memory.recall.matches.map((m) => (
+                      <div key={m.memory_id} style={{ padding: "7px 0", borderTop: "1px solid rgba(167,139,250,0.06)" }}>
+                        <div style={{ fontSize: 12, color: "#e0d6ff", lineHeight: 1.4 }}>{m.fact}</div>
+                        <div style={{ fontSize: 10, color: "#5EEAD4" }}>{Math.round(m.similarity * 100)}% similar</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <SectionTitle>Fatos ({memory.memories.length})</SectionTitle>
+                {memory.memories.length === 0 ? (
+                  <p style={{ fontSize: 11, color: "#9e96b5" }}>Nenhum fato ainda.</p>
+                ) : memory.memories.map((m) => (
+                  <div key={m.id} style={{ padding: "8px 0", borderTop: "1px solid rgba(167,139,250,0.06)" }}>
+                    <div style={{ fontSize: 12, color: m.archived ? "#6a657a" : "#e0d6ff", lineHeight: 1.4, textDecoration: m.archived ? "line-through" : "none" }}>
+                      {m.fact}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#6a657a", marginTop: 2, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <span>{m.kind}</span>
+                      {m.event_date && <span>📅 {m.event_date}</span>}
+                      {m.temporal_hint && <span>{m.temporal_hint}</span>}
+                      <span>imp {m.importance}</span>
+                      <span>{m.has_vector ? "🧬 vetor" : "⚠️ sem vetor"}</span>
+                      <span>{new Date(m.created_at).toLocaleDateString(getLocale())}</span>
+                    </div>
+                  </div>
+                ))}
+
+                <SectionTitle>Resumos compilados ({memory.summaries.length})</SectionTitle>
+                {memory.summaries.length === 0 ? (
+                  <p style={{ fontSize: 11, color: "#9e96b5", lineHeight: 1.5 }}>Nenhum resumo ainda. A compilação roda a cada hora e só dispara quando o usuário cruza 20+ fatos não resumidos.</p>
+                ) : memory.summaries.map((s) => (
+                  <div key={s.id} style={{ padding: "8px 0", borderTop: "1px solid rgba(167,139,250,0.06)" }}>
+                    <div style={{ fontSize: 10, color: "#6a657a", marginBottom: 2 }}>{s.granularity} · {s.period_start} → {s.period_end} · {s.source_memory_ids.length} fatos</div>
+                    <div style={{ fontSize: 12, color: "#e0d6ff", lineHeight: 1.4 }}>{s.summary}</div>
+                  </div>
+                ))}
+
+                <SectionTitle>Log de operações ({memory.ops.length})</SectionTitle>
+                {memory.ops.length === 0 ? (
+                  <p style={{ fontSize: 11, color: "#9e96b5" }}>Nenhuma operação registrada.</p>
+                ) : memory.ops.slice(0, 40).map((o, i) => (
+                  <div key={i} style={{ padding: "6px 0", borderTop: "1px solid rgba(167,139,250,0.06)" }}>
+                    <span style={{ fontSize: 10, color: OP_COLORS[o.op] ?? "#A78BFA", fontWeight: 700 }}>{o.op}</span>
+                    <span style={{ fontSize: 10, color: "#6a657a", marginLeft: 8 }}>{new Date(o.created_at).toLocaleString(getLocale())}</span>
+                    {o.detail && <div style={{ fontSize: 11, color: "#9e96b5", marginTop: 2 }}>{o.detail.slice(0, 120)}</div>}
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
       </div>
