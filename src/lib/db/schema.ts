@@ -8,6 +8,7 @@ import {
   timestamp,
   uniqueIndex,
   jsonb,
+  numeric,
 } from "drizzle-orm/pg-core";
 
 const ALL_QUESTION_KEYS = [
@@ -142,6 +143,16 @@ export const userMemories = pgTable("user_memories", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").notNull(),
   fact: text("fact").notNull(),
+  kind: text("kind").notNull().default("event"),
+  eventDate: date("event_date"),
+  temporalHint: text("temporal_hint"),
+  source: text("source").notNull().default("chat"),
+  importance: integer("importance").notNull().default(2),
+  confidence: numeric("confidence", { precision: 3, scale: 2 }).notNull().default("0.8"),
+  clusterLabel: text("cluster_label"),
+  archived: boolean("archived").notNull().default(false),
+  supersededBy: uuid("superseded_by"),
+  lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
