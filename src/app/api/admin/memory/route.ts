@@ -1,7 +1,18 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { embedQuery, toPgVector } from "@/lib/embeddings";
+import { backfillEmbeddings, compileMemories } from "@/lib/memory-maintenance";
 import { NextRequest, NextResponse } from "next/server";
+
+async function requireAdmin() {
+  const supabase = await createServerSupabaseClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return { ok: false as const, status: 401 };
+  const admin = getSupabaseAdmin();
+  const { data: role } = await admin.from("user_roles").select("is_admin").eq("user_id", session.user.id).maybeSingle();
+  if (!role?.is_admin) return { ok: false as const, status: 403 };
+  return { ok: true as const, status: 200, admin };
+}
 
 // GET /api/admin/memory — inspeção da memória de um usuário (admin only).
 // Params:
@@ -11,13 +22,9 @@ import { NextRequest, NextResponse } from "next/server";
 // pedido) as memórias que o recall traria para uma mensagem.
 
 export async function GET(req: NextRequest) {
-  const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-
-  const admin = getSupabaseAdmin();
-  const { data: role } = await admin.from("user_roles").select("is_admin").eq("user_id", session.user.id).maybeSingle();
-  if (!role?.is_admin) return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+  const auth = await requireAdmin();
+  if (!auth.ok) return NextResponse.json({ error: "Acesso negado" }, { status: auth.status });
+  const admin = auth.admin!;
 
   const { searchParams } = new URL(req.url);
   let userId = searchParams.get("userId");
@@ -131,4 +138,21 @@ export async function GET(req: NextRequest) {
     errors: memErrs,
     recall,
   });
+}
+
+// POST /api/admin/memory?action=backfill|compile — força a manutenção de memória
+// manualmente (admin only). Útil para diagnosticar sem depender do cron.
+export async function POST(req: NextRequest) {
+  const auth = await requireAdmin();
+  if (!auth.ok) return NextResponse.json({ error: "Acesso negado" }, { status: auth.status });
+
+  const action = new URL(req.url).searchParams.get("action") || "backfill";
+  try {
+    if (action === "compile") {
+      return NextResponse.json({ ok: true, ...(await compileMemories()) });
+    }
+    return NextResponse.json({ ok: true, ...(await backfillEmbeddings()) });
+  } catch (e) {
+    return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
+  }
 }

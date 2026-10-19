@@ -184,6 +184,7 @@ export default function AdminPage() {
   const [memoryError, setMemoryError] = useState(false);
   const [memoryInput, setMemoryInput] = useState("");
   const [memoryQuery, setMemoryQuery] = useState("");
+  const [backfillState, setBackfillState] = useState("");
   const [tab, setTab] = useState<Tab>("overview");
   const [error, setError] = useState("");
 
@@ -245,6 +246,18 @@ export default function AdminPage() {
     const res = await fetch(url);
     if (res.ok) setMemory(await res.json());
     else setMemoryError(true);
+  };
+
+  const runBackfill = async () => {
+    setBackfillState("Rodando…");
+    try {
+      const res = await fetch("/api/admin/memory?action=backfill", { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) setBackfillState(`Erro: ${d.error ?? res.status}`);
+      else setBackfillState(`OK — encontrados ${d.found}, embutidos ${d.embedded}, falhas ${d.failed}`);
+    } catch (e) {
+      setBackfillState(`Erro: ${String(e)}`);
+    }
   };
 
   const deletePost = async (postId: string) => {
@@ -777,6 +790,14 @@ export default function AdminPage() {
                 style={{ padding: "10px 16px", borderRadius: 10, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                 Buscar
               </button>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
+              <button type="button" onClick={runBackfill}
+                style={{ padding: "10px 16px", borderRadius: 10, border: 0, background: "#FF9F43", color: "#0B0B10", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                ▶ Rodar backfill agora
+              </button>
+              {backfillState && <span style={{ fontSize: 11, color: backfillState.startsWith("Erro") ? "#FF4D4D" : "#5EEAD4", flex: 1 }}>{backfillState}</span>}
             </div>
 
             {memoryError && <p style={{ fontSize: 12, color: "#FF4D4D", padding: "8px 0" }}>Usuário não encontrado (ou sem acesso).</p>}
