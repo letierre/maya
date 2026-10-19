@@ -7,7 +7,8 @@ import { relativeDayLabel } from "@/lib/utils";
 import { toImageBlock } from "@/lib/llm";
 import { logAiUsage } from "@/lib/ai-usage";
 import { logError } from "@/lib/error-log";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
+import { extractAndStoreMemory } from "@/lib/memory-write";
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -173,38 +174,20 @@ export async function POST(request: Request) {
       .replace(/\[\s*(?:hoje|ontem|anteontem|há\s*\d+\s*dias)?\s*\d{1,2}:\d{2}\s*\]\s*/gi, "")
       .trim();
 
-    // Extract new facts from the conversation (fire and forget)
-    const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
-    if (lastUserMsg) {
-      const factPrompt = buildFactExtractionPrompt(reply, lastUserMsg.content, { name: (user.user_metadata?.name as string) || "" });
-
-      chatLLM(
-        "Extraia fatos pessoais como JSON array. Responda APENAS com o array JSON.",
-        [{ role: "user", content: factPrompt }],
-        150,
-        { userId: user.id, feature: "maya_facts" }
-      )
-        .then((raw) => {
-          try {
-            const jsonStart = raw.indexOf("[");
-            const jsonEnd = raw.lastIndexOf("]") + 1;
-            if (jsonStart >= 0 && jsonEnd > jsonStart) {
-              const facts: string[] = JSON.parse(raw.slice(jsonStart, jsonEnd));
-              for (const fact of facts) {
-                if (fact && fact.trim().length >= 3) {
-                  admin.from("user_memories").insert({
-                    user_id: user.id,
-                    fact: fact.trim(),
-                  }).then(() => {}).catch(() => {});
-                }
-              }
-            }
-          } catch {
-            // silent — fact extraction is best-effort
-          }
-        })
-        .catch(() => {});
-    }
+    // ── Memória de longo prazo (após a resposta, não bloqueia o chat) ──
+    // Extrai fatos estruturados, embeds e faz dedup/merge via vetor — em
+    // background via `after()`, então a resposta ao usuário sai na hora.
+    const recentForMemory = messages.slice(-6).map((m) => ({ role: m.role, content: m.content }));
+    after(() => {
+      extractAndStoreMemory({
+        userId: user.id,
+        recentMessages: recentForMemory,
+        reply,
+        language: (context.language as string) || "pt",
+      }).catch((err) => {
+        logError({ path: "api/maya memory-write", message: String(err), userId: user.id, meta: { feature: "maya_memory_write" } });
+      });
+    });
 
     return NextResponse.json({ reply });
   } catch (error) {
@@ -217,31 +200,3 @@ export async function POST(request: Request) {
   }
 }
 
-function buildFactExtractionPrompt(mayaReply: string, userMessage: string, profile: { name: string }): string {
-  return `Você é um assistente que extrai FATOS PESSOAIS sobre o usuário a partir de uma conversa.
-
-Mensagem do usuário:
-"${userMessage.slice(0, 300)}"
-
-Resposta de Maya:
-"${mayaReply.slice(0, 300)}"
-
-## INSTRUÇÕES
-1. Extraia apenas fatos NOVOS e RELEVANTES sobre a vida pessoal do usuário que Maya mencionou ou descobriu.
-2. NÃO extraia dados óbvios de check-in (ex: "fez exercício 3x essa semana").
-3. Extraia preferências, contexto de vida, rotinas específicas, relações, gostos pessoais.
-4. Exemplos do que extrair:
-   - "gosta de caminhar à noite"
-   - "tem uma filha chamada Sofia"
-   - "trabalha como designer"
-   - "está estudando para concurso"
-   - "adora cozinhar aos domingos"
-   - "mora sozinho(a)"
-5. Exemplos do que NÃO extrair:
-   - "teve 3 dias bons essa semana"
-   - "marcou exercício 5 vezes"
-6. Retorne APENAS um array JSON com os fatos como strings. Se não houver fatos novos, retorne array vazio.
-7. Máximo 3 fatos.
-
-Formato: ["fato 1", "fato 2"]`;
-}
