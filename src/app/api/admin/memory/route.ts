@@ -44,29 +44,19 @@ export async function GET(req: NextRequest) {
   }
   if (!userId) return NextResponse.json({ error: "userId ou email não encontrado" }, { status: 404 });
 
-  // ── Fatos + status de vetor ─────────────────────────────────────────
-  // `count: "exact"` devolve o TOTAL real (ignora o limit), para o contador
-  // não mentir quando o usuário tem mais do que o teto de exibição.
-  const [{ data: facts, count: totalFacts }, { count: activeFacts }, { data: vectors }] = await Promise.all([
-    admin.from("user_memories")
-      .select("id, fact, kind, event_date, temporal_hint, importance, confidence, archived, superseded_by, created_at", { count: "exact" })
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1000),
-    admin.from("user_memories")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("archived", false),
-    admin.from("memory_vectors")
-      .select("ref_id")
-      .eq("user_id", userId)
-      .eq("ref_type", "fact"),
+  // ── Fatos (página, com flag de vetor via join SQL) + contagens exatas ──
+  // O PostgREST devolve no máx. 1000 linhas por query; usamos funções SQL que
+  // fazem o join direto (paginação + contagem) para não cegar além de 1000.
+  const PAGE = 500;
+  const offset = Math.max(0, parseInt(searchParams.get("offset") || "0", 10) || 0);
+
+  const [{ data: facts }, { count: totalFacts }, { count: activeFacts }, { data: unembedded }] = await Promise.all([
+    admin.rpc("get_user_memories", { p_user_id: userId, p_offset: offset, p_limit: PAGE }),
+    admin.from("user_memories").select("*", { count: "exact", head: true }).eq("user_id", userId),
+    admin.from("user_memories").select("*", { count: "exact", head: true }).eq("user_id", userId).eq("archived", false),
+    admin.rpc("count_unembedded_facts", { p_user_id: userId }),
   ]);
-  const vectorSet = new Set((vectors ?? []).map((v) => v.ref_id));
-  const memories = (facts ?? []).map((f) => ({
-    ...f,
-    has_vector: vectorSet.has(f.id),
-  }));
+  const memories = (facts ?? []) as Array<Record<string, unknown> & { has_vector: boolean }>;
 
   // ── Erros recentes de memória/embeddings (diagnóstico) ──────────────
   let memErrs: { path: string; message: string; created_at: string }[] = [];
@@ -121,6 +111,7 @@ export async function GET(req: NextRequest) {
 
   const total = totalFacts ?? 0;
   const active = activeFacts ?? 0;
+  const unembeddedCount = Number(unembedded ?? 0);
   return NextResponse.json({
     userId,
     email: userEmail,
@@ -128,11 +119,14 @@ export async function GET(req: NextRequest) {
       total,
       active,
       archived: total - active,
-      vectorCount: vectors?.length ?? 0,
-      withoutVector: memories.filter((m) => !m.has_vector).length,
+      vectorCount: active - unembeddedCount,
+      withoutVector: unembeddedCount,
       summaries: summaries?.length ?? 0,
     },
     memories,
+    offset,
+    pageSize: PAGE,
+    hasMore: offset + memories.length < total,
     summaries: summaries ?? [],
     ops: ops ?? [],
     errors: memErrs,

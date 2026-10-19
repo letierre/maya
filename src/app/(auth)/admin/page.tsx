@@ -99,7 +99,10 @@ interface MemoryInspect {
   userId: string;
   email: string | null;
   counts: { total: number; active: number; archived: number; vectorCount: number; withoutVector: number; summaries: number };
-  memories: { id: string; fact: string; kind: string; event_date: string | null; temporal_hint: string | null; importance: number; confidence: number; archived: boolean; has_vector: boolean; created_at: string }[];
+  offset: number;
+  pageSize: number;
+  hasMore: boolean;
+  memories: { id: string; fact: string; kind: string; event_date: string | null; temporal_hint: string | null; importance: number; confidence: number | string; archived: boolean; has_vector: boolean; created_at: string }[];
   summaries: { id: string; summary: string; period_start: string; period_end: string; granularity: string; source_memory_ids: string[]; created_at: string }[];
   ops: { op: string; ref_type: string | null; ref_id: string | null; detail: string | null; meta: Record<string, unknown>; created_at: string }[];
   errors: { path: string; message: string; created_at: string }[];
@@ -246,6 +249,18 @@ export default function AdminPage() {
     const res = await fetch(url);
     if (res.ok) setMemory(await res.json());
     else setMemoryError(true);
+  };
+
+  const loadMoreMemory = async () => {
+    if (!memory || !memory.hasMore) return;
+    const target = memoryInput.trim();
+    const isEmail = target.includes("@");
+    const nextOffset = memory.offset + memory.memories.length;
+    const res = await fetch(`/api/admin/memory?${isEmail ? "email" : "userId"}=${encodeURIComponent(target)}&offset=${nextOffset}`);
+    if (res.ok) {
+      const next = await res.json();
+      setMemory(prev => prev ? { ...prev, memories: [...prev.memories, ...next.memories], offset: next.offset, hasMore: next.hasMore } : next);
+    }
   };
 
   const runBackfill = async () => {
@@ -807,15 +822,21 @@ export default function AdminPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                   <MiniStat label="Total de fatos" value={memory.counts.total} />
                   <MiniStat label="Ativos" value={memory.counts.active} />
-                  <MiniStat label="Vetores" value={memory.counts.vectorCount} />
+                  <MiniStat label="Sem vetor" value={memory.counts.withoutVector} />
                   <MiniStat label="Resumos L3" value={memory.counts.summaries} />
                 </div>
                 {memory.email && <p style={{ fontSize: 11, color: "#6a657a", margin: "0 0 12px", wordBreak: "break-all" }}>{memory.email} · {memory.userId}</p>}
 
-                {memory.counts.total > memory.memories.length && (
-                  <p style={{ fontSize: 11, color: "#FF9F43", margin: "0 0 8px" }}>
-                    ⚠️ Mostrando {memory.memories.length} de {memory.counts.total} fatos — os mais antigos estão acima do teto de exibição.
-                  </p>
+                {memory.hasMore && (
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 11, color: "#FF9F43", margin: "0 0 8px" }}>
+                      Mostrando {memory.memories.length} de {memory.counts.total} fatos.
+                    </p>
+                    <button type="button" onClick={loadMoreMemory}
+                      style={{ padding: "10px 16px", borderRadius: 10, border: 0, background: "#1a1530", color: "#A78BFA", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", width: "100%" }}>
+                      Carregar mais antigos ↓
+                    </button>
+                  </div>
                 )}
 
                 {memory.counts.vectorCount === 0 && (
