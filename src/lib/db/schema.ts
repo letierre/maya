@@ -9,6 +9,7 @@ import {
   uniqueIndex,
   jsonb,
   numeric,
+  customType,
 } from "drizzle-orm/pg-core";
 
 const ALL_QUESTION_KEYS = [
@@ -153,6 +154,59 @@ export const userMemories = pgTable("user_memories", {
   archived: boolean("archived").notNull().default(false),
   supersededBy: uuid("superseded_by"),
   lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ── Memória da Maya v2: vetores / resumos / log ──────────────────────────────
+// Estas tabelas são acessadas por query raw do Supabase (service_role), não pelo
+// drizzle — os tipos aqui apenas fecham o typecheck e documentam as colunas.
+// O `embedding` é `vector(1024)` do pgvector; o drizzle não tem tipo nativo,
+// então usamos customType (string, mas na real é um array de floats serializado).
+
+const vector = customType<{ data: string; driverData: string }>({
+  dataType() {
+    return "vector(1024)";
+  },
+});
+
+export const memoryVectors = pgTable(
+  "memory_vectors",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull(),
+    refType: text("ref_type").notNull(),
+    refId: uuid("ref_id").notNull(),
+    text: text("text").notNull(),
+    embedding: vector("embedding").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    // 1 vetor por (ref_type, ref_id) — garante que o backfill seja idempotente.
+    refUnique: uniqueIndex("memory_vectors_ref_unique").on(table.refType, table.refId),
+  })
+);
+
+export const memorySummaries = pgTable("memory_summaries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull(),
+  periodStart: date("period_start").notNull(),
+  periodEnd: date("period_end").notNull(),
+  granularity: text("granularity").notNull(),
+  summary: text("summary").notNull().default(""),
+  sourceMemoryIds: uuid("source_memory_ids").array().notNull(),
+  stale: boolean("stale").notNull().default(false),
+  regeneratedFrom: uuid("regenerated_from"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const memoryOps = pgTable("memory_ops", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull(),
+  op: text("op").notNull(),
+  refType: text("ref_type"),
+  refId: uuid("ref_id"),
+  detail: text("detail"),
+  meta: jsonb("meta").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
