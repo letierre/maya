@@ -106,6 +106,8 @@ ${facts.map((f) => `- ${f}`).join("\n")}
 3. Preserve detalhes que importam para lembrar no futuro (nomes, datas de eventos, preferências).
 4. NÃO invente nada que não esteja nos fatos. Não adicione interpretação.
 5. NÃO use markdown, listas nem cabeçalhos — apenas um parágrafo corrido.
+6. CONTRADIÇÕES: se houver fatos que se contradizem (ex: número de filhos, parentesco trocado, nomes conflitantes), NÃO repita a contradição. Fique com o que tem mais recorrência e é mais concreto, e omita o resto.
+7. ERROS ÓBVIOS: se um fato parecer erro de interpretação (ex: parentesco atribuído sem evidência), exclua-o do resumo.
 
 Retorne APENAS o texto do resumo.`;
 

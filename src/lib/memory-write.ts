@@ -85,16 +85,18 @@ Resposta da Maya:
 ## INSTRUÇÕES
 1. Extraia apenas o que é NOVO e DURÁVEL sobre a vida da pessoa (identidade, preferências, eventos com data, episódios marcantes).
 2. NÃO extraia dados de check-in (sono, humor, exercício pontual, água, comida).
-3. Classifique cada fato em:
-   - "identity": traço estável (familiar, profissão, onde mora, crenças, pets).
+3. NÃO extraia interpretações psicológicas nem diagnósticos ("dependência emocional", "ansiedade", "trauma"). Só fatos concretos que a pessoa disse.
+4. PARENTESCO/RELAÇÃO SÓ SE EXPLÍCITO: escreva "filha/o", "esposa/o", "ex-esposa/o", "amiga/o" etc. APENAS quando a pessoa usou exatamente esse vínculo. NUNCA infira relação a partir de nomes, convivência ou contexto ("busca na creche", "compartilha banheiro" não prova parentesco). Na dúvida, NÃO extraia.
+5. Classifique cada fato em:
+   - "identity": traço estável EXPLÍCITO (profissão, onde mora, crenças, pets, parentesco dito com todas as letras).
    - "preference": gosto duradouro ("adora cozinhar", "gosta de caminhar à noite").
    - "event": acontecimento com data concreta ("consulta na sexta", "viagem em julho").
    - "episode": acontecimento emocional significativo sem data exata ("teve uma conversa difícil com a mãe").
-4. "event_date": APENAS se houver data concreta no formato AAAA-MM-DD; senão null.
-5. "temporal_hint": referência temporal vaga ("semana que vem", "em julho"); senão null.
-6. "importance": 1 (trivial) a 3 (muito importante/identidade).
-7. "confidence": 0.5 a 1.0 (certeza de que é real e durável).
-8. Máximo 4 fatos.
+6. "event_date": APENAS se houver data concreta no formato AAAA-MM-DD; senão null.
+7. "temporal_hint": referência temporal vaga ("semana que vem", "em julho"); senão null.
+8. "importance": 1 (trivial) a 3 (muito importante/identidade).
+9. "confidence": 0.5 a 1.0. Dito explicitamente: 0.8–1.0. Inferido: no máximo 0.6 — e na prática, prefira NÃO extrair o que foi inferido.
+10. Máximo 4 fatos.
 
 Retorne APENAS JSON, sem texto fora, no formato exato:
 {"facts":[{"fact":"...","kind":"identity","event_date":null,"temporal_hint":null,"importance":3,"confidence":0.95}]}
