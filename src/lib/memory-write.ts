@@ -242,7 +242,7 @@ export async function extractAndStoreMemory(opts: {
   const facts = await extractFacts(recentMessages, reply, language);
   if (facts.length === 0) return { extracted: 0, stored: 0, skipped: 0 };
 
-  const embeddings = await embedDocuments(facts.map((f) => f.fact));
+  const embeddings = await embedDocuments(facts.map((f) => f.fact), { userId, feature: "maya_memory_embeddings" });
   if (embeddings.length !== facts.length) throw new Error("embedding count mismatch");
 
   const admin = getSupabaseAdmin();
@@ -275,7 +275,7 @@ export async function extractAndStoreMemory(opts: {
         skipped++;
       } else if (decision.action === "merge" && decision.target_id && decision.merged_text) {
         // Re-embeds o texto fundido (não o fato original).
-        const [mergedVec] = await embedDocuments([decision.merged_text]);
+        const [mergedVec] = await embedDocuments([decision.merged_text], { userId, feature: "maya_memory_embeddings" });
         await admin.rpc("update_memory_fact", {
           p_memory_id: decision.target_id,
           p_fact: decision.merged_text,

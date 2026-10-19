@@ -93,7 +93,7 @@ export async function fetchTriggeredMemories(
 
   let vec: number[];
   try {
-    vec = await embedQuery(queryText);
+    vec = await embedQuery(queryText, { userId, feature: "maya_memory_embeddings" });
   } catch (e) {
     logError({ path: "maya-context fetchTriggeredMemories embed", message: String(e), userId });
     return [];

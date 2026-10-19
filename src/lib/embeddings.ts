@@ -10,6 +10,8 @@
  * pico derrube a escrita/recall/backfill.
  */
 
+import { logAiUsage } from "@/lib/ai-usage";
+
 const VOYAGE_URL = "https://api.voyageai.com/v1/embeddings";
 const MODEL = "voyage-3-large";
 const BATCH = 64; // cabe folgado nos 10K tokens/min do tier gratuito
@@ -25,7 +27,16 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function voyageEmbed(inputs: string[], inputType: "document" | "query"): Promise<number[][]> {
+interface EmbedMeta {
+  userId?: string;
+  feature?: string;
+}
+
+async function voyageEmbed(
+  inputs: string[],
+  inputType: "document" | "query",
+  meta?: EmbedMeta,
+): Promise<number[][]> {
   let lastStatus = 0;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     let res: Response;
@@ -44,6 +55,17 @@ async function voyageEmbed(inputs: string[], inputType: "document" | "query"): P
 
     if (res.ok) {
       const data = await res.json();
+      // Telemetria de custo (fire-and-forget) — Voyage cobra por token total.
+      const totalTokens = data?.usage?.total_tokens ?? 0;
+      if (meta?.userId && totalTokens > 0) {
+        logAiUsage({
+          userId: meta.userId,
+          feature: meta.feature ?? "maya_memory_embeddings",
+          model: MODEL,
+          inputTokens: totalTokens,
+          outputTokens: 0,
+        });
+      }
       const rows = Array.isArray(data?.data) ? data.data : [];
       // Voyage devolve `index` por item; garante a ordem de entrada.
       return rows
@@ -68,17 +90,17 @@ async function voyageEmbed(inputs: string[], inputType: "document" | "query"): P
 }
 
 /** Embutir textos a armazenar (fatos/episódios/resumos). */
-export async function embedDocuments(texts: string[]): Promise<number[][]> {
+export async function embedDocuments(texts: string[], meta?: EmbedMeta): Promise<number[][]> {
   const out: number[][] = [];
   for (let i = 0; i < texts.length; i += BATCH) {
-    out.push(...(await voyageEmbed(texts.slice(i, i + BATCH), "document")));
+    out.push(...(await voyageEmbed(texts.slice(i, i + BATCH), "document", meta)));
   }
   return out;
 }
 
 /** Embutir a pergunta de busca (mensagem atual do usuário). */
-export async function embedQuery(text: string): Promise<number[]> {
-  const r = await voyageEmbed([text], "query");
+export async function embedQuery(text: string, meta?: EmbedMeta): Promise<number[]> {
+  const r = await voyageEmbed([text], "query", meta);
   return r[0] ?? [];
 }
 

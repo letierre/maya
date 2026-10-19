@@ -1,16 +1,19 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
-// ── Preços Anthropic (USD por 1M tokens) — set/2026 ────────────────────
+// ── Preços (USD por 1M tokens) — set/2026 ──────────────────────────────
 // Haiku 4.5 = $1/$5 · Sonnet 5 = $2/$10 · Opus = $5/$25.
+// Voyage 3-large = $0.18 (cobra por token total, sem split input/output).
 // Se os preços mudarem, ajuste AQUI — é o único lugar.
 const PRICE_PER_MTok: Record<string, { input: number; output: number }> = {
   "claude-haiku-4-5": { input: 1.0, output: 5.0 },
   "claude-sonnet-5": { input: 2.0, output: 10.0 },
   "claude-opus-5": { input: 5.0, output: 25.0 },
+  "voyage-3-large": { input: 0.18, output: 0.18 },
 };
 
 export function modelFamily(model?: string | null): string {
   const m = (model ?? "").toLowerCase();
+  if (m.includes("voyage")) return "voyage-3-large";
   if (m.includes("opus")) return "claude-opus-5";
   if (m.includes("sonnet")) return "claude-sonnet-5";
   return "claude-haiku-4-5"; // default
