@@ -1,9 +1,11 @@
 -- Migration 065: enrich match_memory_facts p/ o recall por gatilho (Fase 3)
--- Rodar no SQL Editor do Supabase, após o 064. Idempotente (create or replace).
--- Adiciona created_at/event_date/temporal_hint ao retorno, para a Maya mostrar
--- QUANDO aprendeu e QUANDO o acontecimento ocorre (rótulo relativo + contexto).
+-- Rodar no SQL Editor do Supabase, após o 064.
+-- IMPORTANTE: o tipo de retorno muda, então precisa DROP antes (não dá só
+-- create or replace). Sem dependências — seguro de dropar.
 
-create or replace function match_memory_facts(
+drop function if exists match_memory_facts(uuid, text, integer);
+
+create function match_memory_facts(
   p_user_id uuid,
   query_embedding text,
   match_count int default 3
