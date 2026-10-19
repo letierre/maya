@@ -3,6 +3,8 @@ import { getLatestInsights, type SpecialistInsights } from "@/lib/specialists";
 import { calculateStreak, getWeekMondayDate, getLocalDate, getLocalDateFromISO, getLocalTimeFromISO, relativeDayLabel } from "@/lib/utils";
 import { habitAnswered } from "@/lib/checkin-answered";
 import { getMoodById, getMoodLabel } from "@/lib/checkin-moods";
+import { embedQuery, toPgVector } from "@/lib/embeddings";
+import { logError } from "@/lib/error-log";
 import type {
   GoalSummary,
   WeekPlanSummary,
@@ -50,15 +52,56 @@ export interface MayaContext {
 
 // ── Fetch (uma única rajada de queries compartilhadas) ───────────────
 
-/** Formata uma memória com um RÓTULO RELATIVO ("hoje"/"ontem"/"há N dias") em
- *  vez de data crua — a Maya recebe o tempo já calculado e não faz conta de
- *  calendário (que era a causa dela tratar tudo como "ontem"). */
+/** Formata uma memória com RÓTULO RELATIVO ("hoje"/"ontem"/"há N dias") em vez
+ *  de data crua, e acrescenta QUANDO o acontecimento ocorre (event_date ou
+ *  temporal_hint) — a Maya nunca faz conta de calendário. */
 function formatMemory(m: Record<string, unknown>, todayStr?: string, tz?: string): string {
   const fact = (m.fact as string) || "";
   const createdAt = m.created_at as string | undefined;
-  if (!createdAt) return fact;
-  const day = relativeDayLabel(getLocalDateFromISO(createdAt, tz), todayStr);
-  return day ? `${day}: ${fact}` : fact;
+  const day = createdAt ? relativeDayLabel(getLocalDateFromISO(createdAt, tz), todayStr) : "";
+  let when = "";
+  if (m.event_date) when = `em ${m.event_date}`;
+  else if (m.temporal_hint) when = m.temporal_hint as string;
+  const prefix = day ? `${day}: ` : "";
+  const suffix = when ? ` (${when})` : "";
+  return `${prefix}${fact}${suffix}`;
+}
+
+/** Recall por gatilho: embute `query` (a mensagem atual do usuário) e busca as
+ *  memórias mais relevantes de QUALQUER época via pgvector. É o que faz a Maya
+ *  "lembrar como amiga" — puxa o que importa, não só o que é recente. */
+export async function fetchTriggeredMemories(
+  userId: string,
+  query: string,
+  opts: { todayStr?: string; tz?: string; limit?: number } = {},
+): Promise<string[]> {
+  const queryText = query.trim();
+  if (!queryText) return [];
+
+  const todayStr = opts.todayStr || getLocalDate(opts.tz);
+  const limit = opts.limit ?? 6;
+
+  let vec: number[];
+  try {
+    vec = await embedQuery(queryText);
+  } catch (e) {
+    logError({ path: "maya-context fetchTriggeredMemories embed", message: String(e), userId });
+    return [];
+  }
+  if (!vec || vec.length === 0) return [];
+
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin.rpc("match_memory_facts", {
+    p_user_id: userId,
+    query_embedding: toPgVector(vec),
+    match_count: limit,
+  });
+  if (error) {
+    logError({ path: "maya-context fetchTriggeredMemories rpc", message: String(error.message ?? error), userId });
+    return [];
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>).map((r) => formatMemory(r, todayStr, opts.tz));
 }
 
 export async function fetchMayaContext(
@@ -77,7 +120,7 @@ export async function fetchMayaContext(
   add("prefs", admin.from("user_preferences").select("context").eq("user_id", userId).single());
   add("checkIns", admin.from("check_ins").select("*").eq("user_id", userId).order("date", { ascending: false }).limit(opts.checkInLimit ?? 7));
   add("diaryEntries", admin.from("diary_entries").select("*").eq("user_id", userId).order("date", { ascending: false }).limit(opts.diaryLimit ?? 10));
-  add("memories", admin.from("user_memories").select("fact, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(60));
+  add("memories", admin.from("user_memories").select("fact, created_at, event_date, temporal_hint").eq("user_id", userId).eq("archived", false).order("created_at", { ascending: false }).limit(60));
   add("rawGoals", admin.from("goals")
     .select("*, goal_stages(*, goal_actions(*))")
     .eq("user_id", userId).eq("status", "ativa")

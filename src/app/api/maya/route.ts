@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { buildMayaSystemPrompt } from "@/lib/maya";
-import { fetchMayaContext, toMayaInput } from "@/lib/maya-context";
+import { fetchMayaContext, toMayaInput, fetchTriggeredMemories } from "@/lib/maya-context";
 import { relativeDayLabel } from "@/lib/utils";
 import { toImageBlock } from "@/lib/llm";
 import { logAiUsage } from "@/lib/ai-usage";
@@ -122,10 +122,6 @@ export async function POST(request: Request) {
 
     const admin = getSupabaseAdmin();
 
-    // ── Contexto único (mesma fonte que home/planejamento/nudge) ──
-    const ctx = await fetchMayaContext(user.id, { includeAreaVisions: true, includeAgenda: true, tz: clientTz });
-    const context = (ctx.prefs?.context ?? {}) as Record<string, unknown>;
-
     // Hora e data no fuso do usuario (do browser, fallback SP)
     let currentHour: number;
     let currentDate: string;
@@ -138,6 +134,19 @@ export async function POST(request: Request) {
       currentHour = parseInt(h, 10);
       currentDate = now.toLocaleDateString("en-CA", { timeZone: clientTz });
     }
+
+    const lastUserMsgText = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+
+    // ── Contexto único + recall por gatilho (em paralelo) ──
+    // O recall embute a última mensagem e busca as memórias mais relevantes de
+    // QUALQUER época — é o que faz a Maya "lembrar como amiga".
+    const [ctx, triggeredMemories] = await Promise.all([
+      fetchMayaContext(user.id, { includeAreaVisions: true, includeAgenda: true, tz: clientTz }),
+      lastUserMsgText
+        ? fetchTriggeredMemories(user.id, lastUserMsgText, { todayStr: currentDate, tz: clientTz, limit: 6 }).catch(() => [] as string[])
+        : Promise.resolve([] as string[]),
+    ]);
+    const context = (ctx.prefs?.context ?? {}) as Record<string, unknown>;
 
     // Send messages WITH image_urls for multimodal support.
     // Prefix each message with [dia HH:MM] so Maya understands WHEN each
@@ -157,14 +166,17 @@ export async function POST(request: Request) {
 
     const userGender = (context.gender as string) || "nao_dizer";
 
-    const systemPrompt = buildMayaSystemPrompt(toMayaInput(ctx, {
+    const mayaInput = toMayaInput(ctx, {
       name: (user.user_metadata?.name as string) || "",
       gender: userGender,
       language: (context.language as string) || "pt",
       currentHour,
       currentDate,
       tz: clientTz,
-    }));
+    });
+    mayaInput.triggeredMemories = triggeredMemories;
+
+    const systemPrompt = buildMayaSystemPrompt(mayaInput);
 
     const rawReply = await chatLLM(systemPrompt, anthropicMessages, 1000, { userId: user.id, feature: "maya_chat" });
     // Belt-and-suspenders: strip any "[dia HH:MM]" timestamp tokens Maya may echo

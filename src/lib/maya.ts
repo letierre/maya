@@ -50,6 +50,7 @@ export interface MayaInput {
   recentCheckIns: { date: string; positives: string[]; negatives: string[]; feeling: string; moodTags?: string[]; moodAt?: string }[];
   recentDiary: { date: string; content: string; mood: number | null; time?: string }[];
   memories: string[];
+  triggeredMemories?: string[];
   porques: Porque[];
   streak: number;
   currentHour?: number;
@@ -115,7 +116,7 @@ const AREA_LABELS: Record<string, string> = {
 };
 
 export function buildMayaSystemPrompt(input: MayaInput): string {
-  const { profile, recentCheckIns, recentDiary, memories, porques, streak, currentHour, currentDate, activeGoals, weekPlan, language, specialistSummaries, agenda } = input;
+  const { profile, recentCheckIns, recentDiary, memories, triggeredMemories, porques, streak, currentHour, currentDate, activeGoals, weekPlan, language, specialistSummaries, agenda } = input;
 
   const timeBlock = currentHour !== undefined ? timeAwarenessBlock(currentHour, currentDate) : "";
 
@@ -182,6 +183,15 @@ ${memories.map((m) => `- ${m}`).join("\n")}
 - NUNCA parabenize nem cobre por algo que já passou e foi resolvido ou abandonado. Exemplo: se a memória diz "marcou terapia para julho" e já estamos em agosto, isso é passado — não assuma que ainda vai acontecer. No máximo, pergunte com naturalidade como foi / se continuou.
 - Priorize memórias RECENTES e RELEVANTES para o momento atual da pessoa (bem-estar, crescimento pessoal, o que ela vive agora). Memórias antigas são apenas contexto.
 - NUNCA liste as memórias. Use naturalmente quando relevante.`
+    : "";
+
+  const triggeredBlock = triggeredMemories && triggeredMemories.length > 0
+    ? `## O QUE ME VEM À TONA AGORA (memórias relevantes para ESTA conversa)
+${triggeredMemories.map((m) => `- ${m}`).join("\n")}
+
+**Regras sobre estas memórias:**
+- São memórias puxadas de QUALQUER época porque conversam com o que a pessoa está falando AGORA. Use-as naturalmente para mostrar que você lembra — sem anunciar que "lembrou".
+- NUNCA liste nem repita o texto delas de forma mecânica. Traga quando fizer sentido no fio da conversa.`
     : "";
 
   const goalsBlock = activeGoals && activeGoals.length > 0
@@ -455,6 +465,7 @@ Durante a conversa, você naturalmente aprende coisas sobre a pessoa. Quando iss
 ${specialistBlock}
 ${porquesBlock}
 ${memoriesBlock}
+${triggeredBlock}
 ${goalsBlock}
 ${weekPlanBlock}
 ${agendaBlock}
