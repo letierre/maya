@@ -41,9 +41,9 @@ function seededWaveform(seed: string, count: number): number[] {
 
 /**
  * Nota de voz (estilo WhatsApp): play/pause + waveform de barras + contador.
- * - Contador mostra o tempo decorrido (segue o áudio).
- * - Barras preenchem GRADUALMENTE (de baixo p/ cima) conforme o tempo avança.
- * - Arrastar o dedo nas barras retrocede/avança para aquele segundo.
+ * - Contador: mostra o TOTAL quando parado no início; o decorrido ao tocar/pausar.
+ * - Barras preenchem da ESQUERDA → DIREITA conforme o tempo; uma bolinha marca a
+ *   posição atual e acompanha o arrasto do dedo (seek).
  * - Largura FIXA (abrir/fechar transcrição não muda o tamanho).
  */
 export function VoiceNote({
@@ -71,6 +71,9 @@ export function VoiceNote({
   const textColor = variant === "user" ? "rgba(255,255,255,0.92)" : "rgba(216,210,231,0.92)";
 
   const waveform = useMemo(() => seededWaveform(path, WAVE_BARS), [path]);
+
+  // Total quando parado no início; decorrido quando tocando/pausado no meio.
+  const displayTime = playing || currentTime > 0 ? currentTime : (duration ?? 0);
 
   const toggle = () => {
     const a = audioRef.current;
@@ -116,7 +119,7 @@ export function VoiceNote({
           {playing ? <Pause className="size-5" /> : <Play className="size-5" style={{ marginLeft: 2 }} />}
         </button>
 
-        {/* Waveform — arrastável e com preenchimento gradual (de baixo p/ cima) */}
+        {/* Waveform — preenche da esquerda p/ direita + bolinha de posição */}
         <div
           ref={waveRef}
           onPointerDown={(e) => {
@@ -131,6 +134,7 @@ export function VoiceNote({
           onPointerCancel={() => (draggingRef.current = false)}
           style={{
             flex: 1,
+            position: "relative",
             display: "flex",
             alignItems: "center",
             gap: 2,
@@ -158,15 +162,31 @@ export function VoiceNote({
                   style={{
                     position: "absolute",
                     left: 0,
-                    right: 0,
+                    top: 0,
                     bottom: 0,
-                    height: `${fill * 100}%`,
+                    width: `${fill * 100}%`,
                     background: accent,
                   }}
                 />
               </span>
             );
           })}
+
+          {/* Bolinha que marca a posição atual (segue o arrasto) */}
+          <span
+            style={{
+              position: "absolute",
+              left: `${progress * 100}%`,
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              width: 9,
+              height: 9,
+              borderRadius: "50%",
+              background: "#FFFFFF",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
+              pointerEvents: "none",
+            }}
+          />
         </div>
 
         <span
@@ -177,7 +197,7 @@ export function VoiceNote({
             flexShrink: 0,
           }}
         >
-          {formatDuration(currentTime)}
+          {formatDuration(displayTime)}
         </span>
       </div>
 
@@ -232,8 +252,8 @@ export function VoiceNote({
         onPause={() => setPlaying(false)}
         onEnded={() => {
           setPlaying(false);
-          setCurrentTime(0);
-          setProgress(0);
+          setCurrentTime(duration ?? 0);
+          setProgress(1);
         }}
       />
     </div>
