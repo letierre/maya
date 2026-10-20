@@ -314,6 +314,12 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_attach_photo: "Foto",
     maya_attach_gallery: "Galeria",
     maya_attach_file: "Arquivo",
+    maya_voice_button: "Gravar mensagem de voz",
+    maya_voice_stop: "Parar gravação",
+    maya_voice_recording: "Gravando...",
+    maya_voice_placeholder: "Mensagem de voz",
+    maya_voice_error:
+      "Não consegui acessar o microfone. Verifique a permissão no navegador.",
     maya_error:
       "Tive dificuldade de me conectar agora. Tente novamente em alguns instantes. 💛",
 
@@ -2759,6 +2765,12 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_attach_photo: "Foto",
     maya_attach_gallery: "Galería",
     maya_attach_file: "Archivo",
+    maya_voice_button: "Grabar mensaje de voz",
+    maya_voice_stop: "Detener grabación",
+    maya_voice_recording: "Grabando...",
+    maya_voice_placeholder: "Mensaje de voz",
+    maya_voice_error:
+      "No pude acceder al micrófono. Revisa el permiso en el navegador.",
     maya_error:
       "Tuve dificultad para conectarme ahora. Intenta de nuevo en unos instantes. 💛",
 
@@ -5202,6 +5214,12 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_attach_photo: "Photo",
     maya_attach_gallery: "Gallery",
     maya_attach_file: "File",
+    maya_voice_button: "Record voice message",
+    maya_voice_stop: "Stop recording",
+    maya_voice_recording: "Recording...",
+    maya_voice_placeholder: "Voice message",
+    maya_voice_error:
+      "I couldn't access the microphone. Please check the browser permission.",
     maya_error:
       "I had trouble connecting right now. Please try again in a moment. 💛",
 

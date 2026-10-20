@@ -3,7 +3,7 @@ import { getLocale } from "@/lib/language";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "@/lib/useTranslation";
-import { Send, ArrowLeft, Plus, Camera, X, Image as ImageIcon, ArrowDown } from "lucide-react";
+import { Send, ArrowLeft, Plus, Camera, X, Image as ImageIcon, ArrowDown, Mic, Square } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
@@ -234,12 +234,18 @@ export default function MayaChatPage() {
   const [uploadingImages, setUploadingImages] = useState(false);
   const [viewerImage, setViewerImage] = useState<string | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [voiceBlob, setVoiceBlob] = useState<{ blob: Blob; mime: string } | null>(null);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
 
   // ── Refs ──
   const sentinelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
   const nudgeActionRef = useRef<{ label: string; href: string } | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const voiceStreamRef = useRef<MediaStream | null>(null);
 
   // ── Presença (online / digitando / visto por último) ──
   const [presence, setPresence] = useState<"online" | "lastSeen">("online");
@@ -671,6 +677,152 @@ export default function MayaChatPage() {
     }
   }, [input, sending, messages, selectedImages, t, deliverParts]);
 
+  // ── Voz (gravação turno-a-turno → /api/maya/voice) ──
+  const pickVoiceMime = () => {
+    if (typeof MediaRecorder === "undefined") return "";
+    for (const m of ["audio/webm", "audio/mp4", "audio/ogg"]) {
+      try {
+        if (MediaRecorder.isTypeSupported(m)) return m;
+      } catch {
+        /* noop */
+      }
+    }
+    return "";
+  };
+
+  const startRecording = useCallback(async () => {
+    if (recording || sending || typing) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceStreamRef.current = stream;
+      const mime = pickVoiceMime();
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      mediaRecorderRef.current = rec;
+      audioChunksRef.current = [];
+      rec.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      rec.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        voiceStreamRef.current = null;
+        const chunks = audioChunksRef.current;
+        if (!chunks.length) {
+          setRecording(false);
+          return;
+        }
+        const type = rec.mimeType || mime || "audio/webm";
+        setVoiceBlob({ blob: new Blob(chunks, { type }), mime: type });
+        setRecording(false);
+      };
+      rec.start();
+      setRecording(true);
+      setVoiceNotice(null);
+    } catch {
+      setRecording(false);
+      setVoiceNotice(t("maya_voice_error"));
+    }
+  }, [recording, sending, typing, t]);
+
+  const stopRecording = useCallback(() => {
+    const rec = mediaRecorderRef.current;
+    if (rec && rec.state !== "inactive") {
+      try {
+        rec.stop();
+      } catch {
+        /* noop */
+      }
+    }
+  }, []);
+
+  // Envia o áudio gravado → STT → responde → toca a voz da Maya.
+  useEffect(() => {
+    if (!voiceBlob) return;
+    const { blob, mime } = voiceBlob;
+    setVoiceBlob(null);
+    let cancelled = false;
+
+    (async () => {
+      setSending(true);
+      sendingRef.current = true;
+      lastActivityAtRef.current = Date.now();
+      setPresence("online");
+
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const ext = mime.includes("mp4") ? "m4a" : mime.includes("ogg") ? "ogg" : "webm";
+        const fd = new FormData();
+        fd.append("audio", blob, `audio.${ext}`);
+        fd.append("timezone", tz);
+        fd.append("localHour", String(new Date().getHours()));
+        fd.append("localDate", formatDate());
+
+        const res = await fetch("/api/maya/voice", { method: "POST", body: fd });
+        if (!res.ok) throw new Error("API error");
+        const data = await res.json();
+        if (cancelled) return;
+
+        const transcript = (data.transcript || "").trim();
+        const reply = (data.reply || "").trim();
+        const now = formatTime();
+        const nowDate = formatDate();
+
+        const userMsg: Message = {
+          role: "user",
+          content: transcript || `🎤 ${t("maya_voice_placeholder")}`,
+          time: now,
+          date: nowDate,
+          status: "read",
+        };
+        const assistantMsg: Message = {
+          role: "assistant",
+          content: reply,
+          time: now,
+          date: nowDate,
+          createdAt: Date.now(),
+        };
+
+        setMessages((prev) => [...prev, userMsg, assistantMsg]);
+        setSending(false);
+        sendingRef.current = false;
+
+        // Toca a voz da Maya (iOS pode exigir gesto — o texto continua visível).
+        if (data.audioBase64) {
+          try {
+            const bin = atob(data.audioBase64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            const url = URL.createObjectURL(
+              new Blob([bytes], { type: data.audioMime || "audio/mpeg" }),
+            );
+            new Audio(url).play().catch(() => {});
+          } catch {
+            /* falha de áudio não derruba a conversa */
+          }
+        }
+      } catch {
+        if (cancelled) return;
+        setSending(false);
+        sendingRef.current = false;
+        setPresence("lastSeen");
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: t("maya_error"), time: formatTime(), date: formatDate() },
+        ]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [voiceBlob, t]);
+
+  // Auto-limpa o aviso de microfone após alguns segundos.
+  useEffect(() => {
+    if (!voiceNotice) return;
+    const id = setTimeout(() => setVoiceNotice(null), 4000);
+    return () => clearTimeout(id);
+  }, [voiceNotice]);
+
   // ── Composer input + keyboard handler ──
   const handleComposerInput = (e: React.FormEvent<HTMLDivElement>) => {
     setInput((e.target as HTMLElement).innerText);
@@ -686,6 +838,7 @@ export default function MayaChatPage() {
   // ── Derived ──
   const welcomeMessage = t("maya_welcome");
   const busy = sending || typing || uploadingImages;
+  const showMic = !input.trim() && selectedImages.length === 0;
   const containerHeight =
     viewportH > 200 ? `${viewportH}px` : "100dvh";
 
@@ -1072,6 +1225,17 @@ export default function MayaChatPage() {
           </div>
         )}
 
+        {recording && (
+          <div className="mb-2 text-center text-xs font-medium" style={{ color: "#F87171" }}>
+            ● {t("maya_voice_recording")}
+          </div>
+        )}
+        {voiceNotice && (
+          <div className="mb-2 text-center text-xs font-medium" style={{ color: "#FBBF24" }}>
+            {voiceNotice}
+          </div>
+        )}
+
         <div className="flex items-end gap-2">
           {/* Attach button */}
           <button
@@ -1112,28 +1276,51 @@ export default function MayaChatPage() {
             }}
           />
 
-          {/* Send */}
-          <button
-            type="button"
-            tabIndex={-1}
-            className="size-[42px] shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer disabled:opacity-50 disabled:cursor-default"
-            style={{
-              background: "var(--maya-primary)",
-              boxShadow: "0 4px 14px rgba(124,92,255,0.35)",
-            }}
-            onClick={() => {
-              // Refocus synchronously inside the tap/click gesture — this is the
-              // only timing iOS Safari accepts to (re)open the keyboard. No
-              // preventDefault: on Safari 17+ canceling pointer/mouse down can
-              // itself dismiss the keyboard.
-              textareaRef.current?.focus();
-              sendMessage();
-            }}
-            disabled={busy}
-            aria-label={t("enviar")}
-          >
-            <Send className="size-[18px]" color="#fff" />
-          </button>
+          {/* Mic / Send — alterna conforme há texto (padrão WhatsApp) */}
+          {showMic ? (
+            <button
+              type="button"
+              tabIndex={-1}
+              onClick={recording ? stopRecording : startRecording}
+              disabled={busy && !recording}
+              className="size-[42px] shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer disabled:opacity-50 disabled:cursor-default transition-transform active:scale-90"
+              style={{
+                background: recording ? "#EF4444" : "var(--maya-primary)",
+                boxShadow: recording
+                  ? "0 4px 14px rgba(239,68,68,0.5)"
+                  : "0 4px 14px rgba(124,92,255,0.35)",
+              }}
+              aria-label={recording ? t("maya_voice_stop") : t("maya_voice_button")}
+            >
+              {recording ? (
+                <Square className="size-[16px]" color="#fff" />
+              ) : (
+                <Mic className="size-[18px]" color="#fff" />
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              tabIndex={-1}
+              className="size-[42px] shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer disabled:opacity-50 disabled:cursor-default"
+              style={{
+                background: "var(--maya-primary)",
+                boxShadow: "0 4px 14px rgba(124,92,255,0.35)",
+              }}
+              onClick={() => {
+                // Refocus synchronously inside the tap/click gesture — this is the
+                // only timing iOS Safari accepts to (re)open the keyboard. No
+                // preventDefault: on Safari 17+ canceling pointer/mouse down can
+                // itself dismiss the keyboard.
+                textareaRef.current?.focus();
+                sendMessage();
+              }}
+              disabled={busy}
+              aria-label={t("enviar")}
+            >
+              <Send className="size-[18px]" color="#fff" />
+            </button>
+          )}
         </div>
       </div>
 
