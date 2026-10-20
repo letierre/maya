@@ -7,6 +7,7 @@ const BAR_COUNT = 30;
 /**
  * Waveform em tempo real (Web Audio) que pulsa conforme a voz: fala mais forte
  * → barras maiores; silêncio → barras pequenas. Substitui o input enquanto grava.
+ * Barras finas + movimento suave (decay lento) — sutil, não agressivo.
  */
 export function RecordingWaveform({ stream }: { stream: MediaStream }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -53,18 +54,19 @@ export function RecordingWaveform({ stream }: { stream: MediaStream }) {
       const rms = Math.sqrt(sumSq / data.length); // 0..1
 
       for (let i = 0; i < BAR_COUNT; i++) {
-        const peak = Math.random() < 0.22 ? Math.min(1, rms * 2.4 + Math.random() * 0.3) : bars[i] * 0.8;
-        bars[i] = Math.max(bars[i] * 0.8, peak);
-        if (bars[i] < 0.03) bars[i] = 0.02 + Math.random() * 0.02;
+        const peak =
+          Math.random() < 0.12 ? Math.min(1, rms * 1.8 + Math.random() * 0.18) : bars[i] * 0.9;
+        bars[i] = Math.max(bars[i] * 0.9, peak);
+        if (bars[i] < 0.02) bars[i] = 0.015 + Math.random() * 0.015;
       }
 
       const w = canvas.width;
       const h = canvas.height;
       ctx.clearRect(0, 0, w, h);
       const slot = w / BAR_COUNT;
-      const barW = slot * 0.6;
+      const barW = slot * 0.5;
       for (let i = 0; i < BAR_COUNT; i++) {
-        const bh = Math.max(2, bars[i] * h);
+        const bh = Math.max(2, Math.min(bars[i], 0.85) * h);
         const x = i * slot + (slot - barW) / 2;
         const y = (h - bh) / 2;
         ctx.fillStyle = "#A78BFA";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Play, Pause, ChevronDown, ChevronUp } from "lucide-react";
 import { photoUrl } from "@/lib/photo-storage";
 import { useTranslation } from "@/lib/useTranslation";
@@ -12,10 +12,38 @@ function formatDuration(s: number): string {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 }
 
+const WAVE_BARS = 34;
+
+/** Gera um "waveform" determinístico (sempre igual p/ o mesmo path), suavizado
+ *  p/ parecer uma onda natural. Como não temos a amplitude real do áudio sem
+ *  decodificar, usamos ruído com seed — cada áudio tem um visual único. */
+function seededWaveform(seed: string, count: number): number[] {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const rand = () => {
+    h ^= h << 13; h ^= h >>> 17; h ^= h << 5;
+    return ((h >>> 0) % 1000) / 1000;
+  };
+  const raw: number[] = [];
+  for (let i = 0; i < count; i++) raw.push(0.25 + rand() * 0.75);
+  const out: number[] = [];
+  for (let i = 0; i < count; i++) {
+    const a = raw[Math.max(0, i - 1)];
+    const b = raw[i];
+    const c = raw[Math.min(count - 1, i + 1)];
+    out.push((a + b * 2 + c) / 4);
+  }
+  return out;
+}
+
 /**
- * Nota de voz (estilo WhatsApp): play/pause + barra de progresso + duração.
- * A transcrição fica RECOLHIDA por padrão (botão "Transcrição").
- * No iOS, tocar no play é gesto do usuário → sempre reproduz (sem autoplay).
+ * Nota de voz (estilo WhatsApp): play/pause + waveform de barras + duração.
+ * - Largura FIXA (não muda ao abrir/fechar a transcrição).
+ * - As barras vão se preenchendo com a cor conforme o usuário escuta.
+ * - A transcrição fica RECOLHIDA por padrão (botão "Transcrição").
  */
 export function VoiceNote({
   path,
@@ -35,8 +63,10 @@ export function VoiceNote({
 
   const src = photoUrl(path) ?? undefined;
   const accent = variant === "user" ? "#FFFFFF" : "#A78BFA";
-  const trackBg = variant === "user" ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.14)";
+  const unfilled = variant === "user" ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.16)";
   const textColor = variant === "user" ? "rgba(255,255,255,0.92)" : "rgba(216,210,231,0.92)";
+
+  const waveform = useMemo(() => seededWaveform(path, WAVE_BARS), [path]);
 
   const toggle = () => {
     const a = audioRef.current;
@@ -45,8 +75,8 @@ export function VoiceNote({
   };
 
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 200, maxWidth: 320 }}>
+    <div style={{ width: 288, maxWidth: "82vw" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button
           type="button"
           onClick={toggle}
@@ -68,24 +98,23 @@ export function VoiceNote({
           {playing ? <Pause className="size-5" /> : <Play className="size-5" style={{ marginLeft: 2 }} />}
         </button>
 
-        <div
-          style={{
-            flex: 1,
-            height: 4,
-            borderRadius: 2,
-            background: trackBg,
-            overflow: "hidden",
-            position: "relative",
-          }}
-        >
-          <div
-            style={{
-              height: "100%",
-              width: `${Math.min(progress * 100, 100)}%`,
-              background: accent,
-              borderRadius: 2,
-            }}
-          />
+        {/* Waveform de barras — preenche com a cor conforme o áudio avança */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 2, height: 30, overflow: "hidden" }}>
+          {waveform.map((h, i) => {
+            const filled = (i + 0.5) / WAVE_BARS <= progress;
+            return (
+              <span
+                key={i}
+                style={{
+                  flex: 1,
+                  height: `${Math.max(3, h * 30)}px`,
+                  borderRadius: 1.5,
+                  background: filled ? accent : unfilled,
+                  transition: "background 120ms linear",
+                }}
+              />
+            );
+          })}
         </div>
 
         <span

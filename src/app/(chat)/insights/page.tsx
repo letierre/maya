@@ -20,6 +20,7 @@ interface Message {
   time: string;
   date: string;
   status?: "sent" | "delivered" | "read";
+  pending?: boolean; // card ainda "enviando" (efeito de onda enquanto processa)
   createdAt?: number; // epoch ms — usado para o "Visto por último" (Maya)
   synced?: boolean;
   action?: { label: string; href: string } | null;
@@ -192,22 +193,33 @@ function Ticks({ status }: { status: "sent" | "delivered" | "read" }) {
   );
 }
 
-function TypingIndicator({ label, icon = "✦" }: { label: string; icon?: string }) {
+function TypingIndicator({ kind = "text" }: { kind?: "text" | "audio" }) {
   return (
     <div className="flex justify-start mb-2 maya-chat-msg">
       <div
-        className="rounded-[10px] px-3.5 py-2.5"
-        style={{ background: "#0D0E14" }}
+        className="rounded-[10px] px-4 py-3"
+        style={{ background: "#0D0E14", display: "inline-flex", alignItems: "center" }}
       >
-        <div className="flex items-center gap-1.5">
-          <span style={{ color: "var(--maya-secondary)" }}>{icon}</span>
-          <span style={{ color: "#D8D2E7", fontSize: 13 }}>{label}</span>
-          <span className="flex items-center gap-1 ml-0.5">
-            <span className="size-1.5 rounded-full bg-[var(--maya-secondary)]/80 animate-bounce [animation-delay:0ms]" />
-            <span className="size-1.5 rounded-full bg-[var(--maya-secondary)]/80 animate-bounce [animation-delay:150ms]" />
-            <span className="size-1.5 rounded-full bg-[var(--maya-secondary)]/80 animate-bounce [animation-delay:300ms]" />
+        {kind === "audio" ? (
+          <Mic
+            className="size-5"
+            style={{ color: "var(--maya-secondary)", animation: "mayaMicPulse 1.1s ease-in-out infinite" }}
+          />
+        ) : (
+          <span className="flex items-center gap-1.5" style={{ height: 16 }}>
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="size-2 rounded-full"
+                style={{
+                  background: "var(--maya-secondary)",
+                  animation: "mayaTypingDot 1.2s ease-in-out infinite",
+                  animationDelay: `${i * 0.15}s`,
+                }}
+              />
+            ))}
           </span>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -745,8 +757,9 @@ export default function MayaChatPage() {
   }, []);
 
   // Envia o áudio gravado → STT → responde → toca a voz da Maya.
-  // Fluxo visual: card "enviando" (1 tick) → entregue (2 ticks) → lido (2 ticks
-  // azuis) → indicador "Maya gravando áudio" → transcrição + resposta em voz.
+  // Fluxo visual humanizado (estilo WhatsApp): card "enviando" com onda → 1 check
+  // (transcrição aparece) → 2 checks → 2 checks azuis → "Maya gravando áudio"
+  // por ~60% da duração estimada da resposta → resposta em voz.
   useEffect(() => {
     if (!voiceBlob || voiceProcessingRef.current) return;
     voiceProcessingRef.current = true;
@@ -765,13 +778,15 @@ export default function MayaChatPage() {
         return next;
       });
 
+    const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
     (async () => {
       setSending(true);
       sendingRef.current = true;
       lastActivityAtRef.current = Date.now();
       setPresence("online");
 
-      // 1) Card imediato de "enviando" (transcrição ainda em processamento).
+      // 1) Card "enviando" com efeito de onda (a transcrição ainda está processando).
       setMessages((prev) => [
         ...prev,
         {
@@ -780,20 +795,9 @@ export default function MayaChatPage() {
           time: formatTime(),
           date: formatDate(),
           status: "sent",
+          pending: true,
         },
       ]);
-
-      // 2) Progressão dos ticks: enviado → lido → Maya "gravando".
-      const timers: number[] = [];
-      timers.push(
-        window.setTimeout(() => patchLastUser({ status: "delivered" }), 450),
-      );
-      timers.push(
-        window.setTimeout(() => {
-          patchLastUser({ status: "read" });
-          setMayaRecording(true);
-        }, 900),
-      );
 
       try {
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -813,32 +817,41 @@ export default function MayaChatPage() {
 
         const transcript = (data.transcript || "").trim();
         const reply = (data.reply || "").trim();
-        const now = formatTime();
-        const nowDate = formatDate();
 
-        // 3) Substitui o placeholder pela transcrição e anexa a resposta da Maya.
-        setMessages((prev) => {
-          const next = [...prev];
-          for (let i = next.length - 1; i >= 0; i--) {
-            if (next[i].role === "user") {
-              next[i] = {
-                ...next[i],
-                content: transcript || `🎤 ${t("maya_voice_placeholder")}`,
-                status: "read",
-              };
-              break;
-            }
-          }
-          next.push({
+        // 2) Transcrição aparece (sai do "enviando") → 1 check.
+        patchLastUser({
+          content: transcript || `🎤 ${t("maya_voice_placeholder")}`,
+          status: "sent",
+          pending: false,
+        });
+
+        // 3) 2 checks (entregue)…
+        await sleep(1200);
+        patchLastUser({ status: "delivered" });
+
+        // 4) …2 checks azuis (lido).
+        await sleep(1200);
+        patchLastUser({ status: "read" });
+
+        // 5) "Maya gravando áudio" por ~60% da duração estimada da fala dela
+        //    (estima ~13 caracteres/segundo falados — só p/ dar a sensação de tempo).
+        setMayaRecording(true);
+        const estSeconds = Math.max(2.5, reply.length / 13);
+        await sleep(Math.round(estSeconds * 1000 * 0.6));
+
+        // 6) Resposta da Maya em voz.
+        setMayaRecording(false);
+        setMessages((prev) => [
+          ...prev,
+          {
             role: "assistant",
             content: reply,
-            time: now,
-            date: nowDate,
+            time: formatTime(),
+            date: formatDate(),
             createdAt: Date.now(),
             audioUrl: data.audioUrl || null,
-          });
-          return next;
-        });
+          },
+        ]);
 
         // Toca a voz da Maya (desktop). No iOS o autoplay é bloqueado — o usuário
         // usa o play da bolha de áudio, que é gesto e sempre funciona.
@@ -851,11 +864,12 @@ export default function MayaChatPage() {
       } catch (e) {
         console.error("[voice] erro:", e);
         setPresence("lastSeen");
+        setMayaRecording(false);
         setMessages((prev) => {
           const next = [...prev];
           for (let i = next.length - 1; i >= 0; i--) {
             if (next[i].role === "user") {
-              next[i] = { ...next[i], status: "delivered" };
+              next[i] = { ...next[i], pending: false, status: "delivered" };
               break;
             }
           }
@@ -868,7 +882,6 @@ export default function MayaChatPage() {
           return next;
         });
       } finally {
-        timers.forEach((id) => clearTimeout(id));
         setMayaRecording(false);
         setSending(false);
         sendingRef.current = false;
@@ -948,6 +961,8 @@ export default function MayaChatPage() {
             {hydrated ? (
               typing ? (
                 <>{t("maya_digitando")}</>
+              ) : mayaRecording ? (
+                <>{t("maya_voice_recording_reply")}</>
               ) : presence === "lastSeen" && lastMayaSeenAt != null ? (
                 <span>{formatLastSeen(lastMayaSeenAt + IDLE_MS, t)}</span>
               ) : (
@@ -1075,8 +1090,22 @@ export default function MayaChatPage() {
                     fontSize: 15,
                     fontWeight: 400,
                     lineHeight: 1.4,
+                    position: msg.pending ? "relative" : undefined,
+                    overflow: msg.pending ? "hidden" : undefined,
                   }}
                 >
+                  {msg.pending && (
+                    <span
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background:
+                          "linear-gradient(100deg, transparent 25%, rgba(255,255,255,0.14) 50%, transparent 75%)",
+                        animation: "shimmer 1.7s ease-in-out infinite",
+                      }}
+                    />
+                  )}
                   {msg.audioUrl ? (
                     <VoiceNote
                       path={msg.audioUrl}
@@ -1155,11 +1184,9 @@ export default function MayaChatPage() {
           );
         })}
 
-        {/* Typing indicator */}
-        {typing && <TypingIndicator label={t("maya_pensando")} />}
-
-        {/* Maya gravando áudio (aparece após o usuário enviar a nota de voz) */}
-        {mayaRecording && <TypingIndicator icon="🎤" label={t("maya_voice_recording_reply")} />}
+        {/* Indicador no corpo do chat — balão da Maya (3 pontos / microfone) */}
+        {typing && <TypingIndicator kind="text" />}
+        {mayaRecording && <TypingIndicator kind="audio" />}
 
         {/* Bottom sentinel — ResizeObserver uses this to scroll to bottom */}
         <div ref={bottomRef} style={{ flexShrink: 0 }} />
