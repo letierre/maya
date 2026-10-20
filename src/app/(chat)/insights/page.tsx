@@ -6,6 +6,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { Send, ArrowLeft, Plus, Camera, X, Image as ImageIcon, ArrowDown, Mic, Square } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MayaAvatar } from "@/components/MayaAvatar";
+import { VoiceNote } from "@/components/VoiceNote";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
 import { useChatScroll } from "@/hooks/useChatScroll";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
@@ -14,6 +15,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   imageUrls?: string[];
+  audioUrl?: string | null;
   time: string;
   date: string;
   status?: "sent" | "delivered" | "read";
@@ -319,7 +321,7 @@ export default function MayaChatPage() {
                 ) ?? 0,
               )
               .map((m: unknown) => {
-                const msg = m as { role: string; content: string; image_urls?: string[]; created_at: string };
+                const msg = m as { role: string; content: string; image_urls?: string[]; audio_url?: string; created_at: string };
                 // Semeia a última atividade com a mensagem mais recente (o sort
                 // acima é ascendente, então a última iteração é a mais nova).
                 if (msg.created_at) lastActivityAtRef.current = new Date(msg.created_at).getTime();
@@ -327,6 +329,7 @@ export default function MayaChatPage() {
                   role: msg.role as "user" | "assistant",
                   content: msg.content,
                   imageUrls: msg.image_urls || [],
+                  audioUrl: msg.audio_url || null,
                   time: new Date(msg.created_at).toLocaleTimeString(getLocale(), {
                     hour: "2-digit",
                     minute: "2-digit",
@@ -496,10 +499,11 @@ export default function MayaChatPage() {
         .sort((a: { created_at: string }, b: { created_at: string }) =>
           a.created_at.localeCompare(b.created_at),
         )
-        .map((m: { role: string; content: string; image_urls?: string[]; created_at: string }) => ({
+        .map((m: { role: string; content: string; image_urls?: string[]; audio_url?: string; created_at: string }) => ({
           role: m.role as "user" | "assistant",
           content: m.content,
           imageUrls: m.image_urls || [],
+          audioUrl: m.audio_url || null,
           time: new Date(m.created_at).toLocaleTimeString(getLocale(), {
             hour: "2-digit",
             minute: "2-digit",
@@ -783,22 +787,15 @@ export default function MayaChatPage() {
             time: now,
             date: nowDate,
             createdAt: Date.now(),
+            audioUrl: data.audioUrl || null,
           },
         ]);
 
-        // Toca a voz da Maya.
-        if (data.audioBase64) {
-          try {
-            const bin = atob(data.audioBase64);
-            const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-            const url = URL.createObjectURL(
-              new Blob([bytes], { type: data.audioMime || "audio/mpeg" }),
-            );
-            new Audio(url).play().catch((e) => console.warn("[voice] autoplay bloqueado:", e));
-          } catch (e) {
-            console.warn("[voice] falha ao decodificar áudio:", e);
-          }
+        // Toca a voz da Maya (desktop). No iOS o autoplay é bloqueado — o usuário
+        // usa o play da bolha de áudio, que é gesto e sempre funciona.
+        if (data.audioUrl) {
+          const url = photoUrl(data.audioUrl);
+          if (url) new Audio(url).play().catch((e) => console.warn("[voice] autoplay bloqueado:", e));
         } else if (data.ttsError) {
           console.warn("[voice] TTS falhou no servidor:", data.ttsError);
         }
@@ -1017,6 +1014,11 @@ export default function MayaChatPage() {
                     lineHeight: 1.4,
                   }}
                 >
+                  {msg.audioUrl && (
+                    <div style={{ marginBottom: 6 }}>
+                      <VoiceNote path={msg.audioUrl} variant={isAssistant ? "assistant" : "user"} />
+                    </div>
+                  )}
                   {msg.content}
                   {/* Images attached to the message */}
                   {msg.imageUrls && msg.imageUrls.length > 0 && (

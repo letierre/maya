@@ -24,6 +24,7 @@ export async function GET(request: Request) {
                  path.startsWith("avatars/") ? "avatars" :
                  path.startsWith("porques/") ? "porques" :
                  path.startsWith("chat/") ? "chat" :
+                 path.startsWith("voice/") ? "voice" :
                  path.startsWith("running/") ? "running" : null;
   if (!bucket) {
     return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
@@ -46,6 +47,7 @@ export async function GET(request: Request) {
       ext === "webp" ? "image/webp" :
       ext === "jpg" || ext === "jpeg" ? "image/jpeg" :
       ext === "webm" ? "audio/webm" :
+      ext === "mp3" ? "audio/mpeg" :
       ext === "wav" ? "audio/wav" :
       ext === "m4a" ? "audio/mp4" :
       ext === "ogg" ? "audio/ogg" :

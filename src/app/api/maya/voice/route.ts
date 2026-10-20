@@ -17,6 +17,23 @@ export const maxDuration = 60; // STT + LLM + TTS num único request
 // Remove qualquer "[dia HH:MM]" que a Maya possa ecoar (metadado interno).
 const STRIP_TIMESTAMP = /\[\s*(?:hoje|ontem|anteontem|há\s*\d+\s*dias)?\s*\d{1,2}:\d{2}\s*\]\s*/gi;
 
+/** Faz upload de um áudio (Buffer) para o bucket user-content e devolve o path. */
+async function uploadVoiceAudio(
+  admin: ReturnType<typeof getSupabaseAdmin>,
+  userId: string,
+  buffer: Buffer,
+  ext: string,
+  contentType: string,
+): Promise<string> {
+  const fileName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const path = `voice/${userId}/${fileName}`;
+  const { error } = await admin.storage
+    .from("user-content")
+    .upload(path, buffer, { contentType, upsert: false });
+  if (error) throw new Error(`Upload de áudio falhou: ${error.message}`);
+  return path;
+}
+
 /**
  * POST /api/maya/voice — conversa por voz (turno-a-turno).
  * Fluxo: STT (Deepgram) → MESMO pipeline do chat (contexto + memória + LLM)
@@ -149,11 +166,24 @@ export async function POST(request: Request) {
     const rawReply = await chatLLM(systemPrompt, messages, 1000, { userId: user.id, feature: "maya_voice_chat" });
     const reply = rawReply.replace(STRIP_TIMESTAMP, "").trim();
 
-    // ── 9) Persiste a resposta da Maya no chat ──
+    // ── 9) TTS + persistência da resposta da Maya (com áudio) ──
+    // Gera e guarda o áudio primeiro pra salvar o caminho junto da mensagem.
+    // Se o TTS falhar, a resposta vira texto puro (degrada, não derruba).
+    let assistantAudioUrl: string | null = null;
+    let ttsError: string | null = null;
+    try {
+      const { audio } = await synthesizeSpeech(reply, { language, userId: user.id });
+      assistantAudioUrl = await uploadVoiceAudio(admin, user.id, audio, "mp3", "audio/mpeg");
+    } catch (ttsErr) {
+      ttsError = String(ttsErr);
+      logError({ path: "api/maya/voice tts", message: String(ttsErr), userId: user.id, meta: { feature: "maya_tts" } });
+    }
+
     await admin.from("chat_messages").insert({
       user_id: user.id,
       role: "assistant",
       content: reply,
+      audio_url: assistantAudioUrl,
       chat_type: "maya",
     });
 
@@ -165,20 +195,7 @@ export async function POST(request: Request) {
       });
     });
 
-    // ── 11) TTS — se falhar, degrada para texto (não derruba a resposta) ──
-    let audioBase64: string | null = null;
-    let audioMime = "audio/mpeg";
-    let ttsError: string | null = null;
-    try {
-      const { audio, mimeType: ttsMime } = await synthesizeSpeech(reply, { language, userId: user.id });
-      audioBase64 = audio.toString("base64");
-      audioMime = ttsMime;
-    } catch (ttsErr) {
-      ttsError = String(ttsErr);
-      logError({ path: "api/maya/voice tts", message: String(ttsErr), userId: user.id, meta: { feature: "maya_tts" } });
-    }
-
-    return NextResponse.json({ transcript, reply, audioBase64, audioMime, ttsError });
+    return NextResponse.json({ transcript, reply, audioUrl: assistantAudioUrl, ttsError });
   } catch (error) {
     console.error("POST /api/maya/voice error:", error);
     logError({ path: "api/maya/voice POST", message: String(error), userId: user?.id });
