@@ -59,13 +59,24 @@ export async function synthesizeSpeech(
 
   if (!response.ok) {
     const errText = await response.text();
+    let detail = errText.slice(0, 200);
+    try {
+      const parsed = JSON.parse(errText);
+      detail =
+        parsed?.detail?.message ||
+        parsed?.message ||
+        parsed?.detail?.status ||
+        detail;
+    } catch {
+      /* mantém o texto cru */
+    }
     logError({
       path: "tts.synthesizeSpeech",
-      message: `ElevenLabs ${response.status}: ${errText.slice(0, 200)}`,
+      message: `ElevenLabs ${response.status}: ${detail}`,
       status: response.status,
       userId: opts.userId,
     });
-    throw new Error(`ElevenLabs TTS error (${response.status})`);
+    throw new Error(`ElevenLabs TTS error (${response.status}): ${detail}`);
   }
 
   const audio = Buffer.from(await response.arrayBuffer());
