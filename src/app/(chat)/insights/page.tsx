@@ -246,6 +246,7 @@ export default function MayaChatPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const voiceStreamRef = useRef<MediaStream | null>(null);
+  const voiceProcessingRef = useRef(false);
 
   // ── Presença (online / digitando / visto por último) ──
   const [presence, setPresence] = useState<"online" | "lastSeen">("online");
@@ -736,10 +737,9 @@ export default function MayaChatPage() {
 
   // Envia o áudio gravado → STT → responde → toca a voz da Maya.
   useEffect(() => {
-    if (!voiceBlob) return;
+    if (!voiceBlob || voiceProcessingRef.current) return;
+    voiceProcessingRef.current = true;
     const { blob, mime } = voiceBlob;
-    setVoiceBlob(null);
-    let cancelled = false;
 
     (async () => {
       setSending(true);
@@ -757,35 +757,36 @@ export default function MayaChatPage() {
         fd.append("localDate", formatDate());
 
         const res = await fetch("/api/maya/voice", { method: "POST", body: fd });
-        if (!res.ok) throw new Error("API error");
+        if (!res.ok) {
+          console.error("[voice] status", res.status, await res.text().catch(() => ""));
+          throw new Error("API error");
+        }
         const data = await res.json();
-        if (cancelled) return;
 
         const transcript = (data.transcript || "").trim();
         const reply = (data.reply || "").trim();
         const now = formatTime();
         const nowDate = formatDate();
 
-        const userMsg: Message = {
-          role: "user",
-          content: transcript || `🎤 ${t("maya_voice_placeholder")}`,
-          time: now,
-          date: nowDate,
-          status: "read",
-        };
-        const assistantMsg: Message = {
-          role: "assistant",
-          content: reply,
-          time: now,
-          date: nowDate,
-          createdAt: Date.now(),
-        };
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "user",
+            content: transcript || `🎤 ${t("maya_voice_placeholder")}`,
+            time: now,
+            date: nowDate,
+            status: "read",
+          },
+          {
+            role: "assistant",
+            content: reply,
+            time: now,
+            date: nowDate,
+            createdAt: Date.now(),
+          },
+        ]);
 
-        setMessages((prev) => [...prev, userMsg, assistantMsg]);
-        setSending(false);
-        sendingRef.current = false;
-
-        // Toca a voz da Maya (iOS pode exigir gesto — o texto continua visível).
+        // Toca a voz da Maya.
         if (data.audioBase64) {
           try {
             const bin = atob(data.audioBase64);
@@ -794,26 +795,27 @@ export default function MayaChatPage() {
             const url = URL.createObjectURL(
               new Blob([bytes], { type: data.audioMime || "audio/mpeg" }),
             );
-            new Audio(url).play().catch(() => {});
-          } catch {
-            /* falha de áudio não derruba a conversa */
+            new Audio(url).play().catch((e) => console.warn("[voice] autoplay bloqueado:", e));
+          } catch (e) {
+            console.warn("[voice] falha ao decodificar áudio:", e);
           }
+        } else if (data.ttsError) {
+          console.warn("[voice] TTS falhou no servidor:", data.ttsError);
         }
-      } catch {
-        if (cancelled) return;
-        setSending(false);
-        sendingRef.current = false;
+      } catch (e) {
+        console.error("[voice] erro:", e);
         setPresence("lastSeen");
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: t("maya_error"), time: formatTime(), date: formatDate() },
         ]);
+      } finally {
+        setSending(false);
+        sendingRef.current = false;
+        voiceProcessingRef.current = false;
+        setVoiceBlob(null);
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
   }, [voiceBlob, t]);
 
   // Auto-limpa o aviso de microfone após alguns segundos.

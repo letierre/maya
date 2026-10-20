@@ -168,15 +168,17 @@ export async function POST(request: Request) {
     // ── 11) TTS — se falhar, degrada para texto (não derruba a resposta) ──
     let audioBase64: string | null = null;
     let audioMime = "audio/mpeg";
+    let ttsError: string | null = null;
     try {
       const { audio, mimeType: ttsMime } = await synthesizeSpeech(reply, { language, userId: user.id });
       audioBase64 = audio.toString("base64");
       audioMime = ttsMime;
     } catch (ttsErr) {
+      ttsError = String(ttsErr);
       logError({ path: "api/maya/voice tts", message: String(ttsErr), userId: user.id, meta: { feature: "maya_tts" } });
     }
 
-    return NextResponse.json({ transcript, reply, audioBase64, audioMime });
+    return NextResponse.json({ transcript, reply, audioBase64, audioMime, ttsError });
   } catch (error) {
     console.error("POST /api/maya/voice error:", error);
     logError({ path: "api/maya/voice POST", message: String(error), userId: user?.id });
