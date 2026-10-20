@@ -8,6 +8,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 const API_ALLOW = [
   "/api/subscription",
   "/api/stripe",
+  "/api/checkout", // fluxo público do quiz → cria a sessão antes de existir conta
   "/api/preferences",
   "/api/check-ins",
   "/api/register",
@@ -50,8 +51,8 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApi = pathname.startsWith("/api/");
 
-  // Landing e callback de autenticação sempre liberados (sem custo de rede)
-  if (pathname === "/" || pathname.startsWith("/auth/")) {
+  // Landing, callback de autenticação e pós-checkout sempre liberados (sem custo de rede)
+  if (pathname === "/" || pathname.startsWith("/auth/") || pathname.startsWith("/checkout")) {
     return supabaseResponse;
   }
 

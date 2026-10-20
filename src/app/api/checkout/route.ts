@@ -28,9 +28,11 @@ export async function GET(req: NextRequest) {
   const ip = forwarded?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "";
   const userAgent = req.headers.get("user-agent") || "";
 
-  const price = priceIdFor("monthly");
+  // Plano escolhido na landing do quiz: "monthly" (padrão) ou "annual".
+  const plan: "monthly" | "annual" = params.get("plan") === "annual" ? "annual" : "monthly";
+  const price = priceIdFor(plan);
   if (!price) {
-    return NextResponse.json({ error: "Preço mensal não configurado" }, { status: 500 });
+    return NextResponse.json({ error: "Preço não configurado para o plano" }, { status: 500 });
   }
 
   const metadata: Record<string, string> = {};
