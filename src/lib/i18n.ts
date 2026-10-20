@@ -320,6 +320,9 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_voice_placeholder: "Mensagem de voz",
     maya_voice_error:
       "Não consegui acessar o microfone. Verifique a permissão no navegador.",
+    maya_voice_transcript: "Transcrição",
+    maya_voice_recording_reply: "Maya está gravando áudio...",
+    maya_voice_sending: "Enviando...",
     maya_error:
       "Tive dificuldade de me conectar agora. Tente novamente em alguns instantes. 💛",
 
@@ -2771,6 +2774,9 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_voice_placeholder: "Mensaje de voz",
     maya_voice_error:
       "No pude acceder al micrófono. Revisa el permiso en el navegador.",
+    maya_voice_transcript: "Transcripción",
+    maya_voice_recording_reply: "Maya está grabando audio...",
+    maya_voice_sending: "Enviando...",
     maya_error:
       "Tuve dificultad para conectarme ahora. Intenta de nuevo en unos instantes. 💛",
 
@@ -5220,6 +5226,9 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_voice_placeholder: "Voice message",
     maya_voice_error:
       "I couldn't access the microphone. Please check the browser permission.",
+    maya_voice_transcript: "Transcript",
+    maya_voice_recording_reply: "Maya is recording audio...",
+    maya_voice_sending: "Sending...",
     maya_error:
       "I had trouble connecting right now. Please try again in a moment. 💛",
 

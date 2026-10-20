@@ -7,6 +7,7 @@ import { Send, ArrowLeft, Plus, Camera, X, Image as ImageIcon, ArrowDown, Mic, S
 import { useRouter, useSearchParams } from "next/navigation";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { VoiceNote } from "@/components/VoiceNote";
+import { RecordingWaveform } from "@/components/RecordingWaveform";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
 import { useChatScroll } from "@/hooks/useChatScroll";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
@@ -191,7 +192,7 @@ function Ticks({ status }: { status: "sent" | "delivered" | "read" }) {
   );
 }
 
-function TypingIndicator({ label }: { label: string }) {
+function TypingIndicator({ label, icon = "✦" }: { label: string; icon?: string }) {
   return (
     <div className="flex justify-start mb-2 maya-chat-msg">
       <div
@@ -199,7 +200,7 @@ function TypingIndicator({ label }: { label: string }) {
         style={{ background: "#0D0E14" }}
       >
         <div className="flex items-center gap-1.5">
-          <span style={{ color: "var(--maya-secondary)" }}>✦</span>
+          <span style={{ color: "var(--maya-secondary)" }}>{icon}</span>
           <span style={{ color: "#D8D2E7", fontSize: 13 }}>{label}</span>
           <span className="flex items-center gap-1 ml-0.5">
             <span className="size-1.5 rounded-full bg-[var(--maya-secondary)]/80 animate-bounce [animation-delay:0ms]" />
@@ -237,8 +238,10 @@ export default function MayaChatPage() {
   const [viewerImage, setViewerImage] = useState<string | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [recordingStream, setRecordingStream] = useState<MediaStream | null>(null);
   const [voiceBlob, setVoiceBlob] = useState<{ blob: Blob; mime: string } | null>(null);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  const [mayaRecording, setMayaRecording] = useState(false);
 
   // ── Refs ──
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -700,6 +703,7 @@ export default function MayaChatPage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       voiceStreamRef.current = stream;
+      setRecordingStream(stream);
       const mime = pickVoiceMime();
       const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       mediaRecorderRef.current = rec;
@@ -710,6 +714,7 @@ export default function MayaChatPage() {
       rec.onstop = () => {
         stream.getTracks().forEach((track) => track.stop());
         voiceStreamRef.current = null;
+        setRecordingStream(null);
         const chunks = audioChunksRef.current;
         if (!chunks.length) {
           setRecording(false);
@@ -740,16 +745,55 @@ export default function MayaChatPage() {
   }, []);
 
   // Envia o áudio gravado → STT → responde → toca a voz da Maya.
+  // Fluxo visual: card "enviando" (1 tick) → entregue (2 ticks) → lido (2 ticks
+  // azuis) → indicador "Maya gravando áudio" → transcrição + resposta em voz.
   useEffect(() => {
     if (!voiceBlob || voiceProcessingRef.current) return;
     voiceProcessingRef.current = true;
     const { blob, mime } = voiceBlob;
+
+    // Atualiza a última mensagem do usuário (o card placeholder) sem recriá-la.
+    const patchLastUser = (patch: Partial<Message>) =>
+      setMessages((prev) => {
+        const next = [...prev];
+        for (let i = next.length - 1; i >= 0; i--) {
+          if (next[i].role === "user") {
+            next[i] = { ...next[i], ...patch };
+            break;
+          }
+        }
+        return next;
+      });
 
     (async () => {
       setSending(true);
       sendingRef.current = true;
       lastActivityAtRef.current = Date.now();
       setPresence("online");
+
+      // 1) Card imediato de "enviando" (transcrição ainda em processamento).
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "user",
+          content: `🎤 ${t("maya_voice_sending")}`,
+          time: formatTime(),
+          date: formatDate(),
+          status: "sent",
+        },
+      ]);
+
+      // 2) Progressão dos ticks: enviado → lido → Maya "gravando".
+      const timers: number[] = [];
+      timers.push(
+        window.setTimeout(() => patchLastUser({ status: "delivered" }), 450),
+      );
+      timers.push(
+        window.setTimeout(() => {
+          patchLastUser({ status: "read" });
+          setMayaRecording(true);
+        }, 900),
+      );
 
       try {
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -772,24 +816,29 @@ export default function MayaChatPage() {
         const now = formatTime();
         const nowDate = formatDate();
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "user",
-            content: transcript || `🎤 ${t("maya_voice_placeholder")}`,
-            time: now,
-            date: nowDate,
-            status: "read",
-          },
-          {
+        // 3) Substitui o placeholder pela transcrição e anexa a resposta da Maya.
+        setMessages((prev) => {
+          const next = [...prev];
+          for (let i = next.length - 1; i >= 0; i--) {
+            if (next[i].role === "user") {
+              next[i] = {
+                ...next[i],
+                content: transcript || `🎤 ${t("maya_voice_placeholder")}`,
+                status: "read",
+              };
+              break;
+            }
+          }
+          next.push({
             role: "assistant",
             content: reply,
             time: now,
             date: nowDate,
             createdAt: Date.now(),
             audioUrl: data.audioUrl || null,
-          },
-        ]);
+          });
+          return next;
+        });
 
         // Toca a voz da Maya (desktop). No iOS o autoplay é bloqueado — o usuário
         // usa o play da bolha de áudio, que é gesto e sempre funciona.
@@ -802,11 +851,25 @@ export default function MayaChatPage() {
       } catch (e) {
         console.error("[voice] erro:", e);
         setPresence("lastSeen");
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: t("maya_error"), time: formatTime(), date: formatDate() },
-        ]);
+        setMessages((prev) => {
+          const next = [...prev];
+          for (let i = next.length - 1; i >= 0; i--) {
+            if (next[i].role === "user") {
+              next[i] = { ...next[i], status: "delivered" };
+              break;
+            }
+          }
+          next.push({
+            role: "assistant",
+            content: t("maya_error"),
+            time: formatTime(),
+            date: formatDate(),
+          });
+          return next;
+        });
       } finally {
+        timers.forEach((id) => clearTimeout(id));
+        setMayaRecording(false);
         setSending(false);
         sendingRef.current = false;
         voiceProcessingRef.current = false;
@@ -1014,12 +1077,15 @@ export default function MayaChatPage() {
                     lineHeight: 1.4,
                   }}
                 >
-                  {msg.audioUrl && (
-                    <div style={{ marginBottom: 6 }}>
-                      <VoiceNote path={msg.audioUrl} variant={isAssistant ? "assistant" : "user"} />
-                    </div>
+                  {msg.audioUrl ? (
+                    <VoiceNote
+                      path={msg.audioUrl}
+                      transcript={msg.content}
+                      variant={isAssistant ? "assistant" : "user"}
+                    />
+                  ) : (
+                    msg.content
                   )}
-                  {msg.content}
                   {/* Images attached to the message */}
                   {msg.imageUrls && msg.imageUrls.length > 0 && (
                     <div
@@ -1065,26 +1131,24 @@ export default function MayaChatPage() {
                       {msg.action.label} →
                     </a>
                   )}
-                  {/* Time + ticks for user messages only */}
-                  {!isAssistant && (
-                    <span
-                      className="whitespace-nowrap"
-                      style={{
-                        float: "right",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 3,
-                        margin: "8px -4px -6px 8px",
-                        fontSize: 10.5,
-                        fontWeight: 400,
-                        lineHeight: 1,
-                        color: "rgba(255,255,255,0.72)",
-                      }}
-                    >
-                      {msg.time}
-                      <Ticks status={status} />
-                    </span>
-                  )}
+                  {/* Hora (ticks só no usuário — a Maya não "envia", ela grava) */}
+                  <span
+                    className="whitespace-nowrap"
+                    style={{
+                      float: "right",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 3,
+                      margin: "8px -4px -6px 8px",
+                      fontSize: 10.5,
+                      fontWeight: 400,
+                      lineHeight: 1,
+                      color: isAssistant ? "rgba(216,210,231,0.45)" : "rgba(255,255,255,0.72)",
+                    }}
+                  >
+                    {msg.time}
+                    {!isAssistant && <Ticks status={status} />}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1093,6 +1157,9 @@ export default function MayaChatPage() {
 
         {/* Typing indicator */}
         {typing && <TypingIndicator label={t("maya_pensando")} />}
+
+        {/* Maya gravando áudio (aparece após o usuário enviar a nota de voz) */}
+        {mayaRecording && <TypingIndicator icon="🎤" label={t("maya_voice_recording_reply")} />}
 
         {/* Bottom sentinel — ResizeObserver uses this to scroll to bottom */}
         <div ref={bottomRef} style={{ flexShrink: 0 }} />
@@ -1229,11 +1296,6 @@ export default function MayaChatPage() {
           </div>
         )}
 
-        {recording && (
-          <div className="mb-2 text-center text-xs font-medium" style={{ color: "#F87171" }}>
-            ● {t("maya_voice_recording")}
-          </div>
-        )}
         {voiceNotice && (
           <div className="mb-2 text-center text-xs font-medium" style={{ color: "#FBBF24" }}>
             {voiceNotice}
@@ -1245,7 +1307,7 @@ export default function MayaChatPage() {
           <button
             type="button"
             onClick={() => setAttachOpen((v) => !v)}
-            disabled={busy}
+            disabled={busy || recording}
             className="size-10 shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer transition-transform active:scale-90 disabled:opacity-40"
             style={{ background: "rgba(124,92,255,0.14)", color: "#A78BFA" }}
             aria-label={t("anexar")}
@@ -1253,32 +1315,46 @@ export default function MayaChatPage() {
             <Plus className="size-5" />
           </button>
 
-          <div
-            ref={textareaRef}
-            contentEditable
-            suppressContentEditableWarning
-            role="textbox"
-            aria-multiline="true"
-            aria-label={t("maya_placeholder")}
-            data-placeholder={t("maya_placeholder")}
-            enterKeyHint="send"
-            onInput={handleComposerInput}
-            onKeyDown={handleKeyDown}
-            className="maya-chat-input flex-1 rounded-[20px] border px-4 py-2.5 focus:outline-none"
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              borderColor: "rgba(255,255,255,0.08)",
-              color: "#D8D2E7",
-              fontSize: 14,
-              fontWeight: 400,
-              lineHeight: 1.4,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              minHeight: 40,
-              maxHeight: 120,
-              overflowY: "auto",
-            }}
-          />
+          {recording ? (
+            <div
+              className="flex-1 rounded-[20px] border px-3 flex items-center justify-center"
+              style={{
+                background: "rgba(124,92,255,0.06)",
+                borderColor: "rgba(167,139,250,0.28)",
+                minHeight: 44,
+                height: 44,
+              }}
+            >
+              {recordingStream ? <RecordingWaveform stream={recordingStream} /> : null}
+            </div>
+          ) : (
+            <div
+              ref={textareaRef}
+              contentEditable
+              suppressContentEditableWarning
+              role="textbox"
+              aria-multiline="true"
+              aria-label={t("maya_placeholder")}
+              data-placeholder={t("maya_placeholder")}
+              enterKeyHint="send"
+              onInput={handleComposerInput}
+              onKeyDown={handleKeyDown}
+              className="maya-chat-input flex-1 rounded-[20px] border px-4 py-2.5 focus:outline-none"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                borderColor: "rgba(255,255,255,0.08)",
+                color: "#D8D2E7",
+                fontSize: 14,
+                fontWeight: 400,
+                lineHeight: 1.4,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                minHeight: 40,
+                maxHeight: 120,
+                overflowY: "auto",
+              }}
+            />
+          )}
 
           {/* Mic / Send — alterna conforme há texto (padrão WhatsApp) */}
           {showMic ? (

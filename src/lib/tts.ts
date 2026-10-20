@@ -3,7 +3,8 @@ import { logError } from "@/lib/error-log";
 /**
  * Síntese de voz (TTS) via ElevenLabs Flash v2.5.
  * Voz configurável por idioma (pt/es/en) via env — a voz da Maya.
- * voice_settings: stability médio-baixo p/ prosódia viva, mas estável.
+ * voice_settings: stability baixo p/ prosódia viva (respiração/entonação) e
+ * speed levemente reduzida p/ pausas mais naturais — a "entonação" da Maya.
  */
 
 const ELEVENLABS_TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech";
@@ -34,8 +35,9 @@ export async function synthesizeSpeech(
     text,
     model_id: MODEL_ID,
     voice_settings: {
-      stability: 0.5,
+      stability: 0.4,
       similarity_boost: 0.75,
+      speed: 0.95,
     },
   };
 
