@@ -20,19 +20,7 @@ const STRIP_TIMESTAMP = /\[\s*(?:hoje|ontem|anteontem|há\s*\d+\s*dias)?\s*\d{1,
 // Instrução de entrega ORAL (só no modo voz): a pontuação vira pausa/entonação
 // na síntese de voz, e frases curtas soam mais naturais do que texto corrido.
 // É AQUI (junto com voice_settings no tts.ts) que se ajusta a "entonação" da Maya.
-const VOICE_DELIVERY = `\n\n## COMO FALAR (modo voz)\nEsta resposta será FALADA em voz alta. Escreva como quem fala de verdade, não como um texto:\n- Frases curtas, uma ideia por frase.
-- Seja CONCISA: responda em 2-4 frases curtas (máximo ~60 palavras). Vá direto ao ponto.\n- Use reticências ("...") para pausas de respiração e para "pensar" antes de responder.\n- Use vírgulas, ponto de interrogação e exclamação para dar entonação.\n- Varie o tom conforme o contexto: acolhimento = calmo e pausado; alegria = animado; preocupação = suave e próximo.\n- Não use listas, markdown, emojis nem estruturas que não façam sentido faladas em voz alta.`;
-
-// Voz é conversa, não palestra. Corta respostas longas num limite de frase,
-// garantindo áudio de no máximo ~50-55s (e a transcrição salva condiz com o áudio).
-function truncateForVoice(text: string, maxChars = 700): string {
-  if (text.length <= maxChars) return text;
-  const cut = text.slice(0, maxChars);
-  let last = -1;
-  for (const ch of [".", "!", "?", "…", ";"]) last = Math.max(last, cut.lastIndexOf(ch));
-  if (last > maxChars * 0.6) return cut.slice(0, last + 1);
-  return cut + "…";
-}
+const VOICE_DELIVERY = `\n\n## COMO FALAR (modo voz)\nEsta resposta será FALADA em voz alta. Escreva como quem fala de verdade, não como um texto:\n- Frases curtas, uma ideia por frase.\n- Use reticências ("...") para pausas de respiração e para "pensar" antes de responder.\n- Use vírgulas, ponto de interrogação e exclamação para dar entonação.\n- Varie o tom conforme o contexto: acolhimento = calmo e pausado; alegria = animado; preocupação = suave e próximo.\n- Não use listas, markdown, emojis nem estruturas que não façam sentido faladas em voz alta.`;
 
 /** Faz upload de um áudio (Buffer) para o bucket user-content e devolve o path. */
 async function uploadVoiceAudio(
@@ -180,8 +168,8 @@ export async function POST(request: Request) {
     const systemPrompt = buildMayaSystemPrompt(mayaInput) + VOICE_DELIVERY;
 
     // ── 8) Resposta (mesmo LLM do chat) ──
-    const rawReply = await chatLLM(systemPrompt, messages, 250, { userId: user.id, feature: "maya_voice_chat" });
-    const reply = truncateForVoice(rawReply.replace(STRIP_TIMESTAMP, "").trim());
+    const rawReply = await chatLLM(systemPrompt, messages, 1000, { userId: user.id, feature: "maya_voice_chat" });
+    const reply = rawReply.replace(STRIP_TIMESTAMP, "").trim();
 
     // ── 9) TTS + persistência da resposta da Maya (com áudio) ──
     // Gera e guarda o áudio primeiro pra salvar o caminho junto da mensagem.

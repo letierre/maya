@@ -1,14 +1,15 @@
 import { logError } from "@/lib/error-log";
 
 /**
- * Síntese de voz (TTS) via ElevenLabs Flash v2.5.
+ * Síntese de voz (TTS) via ElevenLabs Turbo v2.5 (confiável p/ respostas
+ * completas — o Flash v2.5 cortava o final em textos mais longos).
  * Voz configurável por idioma (pt/es/en) via env — a voz da Maya.
  * voice_settings: stability baixo p/ prosódia viva (respiração/entonação) e
  * speed levemente reduzida p/ pausas mais naturais — a "entonação" da Maya.
  */
 
 const ELEVENLABS_TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech";
-const MODEL_ID = "eleven_flash_v2_5";
+const MODEL_ID = "eleven_turbo_v2_5";
 
 // Fallback enquanto a voz definitiva não é escolhida (trocar via env).
 const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
