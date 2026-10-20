@@ -31,8 +31,13 @@ export async function synthesizeSpeech(
   const key = process.env.ELEVENLABS_API_KEY || "";
   const voiceId = voiceIdFor(opts.language);
 
+  // Flash v2.5 às vezes corta a última sílaba se a frase não "fecha". Garante
+  // pontuação final (fecha a entonação) antes de sintetizar.
+  const clean = text.trim();
+  const ttsText = /[.!?…»]\s*$/.test(clean) ? clean : `${clean}.`;
+
   const body = {
-    text,
+    text: ttsText,
     model_id: MODEL_ID,
     voice_settings: {
       stability: 0.4,

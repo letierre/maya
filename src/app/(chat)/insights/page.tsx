@@ -198,7 +198,12 @@ function TypingIndicator({ kind = "text" }: { kind?: "text" | "audio" }) {
     <div className="flex justify-start mb-2 maya-chat-msg">
       <div
         className="rounded-[10px] px-4 py-3"
-        style={{ background: "#0D0E14", display: "inline-flex", alignItems: "center" }}
+        style={{
+          background: "rgba(167,139,250,0.12)",
+          border: "1px solid rgba(167,139,250,0.28)",
+          display: "inline-flex",
+          alignItems: "center",
+        }}
       >
         {kind === "audio" ? (
           <Mic

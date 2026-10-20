@@ -40,10 +40,11 @@ function seededWaveform(seed: string, count: number): number[] {
 }
 
 /**
- * Nota de voz (estilo WhatsApp): play/pause + waveform de barras + duração.
- * - Largura FIXA (não muda ao abrir/fechar a transcrição).
- * - As barras vão se preenchendo com a cor conforme o usuário escuta.
- * - A transcrição fica RECOLHIDA por padrão (botão "Transcrição").
+ * Nota de voz (estilo WhatsApp): play/pause + waveform de barras + contador.
+ * - Contador mostra o tempo decorrido (segue o áudio).
+ * - Barras preenchem GRADUALMENTE (de baixo p/ cima) conforme o tempo avança.
+ * - Arrastar o dedo nas barras retrocede/avança para aquele segundo.
+ * - Largura FIXA (abrir/fechar transcrição não muda o tamanho).
  */
 export function VoiceNote({
   path,
@@ -56,8 +57,11 @@ export function VoiceNote({
 }) {
   const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const waveRef = useRef<HTMLDivElement | null>(null);
+  const draggingRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState<number | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
   const [progress, setProgress] = useState(0);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
 
@@ -72,6 +76,20 @@ export function VoiceNote({
     const a = audioRef.current;
     if (!a) return;
     if (a.paused) a.play().catch(() => {}); else a.pause();
+  };
+
+  // Arrasta/desliza nas barras → pula para aquele ponto do áudio.
+  const seekTo = (clientX: number) => {
+    const a = audioRef.current;
+    const el = waveRef.current;
+    if (!a || !el) return;
+    const dur = a.duration || duration || 0;
+    if (!dur) return;
+    const rect = el.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    a.currentTime = frac * dur;
+    setCurrentTime(frac * dur);
+    setProgress(frac);
   };
 
   return (
@@ -98,21 +116,55 @@ export function VoiceNote({
           {playing ? <Pause className="size-5" /> : <Play className="size-5" style={{ marginLeft: 2 }} />}
         </button>
 
-        {/* Waveform de barras — preenche com a cor conforme o áudio avança */}
-        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 2, height: 30, overflow: "hidden" }}>
+        {/* Waveform — arrastável e com preenchimento gradual (de baixo p/ cima) */}
+        <div
+          ref={waveRef}
+          onPointerDown={(e) => {
+            draggingRef.current = true;
+            e.currentTarget.setPointerCapture(e.pointerId);
+            seekTo(e.clientX);
+          }}
+          onPointerMove={(e) => {
+            if (draggingRef.current) seekTo(e.clientX);
+          }}
+          onPointerUp={() => (draggingRef.current = false)}
+          onPointerCancel={() => (draggingRef.current = false)}
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            height: 34,
+            cursor: "pointer",
+            touchAction: "none",
+          }}
+        >
           {waveform.map((h, i) => {
-            const filled = (i + 0.5) / WAVE_BARS <= progress;
+            const fullH = Math.max(3, h * 30);
+            const fill = Math.max(0, Math.min(1, progress * WAVE_BARS - i));
             return (
               <span
                 key={i}
                 style={{
                   flex: 1,
-                  height: `${Math.max(3, h * 30)}px`,
+                  height: fullH,
+                  position: "relative",
+                  overflow: "hidden",
                   borderRadius: 1.5,
-                  background: filled ? accent : unfilled,
-                  transition: "background 120ms linear",
+                  background: unfilled,
                 }}
-              />
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: `${fill * 100}%`,
+                    background: accent,
+                  }}
+                />
+              </span>
             );
           })}
         </div>
@@ -125,7 +177,7 @@ export function VoiceNote({
             flexShrink: 0,
           }}
         >
-          {formatDuration(duration ?? progress)}
+          {formatDuration(currentTime)}
         </span>
       </div>
 
@@ -172,11 +224,15 @@ export function VoiceNote({
         src={src}
         preload="metadata"
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-        onTimeUpdate={(e) => setProgress(e.currentTarget.currentTime / (e.currentTarget.duration || 1))}
+        onTimeUpdate={(e) => {
+          setCurrentTime(e.currentTarget.currentTime);
+          setProgress(e.currentTarget.currentTime / (e.currentTarget.duration || 1));
+        }}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => {
           setPlaying(false);
+          setCurrentTime(0);
           setProgress(0);
         }}
       />
