@@ -27,6 +27,13 @@ const HIDE_ON = [
   "/financas/registrar",
 ];
 
+// Glassmorphism — barra flutuante em formato de cápsula (pill).
+const BAR_BG = "oklch(0.15 0.014 270 / 0.55)";
+const BAR_BORDER = "oklch(0.5 0.03 270 / 0.16)";
+const CAPSULE = "oklch(0.30 0.03 270 / 0.5)";
+const ACTIVE = "var(--maya-secondary)";
+const INACTIVE = "var(--text-muted)";
+
 export function BottomNav() {
   const pathname = usePathname();
   const { t } = useTranslation();
@@ -74,26 +81,33 @@ export function BottomNav() {
     <nav
       style={{
         position: "fixed",
-        bottom: 0,
         left: 0,
         right: 0,
+        bottom: "calc(env(safe-area-inset-bottom) + 12px)",
         zIndex: 50,
-        height: 64,
-        background: "oklch(0.16 0.014 270 / 0.97)",
-        backdropFilter: "blur(12px)",
-        borderTop: "1px solid var(--surface-border)",
-        paddingBottom: "env(safe-area-inset-bottom)",
+        display: "flex",
+        justifyContent: "center",
+        paddingInline: 12,
+        pointerEvents: "none",
       }}
     >
       <div
         style={{
-          maxWidth: 480,
-          margin: "0 auto",
+          pointerEvents: "auto",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-around",
-          height: "100%",
-          paddingInline: 8,
+          gap: 4,
+          width: "100%",
+          maxWidth: 480,
+          height: 62,
+          padding: 6,
+          borderRadius: 999,
+          background: BAR_BG,
+          backdropFilter: "blur(18px) saturate(140%)",
+          WebkitBackdropFilter: "blur(18px) saturate(140%)",
+          border: `1px solid ${BAR_BORDER}`,
+          boxShadow:
+            "inset 0 1px 0 oklch(1 0 0 / 0.05), 0 12px 32px -12px oklch(0.04 0.02 270 / 0.65)",
         }}
       >
         {NAV_ITEMS.map(({ href, icon: Icon, label, labelKey, slug }) => {
@@ -104,18 +118,20 @@ export function BottomNav() {
               href={href}
               prefetch
               style={{
+                position: "relative",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 3,
-                height: "100%",
                 flex: 1,
+                height: "100%",
                 minWidth: 0,
-                color: active ? "#A78BFA" : "oklch(0.62 0.04 270)",
+                borderRadius: 999,
+                color: active ? ACTIVE : INACTIVE,
+                background: active ? CAPSULE : "transparent",
                 textDecoration: "none",
-                transition: "color 0.15s ease",
-                padding: "0 4px",
+                transition: "color 0.2s ease, background 0.2s ease",
               }}
             >
               {slug === "insights" ? (
@@ -141,7 +157,7 @@ export function BottomNav() {
               ) : Icon ? (
                 <Icon size={22} />
               ) : null}
-              <span style={{ fontSize: 10, fontWeight: 600, lineHeight: 1 }}>
+              <span style={{ fontSize: 10, fontWeight: active ? 700 : 600, lineHeight: 1 }}>
                 {labelKey ? t(labelKey) : label}
               </span>
             </Link>
