@@ -6,7 +6,7 @@ import { photoUrl } from "@/lib/photo-storage";
 import { useTranslation } from "@/lib/useTranslation";
 
 function formatDuration(s: number): string {
-  if (!isFinite(s) || s < 0) return "0:00";
+  if (!isFinite(s) || s < 0 || s > 36000) return "0:00";
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
   return `${m}:${sec.toString().padStart(2, "0")}`;
@@ -87,7 +87,7 @@ export function VoiceNote({
     const el = waveRef.current;
     if (!a || !el) return;
     const dur = a.duration || duration || 0;
-    if (!dur) return;
+    if (!Number.isFinite(dur) || dur <= 0) return;
     const rect = el.getBoundingClientRect();
     const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     a.currentTime = frac * dur;
@@ -243,10 +243,15 @@ export function VoiceNote({
         ref={audioRef}
         src={src}
         preload="metadata"
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onLoadedMetadata={(e) => {
+          const d = e.currentTarget.duration;
+          if (Number.isFinite(d) && d > 0) setDuration(d);
+        }}
         onTimeUpdate={(e) => {
-          setCurrentTime(e.currentTarget.currentTime);
-          setProgress(e.currentTarget.currentTime / (e.currentTarget.duration || 1));
+          const t = e.currentTarget.currentTime;
+          const d = e.currentTarget.duration;
+          setCurrentTime(Number.isFinite(t) && t >= 0 ? t : 0);
+          setProgress(Number.isFinite(d) && d > 0 ? t / d : 0);
         }}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}

@@ -55,12 +55,55 @@ export async function GET(request: Request) {
       ext === "pdf" ? "application/pdf" :
       "image/jpeg";
 
+    const size = data.size;
+    const baseHeaders = {
+      "Content-Type": contentType,
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "Access-Control-Allow-Origin": "*",
+    };
+
+    // Suporte real a Range requests — necessário p/ <audio>/<video> lerem a
+    // duração e permitirem seek. Sem isso o navegador reporta duration como
+    // Infinity/MAX_VALUE e o player quebra (barras não avançam, seek com lixo).
+    const range = request.headers.get("range");
+    if (range) {
+      const m = /bytes=(\d*)-(\d*)/.exec(range);
+      let start = 0;
+      let end = size - 1;
+      if (m) {
+        if (m[1] !== "" && m[2] !== "") {
+          start = parseInt(m[1], 10);
+          end = parseInt(m[2], 10);
+        } else if (m[1] !== "") {
+          start = parseInt(m[1], 10);
+        } else if (m[2] !== "") {
+          const suffix = parseInt(m[2], 10);
+          start = Math.max(0, size - suffix);
+        }
+      }
+      end = Math.min(end, size - 1);
+      if (start > end || start >= size) {
+        return new NextResponse(null, {
+          status: 416,
+          headers: { "Content-Range": `bytes */${size}` },
+        });
+      }
+      const chunk = data.slice(start, end + 1);
+      return new NextResponse(chunk, {
+        status: 206,
+        headers: {
+          ...baseHeaders,
+          "Content-Range": `bytes ${start}-${end}/${size}`,
+          "Content-Length": String(chunk.size),
+        },
+      });
+    }
+
     return new NextResponse(data, {
       headers: {
-        "Content-Type": contentType,
-        "Cache-Control": "public, max-age=31536000, immutable",
-        "Accept-Ranges": "bytes",
-        "Access-Control-Allow-Origin": "*",
+        ...baseHeaders,
+        "Content-Length": String(size),
       },
     });
   } catch (error) {
