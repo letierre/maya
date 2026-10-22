@@ -61,8 +61,15 @@ export const HABIT_COPY: Record<string, HabitCopy> = {
   felt_judged:                 { emoji: "⚖️", labelKey: "ck_habit_judged",            aKey: "sim", bKey: "nao" },
 };
 
-// Toggle liga/desliga de um hábito: roxo = fez, vermelho = não fez.
-export function HabitToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+// Toggle liga/desliga de um hábito com rótulo verbal ("Sim" / "Ainda não" etc.):
+// o texto deixa o estado explícito em vez de depender só da cor (roxo/vermelho).
+export function HabitToggle({ value, onChange, aLabel = "Sim", bLabel = "Não" }: {
+  value: boolean;
+  onChange: (v: boolean) => void;
+  aLabel?: string;
+  bLabel?: string;
+}) {
+  const label = value ? aLabel : bLabel;
   return (
     <button
       type="button"
@@ -70,17 +77,14 @@ export function HabitToggle({ value, onChange }: { value: boolean; onChange: (v:
       aria-checked={value}
       onClick={() => onChange(!value)}
       style={{
-        width: 48, height: 28, borderRadius: 9999, border: 0, cursor: "pointer",
-        position: "relative", flexShrink: 0, padding: 0,
-        background: value ? "#7C5CFF" : "rgba(255,77,77,0.45)",
+        height: 30, padding: "0 13px", borderRadius: 9999, border: 0, cursor: "pointer",
+        flexShrink: 0, fontFamily: "inherit",
+        fontSize: 12.5, fontWeight: 600, color: "#fff", whiteSpace: "nowrap", lineHeight: 1,
+        background: value ? "#7C5CFF" : "rgba(255,77,77,0.5)",
         transition: "background .2s ease",
       }}
     >
-      <span style={{
-        position: "absolute", top: 3, left: value ? 23 : 3,
-        width: 22, height: 22, borderRadius: 9999, background: "#fff",
-        transition: "left .2s ease", boxShadow: "0 1px 3px rgba(0,0,0,.3)",
-      }} />
+      {label}
     </button>
   );
 }
@@ -532,7 +536,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
           <p style={{ margin: "0 0 12px", fontSize: 13.5, color: "var(--muted-foreground)" }}>
             {t("ck_feeling_sub")}
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 7, marginBottom: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, marginBottom: 12 }}>
             {MOOD_CHIPS.map((chip) => {
               const active = (answers.mood_tags ?? []).includes(chip.id);
               const pos = chip.valence === "positive";
@@ -544,9 +548,9 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                     return { ...a, mood_tags: next };
                   })}
                   style={{
-                    padding: "9px 11px", borderRadius: 12, border: 0, cursor: "pointer",
+                    padding: "8px 8px", borderRadius: 12, border: 0, cursor: "pointer",
                     fontFamily: "inherit", fontSize: 12, fontWeight: 600,
-                    display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-start",
+                    display: "flex", alignItems: "center", gap: 5, justifyContent: "flex-start",
                     minWidth: 0,
                     transition: "all .15s ease",
                     background: active
@@ -557,7 +561,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                     outline: active ? "none" : "1px solid oklch(0.5 0.12 270 / .1)",
                     boxShadow: active ? "0 3px 10px -2px oklch(0.5 0.12 270 / .55)" : "none",
                   }}>
-                  <span style={{ fontSize: 15, flexShrink: 0 }}>{chip.emoji}</span>
+                  <span style={{ fontSize: 14, flexShrink: 0 }}>{chip.emoji}</span>
                   <span style={{ flex: 1, minWidth: 0, textAlign: "left", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {getMoodLabel(chip, gender)}
                   </span>
@@ -686,7 +690,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                   }}>
                     <span style={{ fontSize: 21, flexShrink: 0, lineHeight: 1 }}>{base.emoji}</span>
                     <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, lineHeight: 1.3 }}>{label}</span>
-                    <HabitToggle value={value === true} onChange={(v) => setAnswers((a) => ({ ...a, [key]: v }))} />
+                    <HabitToggle value={value === true} onChange={(v) => setAnswers((a) => ({ ...a, [key]: v }))} aLabel={t(base.aKey)} bLabel={t(base.bKey)} />
                   </div>
                 );
               })}

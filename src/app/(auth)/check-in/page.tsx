@@ -251,15 +251,15 @@ function FeelingStep({ initialValue, initialMoodTags, gender, name, onChange, on
       </p>
 
       {/* Emotion chips */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginBottom: 22 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 22 }}>
         {MOOD_CHIPS.map((chip) => {
           const active = tags.includes(chip.id);
           const pos = chip.valence === "positive";
           return (
             <button key={chip.id} type="button" onClick={() => toggleTag(chip.id)} style={{
-              padding: "10px 12px", borderRadius: 12, border: 0, cursor: "pointer",
-              fontFamily: "inherit", fontSize: 12.5, fontWeight: 600,
-              display: "flex", alignItems: "center", gap: 7, justifyContent: "flex-start",
+              padding: "9px 8px", borderRadius: 12, border: 0, cursor: "pointer",
+              fontFamily: "inherit", fontSize: 12, fontWeight: 600,
+              display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-start",
               minWidth: 0,
               transition: "all .15s ease",
               background: active
@@ -270,7 +270,7 @@ function FeelingStep({ initialValue, initialMoodTags, gender, name, onChange, on
               outline: active ? "none" : "1px solid oklch(0.5 0.12 270 / .1)",
               boxShadow: active ? "0 3px 10px -2px oklch(0.5 0.12 270 / .55)" : "none",
             }}>
-              <span style={{ fontSize: 17, lineHeight: 1, flexShrink: 0 }}>{chip.emoji}</span>
+              <span style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>{chip.emoji}</span>
               <span style={{ flex: 1, minWidth: 0, textAlign: "left", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {getMoodLabel(chip, gender)}
               </span>
@@ -524,7 +524,7 @@ function HabitsChecklistStep({ habits, answers, context, onAnswer, onNext, onPre
             }}>
               <span style={{ fontSize: 21, flexShrink: 0, lineHeight: 1 }}>{base.emoji}</span>
               <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, lineHeight: 1.3 }}>{label}</span>
-              <HabitToggle value={value} onChange={(v) => onAnswer(key, v)} />
+              <HabitToggle value={value} onChange={(v) => onAnswer(key, v)} aLabel={t(base.aKey)} bLabel={t(base.bKey)} />
             </div>
           );
         })}
