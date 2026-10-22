@@ -46,6 +46,23 @@ export async function GET(req: NextRequest) {
   if (ip) metadata.client_ip = ip;
   if (userAgent) metadata.client_user_agent = userAgent;
 
+  // LOG TEMPORÁRIO — verificação do fluxo do quiz. Remove depois de validar.
+  console.log(
+    "[checkout] dados recebidos do quiz:",
+    JSON.stringify({
+      plan,
+      fbp,
+      fbc,
+      fbclid,
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_content,
+      ip,
+      userAgent,
+    })
+  );
+
   const origin = req.nextUrl.origin;
 
   try {
