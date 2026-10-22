@@ -27,12 +27,12 @@ export const MOOD_CHIPS: MoodChip[] = [
   { id: "estressada",     labelKey: "mood_estressado",     labelKeyF: "mood_estressada",     emoji: "😫", valence: "negative" },
   { id: "ansiosa",        labelKey: "mood_ansioso",        labelKeyF: "mood_ansiosa",        emoji: "😰", valence: "negative" },
   { id: "raiva",          labelKey: "mood_raiva",          labelKeyF: "mood_raiva",          emoji: "😡", valence: "negative" },
-  { id: "desanimada",     labelKey: "mood_desanimado",     labelKeyF: "mood_desanimada",     emoji: "😞", valence: "negative" },
+  { id: "irritada",       labelKey: "mood_irritado",       labelKeyF: "mood_irritada",       emoji: "😤", valence: "negative" },
   { id: "culpada",        labelKey: "mood_culpado",        labelKeyF: "mood_culpada",        emoji: "😔", valence: "negative" },
   { id: "solitaria",      labelKey: "mood_solitario",      labelKeyF: "mood_solitaria",      emoji: "🫥", valence: "negative" },
   { id: "exausta",        labelKey: "mood_exausto",        labelKeyF: "mood_exausta",        emoji: "🫠", valence: "negative" },
   { id: "entediada",      labelKey: "mood_entediado",      labelKeyF: "mood_entediada",      emoji: "🥱", valence: "negative" },
-  { id: "irritada",       labelKey: "mood_irritado",       labelKeyF: "mood_irritada",       emoji: "😤", valence: "negative" },
+  { id: "desanimada",     labelKey: "mood_desanimado",     labelKeyF: "mood_desanimada",     emoji: "😞", valence: "negative" },
 ];
 
 export function getMoodLabel(chip: MoodChip, gender: string): string {

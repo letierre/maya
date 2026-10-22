@@ -61,31 +61,54 @@ export const HABIT_COPY: Record<string, HabitCopy> = {
   felt_judged:                 { emoji: "⚖️", labelKey: "ck_habit_judged",            aKey: "sim", bKey: "nao" },
 };
 
-// Toggle liga/desliga de um hábito com rótulo verbal ("Sim" / "Ainda não" etc.):
-// o texto deixa o estado explícito em vez de depender só da cor (roxo/vermelho).
+// Toggle segmentado de hábito: mostra as DUAS respostas lado a lado
+// (esquerda = "Sim", direita = "Ainda não"/"Não") e o usuário escolhe uma.
+// A escolhida fica colorida dentro da "bolinha" (roxo = fez, vermelho = não fez).
 export function HabitToggle({ value, onChange, aLabel = "Sim", bLabel = "Não" }: {
   value: boolean;
   onChange: (v: boolean) => void;
   aLabel?: string;
   bLabel?: string;
 }) {
-  const label = value ? aLabel : bLabel;
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={value}
-      onClick={() => onChange(!value)}
+    <div
+      role="group"
       style={{
-        height: 30, padding: "0 13px", borderRadius: 9999, border: 0, cursor: "pointer",
-        flexShrink: 0, fontFamily: "inherit",
-        fontSize: 12.5, fontWeight: 600, color: "#fff", whiteSpace: "nowrap", lineHeight: 1,
-        background: value ? "#7C5CFF" : "rgba(255,77,77,0.5)",
-        transition: "background .2s ease",
+        display: "flex", alignItems: "center", flexShrink: 0,
+        padding: 3, gap: 2, borderRadius: 9999,
+        background: "oklch(0.14 0.012 270)",
+        border: "1px solid oklch(0.5 0.12 270 / .12)",
       }}
     >
-      {label}
-    </button>
+      <button
+        type="button"
+        aria-pressed={value}
+        onClick={() => onChange(true)}
+        style={{
+          padding: "6px 11px", borderRadius: 9999, border: 0, cursor: "pointer",
+          fontFamily: "inherit", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", lineHeight: 1,
+          background: value ? "#7C5CFF" : "transparent",
+          color: value ? "#fff" : "var(--muted-foreground)",
+          transition: "background .15s ease, color .15s ease",
+        }}
+      >
+        {aLabel}
+      </button>
+      <button
+        type="button"
+        aria-pressed={!value}
+        onClick={() => onChange(false)}
+        style={{
+          padding: "6px 11px", borderRadius: 9999, border: 0, cursor: "pointer",
+          fontFamily: "inherit", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", lineHeight: 1,
+          background: !value ? "rgba(255,77,77,0.55)" : "transparent",
+          color: !value ? "#fff" : "var(--muted-foreground)",
+          transition: "background .15s ease, color .15s ease",
+        }}
+      >
+        {bLabel}
+      </button>
+    </div>
   );
 }
 
