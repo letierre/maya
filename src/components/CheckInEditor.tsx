@@ -10,6 +10,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { t } from "@/lib/i18n";
 import { getLanguage } from "@/lib/language";
 import { DEFAULT_DAILY_KCAL } from "@/lib/meal-utils";
+import { SLEPT_WELL_MIN_QUALITY } from "@/lib/checkin-constants";
 import { MetaCheckinCard } from "@/components/MetaCheckinCard";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -42,21 +43,21 @@ export const EXERCISE_KEYS = ["walked", "ran", "strength_training"] as const;
 interface HabitCopy { emoji: string; labelKey: string; aKey: string; bKey: string; }
 
 export const HABIT_COPY: Record<string, HabitCopy> = {
-  drank_water:                 { emoji: "💧", labelKey: "ck_habit_drank_water",       aKey: "sim", bKey: "ck_no_today" }, // substituído por WaterStep — mantido para EditCheckInView
+  drank_water:                 { emoji: "💧", labelKey: "ck_habit_drank_water",       aKey: "sim", bKey: "ck_not_yet" }, // substituído por WaterStep — mantido para EditCheckInView
   slept_well:                  { emoji: "😴", labelKey: "ck_habit_slept_well",        aKey: "sim", bKey: "ck_no_not_much" },
   took_medication:             { emoji: "💊", labelKey: "ck_habit_took_medication",   aKey: "sim", bKey: "ck_forgot" },
-  talked_to_someone:           { emoji: "🗣️", labelKey: "ck_habit_talked_to_someone", aKey: "sim", bKey: "ck_no_today" },
-  meditation:                  { emoji: "🧘", labelKey: "ck_habit_meditation",        aKey: "sim", bKey: "nao" },
-  prayer:                      { emoji: "🙏", labelKey: "ck_habit_prayer",            aKey: "sim", bKey: "nao" },
-  breathing:                   { emoji: "🌬️", labelKey: "ck_habit_breathing",         aKey: "sim", bKey: "nao" },
-  creative_activity:           { emoji: "🎨", labelKey: "ck_habit_creative",          aKey: "sim", bKey: "nao" },
-  walked:                      { emoji: "🚶", labelKey: "ck_habit_walked",            aKey: "sim", bKey: "nao" },
-  ran:                         { emoji: "🏃", labelKey: "ck_habit_ran",               aKey: "sim", bKey: "nao" },
-  strength_training:           { emoji: "🏋️", labelKey: "ck_habit_strength",          aKey: "sim", bKey: "nao" },
-  read:                        { emoji: "📖", labelKey: "ck_habit_read",              aKey: "sim", bKey: "nao" },
-  did_something_enjoyable:     { emoji: "😊", labelKey: "ck_habit_enjoyable",         aKey: "sim", bKey: "nao" },
+  talked_to_someone:           { emoji: "🗣️", labelKey: "ck_habit_talked_to_someone", aKey: "sim", bKey: "ck_not_yet" },
+  meditation:                  { emoji: "🧘", labelKey: "ck_habit_meditation",        aKey: "sim", bKey: "ck_not_yet" },
+  prayer:                      { emoji: "🙏", labelKey: "ck_habit_prayer",            aKey: "sim", bKey: "ck_not_yet" },
+  breathing:                   { emoji: "🌬️", labelKey: "ck_habit_breathing",         aKey: "sim", bKey: "ck_not_yet" },
+  creative_activity:           { emoji: "🎨", labelKey: "ck_habit_creative",          aKey: "sim", bKey: "ck_not_yet" },
+  walked:                      { emoji: "🚶", labelKey: "ck_habit_walked",            aKey: "sim", bKey: "ck_not_yet" },
+  ran:                         { emoji: "🏃", labelKey: "ck_habit_ran",               aKey: "sim", bKey: "ck_not_yet" },
+  strength_training:           { emoji: "🏋️", labelKey: "ck_habit_strength",          aKey: "sim", bKey: "ck_not_yet" },
+  read:                        { emoji: "📖", labelKey: "ck_habit_read",              aKey: "sim", bKey: "ck_not_yet" },
+  did_something_enjoyable:     { emoji: "😊", labelKey: "ck_habit_enjoyable",         aKey: "sim", bKey: "ck_not_yet" },
   worked_on_goals:             { emoji: "🎯", labelKey: "ck_habit_goals",             aKey: "sim", bKey: "nao" },
-  bowel_movement:              { emoji: "🚽", labelKey: "ck_habit_bowel",             aKey: "sim", bKey: "nao" },
+  bowel_movement:              { emoji: "🚽", labelKey: "ck_habit_bowel",             aKey: "sim", bKey: "ck_not_yet" },
   felt_judged:                 { emoji: "⚖️", labelKey: "ck_habit_judged",            aKey: "sim", bKey: "nao" },
 };
 
@@ -469,7 +470,10 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
       paddingBottom: 100,
     }}>
       {/* Close */}
-      <button type="button" onClick={onClose} aria-label={t("ck_fechar")} style={{
+      <button type="button" onClick={() => {
+        if (isDirty && !window.confirm(t("ck_discard_confirm"))) return;
+        onClose();
+      }} aria-label={t("ck_fechar")} style={{
         position: "fixed", top: 14, left: 16, zIndex: 10,
         width: 36, height: 36, borderRadius: 9999, border: 0, cursor: "pointer",
         background: "oklch(0.16 0.012 270 / 0.85)", backdropFilter: "blur(12px)",
@@ -563,6 +567,62 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
           />
         </section>
 
+        {/* ── Gratidão ── */}
+        <section>
+          <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+            {t("ck_gratidao")}
+          </p>
+          <div
+            ref={gratitudeRef}
+            contentEditable
+            suppressContentEditableWarning
+            data-placeholder={t("ck_gratidao_placeholder")}
+            onInput={(e) => setAnswers((a) => ({ ...a, gratitude: (e.target as HTMLElement).innerText }))}
+            style={{
+              outline: "none", fontSize: 16, lineHeight: 1.55, fontStyle: "italic",
+              color: "var(--foreground)", minHeight: 52,
+              padding: "13px 15px", borderRadius: 14,
+              background: "oklch(0.16 0.012 270 / 0.7)", backdropFilter: "blur(8px)",
+              border: "1px solid oklch(0.5 0.12 270 / .12)",
+            }}
+          />
+
+          {/* Photo strip */}
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {answers.gratitude_photos.map((p) => (
+              <div key={p} style={{
+                position: "relative", width: 54, height: 54, borderRadius: 10, overflow: "hidden", flexShrink: 0,
+              }}>
+                <img src={photoUrl(p)!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <button type="button"
+                  onClick={() => setAnswers((a) => ({ ...a, gratitude_photos: a.gratitude_photos.filter((x) => x !== p) }))}
+                  style={{
+                    position: "absolute", top: 2, right: 2, width: 16, height: 16,
+                    borderRadius: 9999, background: "rgba(0,0,0,.55)", border: 0,
+                    color: "#fff", cursor: "pointer", display: "flex",
+                    alignItems: "center", justifyContent: "center", fontSize: 10,
+                  }}>×</button>
+              </div>
+            ))}
+            <button type="button" onClick={() => photoInputRef.current?.click()} style={{
+              display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 12px",
+              borderRadius: 9999, background: "oklch(0.16 0.012 270 / 0.7)", backdropFilter: "blur(8px)",
+              border: "1px solid oklch(0.5 0.12 270 / .2)", cursor: "pointer",
+              fontFamily: "inherit", fontSize: 12, color: "var(--foreground)",
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-5-5L5 21" />
+              </svg>
+              {t("ck_photo")}
+            </button>
+          </div>
+          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }}
+            onChange={(e) => { if (e.target.files?.[0]) handlePhotoAdd(e.target.files[0]); e.target.value = ""; }}
+          />
+        </section>
+
         {/* ── Hábitos ── */}
         {habitsToShow.length > 0 && (
           <section>
@@ -584,7 +644,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                       border: "1px solid oklch(0.5 0.12 270 / .12)",
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                        <span style={{ fontSize: 21, flexShrink: 0, lineHeight: 1 }}>🥛</span>
+                        <span style={{ fontSize: 21, flexShrink: 0, lineHeight: 1 }}>💧</span>
                         <span style={{ flex: 1, fontSize: 13.5, fontWeight: 500 }}>{t("ck_water_label")}</span>
                         <span style={{ fontSize: 12, fontWeight: 700,
                           color: cups >= WATER_GOAL ? "#e0d6ff" : "var(--muted-foreground)" }}>
@@ -706,7 +766,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                   <div style={{ display: "flex", gap: 6 }}>
                     {SLEEP_EMOJIS.map(({ emoji, labelKey, quality: q }) => (
                       <button key={q} type="button"
-                        onClick={() => setAnswers((a) => ({ ...a, sleep_quality: q, slept_well: q >= 3 }))}
+                        onClick={() => setAnswers((a) => ({ ...a, sleep_quality: q, slept_well: q >= SLEPT_WELL_MIN_QUALITY }))}
                         style={{
                           flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
                           padding: "10px 2px", borderRadius: 12, border: 0, cursor: "pointer",
@@ -754,15 +814,25 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
           </div>
         </section>
 
-        {/* ── Resumo automático ── */}
+        {/* ── Resumo automático (feedback, não edita) ── */}
         <section>
-          <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#A78BFA" }}>
-            {t("ck_day_so_far", { score: String(score), total: String(scoreTotal) })}
-          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#A78BFA" }}>
+              ✨ {t("ck_day_so_far", { score: String(score), total: String(scoreTotal) })}
+            </p>
+            <span style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase",
+              color: "#A78BFA", padding: "2px 8px", borderRadius: 9999,
+              background: "rgba(167,139,250,0.14)", border: "1px solid rgba(167,139,250,0.3)",
+            }}>
+              {t("ck_auto")}
+            </span>
+          </div>
           <div style={{
             padding: "14px 16px", borderRadius: 14,
-            background: "oklch(0.16 0.012 270 / 0.7)", backdropFilter: "blur(8px)",
-            border: "1px solid var(--divider)",
+            background: "oklch(0.18 0.02 270 / 0.5)", backdropFilter: "blur(8px)",
+            border: "1px solid rgba(167,139,250,0.32)",
+            boxShadow: "0 6px 22px -10px rgba(124,92,255,0.45)",
             display: "flex", flexDirection: "column", gap: 6,
           }}>
             {scoreKeys.map((key) => {
@@ -806,62 +876,6 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
               );
             })}
           </div>
-        </section>
-
-        {/* ── Gratidão ── */}
-        <section>
-          <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-            {t("ck_gratidao")}
-          </p>
-          <div
-            ref={gratitudeRef}
-            contentEditable
-            suppressContentEditableWarning
-            data-placeholder={t("ck_gratidao_placeholder")}
-            onInput={(e) => setAnswers((a) => ({ ...a, gratitude: (e.target as HTMLElement).innerText }))}
-            style={{
-              outline: "none", fontSize: 16, lineHeight: 1.55, fontStyle: "italic",
-              color: "var(--foreground)", minHeight: 52,
-              padding: "13px 15px", borderRadius: 14,
-              background: "oklch(0.16 0.012 270 / 0.7)", backdropFilter: "blur(8px)",
-              border: "1px solid oklch(0.5 0.12 270 / .12)",
-            }}
-          />
-
-          {/* Photo strip */}
-          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
-            {answers.gratitude_photos.map((p) => (
-              <div key={p} style={{
-                position: "relative", width: 54, height: 54, borderRadius: 10, overflow: "hidden", flexShrink: 0,
-              }}>
-                <img src={photoUrl(p)!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                <button type="button"
-                  onClick={() => setAnswers((a) => ({ ...a, gratitude_photos: a.gratitude_photos.filter((x) => x !== p) }))}
-                  style={{
-                    position: "absolute", top: 2, right: 2, width: 16, height: 16,
-                    borderRadius: 9999, background: "rgba(0,0,0,.55)", border: 0,
-                    color: "#fff", cursor: "pointer", display: "flex",
-                    alignItems: "center", justifyContent: "center", fontSize: 10,
-                  }}>×</button>
-              </div>
-            ))}
-            <button type="button" onClick={() => photoInputRef.current?.click()} style={{
-              display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 12px",
-              borderRadius: 9999, background: "oklch(0.16 0.012 270 / 0.7)", backdropFilter: "blur(8px)",
-              border: "1px solid oklch(0.5 0.12 270 / .2)", cursor: "pointer",
-              fontFamily: "inherit", fontSize: 12, color: "var(--foreground)",
-            }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <circle cx="9" cy="9" r="2" />
-                <path d="m21 15-5-5L5 21" />
-              </svg>
-              {t("ck_photo")}
-            </button>
-          </div>
-          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }}
-            onChange={(e) => { if (e.target.files?.[0]) handlePhotoAdd(e.target.files[0]); e.target.value = ""; }}
-          />
         </section>
 
         {/* ── Pensamentos (suicidal_thoughts) ── */}

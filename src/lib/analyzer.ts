@@ -41,11 +41,17 @@ export function buildAnalysisPrompt(input: AnalysisInput): string {
   // Summarize check-ins compactly
   const checkInSummary = last7CheckIns.map((c) => {
     const positives = [
-      c.exercise_walk && "exercício",
+      c.walked && "caminhou",
+      c.ran && "correu",
+      c.strength_training && "musculação",
+      (!c.walked && !c.ran && !c.strength_training && c.exercise_walk) && "exercício",
       c.ate_well && "comeu bem",
       c.drank_water && "água",
       c.slept_well && "dormiu bem",
-      c.meditation_prayer_breathing && "meditou/orou",
+      c.meditation && "meditou",
+      c.prayer && "orou",
+      c.breathing && "respirou",
+      (!c.meditation && !c.prayer && !c.breathing && c.meditation_prayer_breathing) && "meditou/orou",
       c.creative_activity && "criatividade",
       c.did_something_enjoyable && "algo que gostou",
       c.worked_on_goals && "metas",

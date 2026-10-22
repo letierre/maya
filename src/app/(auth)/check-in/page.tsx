@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getLocalDate } from "@/lib/utils";
+import { getLocale } from "@/lib/language";
+import { SLEPT_WELL_MIN_QUALITY } from "@/lib/checkin-constants";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { MOOD_CHIPS, getMoodLabel } from "@/lib/checkin-moods";
 import { invalidateFetchCache } from "@/lib/fetch-cache";
@@ -31,35 +33,33 @@ import {
 
 type Step =
   | { kind: "feeling" }
-  | { kind: "habit"; habitKey: string }
+  | { kind: "sleep" }
+  | { kind: "water" }
+  | { kind: "habits" }
   | { kind: "meditation" }
   | { kind: "exercise" }
   | { kind: "gratitude" }
   | { kind: "confirm" }
   | { kind: "done" };
 
+// Hábitos simples (Sim/Não) que viram um único checklist, em vez de uma tela cada.
+const SIMPLE_HABITS = [
+  "took_medication", "talked_to_someone", "creative_activity",
+  "read", "did_something_enjoyable", "bowel_movement", "felt_judged",
+];
+
 function buildSteps(enabledKeys: string[], hasSuicidal: boolean, hasSleepLog: boolean): Step[] {
   const has = (key: string) => enabledKeys.includes(key);
-  const autoKeys = new Set(["ate_well", "worked_on_goals"]);
-  const pushHabit = (key: string) => {
-    if (key === "slept_well" && hasSleepLog) return; // já registrou sono hoje
-    if (autoKeys.has(key)) return; // auto-calculado pelo backend
-    if (has(key)) steps.push({ kind: "habit", habitKey: key });
-  };
-
   const steps: Step[] = [{ kind: "feeling" }];
-  pushHabit("drank_water");
-  pushHabit("slept_well");
-  pushHabit("took_medication");
-  pushHabit("talked_to_someone");
+
+  // Sono antes da água: é sobre a noite passada, vem logo após "como você está".
+  if (has("slept_well") && !hasSleepLog) steps.push({ kind: "sleep" });
+  if (has("drank_water")) steps.push({ kind: "water" });
+
+  if (SIMPLE_HABITS.some(has)) steps.push({ kind: "habits" });
+
   if (MEDITATION_KEYS.some(has)) steps.push({ kind: "meditation" });
-  pushHabit("creative_activity");
-  pushHabit("read");
   if (EXERCISE_KEYS.some(has)) steps.push({ kind: "exercise" });
-  pushHabit("did_something_enjoyable");
-  // worked_on_goals é auto-calculado (nunca vira passo)
-  pushHabit("bowel_movement");
-  pushHabit("felt_judged");
   steps.push({ kind: "gratitude" });
   if (hasSuicidal) steps.push({ kind: "confirm" });
   steps.push({ kind: "done" });
@@ -213,6 +213,12 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const [tags, setTags] = useState<string[]>(initialMoodTags);
+  const [feelingText, setFeelingText] = useState(initialValue);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? t("ck_greeting_morning") : hour < 18 ? t("ck_greeting_afternoon") : t("ck_greeting_evening");
+  const dateLabel = new Date().toLocaleDateString(getLocale(), { weekday: "long", day: "numeric", month: "long" });
+  const canContinue = tags.length > 0 || feelingText.trim() !== "";
 
   useEffect(() => {
     if (ref.current && initialValue && !ref.current.innerText) ref.current.innerText = initialValue;
@@ -228,6 +234,12 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
 
   return (
     <>
+      <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 600, color: "#A78BFA" }}>
+        {greeting} 👋
+      </p>
+      <p style={{ margin: "0 0 18px", fontSize: 12, color: "var(--muted-foreground)", textTransform: "capitalize" }}>
+        {dateLabel}
+      </p>
       <h1 style={{ margin: "0 0 6px", fontSize: 28, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.1 }}>
         {t("ck_feeling_title")}
       </h1>
@@ -267,7 +279,7 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
       </p>
       <div ref={ref} contentEditable suppressContentEditableWarning
         data-placeholder={t("ck_feeling_placeholder")}
-        onInput={(e) => onChange((e.target as HTMLElement).innerText)}
+        onInput={(e) => { const v = (e.target as HTMLElement).innerText; setFeelingText(v); onChange(v); }}
         style={{
           outline: "none", fontSize: 16, lineHeight: 1.6, fontWeight: 400,
           color: "#e0d6ff", minHeight: 80,
@@ -282,12 +294,14 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
           background: "transparent", border: 0, cursor: "pointer",
           fontFamily: "inherit", fontSize: 13, color: "var(--muted-foreground)",
         }}>{t("voltar")}</button>
-        <button type="button" onClick={onNext} style={{
+        <button type="button" onClick={onNext} disabled={!canContinue} style={{
           height: 48, padding: "0 24px", borderRadius: 14,
-          background: "#7C5CFF", color: "#fff", border: 0, cursor: "pointer",
+          background: canContinue ? "#7C5CFF" : "oklch(0.2 0.02 270)",
+          color: canContinue ? "#fff" : "var(--text-muted)", border: 0,
+          cursor: canContinue ? "pointer" : "not-allowed",
           fontFamily: "inherit", fontSize: 14, fontWeight: 600,
           display: "inline-flex", alignItems: "center", gap: 6,
-          boxShadow: "0 4px 14px -4px oklch(0.5 0.12 270 / .45)",
+          boxShadow: canContinue ? "0 4px 14px -4px oklch(0.5 0.12 270 / .45)" : "none",
         }}>
           {t("ck_continuar")}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -423,9 +437,10 @@ function SleepStep({ onAnswer, onPrev }: {
 
 // ── Water Step ────────────────────────────────────────────────────────────────
 
-function WaterStep({ initialCups, onAnswer, onPrev }: {
+function WaterStep({ initialCups, onAnswer, onSkip, onPrev }: {
   initialCups: number;
   onAnswer: (cups: number) => void;
+  onSkip: () => void;
   onPrev: () => void;
 }) {
   const { t } = useTranslation();
@@ -445,73 +460,79 @@ function WaterStep({ initialCups, onAnswer, onPrev }: {
         onChange={(n) => setCups(Math.max(0, Math.min(n, WATER_MAX)))}
       />
 
-      <StepFooter onPrev={onPrev} onNext={() => onAnswer(cups)} nextLabel={cups === 0 ? t("ck_water_no") : t("ck_continuar")} />
+      <StepFooter
+        onPrev={onPrev}
+        onNext={() => onAnswer(cups)}
+        nextLabel={cups === 0 ? t("ck_water_no") : t("ck_continuar")}
+        secondary={
+          <button type="button" onClick={onSkip} style={{
+            background: "transparent", border: 0, cursor: "pointer",
+            fontFamily: "inherit", fontSize: 12.5, color: "var(--muted-foreground)",
+            textDecoration: "underline", padding: "8px 0", flexShrink: 0,
+          }}>{t("ck_pular")}</button>
+        }
+      />
     </>
   );
 }
 
-// ── Habit Step ────────────────────────────────────────────────────────────────
+// ── Habits Checklist Step (vários Sim/Não numa única tela) ────────────────────
 
-function HabitStep({ habitKey, context, onAnswer, onSkip, onPrev }: {
-  habitKey: string;
+function HabitsChecklistStep({ habits, answers, context, onAnswer, onNext, onPrev }: {
+  habits: string[];
+  answers: CheckInAnswers;
   context: Record<string, boolean>;
   onAnswer: (key: string, value: boolean) => void;
-  onSkip: () => void;
+  onNext: () => void;
   onPrev: () => void;
 }) {
   const { t } = useTranslation();
-  const base = HABIT_COPY[habitKey] ?? { emoji: "•", labelKey: habitKey, aKey: "sim", bKey: "nao" };
-  const label = getHabitLabel(habitKey, context);
-  const [chosen, setChosen] = useState<boolean | null>(null);
 
-  const choose = (v: boolean) => {
-    if (chosen !== null) return;
-    setChosen(v);
-    onAnswer(habitKey, v);
-  };
+  const pill = (active: boolean) => ({
+    height: 36, padding: "0 14px", borderRadius: 9999,
+    border: 0, cursor: "pointer", fontFamily: "inherit",
+    fontSize: 12.5, fontWeight: 600, flexShrink: 0,
+    transition: "all .15s ease",
+    ...(active
+      ? { background: "#7C5CFF", color: "#fff" }
+      : { background: "rgba(124,92,255,0.12)", color: "#7C5CFF" }),
+  });
 
   return (
     <>
-      <div style={{ fontSize: 84, lineHeight: 1, marginBottom: 20 }}>{base.emoji}</div>
-      <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
-        {label}
+      <h1 style={{ margin: "0 0 6px", fontSize: 26, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
+        {t("ck_habits_checklist_title")}
       </h1>
-      <div style={{ marginTop: 36, display: "flex", gap: 10 }}>
-        <button type="button" onClick={() => choose(true)} style={{
-          flex: 1, height: 56, borderRadius: 16, border: 0, cursor: "pointer",
-          background: "#7C5CFF", color: "#fff",
-          fontFamily: "inherit", fontSize: 16, fontWeight: 600, letterSpacing: "-0.005em",
-          boxShadow: chosen === true
-            ? "0 6px 22px -4px oklch(0.5 0.12 270 / .8)"
-            : "0 4px 14px -4px oklch(0.5 0.12 270 / .45)",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-          opacity: chosen === false ? 0.4 : 1,
-          transition: "all .18s ease",
-        }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12 10 17 19 7" />
-          </svg>
-          {t(base.aKey)}
-        </button>
-        <button type="button" onClick={() => choose(false)} style={{
-          flex: 1, height: 56, borderRadius: 16,
-          background: chosen === false ? "oklch(0.5 0.13 270)" : "rgba(167,139,250,0.1)",
-          backdropFilter: "blur(8px)",
-          border: chosen === false ? "2px solid oklch(0.55 0.16 270)" : "1px solid rgba(167,139,250,0.2)",
-          cursor: "pointer",
-          fontFamily: "inherit", fontSize: 16, fontWeight: 500,
-          color: chosen === false ? "#fff" : "#e0d6ff", letterSpacing: "-0.005em",
-          opacity: chosen === true ? 0.4 : 1,
-          transition: "all .18s ease",
-        }}>{t(base.bKey)}</button>
+      <p style={{ margin: "0 0 24px", fontSize: 13, color: "var(--muted-foreground)" }}>
+        {t("ck_habits_checklist_sub")}
+      </p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {habits.map((key) => {
+          const base = HABIT_COPY[key] ?? { emoji: "•", labelKey: key, aKey: "sim", bKey: "nao" };
+          const label = getHabitLabel(key, context);
+          const value = (answers[key as keyof CheckInAnswers] as boolean) ?? false;
+          return (
+            <div key={key} style={{
+              display: "flex", alignItems: "center", gap: 12,
+              padding: "11px 14px", borderRadius: 14,
+              background: "oklch(0.16 0.012 270 / 0.7)", backdropFilter: "blur(8px)",
+              border: "1px solid oklch(0.5 0.12 270 / .12)",
+            }}>
+              <span style={{ fontSize: 21, flexShrink: 0, lineHeight: 1 }}>{base.emoji}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, lineHeight: 1.3 }}>{label}</span>
+              <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                <button type="button" style={pill(value === true)}
+                  onClick={() => onAnswer(key, true)}>{t(base.aKey)}</button>
+                <button type="button" style={pill(value === false)}
+                  onClick={() => onAnswer(key, false)}>{t(base.bKey)}</button>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <button type="button" onClick={onSkip} style={{
-        marginTop: 14, background: "transparent", border: 0, cursor: "pointer",
-        fontFamily: "inherit", fontSize: 12.5, color: "var(--muted-foreground)",
-        textDecoration: "underline", alignSelf: "center",
-      }}>{t("ck_prefiro_nao")}</button>
-      <StepFooter onPrev={onPrev} />
+
+      <StepFooter onPrev={onPrev} onNext={onNext} />
     </>
   );
 }
@@ -596,14 +617,18 @@ function GratitudeStep({ initialValue, initialPhotos, onChange, onPhotosChange, 
       <h1 style={{ margin: "0 0 8px", fontSize: 28, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
         {t("ck_gratidao_question")}
       </h1>
-      <p style={{ margin: "0 0 26px", fontSize: 14, color: "var(--muted-foreground)" }}>
+      <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--muted-foreground)" }}>
         {t("ck_gratidao_placeholder")}
       </p>
-      <div ref={textRef} contentEditable suppressContentEditableWarning data-placeholder="…"
+      <div ref={textRef} contentEditable suppressContentEditableWarning
+        data-placeholder={t("ck_gratidao_placeholder")}
         onInput={(e) => onChange((e.target as HTMLElement).innerText)}
         style={{
-          outline: "none", fontSize: 20, lineHeight: 1.5, color: "var(--foreground)",
-          minHeight: 90, fontStyle: "italic",
+          outline: "none", fontSize: 16, lineHeight: 1.6, fontWeight: 400,
+          color: "#e0d6ff", minHeight: 80,
+          padding: "14px 16px", borderRadius: 16,
+          background: "#1a1530",
+          border: "1px solid rgba(167,139,250,0.25)",
         }}
       />
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
@@ -683,7 +708,7 @@ function ConfirmStep({ onAnswer, onPrev }: { onAnswer: (v: boolean) => void; onP
   );
 }
 
-function DoneStep() {
+function DoneStep({ onFinish }: { onFinish: () => void }) {
   const { t } = useTranslation();
   return (
     <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -701,6 +726,12 @@ function DoneStep() {
       </div>
       <h1 style={{ margin: 0, fontSize: 32, fontWeight: 700, letterSpacing: "-0.025em" }}>{t("ck_done_title")}</h1>
       <p style={{ margin: "8px 0 0", fontSize: 15, color: "var(--muted-foreground)" }}>{t("ck_done_sub")}</p>
+      <button type="button" onClick={onFinish} style={{
+        marginTop: 28, height: 52, padding: "0 28px", borderRadius: 14,
+        background: "#7C5CFF", color: "#fff", border: 0, cursor: "pointer",
+        fontFamily: "inherit", fontSize: 15, fontWeight: 600,
+        boxShadow: "0 4px 14px -4px oklch(0.5 0.12 270 / .45)",
+      }}>{t("ck_go_dashboard")}</button>
     </div>
   );
 }
@@ -767,7 +798,7 @@ export default function CheckInPage() {
         }
         // Fonte de verdade: uma corrida/ sono do dia sempre sobrescreve o valor salvo.
         if (hasRunningSession) next.ran = true;
-        if (hasSleepLog) next.slept_well = (sleepLogs[0]?.quality ?? 0) >= 3;
+        if (hasSleepLog) next.slept_well = (sleepLogs[0]?.quality ?? 0) >= SLEPT_WELL_MIN_QUALITY;
         originalRef.current = next; // base para detectar alterações
         return next;
       });
@@ -819,10 +850,10 @@ export default function CheckInPage() {
     setStepIdx((i) => i - 1);
   }, [stepIdx, router]);
 
-  const handleHabitAnswer = useCallback((key: string, value: boolean) => {
+  // Marca/desmarca um hábito do checklist — não avança (o usuário marca vários).
+  const handleHabitSet = useCallback((key: string, value: boolean) => {
     setAnswers((a) => ({ ...a, [key]: value }));
-    setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 320);
-  }, [steps.length]);
+  }, []);
 
   // Toggle de chips multi-select (meditação/exercício) — não avança sozinho.
   const handleToggle = useCallback((key: string) => {
@@ -837,7 +868,7 @@ export default function CheckInPage() {
   const handleSleepAnswer = useCallback((quality: number, startTime: string, endTime: string, interruptions: number) => {
     setAnswers((a) => ({
       ...a,
-      slept_well: quality >= 3,
+      slept_well: quality >= SLEPT_WELL_MIN_QUALITY,
       sleep_quality: quality,
       sleep_start_time: startTime,
       sleep_end_time: endTime,
@@ -905,9 +936,7 @@ export default function CheckInPage() {
       })
       .catch(() => {});
 
-    const timer = setTimeout(() => { invalidateFetchCache("/api/check-ins"); invalidateFetchCache("/api/maya"); router.push("/dashboard"); router.refresh(); }, 1800);
-    return () => clearTimeout(timer);
-  }, [isDone, router]);
+  }, [isDone]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -948,20 +977,22 @@ export default function CheckInPage() {
         onNext={goNext} onPrev={goPrev}
       />
     );
-    if (cur.kind === "habit") {
-      if (cur.habitKey === "slept_well") return (
-        <SleepStep onAnswer={handleSleepAnswer} onPrev={goPrev} />
-      );
-      if (cur.habitKey === "drank_water") return (
-        <WaterStep initialCups={answers.water_cups} onAnswer={handleWaterAnswer} onPrev={goPrev} />
-      );
-      return (
-        <HabitStep habitKey={cur.habitKey} context={context}
-          onAnswer={handleHabitAnswer}
-          onSkip={goNext}
-          onPrev={goPrev} />
-      );
-    }
+    if (cur.kind === "sleep") return (
+      <SleepStep onAnswer={handleSleepAnswer} onPrev={goPrev} />
+    );
+    if (cur.kind === "water") return (
+      <WaterStep initialCups={answers.water_cups} onAnswer={handleWaterAnswer} onSkip={goNext} onPrev={goPrev} />
+    );
+    if (cur.kind === "habits") return (
+      <HabitsChecklistStep
+        habits={SIMPLE_HABITS.filter((k) => enabledKeys.includes(k))}
+        answers={answers}
+        context={context}
+        onAnswer={handleHabitSet}
+        onNext={goNext}
+        onPrev={goPrev}
+      />
+    );
     if (cur.kind === "meditation") return (
       <MeditationStep
         selected={{ meditation: answers.meditation, prayer: answers.prayer, breathing: answers.breathing }}
@@ -988,7 +1019,14 @@ export default function CheckInPage() {
     if (cur.kind === "confirm") return (
       <ConfirmStep onAnswer={handleConfirmAnswer} onPrev={goPrev} />
     );
-    if (cur.kind === "done") return <DoneStep />;
+    if (cur.kind === "done") return (
+      <DoneStep onFinish={() => {
+        invalidateFetchCache("/api/check-ins");
+        invalidateFetchCache("/api/maya");
+        router.push("/dashboard");
+        router.refresh();
+      }} />
+    );
     return null;
   };
 

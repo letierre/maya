@@ -339,11 +339,19 @@ function buildCheckInRecord(c: Record<string, unknown>, gender: string, tz?: str
     // Horário em que o humor foi registrado (para a Maya saber quando foi).
     moodAt: (c.mood_at as string) ? getLocalTimeFromISO(c.mood_at as string, tz) : "",
     positives: [
-      c.exercise_walk && "exercício",
+      // Exercício granular (fallback pro agregado legado pré-split).
+      c.walked && "caminhou",
+      c.ran && "correu",
+      c.strength_training && "musculação",
+      (!c.walked && !c.ran && !c.strength_training && c.exercise_walk) && "exercício",
       c.ate_well && "comeu bem",
       c.drank_water && "água",
       c.slept_well && "dormiu bem",
-      c.meditation_prayer_breathing && "meditou/orou",
+      // Pausa granular — "orou" deve continuar sendo oração, não virar "meditou".
+      c.meditation && "meditou",
+      c.prayer && "orou",
+      c.breathing && "respirou",
+      (!c.meditation && !c.prayer && !c.breathing && c.meditation_prayer_breathing) && "meditou/orou",
       c.creative_activity && "criatividade",
       c.did_something_enjoyable && "algo que gostou",
       c.worked_on_goals && "metas",

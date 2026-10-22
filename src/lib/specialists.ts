@@ -187,7 +187,9 @@ Analise: equilíbrio receita/despesa, categorias acima do orçamento, padrões d
 function promptSpirituality(checkIns: Record<string, unknown>[]): string {
   const rows = checkIns.map((c) => {
     const grat = c.gratitude ? `"${String(c.gratitude).slice(0, 60)}"` : "—";
-    return `${c.date}: meditou/orou=${c.meditation_prayer_breathing ? "sim" : "não"} | criatividade=${c.creative_activity ? "sim" : "não"} | algo_que_gostou=${c.did_something_enjoyable ? "sim" : "não"} | conversou_pessoalmente=${c.talked_to_someone ? "sim" : "não"} | gratidão=${grat}`;
+    // Distingue meditação/oração/respiração (fallback pro agregado legado).
+    const pausa = [c.meditation && "meditou", c.prayer && "orou", c.breathing && "respirou"].filter(Boolean).join("/") || (c.meditation_prayer_breathing ? "meditou/orou" : "nada");
+    return `${c.date}: pausa=${pausa} | criatividade=${c.creative_activity ? "sim" : "não"} | algo_que_gostou=${c.did_something_enjoyable ? "sim" : "não"} | conversou_pessoalmente=${c.talked_to_someone ? "sim" : "não"} | gratidão=${grat}`;
   });
   return `Especialista em espiritualidade e conexão.
 

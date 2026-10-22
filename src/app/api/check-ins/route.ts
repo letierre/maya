@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getLocalDate, getTimezoneOffset } from "@/lib/utils";
 import { ateWellFromMeals } from "@/lib/meal-utils";
+import { SLEPT_WELL_MIN_QUALITY } from "@/lib/checkin-constants";
 import { analyzeAllSpecialists } from "@/lib/specialists";
 import { sendPushToAdmins } from "@/lib/push-send";
 import { logError } from "@/lib/error-log";
@@ -214,7 +215,7 @@ export async function POST(req: NextRequest) {
 
     // Auto-detecta "dormiu bem" a partir do sono do dia (fonte de verdade)
     if ((sleepRes.data?.length ?? 0) > 0) {
-      row.slept_well = (sleepRes.data?.[0]?.quality ?? 0) >= 3;
+      row.slept_well = (sleepRes.data?.[0]?.quality ?? 0) >= SLEPT_WELL_MIN_QUALITY;
     }
 
     const nowIso = new Date().toISOString();

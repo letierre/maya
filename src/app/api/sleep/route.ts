@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getLocalDate } from "@/lib/utils";
+import { SLEPT_WELL_MIN_QUALITY } from "@/lib/checkin-constants";
 import { NextRequest, NextResponse } from "next/server";
 import type { SleepSource } from "@/types";
 
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
 
 	  // Sync check-in slept_well from sleep quality
 	  if (body.quality != null) {
-	    const sleptWell = body.quality >= 3;
+	    const sleptWell = body.quality >= SLEPT_WELL_MIN_QUALITY;
 	    const { data: existingCi } = await admin
 	      .from("check_ins")
 	      .select("id")

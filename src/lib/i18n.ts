@@ -1241,6 +1241,8 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Hábitos
     ck_habits_today: "Hábitos de hoje",
+    ck_habits_checklist_title: "O que você fez hoje?",
+    ck_habits_checklist_sub: "Marque o que já aconteceu. O resto fica para mais tarde.",
     ck_water_label: "Copos de água hoje",
     ck_meditation_breath: "Meditação & respiração",
     ck_exercise: "Exercício",
@@ -1359,6 +1361,13 @@ const translations: Record<Lang, Record<string, string>> = {
     ck_no_today: "Hoje não",
     ck_no_not_much: "Não muito",
     ck_forgot: "Esqueci",
+    ck_not_yet: "Ainda não",
+    ck_auto: "automático",
+    ck_discard_confirm: "Você tem alterações não salvas. Sair mesmo assim?",
+    ck_go_dashboard: "Ir para o painel",
+    ck_greeting_morning: "Bom dia",
+    ck_greeting_afternoon: "Boa tarde",
+    ck_greeting_evening: "Boa noite",
 
     // Chips (passado, 1ª pessoa)
     ck_meditated: "Meditei",
@@ -3693,6 +3702,8 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Hábitos
     ck_habits_today: "Hábitos de hoy",
+    ck_habits_checklist_title: "¿Qué has hecho hoy?",
+    ck_habits_checklist_sub: "Marca lo que ya pasó. El resto queda para más tarde.",
     ck_water_label: "Vasos de agua hoy",
     ck_meditation_breath: "Meditación y respiración",
     ck_exercise: "Ejercicio",
@@ -3811,6 +3822,13 @@ const translations: Record<Lang, Record<string, string>> = {
     ck_no_today: "Hoy no",
     ck_no_not_much: "No mucho",
     ck_forgot: "Me olvidé",
+    ck_not_yet: "Aún no",
+    ck_auto: "automático",
+    ck_discard_confirm: "Tienes cambios sin guardar. ¿Salir de todos modos?",
+    ck_go_dashboard: "Ir al panel",
+    ck_greeting_morning: "Buenos días",
+    ck_greeting_afternoon: "Buenas tardes",
+    ck_greeting_evening: "Buenas noches",
 
     // Chips (pasado, 1ª persona)
     ck_meditated: "Medité",
@@ -6145,6 +6163,8 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Habits
     ck_habits_today: "Today's habits",
+    ck_habits_checklist_title: "What did you do today?",
+    ck_habits_checklist_sub: "Mark what's already happened. The rest can wait.",
     ck_water_label: "Cups of water today",
     ck_meditation_breath: "Meditation & breathing",
     ck_exercise: "Exercise",
@@ -6263,6 +6283,13 @@ const translations: Record<Lang, Record<string, string>> = {
     ck_no_today: "Not today",
     ck_no_not_much: "Not really",
     ck_forgot: "I forgot",
+    ck_not_yet: "Not yet",
+    ck_auto: "auto",
+    ck_discard_confirm: "You have unsaved changes. Leave anyway?",
+    ck_go_dashboard: "Go to dashboard",
+    ck_greeting_morning: "Good morning",
+    ck_greeting_afternoon: "Good afternoon",
+    ck_greeting_evening: "Good evening",
 
     // Chips (past, 1st person)
     ck_meditated: "Meditated",
