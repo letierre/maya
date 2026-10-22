@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { Play, Pause, ChevronDown, ChevronUp } from "lucide-react";
 import { photoUrl } from "@/lib/photo-storage";
 import { useTranslation } from "@/lib/useTranslation";
+import { MessageTicks } from "@/components/MessageTicks";
 
 function formatDuration(s: number): string {
   if (!isFinite(s) || s < 0 || s > 36000) return "0:00";
@@ -45,15 +46,27 @@ function seededWaveform(seed: string, count: number): number[] {
  * - Barras preenchem da ESQUERDA → DIREITA conforme o tempo; uma bolinha marca a
  *   posição atual e acompanha o arrasto do dedo (seek).
  * - Largura FIXA (abrir/fechar transcrição não muda o tamanho).
+ * - `duration` é uma duração conhecida (fallback): o webm do MediaRecorder não
+ *   grava a duração no header (`audio.duration === Infinity`), então usamos a
+ *   duração cronometrada na gravação p/ mostrar o total e permitir o seek.
+ * - `loading` exibe o esqueleto da nota de voz enquanto o áudio processa.
  */
 export function VoiceNote({
   path,
   transcript,
   variant = "assistant",
+  loading = false,
+  duration: knownDuration,
+  time,
+  status,
 }: {
-  path: string;
+  path?: string | null;
   transcript?: string;
   variant?: "assistant" | "user";
+  loading?: boolean;
+  duration?: number | null;
+  time?: string;
+  status?: "sent" | "delivered" | "read";
 }) {
   const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -65,19 +78,31 @@ export function VoiceNote({
   const [progress, setProgress] = useState(0);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
 
-  const src = photoUrl(path) ?? undefined;
+  const src = path ? (photoUrl(path) ?? undefined) : undefined;
   const accent = variant === "user" ? "#FFFFFF" : "#A78BFA";
   const unfilled = variant === "user" ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.16)";
   const textColor = variant === "user" ? "rgba(255,255,255,0.92)" : "rgba(216,210,231,0.92)";
+  const metaColor = variant === "user" ? "rgba(255,255,255,0.72)" : "rgba(216,210,231,0.45)";
 
-  const waveform = useMemo(() => seededWaveform(path, WAVE_BARS), [path]);
+  const waveform = useMemo(() => seededWaveform(path ?? "maya-voice", WAVE_BARS), [path]);
+
+  // Duração total confiável: prefere a do <audio> (se finita), senão a conhecida.
+  const total = duration ?? knownDuration ?? 0;
 
   // Total quando parado no início; decorrido quando tocando/pausado no meio.
-  const displayTime = playing || currentTime > 0 ? currentTime : (duration ?? 0);
+  const displayTime = playing || currentTime > 0 ? currentTime : total;
+
+  const resolvedDuration = () => {
+    const ad = audioRef.current?.duration ?? 0;
+    if (Number.isFinite(ad) && ad > 0) return ad;
+    if (duration != null && Number.isFinite(duration) && duration > 0) return duration;
+    if (knownDuration != null && Number.isFinite(knownDuration) && knownDuration > 0) return knownDuration;
+    return 0;
+  };
 
   const toggle = () => {
     const a = audioRef.current;
-    if (!a) return;
+    if (!a || loading) return;
     if (a.paused) a.play().catch(() => {}); else a.pause();
   };
 
@@ -85,9 +110,9 @@ export function VoiceNote({
   const seekTo = (clientX: number) => {
     const a = audioRef.current;
     const el = waveRef.current;
-    if (!a || !el) return;
-    const dur = a.duration || duration || 0;
-    if (!Number.isFinite(dur) || dur <= 0) return;
+    if (!a || !el || loading) return;
+    const dur = resolvedDuration();
+    if (dur <= 0) return;
     const rect = el.getBoundingClientRect();
     const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     a.currentTime = frac * dur;
@@ -101,28 +126,32 @@ export function VoiceNote({
         <button
           type="button"
           onClick={toggle}
+          disabled={loading}
           aria-label={playing ? "Pausar" : "Ouvir"}
           style={{
-            width: 38,
-            height: 38,
+            width: 32,
+            height: 32,
             borderRadius: "50%",
             border: 0,
-            cursor: "pointer",
+            cursor: loading ? "default" : "pointer",
             flexShrink: 0,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             background: variant === "user" ? "rgba(255,255,255,0.22)" : "rgba(167,139,250,0.18)",
             color: accent,
+            opacity: loading ? 0.5 : 1,
           }}
         >
-          {playing ? <Pause className="size-5" /> : <Play className="size-5" style={{ marginLeft: 2 }} />}
+          {playing ? <Pause className="size-4" /> : <Play className="size-4" style={{ marginLeft: 2 }} />}
         </button>
 
         {/* Waveform — preenche da esquerda p/ direita + bolinha de posição */}
         <div
           ref={waveRef}
+          className={loading ? "animate-pulse" : undefined}
           onPointerDown={(e) => {
+            if (loading) return;
             draggingRef.current = true;
             e.currentTarget.setPointerCapture(e.pointerId);
             seekTo(e.clientX);
@@ -138,13 +167,13 @@ export function VoiceNote({
             display: "flex",
             alignItems: "center",
             gap: 2,
-            height: 34,
-            cursor: "pointer",
+            height: 28,
+            cursor: loading ? "default" : "pointer",
             touchAction: "none",
           }}
         >
           {waveform.map((h, i) => {
-            const fullH = Math.max(3, h * 30);
+            const fullH = Math.max(3, h * 24);
             const fill = Math.max(0, Math.min(1, progress * WAVE_BARS - i));
             return (
               <span
@@ -173,20 +202,22 @@ export function VoiceNote({
           })}
 
           {/* Bolinha que marca a posição atual (segue o arrasto) */}
-          <span
-            style={{
-              position: "absolute",
-              left: `${progress * 100}%`,
-              top: "50%",
-              transform: "translate(-50%, -50%)",
-              width: 9,
-              height: 9,
-              borderRadius: "50%",
-              background: "#FFFFFF",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
-              pointerEvents: "none",
-            }}
-          />
+          {!loading && (
+            <span
+              style={{
+                position: "absolute",
+                left: `${progress * 100}%`,
+                top: "50%",
+                transform: "translate(-50%, -50%)",
+                width: 9,
+                height: 9,
+                borderRadius: "50%",
+                background: "#FFFFFF",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                pointerEvents: "none",
+              }}
+            />
+          )}
         </div>
 
         <span
@@ -201,41 +232,73 @@ export function VoiceNote({
         </span>
       </div>
 
-      {transcript ? (
-        <div style={{ marginTop: 8 }}>
-          <button
-            type="button"
-            onClick={() => setTranscriptOpen((v) => !v)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 3,
-              border: 0,
-              cursor: "pointer",
-              background: "transparent",
-              padding: 0,
-              fontSize: 11.5,
-              fontWeight: 600,
-              color: variant === "user" ? "rgba(255,255,255,0.8)" : "rgba(167,139,250,0.9)",
-            }}
-          >
-            {t("maya_voice_transcript")}
-            {transcriptOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-          </button>
-          {transcriptOpen && (
-            <div
+      {/* Transcrição (colapsável) + hora da mensagem na MESMA linha */}
+      {(transcript || time) && (
+        <div
+          style={{
+            marginTop: 5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            minHeight: 15,
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {transcript ? (
+              <button
+                type="button"
+                onClick={() => setTranscriptOpen((v) => !v)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 3,
+                  border: 0,
+                  cursor: "pointer",
+                  background: "transparent",
+                  padding: 0,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  color: variant === "user" ? "rgba(255,255,255,0.8)" : "rgba(167,139,250,0.9)",
+                }}
+              >
+                {t("maya_voice_transcript")}
+                {transcriptOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+              </button>
+            ) : null}
+          </div>
+          {time && (
+            <span
+              className="whitespace-nowrap"
               style={{
-                marginTop: 5,
-                whiteSpace: "pre-line",
-                fontSize: 13.5,
-                lineHeight: 1.45,
-                color: textColor,
-                opacity: 0.9,
+                flexShrink: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 3,
+                fontSize: 10,
+                lineHeight: 1,
+                color: metaColor,
               }}
             >
-              {transcript}
-            </div>
+              {time}
+              {status && <MessageTicks status={status} />}
+            </span>
           )}
+        </div>
+      )}
+
+      {transcriptOpen && transcript ? (
+        <div
+          style={{
+            marginTop: 5,
+            whiteSpace: "pre-line",
+            fontSize: 13.5,
+            lineHeight: 1.45,
+            color: textColor,
+            opacity: 0.9,
+          }}
+        >
+          {transcript}
         </div>
       ) : null}
 
@@ -246,18 +309,19 @@ export function VoiceNote({
         onLoadedMetadata={(e) => {
           const d = e.currentTarget.duration;
           if (Number.isFinite(d) && d > 0) setDuration(d);
+          else if (knownDuration != null && Number.isFinite(knownDuration) && knownDuration > 0) setDuration(knownDuration);
         }}
         onTimeUpdate={(e) => {
           const t = e.currentTarget.currentTime;
-          const d = e.currentTarget.duration;
+          const d = resolvedDuration();
           setCurrentTime(Number.isFinite(t) && t >= 0 ? t : 0);
-          setProgress(Number.isFinite(d) && d > 0 ? t / d : 0);
+          setProgress(d > 0 ? t / d : 0);
         }}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => {
           setPlaying(false);
-          setCurrentTime(duration ?? 0);
+          setCurrentTime(total);
           setProgress(1);
         }}
       />

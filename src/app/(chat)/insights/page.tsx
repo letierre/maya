@@ -7,6 +7,7 @@ import { Send, ArrowLeft, Plus, Camera, X, Image as ImageIcon, ArrowDown, Mic, S
 import { useRouter, useSearchParams } from "next/navigation";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { VoiceNote } from "@/components/VoiceNote";
+import { MessageTicks } from "@/components/MessageTicks";
 import { RecordingWaveform } from "@/components/RecordingWaveform";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
 import { useChatScroll } from "@/hooks/useChatScroll";
@@ -17,6 +18,8 @@ interface Message {
   content: string;
   imageUrls?: string[];
   audioUrl?: string | null;
+  voiceNote?: boolean; // veio de um áudio do usuário → mostra nota de voz (não texto)
+  audioDuration?: number; // duração cronometrada na gravação (webm não traz no header)
   time: string;
   date: string;
   status?: "sent" | "delivered" | "read";
@@ -165,34 +168,6 @@ function loadProfileCache() {
   return null;
 }
 
-function Ticks({ status }: { status: "sent" | "delivered" | "read" }) {
-  // sent/delivered ficam brancos (como WhatsApp); "read" ganha cor própria
-  // para sinalizar que a Maya leu.
-  const color =
-    status === "read"
-      ? "#53BDEB"
-      : status === "delivered"
-        ? "rgba(255,255,255,0.5)"
-        : "rgba(255,255,255,0.35)";
-  const Tick = (
-    <svg
-      width="14" height="11" viewBox="0 0 18 13"
-      fill="none" stroke="currentColor"
-      strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
-    >
-      <path d="M1.5 6.6 6 11l11-9.5" />
-    </svg>
-  );
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", color }}>
-      {Tick}
-      {status !== "sent" && (
-        <span style={{ marginLeft: -9, display: "inline-flex" }}>{Tick}</span>
-      )}
-    </span>
-  );
-}
-
 function TypingIndicator({ kind = "text" }: { kind?: "text" | "audio" }) {
   return (
     <div className="flex justify-start mb-2 maya-chat-msg">
@@ -256,7 +231,7 @@ export default function MayaChatPage() {
   const [attachOpen, setAttachOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordingStream, setRecordingStream] = useState<MediaStream | null>(null);
-  const [voiceBlob, setVoiceBlob] = useState<{ blob: Blob; mime: string } | null>(null);
+  const [voiceBlob, setVoiceBlob] = useState<{ blob: Blob; mime: string; duration: number } | null>(null);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [mayaRecording, setMayaRecording] = useState(false);
 
@@ -269,6 +244,7 @@ export default function MayaChatPage() {
   const audioChunksRef = useRef<Blob[]>([]);
   const voiceStreamRef = useRef<MediaStream | null>(null);
   const voiceProcessingRef = useRef(false);
+  const recordingStartRef = useRef(0); // epoch ms — p/ cronometrar a duração do áudio
 
   // ── Presença (online / digitando / visto por último) ──
   const [presence, setPresence] = useState<"online" | "lastSeen">("online");
@@ -738,9 +714,11 @@ export default function MayaChatPage() {
           return;
         }
         const type = rec.mimeType || mime || "audio/webm";
-        setVoiceBlob({ blob: new Blob(chunks, { type }), mime: type });
+        const duration = Math.max(0, (Date.now() - recordingStartRef.current) / 1000);
+        setVoiceBlob({ blob: new Blob(chunks, { type }), mime: type, duration });
         setRecording(false);
       };
+      recordingStartRef.current = Date.now();
       rec.start();
       setRecording(true);
       setVoiceNotice(null);
@@ -768,7 +746,7 @@ export default function MayaChatPage() {
   useEffect(() => {
     if (!voiceBlob || voiceProcessingRef.current) return;
     voiceProcessingRef.current = true;
-    const { blob, mime } = voiceBlob;
+    const { blob, mime, duration: recDuration } = voiceBlob;
 
     // Atualiza a última mensagem do usuário (o card placeholder) sem recriá-la.
     const patchLastUser = (patch: Partial<Message>) =>
@@ -787,7 +765,8 @@ export default function MayaChatPage() {
 
     // Força o scroll pro fim (só no fluxo de voz), aguardando um frame p/ o
     // novo conteúdo (transcrição/resposta) entrar no DOM antes de rolar.
-    const scrollNow = () => requestAnimationFrame(() => scrollToBottom("instant"));
+    const scrollNow = () =>
+      requestAnimationFrame(() => requestAnimationFrame(() => scrollToBottom("instant")));
 
     (async () => {
       setSending(true);
@@ -795,12 +774,14 @@ export default function MayaChatPage() {
       lastActivityAtRef.current = Date.now();
       setPresence("online");
 
-      // 1) Card "enviando" com efeito de onda (a transcrição ainda está processando).
+      // 1) Nota de voz do usuário aparece de imediato (esqueleto pulsante),
+      //    enquanto a transcrição ainda está processando.
       setMessages((prev) => [
         ...prev,
         {
           role: "user",
-          content: `🎤 ${t("maya_voice_sending")}`,
+          content: "",
+          voiceNote: true,
           time: formatTime(),
           date: formatDate(),
           status: "sent",
@@ -827,14 +808,15 @@ export default function MayaChatPage() {
         const transcript = (data.transcript || "").trim();
         const reply = (data.reply || "").trim();
 
-        // 2) Transcrição aparece (sai do "enviando") → 1 check.
+        // 2) Transcrição preenche a nota de voz (sai do esqueleto) → 1 check.
         //    O áudio enviado vira nota de voz (igual a da Maya) c/ transcrição
         //    colapsável — deixa claro que aquilo veio de um áudio, não de digitação.
         patchLastUser({
-          content: transcript || `🎤 ${t("maya_voice_placeholder")}`,
+          content: transcript,
           status: "sent",
           pending: false,
           audioUrl: data.userAudioUrl || null,
+          audioDuration: recDuration,
         });
         scrollNow(); // mostra a transcrição inteira (de baixo p/ cima)
 
@@ -1072,6 +1054,7 @@ export default function MayaChatPage() {
         {messages.map((msg, i) => {
           const isAssistant = msg.role === "assistant";
           const status: "sent" | "delivered" | "read" = msg.status ?? "read";
+          const isVoice = !!(msg.audioUrl || msg.voiceNote);
           const prevMsg = i > 0 ? messages[i - 1] : null;
 
           let separatorLabel: string | null = null;
@@ -1100,7 +1083,7 @@ export default function MayaChatPage() {
                 <div
                   className="whitespace-pre-line"
                   style={{
-                    maxWidth: isAssistant ? "88%" : "78%",
+                    maxWidth: isVoice ? undefined : isAssistant ? "88%" : "78%",
                     background: isAssistant ? "#0D0E14" : "var(--maya-primary)",
                     color: isAssistant ? "#D8D2E7" : "#FFFFFF",
                     borderRadius: isAssistant
@@ -1110,11 +1093,11 @@ export default function MayaChatPage() {
                     fontSize: 15,
                     fontWeight: 400,
                     lineHeight: 1.4,
-                    position: msg.pending ? "relative" : undefined,
-                    overflow: msg.pending ? "hidden" : undefined,
+                    position: msg.pending && !msg.voiceNote ? "relative" : undefined,
+                    overflow: msg.pending && !msg.voiceNote ? "hidden" : undefined,
                   }}
                 >
-                  {msg.pending && (
+                  {msg.pending && !msg.voiceNote && (
                     <span
                       aria-hidden
                       style={{
@@ -1126,11 +1109,15 @@ export default function MayaChatPage() {
                       }}
                     />
                   )}
-                  {msg.audioUrl ? (
+                  {isVoice ? (
                     <VoiceNote
-                      path={msg.audioUrl}
+                      path={msg.audioUrl ?? null}
                       transcript={msg.content}
                       variant={isAssistant ? "assistant" : "user"}
+                      loading={!!(msg.pending && msg.voiceNote)}
+                      duration={msg.audioDuration ?? null}
+                      time={msg.time}
+                      status={!isAssistant ? status : undefined}
                     />
                   ) : (
                     msg.content
@@ -1180,24 +1167,27 @@ export default function MayaChatPage() {
                       {msg.action.label} →
                     </a>
                   )}
-                  {/* Hora (ticks só no usuário — a Maya não "envia", ela grava) */}
-                  <span
-                    className="whitespace-nowrap"
-                    style={{
-                      float: "right",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 3,
-                      margin: "8px -4px -6px 8px",
-                      fontSize: 10.5,
-                      fontWeight: 400,
-                      lineHeight: 1,
-                      color: isAssistant ? "rgba(216,210,231,0.45)" : "rgba(255,255,255,0.72)",
-                    }}
-                  >
-                    {msg.time}
-                    {!isAssistant && <Ticks status={status} />}
-                  </span>
+                  {/* Hora — só p/ mensagem de texto; a nota de voz renderiza a
+                      hora dentro do próprio VoiceNote (na linha da transcrição). */}
+                  {!isVoice && (
+                    <span
+                      className="whitespace-nowrap"
+                      style={{
+                        float: "right",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 3,
+                        margin: "8px -4px -6px 8px",
+                        fontSize: 10.5,
+                        fontWeight: 400,
+                        lineHeight: 1,
+                        color: isAssistant ? "rgba(216,210,231,0.45)" : "rgba(255,255,255,0.72)",
+                      }}
+                    >
+                      {msg.time}
+                      {!isAssistant && <MessageTicks status={status} />}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
