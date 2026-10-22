@@ -86,7 +86,7 @@ export function HabitToggle({ value, onChange, aLabel = "Sim", bLabel = "Não" }
         aria-pressed={value}
         onClick={() => onChange(true)}
         style={{
-          flex: 1, padding: "6px 0", borderRadius: 9999, border: 0, cursor: "pointer",
+          flex: 1, padding: "9px 0", borderRadius: 9999, border: 0, cursor: "pointer",
           fontFamily: "inherit", fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap", lineHeight: 1,
           textAlign: "center", minWidth: 0,
           background: value ? "#7C5CFF" : "transparent",
@@ -101,7 +101,7 @@ export function HabitToggle({ value, onChange, aLabel = "Sim", bLabel = "Não" }
         aria-pressed={!value}
         onClick={() => onChange(false)}
         style={{
-          flex: 1, padding: "6px 0", borderRadius: 9999, border: 0, cursor: "pointer",
+          flex: 1, padding: "9px 0", borderRadius: 9999, border: 0, cursor: "pointer",
           fontFamily: "inherit", fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap", lineHeight: 1,
           textAlign: "center", minWidth: 0,
           background: !value ? "rgba(255,77,77,0.55)" : "transparent",
