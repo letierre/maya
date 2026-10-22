@@ -64,6 +64,7 @@ export const HABIT_COPY: Record<string, HabitCopy> = {
 // Toggle segmentado de hábito: mostra as DUAS respostas lado a lado
 // (esquerda = "Sim", direita = "Ainda não"/"Não") e o usuário escolhe uma.
 // A escolhida fica colorida dentro da "bolinha" (roxo = fez, vermelho = não fez).
+// Largura fixa → o "Sim" fica alinhado verticalmente em todos os hábitos.
 export function HabitToggle({ value, onChange, aLabel = "Sim", bLabel = "Não" }: {
   value: boolean;
   onChange: (v: boolean) => void;
@@ -75,9 +76,9 @@ export function HabitToggle({ value, onChange, aLabel = "Sim", bLabel = "Não" }
       role="group"
       style={{
         display: "flex", alignItems: "center", flexShrink: 0,
-        padding: 3, gap: 2, borderRadius: 9999,
-        background: "oklch(0.14 0.012 270)",
-        border: "1px solid oklch(0.5 0.12 270 / .12)",
+        width: 140, padding: 3, gap: 2, borderRadius: 9999,
+        background: "oklch(0.21 0.016 270)",
+        border: "1px solid oklch(0.5 0.12 270 / .3)",
       }}
     >
       <button
@@ -85,8 +86,9 @@ export function HabitToggle({ value, onChange, aLabel = "Sim", bLabel = "Não" }
         aria-pressed={value}
         onClick={() => onChange(true)}
         style={{
-          padding: "6px 11px", borderRadius: 9999, border: 0, cursor: "pointer",
-          fontFamily: "inherit", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", lineHeight: 1,
+          flex: 1, padding: "6px 0", borderRadius: 9999, border: 0, cursor: "pointer",
+          fontFamily: "inherit", fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap", lineHeight: 1,
+          textAlign: "center", minWidth: 0,
           background: value ? "#7C5CFF" : "transparent",
           color: value ? "#fff" : "var(--muted-foreground)",
           transition: "background .15s ease, color .15s ease",
@@ -99,8 +101,9 @@ export function HabitToggle({ value, onChange, aLabel = "Sim", bLabel = "Não" }
         aria-pressed={!value}
         onClick={() => onChange(false)}
         style={{
-          padding: "6px 11px", borderRadius: 9999, border: 0, cursor: "pointer",
-          fontFamily: "inherit", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", lineHeight: 1,
+          flex: 1, padding: "6px 0", borderRadius: 9999, border: 0, cursor: "pointer",
+          fontFamily: "inherit", fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap", lineHeight: 1,
+          textAlign: "center", minWidth: 0,
           background: !value ? "rgba(255,77,77,0.55)" : "transparent",
           color: !value ? "#fff" : "var(--muted-foreground)",
           transition: "background .15s ease, color .15s ease",
