@@ -39,6 +39,16 @@ async function uploadVoiceAudio(
   return path;
 }
 
+/** Mapeia o mime type do áudio gravado → extensão + content-type p/ guardar. */
+function audioExtFromMime(mimeType: string): { ext: string; contentType: string } {
+  const m = (mimeType || "").toLowerCase();
+  if (m.includes("mp4") || m.includes("m4a") || m.includes("aac")) return { ext: "m4a", contentType: "audio/mp4" };
+  if (m.includes("ogg") || m.includes("opus")) return { ext: "ogg", contentType: "audio/ogg" };
+  if (m.includes("mpeg") || m.includes("mp3")) return { ext: "mp3", contentType: "audio/mpeg" };
+  if (m.includes("wav")) return { ext: "wav", contentType: "audio/wav" };
+  return { ext: "webm", contentType: "audio/webm" };
+}
+
 /**
  * POST /api/maya/voice — conversa por voz (turno-a-turno).
  * Fluxo: STT (Deepgram) → MESMO pipeline do chat (contexto + memória + LLM)
@@ -118,10 +128,21 @@ export async function POST(request: Request) {
     }
 
     // ── 5) Persiste a fala do usuário como mensagem (mesma Maya do texto) ──
+    // Guarda também o áudio enviado p/ virar nota de voz no chat (igual a da
+    // Maya), com a transcrição colapsável. Se o upload falhar, degrada p/ texto.
+    let userAudioUrl: string | null = null;
+    try {
+      const { ext, contentType: userAudioContentType } = audioExtFromMime(mimeType);
+      userAudioUrl = await uploadVoiceAudio(admin, user.id, audioBuffer, ext, userAudioContentType);
+    } catch (uploadErr) {
+      logError({ path: "api/maya/voice user-audio", message: String(uploadErr), userId: user.id, meta: { feature: "maya_user_voice_upload" } });
+    }
+
     await admin.from("chat_messages").insert({
       user_id: user.id,
       role: "user",
       content: transcript,
+      audio_url: userAudioUrl,
       chat_type: "maya",
     });
 
@@ -200,7 +221,7 @@ export async function POST(request: Request) {
       });
     });
 
-    return NextResponse.json({ transcript, reply, audioUrl: assistantAudioUrl, ttsError });
+    return NextResponse.json({ transcript, reply, audioUrl: assistantAudioUrl, userAudioUrl, ttsError });
   } catch (error) {
     console.error("POST /api/maya/voice error:", error);
     logError({ path: "api/maya/voice POST", message: String(error), userId: user?.id });

@@ -828,10 +828,13 @@ export default function MayaChatPage() {
         const reply = (data.reply || "").trim();
 
         // 2) Transcrição aparece (sai do "enviando") → 1 check.
+        //    O áudio enviado vira nota de voz (igual a da Maya) c/ transcrição
+        //    colapsável — deixa claro que aquilo veio de um áudio, não de digitação.
         patchLastUser({
           content: transcript || `🎤 ${t("maya_voice_placeholder")}`,
           status: "sent",
           pending: false,
+          audioUrl: data.userAudioUrl || null,
         });
         scrollNow(); // mostra a transcrição inteira (de baixo p/ cima)
 
