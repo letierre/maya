@@ -295,7 +295,7 @@ export default function MayaChatPage() {
   }, []);
 
   // ── Chat scroll management ──
-  const { handleScroll, isAtBottomRef, unread, jumpToLatest } = useChatScroll({
+  const { handleScroll, isAtBottomRef, unread, jumpToLatest, scrollToBottom } = useChatScroll({
     containerRef: messagesRef,
     bottomRef,
     messageCount: messages.length,
@@ -785,6 +785,10 @@ export default function MayaChatPage() {
 
     const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+    // Força o scroll pro fim (só no fluxo de voz), aguardando um frame p/ o
+    // novo conteúdo (transcrição/resposta) entrar no DOM antes de rolar.
+    const scrollNow = () => requestAnimationFrame(() => scrollToBottom("instant"));
+
     (async () => {
       setSending(true);
       sendingRef.current = true;
@@ -829,6 +833,7 @@ export default function MayaChatPage() {
           status: "sent",
           pending: false,
         });
+        scrollNow(); // mostra a transcrição inteira (de baixo p/ cima)
 
         // 3) 2 checks (entregue)…
         await sleep(1200);
@@ -838,9 +843,15 @@ export default function MayaChatPage() {
         await sleep(1200);
         patchLastUser({ status: "read" });
 
+        // 4.5) Maya "lê" a mensagem antes de responder — tempo proporcional ao
+        //      tamanho (comportamento humano: mensagem longa = demora mais).
+        const readingSeconds = Math.min(6, Math.max(2, transcript.length / 30));
+        await sleep(Math.round(readingSeconds * 1000));
+
         // 5) "Maya gravando áudio" por ~60% da duração estimada da fala dela
         //    (estima ~13 caracteres/segundo falados — só p/ dar a sensação de tempo).
         setMayaRecording(true);
+        scrollNow();
         const estSeconds = Math.max(2.5, reply.length / 13);
         await sleep(Math.round(estSeconds * 1000 * 0.6));
 
@@ -857,6 +868,7 @@ export default function MayaChatPage() {
             audioUrl: data.audioUrl || null,
           },
         ]);
+        scrollNow();
 
         // Toca a voz da Maya (desktop). No iOS o autoplay é bloqueado — o usuário
         // usa o play da bolha de áudio, que é gesto e sempre funciona.
@@ -894,7 +906,7 @@ export default function MayaChatPage() {
         setVoiceBlob(null);
       }
     })();
-  }, [voiceBlob, t]);
+  }, [voiceBlob, t, scrollToBottom]);
 
   // Auto-limpa o aviso de microfone após alguns segundos.
   useEffect(() => {
