@@ -11,17 +11,16 @@ import { logError } from "@/lib/error-log";
 const ELEVENLABS_TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech";
 const MODEL_ID = "eleven_turbo_v2_5";
 
-// Fallback enquanto a voz definitiva não é escolhida (trocar via env).
-const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
-
+// Voz da Maya por idioma. Sem fallback de outra voz: se não houver voz
+// configurada, devolve vazio e a síntese responde em TEXTO (não com outra voz).
 function voiceIdFor(language?: string): string {
   if (language === "es") {
-    return process.env.ELEVENLABS_VOICE_ID_ES || process.env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID;
+    return process.env.ELEVENLABS_VOICE_ID_ES || process.env.ELEVENLABS_VOICE_ID || "";
   }
   if (language === "en") {
-    return process.env.ELEVENLABS_VOICE_ID_EN || process.env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID;
+    return process.env.ELEVENLABS_VOICE_ID_EN || process.env.ELEVENLABS_VOICE_ID || "";
   }
-  return process.env.ELEVENLABS_VOICE_ID_PT || process.env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID;
+  return process.env.ELEVENLABS_VOICE_ID_PT || process.env.ELEVENLABS_VOICE_ID || "";
 }
 
 /** Sintetiza a fala. Retorna o áudio mp3 + o mime type. */
@@ -32,7 +31,13 @@ export async function synthesizeSpeech(
   const key = process.env.ELEVENLABS_API_KEY || "";
   const voiceId = voiceIdFor(opts.language);
 
-  // Flash v2.5 às vezes corta a última sílaba se a frase não "fecha". Garante
+  // Sem voz configurada p/ o idioma → responde em texto (a rota captura o erro).
+  // Não usa fallback de outra voz: a identidade da Maya é a voz escolhida.
+  if (!voiceId) {
+    throw new Error("ElevenLabs: nenhuma voz configurada para o idioma");
+  }
+
+  // Turbo v2.5 às vezes corta a última sílaba se a frase não "fecha". Garante
   // pontuação final (fecha a entonação) antes de sintetizar.
   const clean = text.trim();
   const ttsText = /[.!?…»]\s*$/.test(clean) ? clean : `${clean}.`;
