@@ -61,6 +61,30 @@ export const HABIT_COPY: Record<string, HabitCopy> = {
   felt_judged:                 { emoji: "⚖️", labelKey: "ck_habit_judged",            aKey: "sim", bKey: "nao" },
 };
 
+// Toggle liga/desliga de um hábito: roxo = fez, vermelho = não fez.
+export function HabitToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={value}
+      onClick={() => onChange(!value)}
+      style={{
+        width: 48, height: 28, borderRadius: 9999, border: 0, cursor: "pointer",
+        position: "relative", flexShrink: 0, padding: 0,
+        background: value ? "#7C5CFF" : "rgba(255,77,77,0.45)",
+        transition: "background .2s ease",
+      }}
+    >
+      <span style={{
+        position: "absolute", top: 3, left: value ? 23 : 3,
+        width: 22, height: 22, borderRadius: 9999, background: "#fff",
+        transition: "left .2s ease", boxShadow: "0 1px 3px rgba(0,0,0,.3)",
+      }} />
+    </button>
+  );
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface CheckInAnswers {
@@ -448,18 +472,6 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
     }
   };
 
-  const btn = (active: boolean, warm = false) => ({
-    height: 36, padding: "0 14px", borderRadius: 10,
-    border: 0, cursor: "pointer", fontFamily: "inherit",
-    fontSize: 13, fontWeight: 600,
-    transition: "background .15s ease, color .15s ease",
-    ...(active
-      ? warm
-        ? { background: "rgba(255,77,77,0.25)", color: "#FF6B6B" }
-        : { background: "#7C5CFF", color: "#fff" }
-      : { background: "rgba(124,92,255,0.12)", color: "#7C5CFF" }),
-  });
-
   const isDirty = dirty !== false;
 
   return (
@@ -520,7 +532,7 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
           <p style={{ margin: "0 0 12px", fontSize: 13.5, color: "var(--muted-foreground)" }}>
             {t("ck_feeling_sub")}
           </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 7, marginBottom: 12 }}>
             {MOOD_CHIPS.map((chip) => {
               const active = (answers.mood_tags ?? []).includes(chip.id);
               const pos = chip.valence === "positive";
@@ -532,9 +544,10 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                     return { ...a, mood_tags: next };
                   })}
                   style={{
-                    padding: "7px 12px", borderRadius: 9999, border: 0, cursor: "pointer",
-                    fontFamily: "inherit", fontSize: 12.5, fontWeight: 600,
-                    display: "inline-flex", alignItems: "center", gap: 5,
+                    padding: "9px 11px", borderRadius: 12, border: 0, cursor: "pointer",
+                    fontFamily: "inherit", fontSize: 12, fontWeight: 600,
+                    display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-start",
+                    minWidth: 0,
                     transition: "all .15s ease",
                     background: active
                       ? pos ? "#7C5CFF" : "#FF5C5C"
@@ -543,10 +556,11 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                     color: active ? "#fff" : "var(--foreground)",
                     outline: active ? "none" : "1px solid oklch(0.5 0.12 270 / .1)",
                     boxShadow: active ? "0 3px 10px -2px oklch(0.5 0.12 270 / .55)" : "none",
-                    transform: active ? "scale(1.03)" : "none",
                   }}>
-                  <span style={{ fontSize: 15 }}>{chip.emoji}</span>
-                  {getMoodLabel(chip, gender)}
+                  <span style={{ fontSize: 15, flexShrink: 0 }}>{chip.emoji}</span>
+                  <span style={{ flex: 1, minWidth: 0, textAlign: "left", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {getMoodLabel(chip, gender)}
+                  </span>
                 </button>
               );
             })}
@@ -671,13 +685,8 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
                     border: "1px solid oklch(0.5 0.12 270 / .12)",
                   }}>
                     <span style={{ fontSize: 21, flexShrink: 0, lineHeight: 1 }}>{base.emoji}</span>
-                    <span style={{ flex: 1, fontSize: 13.5, fontWeight: 500, lineHeight: 1.3 }}>{label}</span>
-                    <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                      <button type="button" style={btn(value === true)}
-                        onClick={() => setAnswers((a) => ({ ...a, [key]: true }))}>{t(base.aKey)}</button>
-                      <button type="button" style={btn(value === false, true)}
-                        onClick={() => setAnswers((a) => ({ ...a, [key]: false }))}>{t(base.bKey)}</button>
-                    </div>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, lineHeight: 1.3 }}>{label}</span>
+                    <HabitToggle value={value === true} onChange={(v) => setAnswers((a) => ({ ...a, [key]: v }))} />
                   </div>
                 );
               })}
@@ -814,6 +823,40 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
           </div>
         </section>
 
+        {/* ── Pensamentos (suicidal_thoughts) ── */}
+        {hasConfirm && (
+          <section>
+            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+              {t("ck_confirm_label")}
+            </p>
+            <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.4 }}>
+              {t("ck_confirm_q")}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              <button type="button" onClick={() => setAnswers((a) => ({ ...a, suicidal_thoughts: false }))} style={{
+                height: 48, borderRadius: 12, cursor: "pointer", fontFamily: "inherit",
+                fontSize: 14, fontWeight: 500, textAlign: "left", padding: "0 18px",
+                transition: "all .15s ease",
+                background: answers.suicidal_thoughts === false ? "#7C5CFF" : "rgba(124,92,255,0.1)",
+                border: answers.suicidal_thoughts === false ? "none" : "1px solid rgba(167,139,250,0.2)",
+                color: answers.suicidal_thoughts === false ? "#fff" : "#7C5CFF",
+              }}>
+                {t("ck_confirm_no")}
+              </button>
+              <button type="button" onClick={() => setAnswers((a) => ({ ...a, suicidal_thoughts: true }))} style={{
+                height: 48, borderRadius: 12, cursor: "pointer", fontFamily: "inherit",
+                fontSize: 14, fontWeight: 500, textAlign: "left", padding: "0 18px",
+                transition: "all .15s ease",
+                background: answers.suicidal_thoughts === true ? "rgba(255,77,77,0.25)" : "rgba(255,77,77,0.1)",
+                border: "1px solid rgba(255,77,77,0.3)",
+                color: answers.suicidal_thoughts === true ? "#FF6B6B" : "#FF6B6B",
+              }}>
+                {t("ck_confirm_yes")}
+              </button>
+            </div>
+          </section>
+        )}
+
         {/* ── Resumo automático (feedback, não edita) ── */}
         <section>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
@@ -877,40 +920,6 @@ export function EditCheckInView({ answers, setAnswers, enabledKeys, context, gen
             })}
           </div>
         </section>
-
-        {/* ── Pensamentos (suicidal_thoughts) ── */}
-        {hasConfirm && (
-          <section>
-            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--text-muted)" }}>
-              {t("ck_confirm_label")}
-            </p>
-            <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.4 }}>
-              {t("ck_confirm_q")}
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              <button type="button" onClick={() => setAnswers((a) => ({ ...a, suicidal_thoughts: false }))} style={{
-                height: 48, borderRadius: 12, cursor: "pointer", fontFamily: "inherit",
-                fontSize: 14, fontWeight: 500, textAlign: "left", padding: "0 18px",
-                transition: "all .15s ease",
-                background: answers.suicidal_thoughts === false ? "#7C5CFF" : "rgba(124,92,255,0.1)",
-                border: answers.suicidal_thoughts === false ? "none" : "1px solid rgba(167,139,250,0.2)",
-                color: answers.suicidal_thoughts === false ? "#fff" : "#7C5CFF",
-              }}>
-                {t("ck_confirm_no")}
-              </button>
-              <button type="button" onClick={() => setAnswers((a) => ({ ...a, suicidal_thoughts: true }))} style={{
-                height: 48, borderRadius: 12, cursor: "pointer", fontFamily: "inherit",
-                fontSize: 14, fontWeight: 500, textAlign: "left", padding: "0 18px",
-                transition: "all .15s ease",
-                background: answers.suicidal_thoughts === true ? "rgba(255,77,77,0.25)" : "rgba(255,77,77,0.1)",
-                border: "1px solid rgba(255,77,77,0.3)",
-                color: answers.suicidal_thoughts === true ? "#FF6B6B" : "#FF6B6B",
-              }}>
-                {t("ck_confirm_yes")}
-              </button>
-            </div>
-          </section>
-        )}
       </div>
 
       {/* Fixed save */}

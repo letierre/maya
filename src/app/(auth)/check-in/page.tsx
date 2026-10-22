@@ -22,6 +22,7 @@ import {
   MEDITATION_OPTIONS,
   EXERCISE_OPTIONS,
   HabitChipSelector,
+  HabitToggle,
   WaterCupSelector,
   WATER_GOAL,
   WATER_MAX,
@@ -153,6 +154,7 @@ function CheckInStage({ stepIdx, totalForProgress, isDone, onClose, children }: 
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         @keyframes caret { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
         @keyframes ckScreenIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes ckRingPulse { 0% { transform: scale(1); opacity: 0.65; } 100% { transform: scale(1.9); opacity: 0; } }
         .ck-root button { transition: transform .12s ease, opacity .12s ease; }
         .ck-root button:active { transform: scale(0.96); opacity: .85; }
       `}</style>
@@ -201,10 +203,11 @@ function StepFooter({ onPrev, onNext, nextLabel, nextDisabled, secondary }: {
   );
 }
 
-function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTagsChange, onNext, onPrev }: {
+function FeelingStep({ initialValue, initialMoodTags, gender, name, onChange, onMoodTagsChange, onNext, onPrev }: {
   initialValue: string;
   initialMoodTags: string[];
   gender: string;
+  name: string;
   onChange: (v: string) => void;
   onMoodTagsChange: (tags: string[]) => void;
   onNext: () => void;
@@ -234,8 +237,8 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
 
   return (
     <>
-      <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 600, color: "#A78BFA" }}>
-        {greeting} 👋
+      <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#A78BFA" }}>
+        {greeting}{name ? `, ${name}` : ""}
       </p>
       <p style={{ margin: "0 0 18px", fontSize: 12, color: "var(--muted-foreground)", textTransform: "capitalize" }}>
         {dateLabel}
@@ -248,15 +251,16 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
       </p>
 
       {/* Emotion chips */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginBottom: 22 }}>
         {MOOD_CHIPS.map((chip) => {
           const active = tags.includes(chip.id);
           const pos = chip.valence === "positive";
           return (
             <button key={chip.id} type="button" onClick={() => toggleTag(chip.id)} style={{
-              padding: "9px 14px", borderRadius: 9999, border: 0, cursor: "pointer",
-              fontFamily: "inherit", fontSize: 13, fontWeight: 600,
-              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "10px 12px", borderRadius: 12, border: 0, cursor: "pointer",
+              fontFamily: "inherit", fontSize: 12.5, fontWeight: 600,
+              display: "flex", alignItems: "center", gap: 7, justifyContent: "flex-start",
+              minWidth: 0,
               transition: "all .15s ease",
               background: active
                 ? pos ? "#7C5CFF" : "#FF5C5C"
@@ -264,11 +268,12 @@ function FeelingStep({ initialValue, initialMoodTags, gender, onChange, onMoodTa
               backdropFilter: "blur(8px)",
               color: active ? "#fff" : "var(--foreground)",
               outline: active ? "none" : "1px solid oklch(0.5 0.12 270 / .1)",
-              boxShadow: active ? "0 3px 10px -2px oklch(0.5 0.12 270 / .55)" : "0 1px 3px oklch(0.2 0.02 270 / .06)",
-              transform: active ? "scale(1.03)" : "none",
+              boxShadow: active ? "0 3px 10px -2px oklch(0.5 0.12 270 / .55)" : "none",
             }}>
-              <span style={{ fontSize: 17, lineHeight: 1 }}>{chip.emoji}</span>
-              {getMoodLabel(chip, gender)}
+              <span style={{ fontSize: 17, lineHeight: 1, flexShrink: 0 }}>{chip.emoji}</span>
+              <span style={{ flex: 1, minWidth: 0, textAlign: "left", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {getMoodLabel(chip, gender)}
+              </span>
             </button>
           );
         })}
@@ -336,15 +341,23 @@ const sleepTimeInput: React.CSSProperties = {
   background: "transparent", color: "var(--foreground)", outline: "none",
 };
 
-function SleepStep({ onAnswer, onPrev }: {
-  onAnswer: (quality: number, startTime: string, endTime: string, interruptions: number) => void;
+function SleepStep({ answers, setAnswers, onNext, onSkip, onPrev }: {
+  answers: CheckInAnswers;
+  setAnswers: React.Dispatch<React.SetStateAction<CheckInAnswers>>;
+  onNext: () => void;
+  onSkip: () => void;
   onPrev: () => void;
 }) {
   const { t } = useTranslation();
-  const [quality, setQuality] = useState<number | null>(null);
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [interruptions, setInterruptions] = useState(0);
+  const quality = answers.sleep_quality;
+  const startTime = answers.sleep_start_time;
+  const endTime = answers.sleep_end_time;
+  const interruptions = answers.sleep_interruptions;
+
+  const setQuality = (q: number) => setAnswers((a) => ({ ...a, sleep_quality: q }));
+  const setStartTime = (v: string) => setAnswers((a) => ({ ...a, sleep_start_time: v }));
+  const setEndTime = (v: string) => setAnswers((a) => ({ ...a, sleep_end_time: v }));
+  const setInterruptions = (n: number) => setAnswers((a) => ({ ...a, sleep_interruptions: n }));
 
   const label11 = (text: string) => (
     <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
@@ -386,9 +399,9 @@ function SleepStep({ onAnswer, onPrev }: {
             <button key={q} type="button" onClick={() => setQuality(q)} style={{
               flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
               padding: "12px 2px", borderRadius: 14, border: 0, cursor: "pointer",
-              background: quality === q ? "oklch(.58 .18 270)" : "oklch(0.14 0.012 270)",
+              background: quality === q ? "#7C5CFF" : "oklch(0.14 0.012 270)",
               backdropFilter: "blur(8px)",
-              outline: quality === q ? "2px solid oklch(.58 .18 270)" : "none",
+              outline: quality === q ? "2px solid #7C5CFF" : "none",
               transition: "all .15s ease",
             }}>
               <span style={{ fontSize: 26 }}>{emoji}</span>
@@ -407,9 +420,9 @@ function SleepStep({ onAnswer, onPrev }: {
           {[0, 1, 2, 3, 4].map((n) => (
             <button key={n} type="button" onClick={() => setInterruptions(n)} style={{
               flex: 1, padding: "10px 4px", borderRadius: 12, border: 0, cursor: "pointer",
-              background: interruptions === n ? "oklch(.58 .18 270)" : "oklch(0.18 0.012 270)",
+              background: interruptions === n ? "#7C5CFF" : "oklch(0.18 0.012 270)",
               fontFamily: "inherit", fontSize: 13, fontWeight: 700,
-              color: interruptions === n ? "#fff" : "oklch(0.58 0.04 270)",
+              color: interruptions === n ? "#fff" : "#A78BFA",
               transition: "all .15s ease",
             }}>
               {n === 4 ? "4+" : n === 0 ? t("nao") : `${n}×`}
@@ -420,11 +433,11 @@ function SleepStep({ onAnswer, onPrev }: {
 
       <StepFooter
         onPrev={onPrev}
-        onNext={() => quality && onAnswer(quality, startTime, endTime, interruptions)}
+        onNext={onNext}
         nextLabel={t("ck_sleep_log")}
         nextDisabled={!quality}
         secondary={
-          <button type="button" onClick={() => onAnswer(3, "", "", 0)} style={{
+          <button type="button" onClick={onSkip} style={{
             background: "transparent", border: 0, cursor: "pointer",
             fontFamily: "inherit", fontSize: 12.5, color: "var(--muted-foreground)",
             textDecoration: "underline", padding: "8px 0", flexShrink: 0,
@@ -488,16 +501,6 @@ function HabitsChecklistStep({ habits, answers, context, onAnswer, onNext, onPre
 }) {
   const { t } = useTranslation();
 
-  const pill = (active: boolean) => ({
-    height: 36, padding: "0 14px", borderRadius: 9999,
-    border: 0, cursor: "pointer", fontFamily: "inherit",
-    fontSize: 12.5, fontWeight: 600, flexShrink: 0,
-    transition: "all .15s ease",
-    ...(active
-      ? { background: "#7C5CFF", color: "#fff" }
-      : { background: "rgba(124,92,255,0.12)", color: "#7C5CFF" }),
-  });
-
   return (
     <>
       <h1 style={{ margin: "0 0 6px", fontSize: 26, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 }}>
@@ -521,12 +524,7 @@ function HabitsChecklistStep({ habits, answers, context, onAnswer, onNext, onPre
             }}>
               <span style={{ fontSize: 21, flexShrink: 0, lineHeight: 1 }}>{base.emoji}</span>
               <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, lineHeight: 1.3 }}>{label}</span>
-              <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                <button type="button" style={pill(value === true)}
-                  onClick={() => onAnswer(key, true)}>{t(base.aKey)}</button>
-                <button type="button" style={pill(value === false)}
-                  onClick={() => onAnswer(key, false)}>{t(base.bKey)}</button>
-              </div>
+              <HabitToggle value={value} onChange={(v) => onAnswer(key, v)} />
             </div>
           );
         })}
@@ -712,17 +710,23 @@ function DoneStep({ onFinish }: { onFinish: () => void }) {
   const { t } = useTranslation();
   return (
     <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div style={{
-        width: 92, height: 92, borderRadius: 9999, marginBottom: 24,
-        background: "oklch(0.5 0.12 270 / .15)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: "0 0 0 12px oklch(0.5 0.12 270 / .07), 0 0 0 28px oklch(0.5 0.12 270 / .04)",
-        animation: "pulse 2s ease-in-out infinite",
-      }}>
-        <svg width="42" height="42" viewBox="0 0 24 24" fill="none"
-          stroke="#7C5CFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M5 12 10 17 19 7" />
-        </svg>
+      <div style={{ position: "relative", width: 92, height: 92, marginBottom: 24 }}>
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: 9999,
+          background: "oklch(0.5 0.12 270 / .32)",
+          animation: "ckRingPulse 1.8s ease-out infinite",
+        }} />
+        <div style={{
+          position: "relative", width: 92, height: 92, borderRadius: 9999,
+          background: "oklch(0.5 0.12 270 / .15)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 0 0 12px oklch(0.5 0.12 270 / .07), 0 0 0 28px oklch(0.5 0.12 270 / .04)",
+        }}>
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none"
+            stroke="#7C5CFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12 10 17 19 7" />
+          </svg>
+        </div>
       </div>
       <h1 style={{ margin: 0, fontSize: 32, fontWeight: 700, letterSpacing: "-0.025em" }}>{t("ck_done_title")}</h1>
       <p style={{ margin: "8px 0 0", fontSize: 15, color: "var(--muted-foreground)" }}>{t("ck_done_sub")}</p>
@@ -751,6 +755,7 @@ export default function CheckInPage() {
   const [answers, setAnswers] = useState<CheckInAnswers>(defaultAnswers);
   const [saving, setSaving] = useState(false);
   const [todaySleep, setTodaySleep] = useState<{ quality: number | null; duration_min: number | null } | null>(null);
+  const [userName, setUserName] = useState("");
 
   const savedRef = useRef(false);
   const latestAnswers = useRef<CheckInAnswers>(defaultAnswers());
@@ -766,7 +771,8 @@ export default function CheckInPage() {
       fetch(`/api/check-ins?date=${today}`).then((r) => r.json()).catch(() => null),
       fetch(`/api/sleep?from=${today}&to=${today}&limit=1`).then((r) => r.json()).catch(() => []),
       fetch(`/api/running?from=${today}&to=${today}`).then((r) => r.json()).catch(() => []),
-    ]).then(([prefs, existing, sleepLogs, runningSessions]) => {
+      fetch("/api/profile").then((r) => r.json()).catch(() => ({})),
+    ]).then(([prefs, existing, sleepLogs, runningSessions, profile]) => {
       const enabled: string[] = prefs.enabled_questions ?? [];
       const ctx: Record<string, boolean> = prefs.context ?? {};
       const hasSleepLog = Array.isArray(sleepLogs) && sleepLogs.length > 0;
@@ -777,6 +783,7 @@ export default function CheckInPage() {
       setEnabledKeys(enabled);
       setContext(ctx);
       setGender((prefs.context?.gender as string) ?? "nao_dizer");
+      setUserName((((profile?.name as string) || "").trim().split(/\s+/)[0]) ?? "");
       setSteps(buildSteps(enabled, enabled.includes("suicidal_thoughts"), hasSleepLog));
 
       const isExisting = !!existing && existing.date === today &&
@@ -865,15 +872,13 @@ export default function CheckInPage() {
     setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 150);
   }, [steps.length]);
 
-  const handleSleepAnswer = useCallback((quality: number, startTime: string, endTime: string, interruptions: number) => {
-    setAnswers((a) => ({
-      ...a,
-      slept_well: quality >= SLEPT_WELL_MIN_QUALITY,
-      sleep_quality: quality,
-      sleep_start_time: startTime,
-      sleep_end_time: endTime,
-      sleep_interruptions: interruptions,
-    }));
+  const handleSleepAnswer = useCallback(() => {
+    setAnswers((a) => ({ ...a, slept_well: (a.sleep_quality ?? 0) >= SLEPT_WELL_MIN_QUALITY }));
+    setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 150);
+  }, [steps.length]);
+
+  const handleSleepSkip = useCallback(() => {
+    setAnswers((a) => ({ ...a, sleep_quality: 3, slept_well: false }));
     setTimeout(() => setStepIdx((i) => Math.min(i + 1, steps.length - 1)), 150);
   }, [steps.length]);
 
@@ -972,13 +977,14 @@ export default function CheckInPage() {
         initialValue={answers.feeling}
         initialMoodTags={answers.mood_tags}
         gender={gender}
+        name={userName}
         onChange={(v) => setAnswers((a) => ({ ...a, feeling: v }))}
         onMoodTagsChange={(tags) => setAnswers((a) => ({ ...a, mood_tags: tags }))}
         onNext={goNext} onPrev={goPrev}
       />
     );
     if (cur.kind === "sleep") return (
-      <SleepStep onAnswer={handleSleepAnswer} onPrev={goPrev} />
+      <SleepStep answers={answers} setAnswers={setAnswers} onNext={handleSleepAnswer} onSkip={handleSleepSkip} onPrev={goPrev} />
     );
     if (cur.kind === "water") return (
       <WaterStep initialCups={answers.water_cups} onAnswer={handleWaterAnswer} onSkip={goNext} onPrev={goPrev} />
