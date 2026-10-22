@@ -56,17 +56,25 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // getUser valida o token e renova automaticamente quando só o access token expirou
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Rotas de API públicas (webhook, checkout do quiz, cron…) nem tocam na sessão:
+  // um cookie antigo de refresh derrubaria o redirect do quiz com 500.
+  if (isApi && API_ALLOW.some((p) => pathname.startsWith(p))) {
+    return supabaseResponse;
+  }
+
+  // getUser valida o token e renova quando só o access token expirou. Se o refresh
+  // token sumiu/expiou (cookie antigo), o Supabase lança `refresh_token_not_found` —
+  // tratamos como "sem sessão" em vez de estourar 500.
+  let user: { id: string } | null = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user ?? null;
+  } catch {
+    user = null;
+  }
 
   // ── API: gate de assinatura (defesa em profundidade) ──
   if (isApi) {
-    // Rotas sem exigência de assinatura (onboarding, webhook/cron, etc.)
-    if (API_ALLOW.some((p) => pathname.startsWith(p))) {
-      return supabaseResponse;
-    }
     if (!user) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
