@@ -4,7 +4,6 @@ export const dynamic = "force-dynamic";
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { useTranslation } from "@/lib/useTranslation";
@@ -162,13 +161,6 @@ function LoginForm() {
         <button type="submit" disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.6 : 1, marginTop: 4 }}>
           {loading ? t("lg_entrando") : t("lg_entrar")}
         </button>
-
-        <p style={{ margin: 0, textAlign: "center", fontSize: 13, color: "var(--muted-foreground)" }}>
-          {t("lg_nao_tem_conta")}{" "}
-          <Link href="/cadastro" style={{ color: P, fontWeight: 700, textDecoration: "none" }}>
-            {t("lg_criar_conta")}
-          </Link>
-        </p>
       </form>
     </div>
   );

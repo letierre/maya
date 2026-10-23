@@ -34,6 +34,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/onboarding`);
   }
 
-  // Nothing worked — send back to registration with a message
-  return NextResponse.redirect(`${origin}/cadastro?erro=confirmacao`);
+  // Nothing worked — send back to login
+  return NextResponse.redirect(`${origin}/login`);
 }

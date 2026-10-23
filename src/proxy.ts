@@ -11,7 +11,6 @@ const API_ALLOW = [
   "/api/checkout", // fluxo público do quiz → cria a sessão antes de existir conta
   "/api/preferences",
   "/api/check-ins",
-  "/api/register",
   "/api/geo",
   "/api/push",
   "/api/profile",
@@ -95,7 +94,7 @@ export async function proxy(request: NextRequest) {
 
   // ── Páginas ──
 
-  const isAuthPage = pathname === "/login" || pathname === "/cadastro";
+  const isAuthPage = pathname === "/login";
 
   // Logado tentando acessar login/cadastro → segue pro onboarding (se ainda não
   // completou) ou pro dashboard. Sem isso, quem abandonou o onboarding no meio

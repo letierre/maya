@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 // Mapeia o 1º segmento da rota para o rótulo do módulo registrado em `app_events`.
 const MODULE_BY_SEGMENT: Record<string, string> = {
   "": "Landing",
-  cadastro: "Cadastro",
   login: "Login",
   onboarding: "Onboarding",
   assinar: "Assinar",

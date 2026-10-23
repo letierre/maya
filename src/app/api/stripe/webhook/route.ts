@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
 
         // Fluxo antigo (usuário já logado) traz user_id no client_reference_id/metadata.
         let userId = session.client_reference_id || session.metadata?.user_id || null;
+        let createdNewUser = false;
 
         // Fluxo novo (vindo do quiz/checkout, sem conta): cria o usuário a partir
         // do email do Stripe e envia os dados de acesso. Idempotente em retry.
@@ -104,6 +105,7 @@ export async function POST(req: NextRequest) {
                 throw createErr ?? new Error("Falha ao criar conta");
               }
               userId = created.user.id;
+              createdNewUser = true;
               // Fire-and-forget: não derruba o webhook se o email falhar.
               sendAccessEmail({ to: email, password, loginUrl: `${req.nextUrl.origin}/login` }).catch((e) => {
                 logError({ path: "checkout-access-email", message: String(e) });
@@ -132,6 +134,34 @@ export async function POST(req: NextRequest) {
           { user_id: userId, ...subscriptionRow(sub, plan) },
           { onConflict: "user_id" }
         );
+
+        // Conta criada de fato neste checkout (não em retry): cria o lead na Oryen
+        // já na etapa "active" (fluxo novo, sem trial), antes do subscription.activated.
+        if (createdNewUser) {
+          const meta = session.metadata ?? {};
+          sendOryenEvent("user.created", {
+            external_id: userId,
+            name: session.customer_details?.name ?? null,
+            email: session.customer_details?.email || session.customer_email || null,
+            plan,
+            plan_status: "paid",
+            stage: "active",
+            stage_changed_at: new Date().toISOString(),
+            subscription_id: subId,
+            amount_cents,
+            currency,
+            utm_source: meta.utm_source || null,
+            utm_medium: meta.utm_medium || null,
+            utm_campaign: meta.utm_campaign || null,
+            utm_content: meta.utm_content || null,
+            client: {
+              ip: meta.client_ip || null,
+              user_agent: meta.client_user_agent || null,
+              fbc: meta.fbc || null,
+              fbp: meta.fbp || null,
+            },
+          });
+        }
 
         if (sub.status === "active" && (prev?.status ?? null) !== "active") {
           // Atribuição capturada no /api/checkout (metadata da sessão): browser + UTMs.

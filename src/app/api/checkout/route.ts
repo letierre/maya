@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
       line_items: [{ price, quantity: 1 }],
       metadata,
       success_url: `${origin}/checkout/success`,
-      cancel_url: `${origin}/assinar`,
+      cancel_url: `${origin}/login`,
     });
 
     if (!checkout.url) {

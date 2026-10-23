@@ -898,7 +898,7 @@ export default function OnboardingFlow() {
     }).catch(() => {});
   }, [demo, waterCups]);
 
-  // Completa o onboarding: salva, inicia o trial local (7 dias, sem cartão) e entra no dashboard.
+  // Completa o onboarding: salva e entra no dashboard (a conta já é ativa — criada no pós-pagamento).
   const handleFinish = async () => {
     // Impede que o rascunho pendente seja salvo por cima da finalização.
     finishedRef.current = true;
@@ -949,11 +949,6 @@ export default function OnboardingFlow() {
     });
 
     if (!res.ok) throw new Error("save");
-
-    // 3. Inicia o trial local (sem cartão) — best-effort: se falhar, o gate mostra o paywall.
-    try {
-      await fetch("/api/subscription/trial", { method: "POST" });
-    } catch {}
 
     setLanguage(lang as Lang);
     invalidateFetchCache("/api/check-ins");
