@@ -161,6 +161,13 @@ function LoginForm() {
         <button type="submit" disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.6 : 1, marginTop: 4 }}>
           {loading ? t("lg_entrando") : t("lg_entrar")}
         </button>
+
+        <p style={{ margin: 0, textAlign: "center", fontSize: 13, color: "var(--muted-foreground)" }}>
+          {t("lg_nao_tem_conta")}{" "}
+          <a href="https://quiz.mayaapp.life" style={{ color: P, fontWeight: 700, textDecoration: "none" }}>
+            {t("lg_criar_conta")}
+          </a>
+        </p>
       </form>
     </div>
   );
