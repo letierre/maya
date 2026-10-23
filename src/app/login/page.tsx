@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { useTranslation } from "@/lib/useTranslation";
@@ -150,6 +151,11 @@ function LoginForm() {
             required
             style={inputStyle}
           />
+        </div>
+        <div style={{ textAlign: "right", marginTop: -6 }}>
+          <Link href="/esqueci-senha" style={{ fontSize: 12.5, color: P, fontWeight: 600, textDecoration: "none" }}>
+            {t("lg_esqueci_senha")}
+          </Link>
         </div>
 
         {error && (

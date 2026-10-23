@@ -51,7 +51,13 @@ export async function proxy(request: NextRequest) {
   const isApi = pathname.startsWith("/api/");
 
   // Landing, callback de autenticação e pós-checkout sempre liberados (sem custo de rede)
-  if (pathname === "/" || pathname.startsWith("/auth/") || pathname.startsWith("/checkout")) {
+  if (
+    pathname === "/" ||
+    pathname === "/esqueci-senha" ||
+    pathname === "/nova-senha" ||
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/checkout")
+  ) {
     return supabaseResponse;
   }
 
