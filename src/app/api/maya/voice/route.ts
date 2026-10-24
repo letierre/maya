@@ -21,7 +21,7 @@ const STRIP_TIMESTAMP = /\[\s*(?:hoje|ontem|anteontem|há\s*\d+\s*dias)?\s*\d{1,
 // Instrução de entrega ORAL (só no modo voz): a pontuação vira pausa/entonação
 // na síntese de voz, e frases curtas soam mais naturais do que texto corrido.
 // É AQUI (junto com voice_settings no tts.ts) que se ajusta a "entonação" da Maya.
-const VOICE_DELIVERY = `\n\n## COMO FALAR (modo voz)\nEsta resposta será FALADA em voz alta. Escreva como quem fala de verdade, não como um texto:\n- Frases curtas, uma ideia por frase.\n- Use reticências ("...") para pausas de respiração e para "pensar" antes de responder.\n- Use vírgulas, ponto de interrogação e exclamação para dar entonação.\n- Varie o tom conforme o contexto: acolhimento = calmo e pausado; alegria = animado; preocupação = suave e próximo.\n- Não use listas, markdown, emojis nem estruturas que não façam sentido faladas em voz alta.`;
+const VOICE_DELIVERY = `\n\n## COMO FALAR (modo voz)\nEsta resposta será FALADA em voz alta. Escreva como quem fala de verdade, não como um texto:\n- Frases curtas, uma ideia por frase.\n- Use reticências ("...") para pausas de respiração e para "pensar" antes de responder.\n- Use vírgulas, ponto de interrogação e exclamação para dar entonação.\n- Varie o tom conforme o contexto: acolhimento = calmo e pausado; alegria = animado; preocupação = suave e próximo.\n- Fale com doçura e ternura, como uma mulher acolhedora — sem soar fria, seca nem robótica.\n- Não use listas, markdown, emojis nem estruturas que não façam sentido faladas em voz alta.`;
 
 /** Faz upload de um áudio (Buffer) para o bucket user-content e devolve o path. */
 async function uploadVoiceAudio(
