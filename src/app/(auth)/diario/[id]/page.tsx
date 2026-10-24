@@ -7,7 +7,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/useTranslation";
-import { ArrowLeft, Plus, X, Camera } from "lucide-react";
+import { ArrowLeft, Plus, X, Camera, MoreHorizontal } from "lucide-react";
 import type { DiaryEntry } from "@/types";
 import { photoUrl, compressImage, uploadToCloud } from "@/lib/photo-storage";
 
@@ -60,6 +60,7 @@ export default function DiarioEntryPage() {
   const [pinInput, setPinInput] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const dateInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const contentEditRef = useRef<HTMLDivElement>(null);
@@ -108,6 +109,21 @@ export default function DiarioEntryPage() {
     if (!res.ok) { toast.error(t("erro_deletar")); setDeleting(false); return; }
     toast.success(t("entrada_deletada"));
     router.push("/diario"); router.refresh();
+  };
+
+  const handleCopy = async () => {
+    const text = [
+      entry ? formatDisplayDateFull(entry.date) : "",
+      entry?.title,
+      entry?.content?.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/&#8203;/g, ""),
+    ].filter(Boolean).join("\n\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(t("dj_copiada"));
+    } catch {
+      toast.error(t("dj_erro_salvar_tente"));
+    }
+    setMenuOpen(false);
   };
 
   const openDatePicker = () => {
@@ -217,10 +233,7 @@ export default function DiarioEntryPage() {
               </div>
             ) : (
               <div style={{ minWidth: 0 }}>
-                <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#e0d6ff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {entry.title || t("diario_title")}
-                </h1>
-                <p style={{ margin: "2px 0 0", fontSize: 13, color: "#9e96b5" }}>{formatDisplayDateFull(entry.date)}</p>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#e0d6ff" }}>{formatDisplayDateFull(entry.date)}</p>
                 {formatTime(entry.created_at || entry.updated_at) && (
                   <p style={{ margin: "1px 0 0", fontSize: 11, color: "#9e96b5" }}>{formatTime(entry.created_at || entry.updated_at)}</p>
                 )}
@@ -234,15 +247,39 @@ export default function DiarioEntryPage() {
               {saving ? t("salvando") : t("salvar")}
             </Button>
           ) : (
-            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-              <Button onClick={() => setEditing(true)}
-                style={{ height: 34, paddingInline: 14, borderRadius: 10, background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", color: "#e0d6ff", fontSize: 12, fontWeight: 600 }}>
-                {t("editar")}
-              </Button>
-              <Button onClick={() => setDeleteConfirmOpen(true)}
-                style={{ height: 34, paddingInline: 14, borderRadius: 10, background: "rgba(255,92,92,0.15)", border: 0, color: "#FF5C5C", fontSize: 12, fontWeight: 600 }}>
-                {t("deletar")}
-              </Button>
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              <button type="button" onClick={() => setMenuOpen((o) => !o)}
+                style={{
+                  width: 36, height: 36, borderRadius: "50%",
+                  background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", color: "#A78BFA",
+                }}>
+                <MoreHorizontal size={18} />
+              </button>
+              {menuOpen && (
+                <>
+                  <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={() => setMenuOpen(false)} />
+                  <div style={{
+                    position: "absolute", top: 44, right: 0, zIndex: 100,
+                    background: "#1a1530", border: "1px solid rgba(167,139,250,0.25)",
+                    borderRadius: 14, padding: 6, boxShadow: "0 8px 24px rgba(0,0,0,0.5)", minWidth: 176,
+                  }}>
+                    <button type="button" onClick={() => { setMenuOpen(false); setEditing(true); }}
+                      style={{ display: "flex", alignItems: "center", width: "100%", padding: "10px 12px", borderRadius: 10, border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "#e0d6ff", textAlign: "left" }}>
+                      {t("editar")}
+                    </button>
+                    <button type="button" onClick={handleCopy}
+                      style={{ display: "flex", alignItems: "center", width: "100%", padding: "10px 12px", borderRadius: 10, border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "#e0d6ff", textAlign: "left" }}>
+                      {t("dj_copiar_registro")}
+                    </button>
+                    <button type="button" onClick={() => { setMenuOpen(false); setDeleteConfirmOpen(true); }}
+                      style={{ display: "flex", alignItems: "center", width: "100%", padding: "10px 12px", borderRadius: 10, border: 0, background: "transparent", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "#FF5C5C", textAlign: "left" }}>
+                      {t("deletar")}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -358,23 +395,20 @@ export default function DiarioEntryPage() {
           </>
         ) : (
           <>
-            {/* Mood display */}
-            {entry.mood && (
-              <div style={{
-                background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)",
-                borderRadius: 16, padding: 16, textAlign: "center", marginBottom: 16,
-              }}>
-                <span style={{ fontSize: 40 }}>
-                  {MOODS.find((m) => m.value === entry.mood)?.emoji}
-                </span>
-                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#9e96b5" }}>
-                  {t(MOODS.find((m) => m.value === entry.mood)?.key || "")}
-                </p>
+            {/* Título + humor (emoji discreto à direita) */}
+            {(entry.title || entry.mood) && (
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, lineHeight: 1.25, letterSpacing: "-0.02em", color: "#e0d6ff", flex: 1, minWidth: 0, overflowWrap: "break-word" }}>
+                  {entry.title || ""}
+                </h1>
+                {entry.mood && (
+                  <span
+                    title={t(MOODS.find((m) => m.value === entry.mood)?.key || "")}
+                    style={{ fontSize: 26, lineHeight: 1.2, flexShrink: 0, marginTop: 2 }}>
+                    {MOODS.find((m) => m.value === entry.mood)?.emoji}
+                  </span>
+                )}
               </div>
-            )}
-
-            {entry.title && (
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: "#e0d6ff", margin: "0 0 12px" }}>{entry.title}</h2>
             )}
 
             {entry.content ? (

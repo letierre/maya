@@ -487,77 +487,78 @@ export default function NovoDiarioPage() {
 
   return (
     <div style={{ minHeight: "100dvh", background: "#0F0F14", paddingBottom: 100 }}>
-      {/* Floating back */}
-      <button type="button" onClick={saveDraftAndGoBack}
-        style={{
-          position: "absolute", top: 16, left: 16, zIndex: 10,
-          width: 36, height: 36, borderRadius: "50%",
-          background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", color: "#A78BFA", backdropFilter: "blur(8px)",
-        }}>
-        <ChevronLeft size={18} />
-      </button>
-
-      {/* Floating mood picker */}
-      <div style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}>
-        <button type="button" onClick={() => setMoodOpen(!moodOpen)}
-          style={{
-            height: 36, paddingInline: 14, borderRadius: 9999,
-            background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)",
-            cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-            color: "#e0d6ff", backdropFilter: "blur(8px)",
-          }}>
-          <span style={{ fontSize: 18 }}>{selectedMoodEmoji}</span>
-          <ChevronDown size={12} style={{ color: "#9e96b5", transform: moodOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
-        </button>
-        {moodOpen && (
-          <div style={{
-            position: "absolute", top: 44, right: 0, borderRadius: 16, padding: "6px 4px",
-            display: "flex", gap: 2, background: "#1a1530",
-            border: "1px solid rgba(167,139,250,0.25)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-          }}>
-            {MOODS.map((m) => (
-              <button key={m} type="button" onClick={() => { setMood(m); setMoodOpen(false); }}
-                style={{
-                  width: 40, height: 40, borderRadius: "50%", border: 0, cursor: "pointer",
-                  fontSize: 20, background: mood === m ? "rgba(124,92,255,0.2)" : "transparent",
-                }}>
-                {MOOD_EMOJI[m]}
-              </button>
-            ))}
+      {/* Top bar */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px 20px", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <button type="button" onClick={saveDraftAndGoBack}
+            style={{
+              width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+              background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", color: "#A78BFA",
+            }}>
+            <ChevronLeft size={18} />
+          </button>
+          <div style={{ position: "relative", minWidth: 0 }}>
+            <button type="button" onClick={openDatePicker}
+              style={{
+                background: "none", border: 0, cursor: "pointer",
+                display: "inline-flex", alignItems: "center", gap: 6,
+                fontFamily: "inherit", padding: 0,
+              }}>
+              <span style={{
+                fontSize: 11, fontFamily: "monospace", color: "#9e96b5",
+                letterSpacing: ".06em", textTransform: "uppercase",
+              }}>
+                {formatLongDate(entryDate)}
+              </span>
+              <ChevronDown size={12} style={{ color: "#9e96b5" }} />
+            </button>
+            <p style={{
+              margin: "3px 0 0", fontSize: 10, fontFamily: "monospace",
+              color: "#9e96b5", letterSpacing: ".04em",
+            }}>
+              {now.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" })}
+            </p>
+            <input type="date" ref={dateInputRef} value={entryDate}
+              onChange={(e) => setEntryDate(e.target.value)}
+              style={{
+                position: "absolute", top: 0, left: 0, opacity: 0,
+                width: 180, height: 24, cursor: "pointer",
+              }} />
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Date header */}
-      <div style={{ padding: "72px 24px 8px", position: "relative" }}>
-        <button type="button" onClick={openDatePicker}
-          style={{
-            background: "none", border: 0, cursor: "pointer",
-            display: "inline-flex", alignItems: "center", gap: 6,
-            fontFamily: "inherit", padding: 0,
-          }}>
-          <span style={{
-            fontSize: 11, fontFamily: "monospace", color: "#9e96b5",
-            letterSpacing: ".06em", textTransform: "uppercase",
-          }}>
-            {formatLongDate(entryDate)}
-          </span>
-          <ChevronDown size={12} style={{ color: "#9e96b5" }} />
-        </button>
-        <p style={{
-          margin: "3px 0 0", fontSize: 10, fontFamily: "monospace",
-          color: "#9e96b5", letterSpacing: ".04em",
-        }}>
-          {now.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" })}
-        </p>
-        <input type="date" ref={dateInputRef} value={entryDate}
-          onChange={(e) => setEntryDate(e.target.value)}
-          style={{
-            position: "absolute", top: 72, left: 24, opacity: 0,
-            width: 180, height: 24, cursor: "pointer",
-          }} />
+        {/* Mood picker */}
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <button type="button" onClick={() => setMoodOpen(!moodOpen)}
+            style={{
+              height: 36, paddingInline: 14, borderRadius: 9999,
+              background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)",
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+              color: "#e0d6ff",
+            }}>
+            <span style={{ fontSize: 18 }}>{selectedMoodEmoji}</span>
+            <ChevronDown size={12} style={{ color: "#9e96b5", transform: moodOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+          </button>
+          {moodOpen && (
+            <div style={{
+              position: "absolute", top: 44, right: 0, borderRadius: 16, padding: "6px 4px",
+              display: "flex", gap: 2, background: "#1a1530",
+              border: "1px solid rgba(167,139,250,0.25)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+            }}>
+              {MOODS.map((m) => (
+                <button key={m} type="button" onClick={() => { setMood(m); setMoodOpen(false); }}
+                  style={{
+                    width: 40, height: 40, borderRadius: "50%", border: 0, cursor: "pointer",
+                    fontSize: 20, background: mood === m ? "rgba(124,92,255,0.2)" : "transparent",
+                  }}>
+                  {MOOD_EMOJI[m]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Title */}

@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/useTranslation";
 import { toast } from "sonner";
-import { Plus, ImageIcon, BookOpen, Sparkles, ChevronDown, Lock, Search } from "lucide-react";
+import { Plus, ImageIcon, BookOpen, Sparkles, ChevronDown, Lock, Search, Filter } from "lucide-react";
 import { photoUrl } from "@/lib/photo-storage";
 import { getLocalDate } from "@/lib/utils";
 import type { DiaryEntry } from "@/types";
@@ -51,7 +51,29 @@ export default function DiarioPage() {
   const [pinInput, setPinInput] = useState("");
   const [query, setQuery] = useState("");
   const [moodFilter, setMoodFilter] = useState<number | null>(null);
+  const [yearFilter, setYearFilter] = useState<number | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersLoaded, setFiltersLoaded] = useState(false);
   const today = getLocalDate();
+
+  // Filtros persistem entre navegações (entrar num registro e voltar mantém o filtro).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("diary_filters");
+      if (raw) {
+        const f = JSON.parse(raw);
+        setQuery(typeof f.query === "string" ? f.query : "");
+        setMoodFilter(typeof f.mood === "number" ? f.mood : null);
+        setYearFilter(typeof f.year === "number" ? f.year : null);
+      }
+    } catch {}
+    setFiltersLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!filtersLoaded) return;
+    try { localStorage.setItem("diary_filters", JSON.stringify({ query, mood: moodFilter, year: yearFilter })); } catch {}
+  }, [query, moodFilter, yearFilter, filtersLoaded]);
 
   const getPin = () => { try { return localStorage.getItem("diary_pin") || ""; } catch { return ""; } };
   const savePin = (pin: string) => {
@@ -83,6 +105,7 @@ export default function DiarioPage() {
 
   const filteredEntries = useMemo(() => {
     let list = entries;
+    if (yearFilter != null) list = list.filter((e) => new Date(e.date + "T12:00:00").getFullYear() === yearFilter);
     if (moodFilter != null) list = list.filter((e) => e.mood === moodFilter);
     const q = query.trim().toLowerCase();
     if (q) {
@@ -93,7 +116,7 @@ export default function DiarioPage() {
       );
     }
     return list;
-  }, [entries, query, moodFilter]);
+  }, [entries, query, moodFilter, yearFilter]);
 
   const monthGroups = useMemo(() => groupByMonth(filteredEntries), [filteredEntries]);
 
@@ -122,16 +145,16 @@ export default function DiarioPage() {
     });
   };
 
-  // Unique years for quick jump
+  // Anos presentes na visualização (para divisores) e todos os anos (para filtro).
   const years = useMemo(() => {
     const set = new Set(monthGroups.map((g) => g.year));
     return Array.from(set).sort((a, b) => b - a);
   }, [monthGroups]);
 
-  const scrollToYear = (year: number) => {
-    const el = document.getElementById(`diary-year-${year}`);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  const allYears = useMemo(() => {
+    const set = new Set(entries.map((e) => new Date(e.date + "T12:00:00").getFullYear()));
+    return Array.from(set).sort((a, b) => b - a);
+  }, [entries]);
 
   if (loading) {
     return (
@@ -159,7 +182,7 @@ export default function DiarioPage() {
             <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{t("dj_memorias")}</p>
             <h1 className="mt-1 text-[36px] font-bold tracking-tight leading-[1.05]">{t("diario_title")}</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              {entries.length} {entries.length === 1 ? t("dj_registro") : t("dj_registros")}
+              {filteredEntries.length} {filteredEntries.length === 1 ? t("dj_registro") : t("dj_registros")}
             </p>
           </div>
           <button type="button" onClick={() => {
@@ -183,9 +206,9 @@ export default function DiarioPage() {
         </div>
       </div>
 
-      {/* Busca + filtro por humor */}
-      <div className="px-6 pt-2">
-        <div style={{ position: "relative" }}>
+      {/* Busca + botão de filtro */}
+      <div className="px-6 pt-2 flex items-center gap-2">
+        <div style={{ position: "relative", flex: 1 }}>
           <Search size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9e96b5" }} />
           <input
             value={query}
@@ -199,49 +222,76 @@ export default function DiarioPage() {
             }}
           />
         </div>
-      </div>
-      <div className="px-6 pt-3 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-        <button type="button" onClick={() => setMoodFilter(null)}
+        <button type="button" onClick={() => setFiltersOpen((o) => !o)}
           style={{
-            padding: "6px 14px", borderRadius: 9999, border: "1px solid rgba(167,139,250,0.2)",
-            background: moodFilter === null ? "rgba(124,92,255,0.18)" : "transparent",
-            color: moodFilter === null ? "#e0d6ff" : "#9e96b5", cursor: "pointer",
-            fontFamily: "inherit", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+            width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+            border: filtersOpen || moodFilter != null || yearFilter != null ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(167,139,250,0.2)",
+            background: filtersOpen || moodFilter != null || yearFilter != null ? "rgba(124,92,255,0.18)" : "#1a1530",
+            cursor: "pointer", color: "#A78BFA",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            position: "relative",
           }}>
-          {t("dj_todos")}
+          <Filter size={18} />
+          {(moodFilter != null || yearFilter != null) && (
+            <span style={{ position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: "50%", background: "#5EEAD4" }} />
+          )}
         </button>
-        {[1, 2, 3, 4, 5].map((m) => (
-          <button key={m} type="button" onClick={() => setMoodFilter((cur) => (cur === m ? null : m))}
-            style={{
-              width: 38, height: 32, borderRadius: 9999, border: "1px solid rgba(167,139,250,0.2)",
-              background: moodFilter === m ? "rgba(124,92,255,0.18)" : "transparent",
-              cursor: "pointer", fontSize: 16, lineHeight: 1,
-              opacity: moodFilter !== null && moodFilter !== m ? 0.4 : 1,
-            }}>
-            {MOOD_EMOJIS[m]}
-          </button>
-        ))}
       </div>
 
-      {/* Year quick-jump pills */}
-      {years.length > 1 && (
-        <div className="px-6 pt-3 pb-1 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-          {years.map((year) => (
-            <button
-              key={year}
-              type="button"
-              onClick={() => scrollToYear(year)}
-              style={{
-                padding: "5px 12px", borderRadius: 9999,
-                border: "1px solid rgba(167,139,250,0.2)",
-                background: "transparent", cursor: "pointer",
-                fontFamily: "inherit", fontSize: 12, fontWeight: 600,
-                color: "#A78BFA", whiteSpace: "nowrap",
-              }}
-            >
-              {year}
-            </button>
-          ))}
+      {/* Painel de filtros */}
+      {filtersOpen && (
+        <div className="px-6 pt-2">
+          <div style={{ background: "#1a1530", border: "1px solid rgba(167,139,250,0.25)", borderRadius: 16, padding: 14 }}>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#9e96b5" }}>
+              {t("dj_filtrar_humor")}
+            </p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+              {[1, 2, 3, 4, 5].map((m) => (
+                <button key={m} type="button" onClick={() => setMoodFilter((cur) => (cur === m ? null : m))}
+                  style={{
+                    width: 40, height: 36, borderRadius: 9999, border: "1px solid rgba(167,139,250,0.2)",
+                    background: moodFilter === m ? "rgba(124,92,255,0.18)" : "transparent",
+                    cursor: "pointer", fontSize: 18, lineHeight: 1,
+                    opacity: moodFilter !== null && moodFilter !== m ? 0.4 : 1,
+                  }}>
+                  {MOOD_EMOJIS[m]}
+                </button>
+              ))}
+            </div>
+
+            {allYears.length > 1 && (
+              <>
+                <p style={{ margin: "16px 0 0", fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#9e96b5" }}>
+                  {t("dj_ano")}
+                </p>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                  {allYears.map((year) => (
+                    <button key={year} type="button" onClick={() => setYearFilter((cur) => (cur === year ? null : year))}
+                      style={{
+                        padding: "7px 14px", borderRadius: 9999, border: "1px solid rgba(167,139,250,0.2)",
+                        background: yearFilter === year ? "rgba(124,92,255,0.18)" : "transparent",
+                        color: yearFilter === year ? "#e0d6ff" : "#9e96b5", cursor: "pointer",
+                        fontFamily: "inherit", fontSize: 12, fontWeight: 600,
+                      }}>
+                      {year}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {(moodFilter != null || yearFilter != null) && (
+              <button type="button" onClick={() => { setMoodFilter(null); setYearFilter(null); }}
+                style={{
+                  marginTop: 14, padding: "8px 0", width: "100%", borderRadius: 10,
+                  border: "1px solid rgba(167,139,250,0.2)", background: "transparent",
+                  cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600,
+                  color: "#9e96b5",
+                }}>
+                {t("dj_limpar_filtros")}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
