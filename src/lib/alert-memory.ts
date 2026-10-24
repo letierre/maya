@@ -92,10 +92,17 @@ export async function saveAlertMemory(
 }
 
 // ── Fato de longo prazo (quando um sinal vira crônico) ────────────────────────
-// Mapa sinal → chave i18n do fato. Extensível: basta adicionar uma chave aqui e
-// no dict. Por ora cobre o caso mais importante (isolamento social).
+// Mapa sinal → chave i18n do fato. Cobre todos os sinais de bem-estar (care).
+// Um padrão de 14+ dias é durável (não é check-in "pontual"), por isso merece
+// virar memória — diferente da extração do chat, que descarta dados transitórios.
 const CHRONIC_FACT_KEYS: Record<string, string> = {
   social: "mem_signal_social",
+  medication: "mem_signal_medication",
+  sleep: "mem_signal_sleep",
+  hydration: "mem_signal_hydration",
+  nutrition: "mem_signal_nutrition",
+  exercise: "mem_signal_exercise",
+  mood: "mem_signal_mood",
 };
 
 /**
