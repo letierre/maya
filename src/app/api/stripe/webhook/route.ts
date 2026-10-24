@@ -163,7 +163,11 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        if (sub.status === "active" && (prev?.status ?? null) !== "active") {
+        // `subscription.activated` é o evento de TRANSIÇÃO para contas que já existiam
+        // (reativação, past_due → active). Pra conta nova, o `user.created` acima já
+        // carrega stage=active + plan_status=paid + atribuição — mandar os dois faria a
+        // Oryen criar 2 leads e disparar 2 conversões na Meta (Purchase + Subscribe).
+        if (sub.status === "active" && (prev?.status ?? null) !== "active" && !createdNewUser) {
           // Atribuição capturada no /api/checkout (metadata da sessão): browser + UTMs.
           const meta = session.metadata ?? {};
           sendOryenEvent("subscription.activated", {
