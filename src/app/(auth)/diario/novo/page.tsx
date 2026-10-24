@@ -99,11 +99,12 @@ function computeMenuPos(wrapper: HTMLElement | null, menuH: number, menuW: numbe
 }
 
 /**
- * Mantém o cursor visível acima do teclado. Se a linha atual cair atrás do
- * teclado (abaixo do fim da área visível), rola o mínimo necessário para
- * trazê-la de volta. Não interfere quando o usuário já rolou o cursor à vista.
+ * Mantém o cursor visível acima do teclado (comportamento de chat: mostra sempre
+ * a última linha). Só rola quando o cursor realmente cai atrás da barra inferior
+ * fixa — nunca no simples toque/foco, e nunca com o teclado fechado.
  */
 let keepCaretRaf = 0;
+let userTyped = false;
 function keepCaretAboveKeyboard() {
   keepCaretRaf = 0;
   const vv = window.visualViewport;
@@ -111,6 +112,8 @@ function keepCaretAboveKeyboard() {
   const caret = getCaretRect();
   if (!caret) return;
   const viewH = vv.height;
+  // Teclado fechado (ou quase): deixa a página parada, sem rolar nada.
+  if (window.innerHeight - viewH < 60) return;
   // 80px cobre a barra inferior fixa (~65px) + folga, para a linha não ficar
   // escondida atrás dela (que fica logo acima do teclado).
   const MARGIN = 80;
@@ -119,8 +122,23 @@ function keepCaretAboveKeyboard() {
   }
 }
 function scheduleKeepCaretAboveKeyboard() {
+  userTyped = true;
   if (keepCaretRaf) return; // já agendado para este frame
   keepCaretRaf = requestAnimationFrame(keepCaretAboveKeyboard);
+}
+
+// O iOS "puxa" a página ao focar um editor (o teclado abre e o navegador rola
+// sozinho para posicionar o cursor). Captura a posição no foco e a restaura,
+// para o corpo ficar parado ao tocar. Desiste de restaurar se o usuário já
+// começou a digitar (a rolagem passa a ser a do próprio texto).
+function handleContentFocus() {
+  userTyped = false;
+  const y = window.scrollY;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (!userTyped) window.scrollTo(0, y);
+  }));
+  // Reforço durante a animação do teclado (~250ms) — cobre o scroll nativo tardio.
+  setTimeout(() => { if (!userTyped) window.scrollTo(0, y); }, 240);
 }
 
 export default function NovoDiarioPage() {
@@ -585,6 +603,7 @@ export default function NovoDiarioPage() {
           onInput={handleContentInput}
           onPaste={handlePaste}
           onClick={handleContentClick}
+          onFocus={handleContentFocus}
           style={{
             outline: "none", fontSize: 15, lineHeight: 1.7, letterSpacing: "-0.005em",
             minHeight: "40vh", color: "#e0d6ff", position: "relative",
