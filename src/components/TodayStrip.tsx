@@ -42,7 +42,6 @@ function MiniCard({
   value,
   sub,
   subColor,
-  accent = "#A78BFA",
   onClick,
 }: {
   emoji: string;
@@ -50,7 +49,6 @@ function MiniCard({
   value: string;
   sub?: string;
   subColor?: string;
-  accent?: string;
   onClick?: () => void;
 }) {
   return (
@@ -67,12 +65,7 @@ function MiniCard({
         boxShadow: "inset 0 1px 0 var(--surface-highlight)",
       }}
     >
-      <span
-        className="size-8 rounded-lg flex items-center justify-center text-[16px] leading-none"
-        style={{ background: `${accent}1a`, boxShadow: `inset 0 0 0 1px ${accent}30` }}
-      >
-        {emoji}
-      </span>
+      <span className="text-xl leading-none">{emoji}</span>
       <p className="m-0 text-[11px] font-semibold leading-tight" style={{ color: "#e0d6ff" }}>
         {value}
       </p>
@@ -216,7 +209,6 @@ export function TodayStrip({
           value={sleepValue}
           sub={sleepSub}
           subColor={sleepSubColor}
-          accent="#8b5cf6"
           onClick={() => router.push("/sono")}
         />
         <MiniCard
@@ -225,7 +217,6 @@ export function TodayStrip({
           value={moodValue}
           sub={moodSub}
           subColor={todayCheckIn ? "#22D18B" : undefined}
-          accent="#A78BFA"
           onClick={() => router.push("/check-in")}
         />
         <MiniCard
@@ -234,7 +225,6 @@ export function TodayStrip({
           value={mealValue}
           sub={mealSub}
           subColor={mealSubColor}
-          accent="#22D18B"
           onClick={() => router.push("/nutricao")}
         />
         <MiniCard
@@ -243,7 +233,6 @@ export function TodayStrip({
           value={spendingValue}
           sub={spendingSub}
           subColor={spendingSubColor}
-          accent="#fbbf24"
           onClick={() => router.push("/financas")}
         />
         <MiniCard
@@ -252,7 +241,6 @@ export function TodayStrip({
           value={taskValue}
           sub={taskSub}
           subColor={todayDone === todayTotal && todayTotal > 0 ? "#22D18B" : undefined}
-          accent="#7C5CFF"
           onClick={() => router.push("/agenda")}
         />
       </div>
