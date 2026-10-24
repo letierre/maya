@@ -127,6 +127,12 @@ export default function NovoDiarioPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const [entryDate, setEntryDate] = useState(() => getBrowserDate());
+  // Hora atual (atualiza a cada 30s) — mostra a hora em que o registro está sendo escrito.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(id);
+  }, []);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   // HTML completo do editor (inclui fotos inline) — o `content` acima guarda só o
@@ -540,6 +546,12 @@ export default function NovoDiarioPage() {
           </span>
           <ChevronDown size={12} style={{ color: "#9e96b5" }} />
         </button>
+        <p style={{
+          margin: "3px 0 0", fontSize: 10, fontFamily: "monospace",
+          color: "#7d7590", letterSpacing: ".04em",
+        }}>
+          {now.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" })}
+        </p>
         <input type="date" ref={dateInputRef} value={entryDate}
           onChange={(e) => setEntryDate(e.target.value)}
           style={{

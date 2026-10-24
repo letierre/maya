@@ -25,6 +25,14 @@ function formatDisplayDate(dateStr: string): string {
   });
 }
 
+function formatTime(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d.getTime())
+    ? ""
+    : d.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function DiarioEntryPage() {
   const router = useRouter();
   const params = useParams();
@@ -202,6 +210,9 @@ export default function DiarioEntryPage() {
                   {entry.title || t("diario_title")}
                 </h1>
                 <p style={{ margin: "2px 0 0", fontSize: 13, color: "#9e96b5" }}>{formatDisplayDate(entry.date)}</p>
+                {formatTime(entry.created_at || entry.updated_at) && (
+                  <p style={{ margin: "1px 0 0", fontSize: 11, color: "#7d7590" }}>{formatTime(entry.created_at || entry.updated_at)}</p>
+                )}
               </div>
             )}
           </div>
