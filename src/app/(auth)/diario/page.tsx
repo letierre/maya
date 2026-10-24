@@ -14,6 +14,14 @@ const MOOD_EMOJIS: Record<number, string> = {
   1: "😔", 2: "😕", 3: "😐", 4: "🙂", 5: "😊",
 };
 
+function formatTime(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d.getTime())
+    ? ""
+    : d.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" });
+}
+
 function groupByMonth(entries: DiaryEntry[]) {
   const groups = new Map<string, { label: string; entries: DiaryEntry[]; key: string; year: number }>();
   entries.forEach((e) => {
@@ -315,6 +323,11 @@ export default function DiarioPage() {
                         <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: "#9e96b5", marginTop: 2 }}>
                           {wk}
                         </div>
+                        {formatTime(entry.created_at || entry.updated_at) && (
+                          <div style={{ fontSize: 9, fontWeight: 500, fontFamily: "monospace", color: "#7d7590", marginTop: 3 }}>
+                            {formatTime(entry.created_at || entry.updated_at)}
+                          </div>
+                        )}
                       </div>
 
                       {/* Content col */}
