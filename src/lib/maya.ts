@@ -65,6 +65,7 @@ export interface MayaInput {
   agenda?: { date: string; title: string; time: string | null; itemType: string }[];
   careSignals?: { title: string; description: string; emoji: string }[];
   persona?: MayaPersona;
+  isConversation?: boolean;
 }
 
 function timeAwarenessBlock(hour: number, currentDate?: string): string {
@@ -119,7 +120,7 @@ const AREA_LABELS: Record<string, string> = {
 };
 
 export function buildMayaSystemPrompt(input: MayaInput): string {
-  const { profile, recentCheckIns, recentDiary, memories, memorySummaries, triggeredMemories, porques, streak, currentHour, currentDate, activeGoals, weekPlan, language, specialistSummaries, agenda, persona } = input;
+  const { profile, recentCheckIns, recentDiary, memories, memorySummaries, triggeredMemories, porques, streak, currentHour, currentDate, activeGoals, weekPlan, language, specialistSummaries, agenda, persona, isConversation } = input;
 
   const timeBlock = currentHour !== undefined ? timeAwarenessBlock(currentHour, currentDate) : "";
 
@@ -302,7 +303,7 @@ ${specialistSummaries.philosophy   ? `🔭 Propósito: ${specialistSummaries.phi
 - A regra de ouro: a análise é SUA ferramenta, não um roteiro. Se não fizer sentido na conversa, guarde para outra hora`
     : "";
 
-  const personaBlock = persona ? formatPersonaBlock(persona) : "";
+  const personaBlock = persona ? formatPersonaBlock(persona, isConversation ? currentHour : undefined) : "";
 
   return `Você é Maya, uma companheira virtual que conversa com pessoas para oferecer apoio emocional e ferramentas positivas de autoconhecimento.
 

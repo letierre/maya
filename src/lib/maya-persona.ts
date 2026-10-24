@@ -221,7 +221,7 @@ export async function getMayaPersona(
 }
 
 /** Bloco de prompt (curto e estruturado) para injetar o comportamento nas superfícies. */
-export function formatPersonaBlock(p: MayaPersona): string {
+export function formatPersonaBlock(p: MayaPersona, currentHour?: number): string {
   const hasSignal =
     p.hasCadence ||
     p.usualWindow !== null ||
@@ -238,7 +238,15 @@ export function formatPersonaBlock(p: MayaPersona): string {
     lines.push(`- Ritmo de conversa: a pessoa costuma vir ${cadence}.`);
   }
 
-  if (p.usualWindow) lines.push(`- Costuma aparecer mais de ${p.usualWindow}.`);
+  if (p.usualWindow) {
+    lines.push(`- Costuma aparecer mais de ${p.usualWindow}.`);
+    if (currentHour !== undefined) {
+      const nowWindow = hourToWindow(currentHour);
+      if (nowWindow !== p.usualWindow) {
+        lines.push(`- DESVIO: a pessoa costuma vir de ${p.usualWindow}, mas está falando agora de ${nowWindow}. Se fizer sentido, note com leveza e pergunte se aconteceu algo.`);
+      }
+    }
+  }
 
   const used: string[] = [];
   if (p.engagement.checkIn) used.push("check-in");

@@ -68,15 +68,6 @@ export async function GET(req: NextRequest) {
   for (const [tz, tzUserIds] of usersByTz) {
     const { time: currentTime, date: todaySP, dow: dayOfWeek } = getLocalNow(tz);
 
-    // Usuários que JÁ registraram sono hoje (ex.: no primeiro check-in do dia) —
-    // não devem receber o lembrete de "registre o sono" (wake) de novo.
-    const { data: sleepDone } = await admin
-      .from("sleep_logs")
-      .select("user_id")
-      .eq("date", todaySP)
-      .in("user_id", tzUserIds);
-    const sleepDoneSet = new Set((sleepDone ?? []).map((s) => s.user_id));
-
     // ── Perfil de comportamento: quem de fato registra refeição (anti-spam) ──
     // Só lembra refeição de quem já usa o recurso — não empurra o que a pessoa
     // nunca registra (lente, não filtro: a saúde continua chegando pelos canais que ela usa).
@@ -117,25 +108,6 @@ export async function GET(req: NextRequest) {
           tag: "bedtime-reminder",
           data: { url: "/sono" },
         });
-      }
-
-      if (cfg.wake_time && !sleepDoneSet.has(uid)) {
-        const [wh, wm] = cfg.wake_time.split(":").map(Number);
-        const total = wh * 60 + wm + 30;
-        const wakeTime = `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-        if (wakeTime === currentTime) {
-          totalSent += await sendPushToUser(uid, {
-            title: L(uid, "pn_wake_title"),
-            body: L(uid, "pn_wake_body"),
-            tag: "wake-checkin",
-            data: { url: "/sono", date: todaySP },
-            actions: [
-              { action: "quality_good", title: L(uid, "pn_wake_good") },
-              { action: "quality_ok", title: L(uid, "pn_wake_ok") },
-              { action: "quality_bad", title: L(uid, "pn_wake_bad") },
-            ],
-          });
-        }
       }
     }
 
@@ -201,7 +173,7 @@ export async function GET(req: NextRequest) {
           title: L(userId, "pn_week_title"),
           body: L(userId, "pn_week_body"),
           tag: "weekly-summary",
-          data: { url: "/historico" },
+          data: { url: "/analise" },
         });
       }
       log.weekly = (log.weekly ?? 0) + tzUserIds.length;

@@ -188,6 +188,7 @@ export async function POST(request: Request) {
     });
     mayaInput.triggeredMemories = triggeredMemories;
     mayaInput.persona = await getMayaPersona(admin, user.id, { tz: clientTz });
+    mayaInput.isConversation = true;
 
     const systemPrompt = buildMayaSystemPrompt(mayaInput) + VOICE_DELIVERY;
 
