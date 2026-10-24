@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/useTranslation";
 import { toast } from "sonner";
-import { Plus, ImageIcon, BookOpen, Sparkles, ChevronDown, Lock } from "lucide-react";
+import { Plus, ImageIcon, BookOpen, Sparkles, ChevronDown, Lock, Search } from "lucide-react";
 import { photoUrl } from "@/lib/photo-storage";
 import { getLocalDate } from "@/lib/utils";
 import type { DiaryEntry } from "@/types";
@@ -49,6 +49,8 @@ export default function DiarioPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [pinPrompt, setPinPrompt] = useState<string | null>(null); // entry id, "setup", or "remove"
   const [pinInput, setPinInput] = useState("");
+  const [query, setQuery] = useState("");
+  const [moodFilter, setMoodFilter] = useState<number | null>(null);
   const today = getLocalDate();
 
   const getPin = () => { try { return localStorage.getItem("diary_pin") || ""; } catch { return ""; } };
@@ -79,7 +81,21 @@ export default function DiarioPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const monthGroups = useMemo(() => groupByMonth(entries), [entries]);
+  const filteredEntries = useMemo(() => {
+    let list = entries;
+    if (moodFilter != null) list = list.filter((e) => e.mood === moodFilter);
+    const q = query.trim().toLowerCase();
+    if (q) {
+      list = list.filter((e) =>
+        (e.title || "").toLowerCase().includes(q) ||
+        (e.content || "").toLowerCase().includes(q) ||
+        (e.date || "").includes(q)
+      );
+    }
+    return list;
+  }, [entries, query, moodFilter]);
+
+  const monthGroups = useMemo(() => groupByMonth(filteredEntries), [filteredEntries]);
 
   // Expand current month by default
   useEffect(() => {
@@ -167,6 +183,46 @@ export default function DiarioPage() {
         </div>
       </div>
 
+      {/* Busca + filtro por humor */}
+      <div className="px-6 pt-2">
+        <div style={{ position: "relative" }}>
+          <Search size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9e96b5" }} />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("dj_buscar_titulo")}
+            style={{
+              width: "100%", boxSizing: "border-box", padding: "11px 14px 11px 40px",
+              borderRadius: 14, border: "1px solid rgba(167,139,250,0.2)",
+              background: "#1a1530", color: "#e0d6ff", fontSize: 13,
+              fontFamily: "inherit", outline: "none",
+            }}
+          />
+        </div>
+      </div>
+      <div className="px-6 pt-3 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+        <button type="button" onClick={() => setMoodFilter(null)}
+          style={{
+            padding: "6px 14px", borderRadius: 9999, border: "1px solid rgba(167,139,250,0.2)",
+            background: moodFilter === null ? "rgba(124,92,255,0.18)" : "transparent",
+            color: moodFilter === null ? "#e0d6ff" : "#9e96b5", cursor: "pointer",
+            fontFamily: "inherit", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+          }}>
+          {t("dj_todos")}
+        </button>
+        {[1, 2, 3, 4, 5].map((m) => (
+          <button key={m} type="button" onClick={() => setMoodFilter((cur) => (cur === m ? null : m))}
+            style={{
+              width: 38, height: 32, borderRadius: 9999, border: "1px solid rgba(167,139,250,0.2)",
+              background: moodFilter === m ? "rgba(124,92,255,0.18)" : "transparent",
+              cursor: "pointer", fontSize: 16, lineHeight: 1,
+              opacity: moodFilter !== null && moodFilter !== m ? 0.4 : 1,
+            }}>
+            {MOOD_EMOJIS[m]}
+          </button>
+        ))}
+      </div>
+
       {/* Year quick-jump pills */}
       {years.length > 1 && (
         <div className="px-6 pt-3 pb-1 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
@@ -198,6 +254,14 @@ export default function DiarioPage() {
             {t("dj_primeira_vez")}
           </p>
           <p className="text-xs text-muted-foreground mt-6">{t("dj_toque_comecar")}</p>
+        </div>
+      )}
+
+      {/* No results for search/filter */}
+      {entries.length > 0 && filteredEntries.length === 0 && (
+        <div className="px-8 pt-16 pb-20 text-center">
+          <div className="text-4xl mb-4">🔍</div>
+          <p className="text-sm text-muted-foreground">{t("dj_nenhum_registro_encontrado")}</p>
         </div>
       )}
 
@@ -324,7 +388,7 @@ export default function DiarioPage() {
                           {wk}
                         </div>
                         {formatTime(entry.created_at || entry.updated_at) && (
-                          <div style={{ fontSize: 9, fontWeight: 500, fontFamily: "monospace", color: "#7d7590", marginTop: 3 }}>
+                          <div style={{ fontSize: 9, fontWeight: 500, fontFamily: "monospace", color: "#9e96b5", marginTop: 3 }}>
                             {formatTime(entry.created_at || entry.updated_at)}
                           </div>
                         )}

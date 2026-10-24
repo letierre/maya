@@ -21,7 +21,7 @@ function getBrowserDate(): string {
 
 function formatLongDate(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
-  const s = d.toLocaleDateString(getLocale(), { weekday: "long", day: "numeric", month: "long" });
+  const s = d.toLocaleDateString(getLocale(), { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
@@ -548,7 +548,7 @@ export default function NovoDiarioPage() {
         </button>
         <p style={{
           margin: "3px 0 0", fontSize: 10, fontFamily: "monospace",
-          color: "#7d7590", letterSpacing: ".04em",
+          color: "#9e96b5", letterSpacing: ".04em",
         }}>
           {now.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" })}
         </p>

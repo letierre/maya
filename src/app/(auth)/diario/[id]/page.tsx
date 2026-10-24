@@ -25,6 +25,12 @@ function formatDisplayDate(dateStr: string): string {
   });
 }
 
+function formatDisplayDateFull(dateStr: string): string {
+  return new Date(dateStr + "T12:00:00").toLocaleDateString(getLocale(), {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
+}
+
 function formatTime(iso?: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -199,6 +205,11 @@ export default function DiarioEntryPage() {
                 <button type="button" onClick={openDatePicker}
                   style={{ background: "none", border: 0, cursor: "pointer", padding: 0, fontFamily: "inherit", display: "block", maxWidth: "100%" }}>
                   <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#e0d6ff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{formatDisplayDate(entryDate)}</h1>
+                  {formatTime(entry.created_at || entry.updated_at) && (
+                    <span style={{ display: "block", marginTop: 1, fontSize: 11, color: "#9e96b5" }}>
+                      {t("dj_escrito_as")} {formatTime(entry.created_at || entry.updated_at)}
+                    </span>
+                  )}
                 </button>
                 <input type="date" ref={dateInputRef} value={entryDate}
                   onChange={(e) => setEntryDate(e.target.value)}
@@ -209,9 +220,9 @@ export default function DiarioEntryPage() {
                 <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#e0d6ff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {entry.title || t("diario_title")}
                 </h1>
-                <p style={{ margin: "2px 0 0", fontSize: 13, color: "#9e96b5" }}>{formatDisplayDate(entry.date)}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 13, color: "#9e96b5" }}>{formatDisplayDateFull(entry.date)}</p>
                 {formatTime(entry.created_at || entry.updated_at) && (
-                  <p style={{ margin: "1px 0 0", fontSize: 11, color: "#7d7590" }}>{formatTime(entry.created_at || entry.updated_at)}</p>
+                  <p style={{ margin: "1px 0 0", fontSize: 11, color: "#9e96b5" }}>{formatTime(entry.created_at || entry.updated_at)}</p>
                 )}
               </div>
             )}
