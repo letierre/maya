@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getLocalNow, getLocalDateFromISO, getLocalTimeFromISO } from "@/lib/utils";
+import { NEGATIVE_MOODS } from "@/lib/maya-constants";
 
 /**
  * Perfil de comportamento (persona) da Maya — camada que responde "COMO a pessoa
@@ -23,6 +24,8 @@ export interface MayaPersona {
   engagement: { checkIn: boolean; diary: boolean; meal: boolean; sleep: boolean };
   /** Há histórico suficiente (≥ 2 dias distintos de conversa) para calcular cadência. */
   hasCadence: boolean;
+  /** Algum dos últimos check-ins marcou humor negativo — cruza com ausência (Fase C). */
+  recentMoodNegative: boolean;
 }
 
 const WINDOW_DAYS = 14;
@@ -155,6 +158,18 @@ export async function computeMayaPersona(
   ]);
   const has = (r: { count: number | null }) => (r.count ?? 0) > 0;
 
+  // 4) Humor recente (últimos 3 check-ins) — para cruzar com ausência (Fase C).
+  const { data: recentMoods } = await admin
+    .from("check_ins")
+    .select("mood_tags")
+    .eq("user_id", userId)
+    .order("date", { ascending: false })
+    .limit(3);
+  const recentMoodNegative = (recentMoods ?? []).some((c) => {
+    const tags = c.mood_tags as string[] | null;
+    return !!tags && tags.length > 0 && NEGATIVE_MOODS.has(tags[0]);
+  });
+
   return {
     cadenceDays,
     lastActiveDays,
@@ -166,6 +181,7 @@ export async function computeMayaPersona(
       sleep: has(sleepRes),
     },
     hasCadence: distinctDays.length >= 2,
+    recentMoodNegative,
   };
 }
 
@@ -197,6 +213,7 @@ export async function getMayaPersona(
       usualWindow: cached.usualWindow,
       engagement: cached.engagement,
       hasCadence: cached.hasCadence,
+      recentMoodNegative: cached.recentMoodNegative,
     };
   } else {
     const full = await computeMayaPersona(admin, userId, { tz });
@@ -205,6 +222,7 @@ export async function getMayaPersona(
       usualWindow: full.usualWindow,
       engagement: full.engagement,
       hasCadence: full.hasCadence,
+      recentMoodNegative: full.recentMoodNegative,
     };
     try {
       await admin
@@ -259,7 +277,11 @@ export function formatPersonaBlock(p: MayaPersona, currentHour?: number): string
 
   const threshold = p.hasCadence && p.cadenceDays != null ? Math.max(3, p.cadenceDays * 2) : null;
   if (threshold != null && p.lastActiveDays >= threshold) {
-    lines.push(`- IMPORTANTE: faz ${p.lastActiveDays} dias que a pessoa não vem conversar — fora do ritmo dela. Ao retomar, note com carinho e curiosidade (pergunte como foi esse tempo, se aconteceu algo), SEM alarme, SEM culpa, e SEM dizer "você sumiu" nem "você voltou".`);
+    if (p.recentMoodNegative) {
+      lines.push(`- ATENÇÃO: faz ${p.lastActiveDays} dias que a pessoa não vem conversar, e o humor recente dela estava baixo. Ela pode ter se afastado por estar mal. Ao retomar, acolha com MAIS suavidade e cuidado: reconheça que ela sumiu num momento difícil e pergunte com gentileza como ficou — sem pressão, sem cobrança, e SEM dizer "você sumiu" nem "você voltou".`);
+    } else {
+      lines.push(`- IMPORTANTE: faz ${p.lastActiveDays} dias que a pessoa não vem conversar — fora do ritmo dela. Ao retomar, note com carinho e curiosidade (pergunte como foi esse tempo, se aconteceu algo), SEM alarme, SEM culpa, e SEM dizer "você sumiu" nem "você voltou".`);
+    }
   }
 
   return `## COMO É A PESSOA (comportamento — o jeito dela, não fatos)

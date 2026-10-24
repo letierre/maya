@@ -4,8 +4,10 @@
  */
 
 // Humores considerados "negativos" (a pessoa marcou algum destes).
+// Mantém em sincronia com MOOD_CHIPS (valence: "negative") de checkin-moods.ts.
 export const NEGATIVE_MOODS = new Set([
   "ansiosa", "triste", "cansada", "sobrecarregada", "irritada", "frustrada",
+  "estressada", "raiva", "culpada", "solitaria", "exausta", "entediada", "desanimada",
 ]);
 
 // Sono: qualidade < 3 OU duração < 360min (6h) = dormiu mal.
