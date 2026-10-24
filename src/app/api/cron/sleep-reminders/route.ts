@@ -77,6 +77,17 @@ export async function GET(req: NextRequest) {
       .in("user_id", tzUserIds);
     const sleepDoneSet = new Set((sleepDone ?? []).map((s) => s.user_id));
 
+    // ── Perfil de comportamento: quem de fato registra refeição (anti-spam) ──
+    // Só lembra refeição de quem já usa o recurso — não empurra o que a pessoa
+    // nunca registra (lente, não filtro: a saúde continua chegando pelos canais que ela usa).
+    const since14Meals = new Date(Date.now() - 14 * 86400000).toISOString();
+    const { data: mealActiveRows } = await admin
+      .from("meals")
+      .select("user_id")
+      .in("user_id", tzUserIds)
+      .gte("data_hora", since14Meals);
+    const mealActiveSet = new Set((mealActiveRows ?? []).map((m) => m.user_id));
+
     // ── Sleep reminders (user-configured times) ─────────────────────────────
     for (const uid of tzUserIds) {
       const pref = prefsByUser.get(uid);
@@ -170,7 +181,7 @@ export async function GET(req: NextRequest) {
         .in("user_id", tzUserIds);
 
       const loggedSet = new Set((logged ?? []).map((m) => m.user_id));
-      const pending = tzUserIds.filter((uid) => !loggedSet.has(uid));
+      const pending = tzUserIds.filter((uid) => !loggedSet.has(uid) && mealActiveSet.has(uid));
 
       for (const userId of pending) {
         totalSent += await sendPushToUser(userId, {

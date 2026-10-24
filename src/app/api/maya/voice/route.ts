@@ -10,6 +10,7 @@ import { transcribeAudio } from "@/lib/stt";
 import { synthesizeSpeech } from "@/lib/tts";
 import { relativeDayLabel, getLocalDateFromISO, getLocalTimeFromISO, getLocalDate, getCurrentHour } from "@/lib/utils";
 import { logError } from "@/lib/error-log";
+import { getMayaPersona } from "@/lib/maya-persona";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // STT + LLM + TTS num único request
@@ -186,6 +187,7 @@ export async function POST(request: Request) {
       tz: clientTz,
     });
     mayaInput.triggeredMemories = triggeredMemories;
+    mayaInput.persona = await getMayaPersona(admin, user.id, { tz: clientTz });
 
     const systemPrompt = buildMayaSystemPrompt(mayaInput) + VOICE_DELIVERY;
 

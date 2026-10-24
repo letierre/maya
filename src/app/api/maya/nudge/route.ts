@@ -8,6 +8,7 @@ import { buildMayaSystemPrompt, type MayaInput } from "@/lib/maya";
 import { fetchMayaContext, toMayaInput, buildRecentChatTopics } from "@/lib/maya-context";
 import { computeSignals } from "@/lib/signals";
 import { tUser } from "@/lib/server-i18n";
+import { getMayaPersona } from "@/lib/maya-persona";
 
 // ── LLM nudge message generation ────────────────────────────────────────────
 
@@ -152,6 +153,7 @@ export async function GET() {
         currentHour: getCurrentHour(),
         currentDate: today,
       });
+      mayaInput.persona = await getMayaPersona(admin, user.id);
       const chatSummary = buildRecentChatTopics(ctx.chatMessages);
 
       const enhancedMessage = await generateNudgeViaLLM(

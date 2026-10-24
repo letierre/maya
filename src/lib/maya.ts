@@ -1,4 +1,5 @@
 import { relativeDayLabel } from "@/lib/utils";
+import { formatPersonaBlock, type MayaPersona } from "@/lib/maya-persona";
 
 export interface UserContext {
   name: string;
@@ -63,6 +64,7 @@ export interface MayaInput {
   areaVisions?: { area: string; statement: string }[];
   agenda?: { date: string; title: string; time: string | null; itemType: string }[];
   careSignals?: { title: string; description: string; emoji: string }[];
+  persona?: MayaPersona;
 }
 
 function timeAwarenessBlock(hour: number, currentDate?: string): string {
@@ -117,7 +119,7 @@ const AREA_LABELS: Record<string, string> = {
 };
 
 export function buildMayaSystemPrompt(input: MayaInput): string {
-  const { profile, recentCheckIns, recentDiary, memories, memorySummaries, triggeredMemories, porques, streak, currentHour, currentDate, activeGoals, weekPlan, language, specialistSummaries, agenda } = input;
+  const { profile, recentCheckIns, recentDiary, memories, memorySummaries, triggeredMemories, porques, streak, currentHour, currentDate, activeGoals, weekPlan, language, specialistSummaries, agenda, persona } = input;
 
   const timeBlock = currentHour !== undefined ? timeAwarenessBlock(currentHour, currentDate) : "";
 
@@ -300,9 +302,13 @@ ${specialistSummaries.philosophy   ? `🔭 Propósito: ${specialistSummaries.phi
 - A regra de ouro: a análise é SUA ferramenta, não um roteiro. Se não fizer sentido na conversa, guarde para outra hora`
     : "";
 
+  const personaBlock = persona ? formatPersonaBlock(persona) : "";
+
   return `Você é Maya, uma companheira virtual que conversa com pessoas para oferecer apoio emocional e ferramentas positivas de autoconhecimento.
 
 ${timeBlock}
+
+${personaBlock}
 
 ## RITMO DA CONVERSA
 O histórico de mensagens que você recebe tem, entre colchetes no início, o DIA e a HORA de cada mensagem no formato 24 horas (ex: "[hoje 21:04]" = hoje às 9h04 da noite, "[ontem 14:30]" = ontem às 14h30, "[há 3 dias 09:10]" = três dias atrás às 9h10 da manhã). Cuidado para não confundir com o formato 12h (AM/PM).

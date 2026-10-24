@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { hasActiveSubscription, subscriptionRequired } from "@/lib/subscription-guard";
 import { buildMayaSystemPrompt } from "@/lib/maya";
 import { fetchMayaContext, toMayaInput, fetchTriggeredMemories } from "@/lib/maya-context";
+import { getMayaPersona } from "@/lib/maya-persona";
 import { relativeDayLabel } from "@/lib/utils";
 import { chatLLM } from "@/lib/maya-chat";
 import { logError } from "@/lib/error-log";
@@ -88,6 +89,7 @@ export async function POST(request: Request) {
       tz: clientTz,
     });
     mayaInput.triggeredMemories = triggeredMemories;
+    mayaInput.persona = await getMayaPersona(admin, user.id, { tz: clientTz });
 
     const systemPrompt = buildMayaSystemPrompt(mayaInput);
 

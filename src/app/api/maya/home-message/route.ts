@@ -8,6 +8,7 @@ import { callLLM } from "@/lib/llm";
 import { getLocalDate, getUserTimezone, getCurrentHour } from "@/lib/utils";
 import { NEGATIVE_MOODS } from "@/lib/maya-constants";
 import { NextRequest, NextResponse } from "next/server";
+import { getMayaPersona } from "@/lib/maya-persona";
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -133,6 +134,8 @@ export async function GET(req: NextRequest) {
         emoji: s.emoji,
       })),
     };
+
+    mayaInput.persona = await getMayaPersona(admin, user.id, { tz: userTz });
 
     // ── Generate message via LLM ──
     const { system, user: userPrompt } = buildHomeMessagePrompt(mayaInput);

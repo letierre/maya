@@ -5,6 +5,7 @@ import { getLocalNow, getTimezoneOffset, getCurrentHour, getLocalTimeFromISO } f
 import { callLLM } from "@/lib/llm";
 import { fetchMayaContext, toMayaInput, buildRecentChatTopics } from "@/lib/maya-context";
 import { buildProactivePrompt } from "@/lib/maya";
+import { getMayaPersona } from "@/lib/maya-persona";
 
 // GET /api/cron/maya-proactive — a Maya toma a iniciativa por push quando a pessoa
 // ainda não conversou com ela hoje. Agendado via pg_cron (migration 062).
@@ -76,6 +77,7 @@ async function sendProactive(
     ...toMayaInput(ctx, { name: firstName, gender, language, currentHour, currentDate: today, tz }),
     recentChatTopics: buildRecentChatTopics(ctx.chatMessages, today, tz) || undefined,
   };
+  mayaInput.persona = await getMayaPersona(admin, userId, { tz });
   const { system, user: userPrompt } = buildProactivePrompt(mayaInput);
 
   let greeting = "";
