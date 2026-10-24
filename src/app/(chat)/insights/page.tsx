@@ -317,7 +317,7 @@ export default function MayaChatPage() {
                 ) ?? 0,
               )
               .map((m: unknown) => {
-                const msg = m as { role: string; content: string; image_urls?: string[]; audio_url?: string; created_at: string };
+                const msg = m as { role: string; content: string; image_urls?: string[]; audio_url?: string; audio_duration?: number; created_at: string };
                 // Semeia a última atividade com a mensagem mais recente (o sort
                 // acima é ascendente, então a última iteração é a mais nova).
                 if (msg.created_at) lastActivityAtRef.current = new Date(msg.created_at).getTime();
@@ -326,6 +326,7 @@ export default function MayaChatPage() {
                   content: msg.content,
                   imageUrls: msg.image_urls || [],
                   audioUrl: msg.audio_url || null,
+                  audioDuration: typeof msg.audio_duration === "number" ? msg.audio_duration : undefined,
                   time: new Date(msg.created_at).toLocaleTimeString(getLocale(), {
                     hour: "2-digit",
                     minute: "2-digit",
@@ -816,7 +817,7 @@ export default function MayaChatPage() {
           status: "sent",
           pending: false,
           audioUrl: data.userAudioUrl || null,
-          audioDuration: recDuration,
+          audioDuration: data.audioDuration ?? recDuration,
         });
         scrollNow(); // mostra a transcrição inteira (de baixo p/ cima)
 

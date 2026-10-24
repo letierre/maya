@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const admin = getSupabaseAdmin();
   let query = admin
     .from("chat_messages")
-    .select("id, role, content, image_urls, audio_url, created_at")
+    .select("id, role, content, image_urls, audio_url, audio_duration, created_at")
     .eq("user_id", user.id)
     .or("chat_type.is.null,chat_type.eq.maya")
     .order("created_at", { ascending: false })

@@ -14,11 +14,12 @@ function deepgramLanguage(lang?: string): string {
   return "pt-BR";
 }
 
-/** Transcreve um áudio. Retorna string vazia se nada reconhecido. */
+/** Transcreve um áudio. Retorna string vazia se nada reconhecido, e a duração
+ *  em segundos (Deepgram metadata.duration) p/ guardar na nota de voz. */
 export async function transcribeAudio(
   audio: Buffer,
   opts: { mimeType?: string; language?: string; userId?: string } = {},
-): Promise<string> {
+): Promise<{ transcript: string; duration: number }> {
   const key = process.env.DEEPGRAM_API_KEY || "";
   const lang = deepgramLanguage(opts.language);
   const mime = opts.mimeType || "audio/webm";
@@ -54,5 +55,6 @@ export async function transcribeAudio(
 
   const data = await response.json();
   const transcript = data?.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "";
-  return String(transcript).trim();
+  const duration = typeof data?.metadata?.duration === "number" ? data.metadata.duration : 0;
+  return { transcript: String(transcript).trim(), duration };
 }

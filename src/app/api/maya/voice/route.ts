@@ -122,7 +122,7 @@ export async function POST(request: Request) {
     const language = (context.language as string) || "pt";
 
     // ── 4) STT ──
-    const transcript = await transcribeAudio(audioBuffer, { mimeType, language, userId: user.id });
+    const { transcript, duration } = await transcribeAudio(audioBuffer, { mimeType, language, userId: user.id });
     if (!transcript) {
       return NextResponse.json({ error: "Não consegui entender o áudio" }, { status: 422 });
     }
@@ -143,6 +143,7 @@ export async function POST(request: Request) {
       role: "user",
       content: transcript,
       audio_url: userAudioUrl,
+      audio_duration: userAudioUrl && duration > 0 ? duration : null,
       chat_type: "maya",
     });
 
@@ -221,7 +222,14 @@ export async function POST(request: Request) {
       });
     });
 
-    return NextResponse.json({ transcript, reply, audioUrl: assistantAudioUrl, userAudioUrl, ttsError });
+    return NextResponse.json({
+      transcript,
+      reply,
+      audioUrl: assistantAudioUrl,
+      userAudioUrl,
+      audioDuration: duration > 0 ? duration : null,
+      ttsError,
+    });
   } catch (error) {
     console.error("POST /api/maya/voice error:", error);
     logError({ path: "api/maya/voice POST", message: String(error), userId: user?.id });
