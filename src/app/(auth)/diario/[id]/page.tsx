@@ -205,7 +205,7 @@ export default function DiarioEntryPage() {
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 20px" }}>
 
         {/* Top bar */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0 20px", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "28px 0 20px", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
             <button type="button" onClick={() => router.push("/diario")}
               style={{

@@ -506,7 +506,7 @@ export default function NovoDiarioPage() {
   return (
     <div style={{ minHeight: "100dvh", background: "#0F0F14", paddingBottom: 100 }}>
       {/* Top bar */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px 20px", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "28px 24px 20px", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
           <button type="button" onClick={saveDraftAndGoBack}
             style={{
