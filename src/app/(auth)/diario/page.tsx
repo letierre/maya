@@ -176,7 +176,7 @@ export default function DiarioPage() {
       }}
     >
       {/* Header */}
-      <div className="px-6 pt-6 pb-2">
+      <div className="px-6 pt-7 pb-2">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{t("dj_memorias")}</p>
