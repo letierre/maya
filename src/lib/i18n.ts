@@ -2134,6 +2134,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     cl_cuidar_dias: "O que cuidar nos próximos dias",
     cl_dispensar: "Dispensar",
+    cl_persistente: "já faz um tempo",
 
     or_titulo: "Outros recursos",
     or_comece_correr: "Comece a correr",
@@ -2438,6 +2439,7 @@ const translations: Record<Lang, Record<string, string>> = {
     care_exercise_desc: "Você não tem se movimentado (caminhada, corrida ou musculação) há {{dias}}.",
     care_mood_desc: "Seu humor tem ficado mais pesado nos últimos {{dias}}.",
     care_social_desc: "Você tem ficado sem conversar pessoalmente com alguém há {{dias}}.",
+    mem_signal_social: "Nas últimas semanas, tem conversado pessoalmente com pouca frequência.",
     care_action_checkin: "Marcar no check-in",
     care_action_sleep: "Registrar sono",
     care_action_water: "Marcar água",
@@ -2484,6 +2486,9 @@ const translations: Record<Lang, Record<string, string>> = {
     nudge_mood_1: "{{greet}} vi que seu humor caiu nos últimos dias. Não precisa enfrentar isso {{sozinho}}. Me conta o que tá pesando?",
     nudge_mood_2: "{{greet}} tá tudo bem não estar bem. Vi que você não está nos seus melhores dias. Quer desabafar um pouco?",
     nudge_mood_3: "{{greet}} senti que você tá mais pra baixo esses dias. Se quiser conversar, tô aqui. Sem pressa, sem cobrança.",
+    nudge_social_1: "{{greet}} faz uns dias que você não conversa pessoalmente com ninguém. Foi escolha ou tá difícil?",
+    nudge_social_2: "{{greet}} notei que você anda mais na sua. Sinto falta de saber como você tá. Quer me contar?",
+    nudge_social_3: "{{greet}} a solidão às vezes chega sem a gente perceber. Faz um tempinho que você não troca uma conversa de verdade. Tá tudo bem?",
     nudge_burnout_1: "{{greet}} dormiu mal essa noite e tem tarefas de crescimento. Quer ajustar? Tarefas de manutenção podem ser melhores hoje.",
     nudge_burnout_2: "{{greet}} sei que seu sono não foi dos melhores. Tem tarefas ambiciosas hoje — quer trocar alguma por algo mais leve?",
     nudge_burnout_3: "{{greet}} notei que você dormiu mal mas planejou tarefas de crescimento. Tá se cobrando demais? Hoje pode ser dia de cuidar, não de performar.",
@@ -4617,6 +4622,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     cl_cuidar_dias: "Qué cuidar en los próximos días",
     cl_dispensar: "Descartar",
+    cl_persistente: "ya lleva un tiempo",
 
     or_titulo: "Otros recursos",
     or_comece_correr: "Empieza a correr",
@@ -4921,6 +4927,7 @@ const translations: Record<Lang, Record<string, string>> = {
     care_exercise_desc: "No te has estado moviendo (caminata, carrera o musculación) hace {{dias}}.",
     care_mood_desc: "Tu ánimo ha estado más pesado en los últimos {{dias}}.",
     care_social_desc: "Has estado sin conversar en persona con alguien hace {{dias}}.",
+    mem_signal_social: "En las últimas semanas, ha estado conversando en persona con poca frecuencia.",
     care_action_checkin: "Marcar en el check-in",
     care_action_sleep: "Registrar sueño",
     care_action_water: "Marcar agua",
@@ -4967,6 +4974,9 @@ const translations: Record<Lang, Record<string, string>> = {
     nudge_mood_1: "{{greet}} vi que tu ánimo cayó en los últimos días. No hace falta enfrentar esto {{sozinho}}. ¿Me cuentas qué pesa?",
     nudge_mood_2: "{{greet}} está bien no estar bien. Vi que no estás en tus mejores días. ¿Quieres desahogarte un poco?",
     nudge_mood_3: "{{greet}} sentí que estás más abajo estos días. Si quieres conversar, estoy aquí. Sin prisa, sin presión.",
+    nudge_social_1: "{{greet}} hace unos días que no hablas en persona con nadie. ¿Fue una elección o está difícil?",
+    nudge_social_2: "{{greet}} noté que estás más para adentro. Extraño saber cómo estás. ¿Quieres contarme?",
+    nudge_social_3: "{{greet}} la soledad a veces llega sin que nos demos cuenta. Hace un tiempo que no tienes una conversación de verdad. ¿Está todo bien?",
     nudge_burnout_1: "{{greet}} dormiste mal esta noche y tienes tareas de crecimiento. ¿Quieres ajustar? Las tareas de mantenimiento pueden ser mejores hoy.",
     nudge_burnout_2: "{{greet}} sé que tu sueño no fue de los mejores. Tienes tareas ambiciosas hoy — ¿quieres cambiar alguna por algo más liviano?",
     nudge_burnout_3: "{{greet}} noté que dormiste mal pero planeaste tareas de crecimiento. ¿Te estás exigiendo demasiado? Hoy puede ser día de cuidar, no de rendir.",
@@ -7100,6 +7110,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     cl_cuidar_dias: "What to care for in the coming days",
     cl_dispensar: "Dismiss",
+    cl_persistente: "it's been a while",
 
     or_titulo: "Other resources",
     or_comece_correr: "Start running",
@@ -7404,6 +7415,7 @@ const translations: Record<Lang, Record<string, string>> = {
     care_exercise_desc: "You haven't been moving (walking, running or strength training) for {{dias}}.",
     care_mood_desc: "Your mood has been heavier over the last {{dias}}.",
     care_social_desc: "You've gone {{dias}} without talking to someone in person.",
+    mem_signal_social: "Over the past few weeks, has been talking to people in person less often.",
     care_action_checkin: "Mark in check-in",
     care_action_sleep: "Log sleep",
     care_action_water: "Log water",
@@ -7450,6 +7462,9 @@ const translations: Record<Lang, Record<string, string>> = {
     nudge_mood_1: "{{greet}} I saw your mood dropped over the last few days. You don't have to face this {{sozinho}}. Tell me what's weighing on you?",
     nudge_mood_2: "{{greet}} it's okay not to be okay. I saw you're not at your best these days. Want to vent a little?",
     nudge_mood_3: "{{greet}} I sensed you're feeling more down these days. If you want to talk, I'm here. No rush, no pressure.",
+    nudge_social_1: "{{greet}} it's been a few days since you talked to someone in person. Was it a choice, or has it been hard?",
+    nudge_social_2: "{{greet}} I noticed you've been keeping more to yourself. I miss knowing how you're doing. Want to tell me?",
+    nudge_social_3: "{{greet}} loneliness sometimes creeps in without us noticing. It's been a while since you had a real conversation. Is everything okay?",
     nudge_burnout_1: "{{greet}} you slept badly tonight and have growth tasks. Want to adjust? Maintenance tasks might be better today.",
     nudge_burnout_2: "{{greet}} I know your sleep wasn't the best. You have ambitious tasks today — want to swap some for something lighter?",
     nudge_burnout_3: "{{greet}} I noticed you slept badly but planned growth tasks. Are you pushing yourself too hard? Today might be a day to care, not to perform.",

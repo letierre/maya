@@ -53,11 +53,16 @@ export function ModuloPreviewCard({
     >
       {/* Accent glow */}
       <div
-        className="absolute -top-4 -right-4 w-16 h-16 rounded-full opacity-20 pointer-events-none"
+        className="absolute -top-4 -right-4 w-16 h-16 rounded-full opacity-25 pointer-events-none"
         style={{ background: `radial-gradient(circle, ${accent} 0%, transparent 70%)` }}
       />
 
-      <span className="text-2xl leading-none relative">{emoji}</span>
+      <span
+        className="size-9 rounded-xl flex items-center justify-center text-[18px] leading-none relative"
+        style={{ background: `${accent}1a`, boxShadow: `inset 0 0 0 1px ${accent}30` }}
+      >
+        {emoji}
+      </span>
 
       <p
         className="m-0 text-[10px] font-bold tracking-[.1em] uppercase"

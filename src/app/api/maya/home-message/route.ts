@@ -17,8 +17,11 @@ function detectState(input: {
   todayMood: string | null;
   lastSleepQuality: number | null;
   anyNegativePattern: boolean;
+  anyPersistentConcern: boolean;
 }): string {
-  // Celebration: slept well + check-in done + positive mood
+  // Concern vence: padrão negativo recente OU um padrão que já dura dias/semanas.
+  if (input.anyNegativePattern || input.anyPersistentConcern) return "concern";
+  // Celebration: dormiu bem + check-in feito + humor positivo.
   if (
     input.hasTodayCheckIn &&
     input.lastSleepQuality !== null &&
@@ -28,8 +31,6 @@ function detectState(input: {
   ) {
     return "celebration";
   }
-  // Concern: negative pattern detected (bad sleep, bad mood, etc.)
-  if (input.anyNegativePattern) return "concern";
   // Default
   return "greeting";
 }
@@ -111,7 +112,10 @@ export async function GET(req: NextRequest) {
         c.mood_tags?.length > 0 && NEGATIVE_MOODS.has(c.mood_tags[0])
       ).length >= 2);
 
-    const state = detectState({ hasTodayCheckIn, todayMood, lastSleepQuality, anyNegativePattern });
+    const anyPersistentConcern = (careSignals ?? []).some(
+      (s) => s.recurrence && (s.recurrence.stage === "persistente" || s.recurrence.stage === "cronico"),
+    );
+    const state = detectState({ hasTodayCheckIn, todayMood, lastSleepQuality, anyNegativePattern, anyPersistentConcern });
 
     // ── Recent chat topics (for continuity) ──
     const recentChatTopics = buildRecentChatTopics(ctx.chatMessages, today, userTz) || undefined;
@@ -132,6 +136,9 @@ export async function GET(req: NextRequest) {
         title: s.title,
         description: s.description,
         emoji: s.emoji,
+        recurrence: s.recurrence
+          ? { stage: s.recurrence.stage, consecutiveDays: s.recurrence.consecutiveDays }
+          : undefined,
       })),
     };
 

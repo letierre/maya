@@ -122,7 +122,7 @@ export async function GET() {
     // ── Motor único de sinais: escolhe o nudge mais prioritário ──
     const { signals } = await computeSignals(user.id, { firstName, gender, language: lang });
     const bestNudge = signals
-      .filter((s) => s.feed.includes("nudge"))
+      .filter((s) => s.feed.includes("nudge") && s.recurrence?.stage !== "cronico")
       .sort((a, b) => a.priority - b.priority)[0];
 
     if (bestNudge) {
@@ -130,6 +130,7 @@ export async function GET() {
         streak_risk: "a pessoa tem uma corrente de check-ins em risco de quebrar hoje",
         sleep: "a pessoa dormiu mal nos últimos dias seguidos",
         mood: "o humor da pessoa caiu nos últimos dias (moods negativos consecutivos)",
+        social: "a pessoa tem ficado sem conversar pessoalmente com alguém há vários dias",
         diary_abandoned: "a pessoa não escreve no diário há vários dias",
         goal_stale: "uma meta ativa está parada há mais de 7 dias sem atividade",
         spending: "os gastos do mês estão elevados",
@@ -141,7 +142,12 @@ export async function GET() {
         checkin_miss: "a pessoa ainda não fez check-in hoje",
       };
 
-      const triggerDesc = triggerDescriptions[bestNudge.id] || bestNudge.description;
+      const recurrenceNote = bestNudge.recurrence?.stage === "persistente"
+        ? " (este padrão já persiste há vários dias — não repita a dica; acolha e convide à conversa)"
+        : bestNudge.recurrence?.stage === "recorrente"
+          ? " (este padrão tem se repetido — note que você já falou sobre isso antes)"
+          : "";
+      const triggerDesc = (triggerDescriptions[bestNudge.id] || bestNudge.description) + recurrenceNote;
 
       // Persona única — mesma fonte do chat/home/planejamento, com o chat
       // recente para o nudge não contradizer a conversa.

@@ -1,4 +1,5 @@
 import { computeSignals, type Signal } from "@/lib/signals";
+import type { AlertRecurrence } from "@/lib/alert-memory";
 
 // ── Tipos (shape pública preservada para os consumidores existentes) ───────────
 
@@ -15,6 +16,7 @@ export interface CareSignal {
   /** Peso ranqueável = base × (1 + min(streak, teto)). */
   weight: number;
   action?: { label: string; href: string };
+  recurrence?: AlertRecurrence;
 }
 
 function toCareSignal(s: Signal): CareSignal {
@@ -27,6 +29,7 @@ function toCareSignal(s: Signal): CareSignal {
     streak: s.streak,
     weight: s.weight,
     action: s.action,
+    recurrence: s.recurrence,
   };
 }
 

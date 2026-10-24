@@ -1,6 +1,14 @@
+import { after } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getLocalDate, getWeekMondayDate } from "@/lib/utils";
+import { getLocalDate, getLocalYesterday, getWeekMondayDate } from "@/lib/utils";
 import { t as tt, type Lang } from "@/lib/i18n";
+import {
+  nextAlertMemory,
+  saveAlertMemory,
+  writeChronicMemory,
+  type AlertMemory,
+  type AlertRecurrence,
+} from "@/lib/alert-memory";
 import {
   NEGATIVE_MOODS,
   SLEEP_QUALITY_MIN,
@@ -39,6 +47,8 @@ export interface Signal {
   message?: string;
   action?: { label: string; href: string };
   feed: SignalFeed[];
+  /** Recorrência do alerta (dias consecutivos + estágio) — preenchido no computeSignals. */
+  recurrence?: AlertRecurrence;
 }
 
 export interface PlanAnalytics {
@@ -707,6 +717,8 @@ function nudgeMessageFor(id: string, greet: string, gender: string, streak: numb
       return tt(lang, pick(["nudge_sleep_1", "nudge_sleep_2", "nudge_sleep_3"]), { greet, dias: diasStr(streak, lang) });
     case "mood":
       return tt(lang, pick(["nudge_mood_1", "nudge_mood_2", "nudge_mood_3"]), { greet, sozinho: sozinhoWord(gender, lang) });
+    case "social":
+      return tt(lang, pick(["nudge_social_1", "nudge_social_2", "nudge_social_3"]), { greet });
     default:
       return undefined;
   }
@@ -717,8 +729,8 @@ function mergeSignals(care: Signal[], nudge: Signal[], plan: Signal[], firstName
 
   for (const s of care) {
     byId.set(s.id, { ...s });
-    // Sono e humor também alimentam o nudge (mesmo fato = um sinal).
-    if (s.id === "sleep" || s.id === "mood") {
+    // Sono, humor e social também alimentam o nudge (mesmo fato = um sinal).
+    if (s.id === "sleep" || s.id === "mood" || s.id === "social") {
       byId.get(s.id)!.feed = ["care", "nudge"];
       byId.get(s.id)!.priority = 2;
       byId.get(s.id)!.message = nudgeMessageFor(s.id, saludo(firstName, lang), gender, s.streak, lang);
@@ -838,6 +850,52 @@ export async function computeSignals(
 
   const signals = mergeSignals(care, nudge, plan, firstName, gender, lang);
   const metrics = calculateMetrics(current, history, lang);
+
+  // ── Memória de recorrência: há quantos dias cada alerta vem disparando ──
+  // (só os de bem-estar — care/nudge — não os insights de planejamento).
+  const context = (prefs?.context ?? {}) as Record<string, unknown>;
+  const prevAlertMemory = (context.maya_alert_memory ?? {}) as AlertMemory;
+  const activeIds = signals
+    .filter((s) => s.feed.includes("care") || s.feed.includes("nudge"))
+    .map((s) => s.id);
+  const alertMemory = nextAlertMemory(prevAlertMemory, activeIds, today, getLocalYesterday());
+
+  // Marca os que ACABARAM de virar crônicos (para gravar o fato de longo prazo).
+  const newlyChronic = signals.filter((s) => {
+    const e = alertMemory[s.id];
+    return !!e && e.stage === "cronico" && !e.memoryWritten;
+  });
+  if (newlyChronic.length > 0) {
+    for (const s of newlyChronic) {
+      alertMemory[s.id] = { ...alertMemory[s.id], memoryWritten: true };
+    }
+  }
+
+  // Anexa a recorrência a cada sinal (as superfícies leem stage/consecutiveDays).
+  for (const s of signals) {
+    const e = alertMemory[s.id];
+    if (e) {
+      s.recurrence = {
+        consecutiveDays: e.consecutiveDays,
+        stage: e.stage,
+        firstSeen: e.firstSeen,
+        shownCount: e.shownCount,
+      };
+    }
+  }
+
+  // Persiste se mudou (a memória avança diariamente) e grava os fatos crônicos
+  // em background, sem atrasar a resposta.
+  if (JSON.stringify(alertMemory) !== JSON.stringify(prevAlertMemory)) {
+    await saveAlertMemory(admin, userId, context, alertMemory);
+  }
+  if (newlyChronic.length > 0) {
+    after(() => {
+      for (const s of newlyChronic) {
+        void writeChronicMemory(admin, userId, s.id, lang).catch(() => {});
+      }
+    });
+  }
 
   return { signals, plan: metrics };
 }

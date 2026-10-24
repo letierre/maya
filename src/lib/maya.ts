@@ -63,7 +63,12 @@ export interface MayaInput {
   specialistSummaries?: SpecialistSummaries;
   areaVisions?: { area: string; statement: string }[];
   agenda?: { date: string; title: string; time: string | null; itemType: string }[];
-  careSignals?: { title: string; description: string; emoji: string }[];
+  careSignals?: {
+    title: string;
+    description: string;
+    emoji: string;
+    recurrence?: { stage: string; consecutiveDays: number };
+  }[];
   persona?: MayaPersona;
   isConversation?: boolean;
 }
@@ -517,12 +522,20 @@ export function buildHomeMessagePrompt(
 
   const careBlock = input.careSignals && input.careSignals.length > 0
     ? `\n\n## O QUE CUIDAR NOS PRÓXIMOS DIAS (detectado pelos dados)
-O cuidado mais urgente detectado é: ${input.careSignals[0].emoji} ${input.careSignals[0].title} — ${input.careSignals[0].description}
+${input.careSignals.map((s) => {
+  const rec = s.recurrence;
+  const recLine = rec
+    ? ` [${rec.stage === "cronico" ? "PADRÃO CRÔNICO" : rec.stage === "persistente" ? "persistente" : rec.stage === "recorrente" ? "recorrente" : "recente"} — ${rec.consecutiveDays} dias seguidos]`
+    : "";
+  return `- ${s.emoji} ${s.title} — ${s.description}${recLine}`;
+}).join("\n")}
 
-REGRAS:
-- Mencione esse cuidado com naturalidade e carinho, se couber na mensagem — sem relatório, sem números de diagnóstico.
+REGRAS (a progressão importa):
+- Sinal "recente"/"recorrente": mencione com naturalidade e carinho — sem relatório, sem números de diagnóstico.
+- Sinal "persistente" (7+ dias): NÃO repita a dica. A pessoa já a ouviu. Mude para acolhimento + convite à conversa ("faz um tempo que você anda assim... quer me contar?").
+- Sinal "PADRÃO CRÔNICO" (14+ dias): NUNCA dê dica nem cobre. É um padrão de vida, não um deslize. Fale com ternura e profundidade — como quem se preocupa com uma amiga — e abra espaço para ela desabafar. Nunca rotule nem culpe.
 - NÃO force: se a conversa recente trouxer algo mais importante, priorize isso.
-- Máximo uma menção curta.`
+- No máximo uma menção.`
     : "";
 
   const user = `## SUA TAREFA AGORA
