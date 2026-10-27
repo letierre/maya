@@ -64,6 +64,15 @@ export function getLocalYesterday(tz?: string): string {
   }).format(d);
 }
 
+/** Returns the date (YYYY-MM-DD) `days` days ago in the user's timezone.
+ *  Safe across month/year boundaries (anchored at noon to avoid DST drift). */
+export function getLocalDateDaysAgo(days: number, tz?: string): string {
+  const today = getLocalDate(tz);
+  const d = new Date(today + "T12:00:00");
+  d.setDate(d.getDate() - days);
+  return dateToYMD(d);
+}
+
 /** Converts a UTC ISO timestamp string to a local date string (YYYY-MM-DD).
  *  In the browser this uses the user's actual timezone; on the server
  *  pass `tz` for the target timezone (falls back to UTC-3). */

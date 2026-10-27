@@ -73,7 +73,13 @@ export function ModuloPreviewCard({
 
       <p
         className="m-0 text-[12px] font-medium leading-snug flex-1"
-        style={{ color: "#e0d6ff" }}
+        style={{
+          color: "#e0d6ff",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+        }}
       >
         {preview || sub || "—"}
       </p>

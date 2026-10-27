@@ -14,28 +14,33 @@ export function CareList() {
   const { t } = useTranslation();
   const [items, setItems] = useState<CareSignal[]>([]);
   const [dismissed, setDismissed] = useState(false);
+  const [ready, setReady] = useState(false);
 
   const loadItems = useCallback((fresh = false) => {
     // Sinais crônicos saem da lista: não martelar o mesmo alerta por semanas.
     const visible = (list: CareSignal[]) => list.filter((it) => it.recurrence?.stage !== "cronico");
+    const finish = () => setReady(true);
     if (fresh) {
       // Dados mudaram (evento de care-data): busca fresca, sem cache.
       fetch("/api/maya/care-list")
         .then((r) => r.json())
         .then((data) => setItems(visible(data.items ?? [])))
-        .catch(() => {});
+        .catch(() => {})
+        .finally(finish);
       return;
     }
     // Montagem/volta à home: usa cache para não recomputar os sinais toda vez.
     cachedFetch<{ items?: CareSignal[] }>("/api/maya/care-list")
       .then((data) => setItems(visible(data.items ?? [])))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(finish);
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (localStorage.getItem(`care_list_dismissed_${getLocalDate()}`)) {
       setDismissed(true);
+      setReady(true);
       return;
     }
     loadItems();
@@ -49,6 +54,24 @@ export function CareList() {
       loadItems(true);
     });
   }, [loadItems]);
+
+  if (!ready) {
+    return (
+      <div className="px-3.5 pt-3">
+        <div
+          className="rounded-[18px] p-4 animate-pulse"
+          style={{ background: "var(--surface)", border: "1px solid var(--surface-border)" }}
+        >
+          <div className="h-3 rounded-full w-28" style={{ background: "var(--surface-3)" }} />
+          <div className="mt-2 h-4 rounded-full w-44" style={{ background: "var(--surface-3)" }} />
+          <div className="mt-3 flex flex-col gap-1.5">
+            <div className="h-12 rounded-xl" style={{ background: "var(--surface-2)" }} />
+            <div className="h-12 rounded-xl" style={{ background: "var(--surface-2)" }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (dismissed || items.length === 0) return null;
 

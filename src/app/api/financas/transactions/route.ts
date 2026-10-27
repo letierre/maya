@@ -7,6 +7,8 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const month = req.nextUrl.searchParams.get("month");       // YYYY-MM
+  const from = req.nextUrl.searchParams.get("from");         // YYYY-MM-DD (inclusive)
+  const to = req.nextUrl.searchParams.get("to");             // YYYY-MM-DD (inclusive)
   const limit = parseInt(req.nextUrl.searchParams.get("limit") ?? "200", 10);
   const offset = parseInt(req.nextUrl.searchParams.get("offset") ?? "0", 10);
 
@@ -19,7 +21,10 @@ export async function GET(req: NextRequest) {
     .limit(Math.min(limit, 500))
     .range(offset, offset + Math.min(limit, 500) - 1);
 
-  if (month) {
+  if (from || to) {
+    if (from) query = query.gte("date", from);
+    if (to) query = query.lte("date", to);
+  } else if (month) {
     // Calculate correct last day of the month
     const [y, m] = month.split("-").map(Number);
     const lastDay = new Date(y, m, 0).getDate(); // e.g. Feb → 28/29, Apr → 30

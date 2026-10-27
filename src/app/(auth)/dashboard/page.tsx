@@ -2,14 +2,15 @@
 import { getLocale } from "@/lib/language";
 
 import { useEffect, useState, useMemo } from "react";
-import { getLocalDate, getUserTimezone } from "@/lib/utils";
+import { getLocalDate, getLocalDateDaysAgo, getUserTimezone } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 import { cachedFetch, safeCachedFetch } from "@/lib/fetch-cache";
 import { habitProgress } from "@/lib/checkin-answered";
+import { getMoodById, getMoodLabel } from "@/lib/checkin-moods";
 import { useTranslation } from "@/lib/useTranslation";
 import { toast } from "sonner";
 import { MayaHero } from "@/components/MayaHero";
-import { TodayStrip } from "@/components/TodayStrip";
 import { RecentThread, type ThreadDay } from "@/components/RecentThread";
 import { ModuloPreviewCard } from "@/components/ModuloPreviewCard";
 import { OutrosRecursos } from "@/components/OutrosRecursos";
@@ -40,10 +41,14 @@ type DashboardSnapshot = {
   mayaNudgeAction: { label: string; href: string } | null;
   homeMessage: { message: string; state?: string; action?: { label: string; href: string } } | null;
   todaySpending: number | null;
-  monthDailyAvg: number | null;
+  weeklyDailyAvg: number | null;
   todayTasks: WeeklyTask[];
-  todayMealsKcal: number | null;
-  todayMealsCount: number;
+  diaryPreview: string | null;
+  diarySub: string;
+  metasPreview: string | null;
+  metasSub: string;
+  nutricaoPreview: string | null;
+  nutricaoSub: string;
 };
 
 let dashboardSnapshot: DashboardSnapshot | null = null;
@@ -92,13 +97,19 @@ export default function DashboardPage() {
 
   // Finance
   const [todaySpending, setTodaySpending] = useState<number | null>(snap?.todaySpending ?? null);
-  const [monthDailyAvg, setMonthDailyAvg] = useState<number | null>(snap?.monthDailyAvg ?? null);
+  const [weeklyDailyAvg, setWeeklyDailyAvg] = useState<number | null>(snap?.weeklyDailyAvg ?? null);
   const [currency, setCurrency] = useState(snap?.currency ?? "BRL");
 
-  // Weekly tasks & meals
+  // Weekly tasks
   const [todayTasks, setTodayTasks] = useState<WeeklyTask[]>(snap?.todayTasks ?? []);
-  const [todayMealsKcal, setTodayMealsKcal] = useState<number | null>(snap?.todayMealsKcal ?? null);
-  const [todayMealsCount, setTodayMealsCount] = useState<number>(snap?.todayMealsCount ?? 0);
+
+  // Previews de "Seus espaços" (diário, metas, nutrição) — dados carregados no core
+  const [diaryPreview, setDiaryPreview] = useState<string | null>(snap?.diaryPreview ?? null);
+  const [diarySub, setDiarySub] = useState<string>(snap?.diarySub ?? "");
+  const [metasPreview, setMetasPreview] = useState<string | null>(snap?.metasPreview ?? null);
+  const [metasSub, setMetasSub] = useState<string>(snap?.metasSub ?? "");
+  const [nutricaoPreview, setNutricaoPreview] = useState<string | null>(snap?.nutricaoPreview ?? null);
+  const [nutricaoSub, setNutricaoSub] = useState<string>(snap?.nutricaoSub ?? "");
 
   // Salva o estado renderizado para a próxima montagem da home ser instantânea.
   useEffect(() => {
@@ -115,10 +126,14 @@ export default function DashboardPage() {
       mayaNudgeAction,
       homeMessage,
       todaySpending,
-      monthDailyAvg,
+      weeklyDailyAvg,
       todayTasks,
-      todayMealsKcal,
-      todayMealsCount,
+      diaryPreview,
+      diarySub,
+      metasPreview,
+      metasSub,
+      nutricaoPreview,
+      nutricaoSub,
     };
   }, [
     loading,
@@ -133,10 +148,14 @@ export default function DashboardPage() {
     mayaNudgeAction,
     homeMessage,
     todaySpending,
-    monthDailyAvg,
+    weeklyDailyAvg,
     todayTasks,
-    todayMealsKcal,
-    todayMealsCount,
+    diaryPreview,
+    diarySub,
+    metasPreview,
+    metasSub,
+    nutricaoPreview,
+    nutricaoSub,
   ]);
 
   // ── Fetch core data ──────────────────────────────────────────
@@ -154,8 +173,11 @@ export default function DashboardPage() {
       }>("/api/preferences"),
       cachedFetch<{ name?: string; gender?: string }>("/api/profile").catch(() => ({}) as { name?: string; gender?: string }),
       cachedFetch<SleepLog[]>("/api/sleep?limit=7"),
+      safeCachedFetch<Array<{ date: string; content: string; title: string }>>("/api/diary?limit=1"),
+      safeCachedFetch<Array<{ status: string; title: string; goal_stages?: Array<{ status: string }> }>>("/api/goals"),
+      safeCachedFetch<Array<{ date: string; meal_type: string }>>(`/api/meals?date=${today}&tz=${encodeURIComponent(userTz)}`),
     ])
-      .then(([checkInsData, prefsData, profileData, sleepData]) => {
+      .then(([checkInsData, prefsData, profileData, sleepData, diaryData, goalsData, mealsData]) => {
         setEnabledKeys(prefsData.enabled_questions || []);
 
         if (Array.isArray(checkInsData)) {
@@ -165,15 +187,59 @@ export default function DashboardPage() {
 
         if (Array.isArray(sleepData)) {
           setSleepLogs(sleepData);
-          const todaySleep = sleepData.find((s: SleepLog) => s.date === today);
-          if (todaySleep) setRecentSleep(todaySleep);
-          else if (sleepData.length > 0) setRecentSleep(sleepData[0]);
+          // Sem fallback para o último registro: sem sono de HOJE, fica em branco.
+          setRecentSleep(sleepData.find((s: SleepLog) => s.date === today) ?? null);
         }
 
         if (profileData.name) setUserName(profileData.name);
         if (profileData.gender) setUserGender(profileData.gender);
         else if (prefsData.context?.gender) setUserGender(prefsData.context.gender as string);
         if (prefsData.context?.currency) setCurrency(prefsData.context.currency as string);
+
+        // Diário
+        if (diaryData && diaryData.length > 0) {
+          const e = diaryData[0];
+          const isToday = e.date === today;
+          const text = e.content?.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+          setDiaryPreview(text ? text.slice(0, 60) + (text.length > 60 ? "…" : "") : e.title || t("dash_entrada_dia"));
+          setDiarySub(isToday ? t("ag_hoje") : new Date(e.date + "T12:00:00").toLocaleDateString(getLocale(), { day: "numeric", month: "short" }));
+        } else {
+          setDiaryPreview(t("dash_escreva_dia"));
+          setDiarySub(t("dash_nova_entrada"));
+        }
+
+        // Metas
+        if (goalsData && goalsData.length > 0) {
+          const active = goalsData.filter((g) => g.status === "ativa" || g.status === "pausada");
+          if (active.length > 0) {
+            const totalStages = active.reduce((sum, g) => sum + (g.goal_stages?.length || 0), 0);
+            const doneStages = active.reduce(
+              (sum, g) => sum + (g.goal_stages?.filter((s) => s.status === "concluida").length || 0), 0
+            );
+            const pct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
+            setMetasPreview(active.length === 1 ? t("dash_meta_ativa", { count: String(active.length) }) : t("dash_metas_ativas", { count: String(active.length) }));
+            setMetasSub(t("dash_etapas_concluidas", { pct: String(pct), done: String(doneStages), total: String(totalStages) }));
+          } else {
+            const done = goalsData.filter((g) => g.status === "concluida").length;
+            setMetasPreview(done > 0 ? (done === 1 ? t("dash_meta_concluida", { count: String(done) }) : t("dash_metas_concluidas", { count: String(done) })) : t("dash_crie_meta"));
+            setMetasSub(done > 0 ? t("dash_todas_completas") : t("dash_comece_agora"));
+          }
+        } else {
+          setMetasPreview(t("dash_crie_meta"));
+          setMetasSub(t("dash_comece_agora"));
+        }
+
+        // Nutrição
+        const meals = mealsData ?? [];
+        const mealCount = meals.length;
+        setNutricaoPreview(mealCount > 0 ? t("dash_refeicoes", { count: String(mealCount) }) : t("dash_nenhuma_refeicao"));
+        if (mealCount > 0) {
+          const types = new Set(meals.map((m) => m.meal_type));
+          const missing = 4 - types.size;
+          setNutricaoSub(missing > 0 ? (missing === 1 ? t("dash_refeicao_pendente", { n: String(missing) }) : t("dash_refeicoes_pendentes", { n: String(missing) })) : t("dash_todas_registradas"));
+        } else {
+          setNutricaoSub(t("dash_registre_primeira"));
+        }
 
         setLoading(false);
       })
@@ -211,22 +277,19 @@ export default function DashboardPage() {
       })
       .catch(() => {});
 
-    // Finance — independent
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    // Finance — média diária dos últimos 7 dias (janela rolante), para contas
+    // grandes no dia 1 (aluguel, luz…) não poluírem a média do mês inteiro.
     cachedFetch<Array<{ date: string; type: string; amount: number }>>(
-      `/api/financas/transactions?month=${currentMonth}`
+      `/api/financas/transactions?from=${getLocalDateDaysAgo(6)}&to=${today}`
     )
       .then((txs) => {
         if (Array.isArray(txs)) {
-          const todayStr = today;
-          const todayTx = txs.filter((tx) => tx.date === todayStr);
+          const todayTx = txs.filter((tx) => tx.date === today);
           const total = todayTx.reduce((sum, tx) => sum + (tx.type === "despesa" ? tx.amount : 0), 0);
           setTodaySpending(total);
 
-          const monthExpenses = txs.reduce((sum, tx) => sum + (tx.type === "despesa" ? tx.amount : 0), 0);
-          const daysElapsed = new Date().getDate();
-          setMonthDailyAvg(monthExpenses / Math.max(1, daysElapsed));
+          const weekExpenses = txs.reduce((sum, tx) => sum + (tx.type === "despesa" ? tx.amount : 0), 0);
+          setWeeklyDailyAvg(weekExpenses / 7);
         }
       })
       .catch(() => {});
@@ -237,17 +300,6 @@ export default function DashboardPage() {
         const todayDow = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
         const allTasks: WeeklyTask[] = weeklyPlanData?.current?.weekly_tasks ?? [];
         setTodayTasks(allTasks.filter((t: WeeklyTask) => t.day_of_week === todayDow));
-      })
-      .catch(() => {});
-
-    // Today's meals — independent
-    cachedFetch<Array<{ macros: { calorias_kcal: number } | null }>>(`/api/meals?date=${today}&tz=${encodeURIComponent(userTz)}`)
-      .then((meals) => {
-        if (Array.isArray(meals)) {
-          setTodayMealsCount(meals.length);
-          const kcal = meals.reduce((sum, m) => sum + (m.macros?.calorias_kcal ?? 0), 0);
-          setTodayMealsKcal(kcal > 0 ? kcal : null);
-        }
       })
       .catch(() => {});
   }, [router]);
@@ -353,19 +405,8 @@ export default function DashboardPage() {
         loading={loading}
       />
 
-      {/* ═══ HOJE NUM PISCAR ═══ */}
-      <TodayStrip
-        recentSleep={recentSleep}
-        todayCheckIn={todayCheckIn}
-        userGender={userGender}
-        todaySpending={todaySpending}
-        monthDailyAvg={monthDailyAvg}
-        todayTasks={todayTasks}
-        todayMealsCount={todayMealsCount}
-        todayMealsKcal={todayMealsKcal}
-        loading={loading}
-        currency={currency}
-      />
+      {/* ═══ CHECK-IN DE HOJE ═══ */}
+      <CheckinCard todayCheckIn={todayCheckIn} userGender={userGender} loading={loading} />
 
       {/* ═══ O QUE CUIDAR NOS PRÓXIMOS DIAS ═══ */}
       <CareList />
@@ -379,11 +420,11 @@ export default function DashboardPage() {
           {t("dash_seus_espacos")}
         </p>
         <div className="grid grid-cols-2 gap-2">
-          <DiarioPreview loading={loading} />
+          <DiarioPreview loading={loading} preview={diaryPreview} sub={diarySub} />
           <SonoPreview loading={loading} recentSleep={recentSleep} />
-          <NutricaoPreview loading={loading} />
-          <FinancasPreview loading={loading} todaySpending={todaySpending} monthDailyAvg={monthDailyAvg} currency={currency} />
-          <MetasPreview loading={loading} />
+          <NutricaoPreview loading={loading} preview={nutricaoPreview} sub={nutricaoSub} />
+          <FinancasPreview loading={loading} todaySpending={todaySpending} weeklyDailyAvg={weeklyDailyAvg} currency={currency} />
+          <MetasPreview loading={loading} preview={metasPreview} sub={metasSub} />
           <PlanejamentoPreview loading={loading} todayTasks={todayTasks} />
         </div>
       </div>
@@ -393,27 +434,6 @@ export default function DashboardPage() {
 
       {/* ═══ O FIO ═══ */}
       <RecentThread days={weekDays} userGender={userGender} />
-
-      {/* ═══ CTA REGISTRAR ═══ */}
-      <div className="px-3.5 pt-4">
-        <button
-          type="button"
-          onClick={() => router.push("/check-in")}
-          className="w-full py-[15px] rounded-2xl border-0 text-white text-[15px] font-bold cursor-pointer font-[inherit]"
-          style={{
-            background: "linear-gradient(135deg, #7C5CFF, #A78BFA)",
-            boxShadow: "0 4px 20px oklch(0.55 0.2 270 / 0.35)",
-          }}
-        >
-          {todayCheckIn ? t("dash_editar_checkin") : t("dash_registrar_dia")}
-        </button>
-        <p
-          className="text-center m-0 mt-1.5 text-[11px]"
-          style={{ color: "var(--text-muted)" }}
-        >
-          {todayCheckIn ? t("dash_conectar_pontos") : t("dash_como_atualizo")}
-        </p>
-      </div>
 
       {/* ═══ CUIDADOS DE HOJE ═══ */}
       {todayCheckIn && (
@@ -437,31 +457,70 @@ export default function DashboardPage() {
 
 // ── Module preview sub-components (inline — thin wrappers) ─────
 
-function DiarioPreview({ loading }: { loading: boolean }) {
+function CheckinCard({ todayCheckIn, userGender, loading }: {
+  todayCheckIn: CheckIn | null;
+  userGender: string;
+  loading: boolean;
+}) {
   const { t } = useTranslation();
-  const [preview, setPreview] = useState<string | null>(null);
-  const [sub, setSub] = useState<string>("");
-  const [ready, setReady] = useState(false);
+  const router = useRouter();
 
-  useEffect(() => {
-    safeCachedFetch<Array<{ date: string; content: string; title: string }>>("/api/diary?limit=1")
-      .then((entries) => {
-        if (entries && entries.length > 0) {
-          const e = entries[0];
-          const today = getLocalDate();
-          const isToday = e.date === today;
-          const text = e.content?.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
-          setPreview(text ? text.slice(0, 60) + (text.length > 60 ? "…" : "") : e.title || t("dash_entrada_dia"));
-          setSub(isToday ? t("ag_hoje") : new Date(e.date + "T12:00:00").toLocaleDateString(getLocale(), { day: "numeric", month: "short" }));
-        } else {
-          setPreview(t("dash_escreva_dia"));
-          setSub(t("dash_nova_entrada"));
-        }
-        setReady(true);
-      })
-      .catch(() => setReady(true));
-  }, []);
+  if (loading) {
+    return (
+      <div className="px-3.5 pt-4">
+        <div
+          className="rounded-2xl p-4 flex items-center gap-3 animate-pulse"
+          style={{ background: "var(--surface)", border: "1px solid var(--surface-border)" }}
+        >
+          <div className="size-9 rounded-full" style={{ background: "var(--surface-3)" }} />
+          <div className="flex-1 flex flex-col gap-2">
+            <div className="h-3 rounded-full w-24" style={{ background: "var(--surface-3)" }} />
+            <div className="h-3 rounded-full w-36" style={{ background: "var(--surface-3)" }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
+  const moodTagId = todayCheckIn?.mood_tags?.[0];
+  const moodChip = moodTagId ? getMoodById(moodTagId) : undefined;
+  const moodLabel = moodChip ? getMoodLabel(moodChip, userGender) : todayCheckIn?.feeling || null;
+  const emoji = moodChip?.emoji ?? "😊";
+
+  return (
+    <div className="px-3.5 pt-4">
+      <button
+        type="button"
+        onClick={() => router.push("/check-in")}
+        className="w-full rounded-2xl p-4 flex items-center gap-3 text-left border-0 cursor-pointer transition-transform active:scale-[0.99] relative overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, rgba(124,92,255,.18), rgba(167,139,250,.08))",
+          border: "1px solid rgba(167,139,250,.22)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,.06)",
+        }}
+      >
+        <span className="text-2xl leading-none">{emoji}</span>
+        <div className="flex-1 min-w-0">
+          <p className="m-0 text-[10px] font-bold tracking-[.12em] uppercase" style={{ color: "oklch(0.65 0.12 270)" }}>
+            {t("dash_checkin_titulo")}
+          </p>
+          <p className="m-0 mt-0.5 text-[15px] font-bold leading-tight" style={{ color: "#e0d6ff" }}>
+            {todayCheckIn ? t("dash_editar_checkin") : t("dash_registrar_dia")}
+          </p>
+          {moodLabel && (
+            <p className="m-0 mt-0.5 text-[11px]" style={{ color: "var(--text-muted)" }}>
+              {moodLabel}
+            </p>
+          )}
+        </div>
+        <ArrowRight className="w-4 h-4 shrink-0" style={{ color: "#A78BFA" }} />
+      </button>
+    </div>
+  );
+}
+
+function DiarioPreview({ loading, preview, sub }: { loading: boolean; preview: string | null; sub: string }) {
+  const { t } = useTranslation();
   return (
     <ModuloPreviewCard
       emoji="📖"
@@ -470,7 +529,7 @@ function DiarioPreview({ loading }: { loading: boolean }) {
       sub={sub}
       href="/diario"
       accent="#5EEAD4"
-      loading={loading || !ready}
+      loading={loading}
     />
   );
 }
@@ -521,10 +580,10 @@ function fmtCurrency(amount: number, currency: string): string {
   }
 }
 
-function FinancasPreview({ loading, todaySpending, monthDailyAvg, currency }: {
+function FinancasPreview({ loading, todaySpending, weeklyDailyAvg, currency }: {
   loading: boolean;
   todaySpending: number | null;
-  monthDailyAvg: number | null;
+  weeklyDailyAvg: number | null;
   currency: string;
 }) {
   const { t } = useTranslation();
@@ -534,7 +593,7 @@ function FinancasPreview({ loading, todaySpending, monthDailyAvg, currency }: {
       label={t("dash_financas")}
       preview={todaySpending != null ? t("dash_gasto_hoje", { amount: fmtCurrency(todaySpending, currency) }) : t("dash_sem_gastos")}
       sub={todaySpending != null
-        ? (monthDailyAvg != null ? t("dash_media_dia", { amount: fmtCurrency(monthDailyAvg, currency) }) : t("dash_gastos_hoje_sub"))
+        ? (weeklyDailyAvg != null && weeklyDailyAvg > 0 ? t("dash_media_semana", { amount: fmtCurrency(weeklyDailyAvg, currency) }) : t("dash_gastos_hoje_sub"))
         : t("dash_registre_despesas")}
       href="/financas"
       accent="#fbbf24"
@@ -543,39 +602,8 @@ function FinancasPreview({ loading, todaySpending, monthDailyAvg, currency }: {
   );
 }
 
-function MetasPreview({ loading }: { loading: boolean }) {
+function MetasPreview({ loading, preview, sub }: { loading: boolean; preview: string | null; sub: string }) {
   const { t } = useTranslation();
-  const [preview, setPreview] = useState<string | null>(null);
-  const [sub, setSub] = useState<string>("");
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    safeCachedFetch<Array<{ status: string; title: string; goal_stages?: Array<{ status: string }> }>>("/api/goals")
-      .then((goals) => {
-        if (goals && goals.length > 0) {
-          const active = goals.filter((g) => g.status === "ativa" || g.status === "pausada");
-          if (active.length > 0) {
-            const totalStages = active.reduce((sum, g) => sum + (g.goal_stages?.length || 0), 0);
-            const doneStages = active.reduce(
-              (sum, g) => sum + (g.goal_stages?.filter((s) => s.status === "concluida").length || 0), 0
-            );
-            const pct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
-            setPreview(active.length === 1 ? t("dash_meta_ativa", { count: String(active.length) }) : t("dash_metas_ativas", { count: String(active.length) }));
-            setSub(t("dash_etapas_concluidas", { pct: String(pct), done: String(doneStages), total: String(totalStages) }));
-          } else {
-            const done = goals.filter((g) => g.status === "concluida").length;
-            setPreview(done > 0 ? (done === 1 ? t("dash_meta_concluida", { count: String(done) }) : t("dash_metas_concluidas", { count: String(done) })) : t("dash_crie_meta"));
-            setSub(done > 0 ? t("dash_todas_completas") : t("dash_comece_agora"));
-          }
-        } else {
-          setPreview(t("dash_crie_meta"));
-          setSub(t("dash_comece_agora"));
-        }
-        setReady(true);
-      })
-      .catch(() => setReady(true));
-  }, []);
-
   return (
     <ModuloPreviewCard
       emoji="🎯"
@@ -584,7 +612,7 @@ function MetasPreview({ loading }: { loading: boolean }) {
       sub={sub}
       href="/agenda?tab=metas"
       accent="#f59e0b"
-      loading={loading || !ready}
+      loading={loading}
     />
   );
 }
@@ -607,31 +635,8 @@ function PlanejamentoPreview({ loading, todayTasks }: { loading: boolean; todayT
   );
 }
 
-function NutricaoPreview({ loading }: { loading: boolean }) {
+function NutricaoPreview({ loading, preview, sub }: { loading: boolean; preview: string | null; sub: string }) {
   const { t } = useTranslation();
-  const [preview, setPreview] = useState<string | null>(null);
-  const [sub, setSub] = useState<string>("");
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    const today = getLocalDate();
-    const userTz = getUserTimezone();
-    safeCachedFetch<Array<{ date: string; meal_type: string }>>(`/api/meals?date=${today}&tz=${encodeURIComponent(userTz)}`)
-      .then((meals) => {
-        const count = meals?.length ?? 0;
-        setPreview(count > 0 ? t("dash_refeicoes", { count: String(count) }) : t("dash_nenhuma_refeicao"));
-        if (count > 0) {
-          const types = new Set(meals!.map((m) => m.meal_type));
-          const missing = 4 - types.size;
-          setSub(missing > 0 ? (missing === 1 ? t("dash_refeicao_pendente", { n: String(missing) }) : t("dash_refeicoes_pendentes", { n: String(missing) })) : t("dash_todas_registradas"));
-        } else {
-          setSub(t("dash_registre_primeira"));
-        }
-        setReady(true);
-      })
-      .catch(() => setReady(true));
-  }, []);
-
   return (
     <ModuloPreviewCard
       emoji="🥗"
@@ -640,7 +645,7 @@ function NutricaoPreview({ loading }: { loading: boolean }) {
       sub={sub}
       href="/nutricao"
       accent="#22D18B"
-      loading={loading || !ready}
+      loading={loading}
     />
   );
 }

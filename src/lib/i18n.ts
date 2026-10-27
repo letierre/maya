@@ -2061,6 +2061,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     dash_assinatura_ativa: "Assinatura ativa! 🎉 Seu plano já está liberado.",
     dash_seus_espacos: "Seus espaços",
+    dash_checkin_titulo: "Check-in de hoje",
     dash_editar_checkin: "Editar check-in de hoje",
     dash_registrar_dia: "✓ Registrar meu dia",
     dash_conectar_pontos: "Maya vai conectar os pontos.",
@@ -2080,6 +2081,7 @@ const translations: Record<Lang, Record<string, string>> = {
     dash_gasto_hoje: "{{amount}} hoje",
     dash_sem_gastos: "Sem gastos hoje",
     dash_media_dia: "Média {{amount}}/dia",
+    dash_media_semana: "Média 7d {{amount}}/dia",
     dash_gastos_hoje_sub: "Gastos de hoje",
     dash_registre_despesas: "Registre suas despesas",
     dash_meta_ativa: "{{count}} meta ativa",
@@ -4555,6 +4557,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     dash_assinatura_ativa: "¡Suscripción activa! 🎉 Tu plan ya está liberado.",
     dash_seus_espacos: "Tus espacios",
+    dash_checkin_titulo: "Check-in de hoy",
     dash_editar_checkin: "Editar check-in de hoy",
     dash_registrar_dia: "✓ Registrar mi día",
     dash_conectar_pontos: "Maya va a conectar los puntos.",
@@ -4574,6 +4577,7 @@ const translations: Record<Lang, Record<string, string>> = {
     dash_gasto_hoje: "{{amount}} hoy",
     dash_sem_gastos: "Sin gastos hoy",
     dash_media_dia: "Promedio {{amount}}/día",
+    dash_media_semana: "Promedio 7d {{amount}}/día",
     dash_gastos_hoje_sub: "Gastos de hoy",
     dash_registre_despesas: "Registra tus gastos",
     dash_meta_ativa: "{{count}} meta activa",
@@ -7049,6 +7053,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     dash_assinatura_ativa: "Subscription active! 🎉 Your plan is now unlocked.",
     dash_seus_espacos: "Your spaces",
+    dash_checkin_titulo: "Today's check-in",
     dash_editar_checkin: "Edit today's check-in",
     dash_registrar_dia: "✓ Log my day",
     dash_conectar_pontos: "Maya will connect the dots.",
@@ -7068,6 +7073,7 @@ const translations: Record<Lang, Record<string, string>> = {
     dash_gasto_hoje: "{{amount}} today",
     dash_sem_gastos: "No spending today",
     dash_media_dia: "Avg {{amount}}/day",
+    dash_media_semana: "7-day avg {{amount}}/day",
     dash_gastos_hoje_sub: "Today's spending",
     dash_registre_despesas: "Log your expenses",
     dash_meta_ativa: "{{count}} active goal",
