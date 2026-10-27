@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { cachedFetch, invalidateFetchCache } from "@/lib/fetch-cache";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Plus, X, Trash2, CheckSquare, Square, Minus, GripVertical, Pencil, Star, ChevronDown,
+  ArrowLeft, Plus, X, Trash2, CheckSquare, Square, Minus, GripVertical, Pencil, Star,
 } from "lucide-react";
 import type { ShoppingItem, ShoppingList } from "@/types";
 import { useTranslation } from "@/lib/useTranslation";
@@ -38,6 +38,10 @@ const fmt = (n: number, currency = "BRL") => {
   }
 };
 
+const SYMBOL: Record<string, string> = {
+  BRL: "R$", USD: "$", EUR: "€", GBP: "£", ARS: "$", CLP: "$", MXN: "$",
+};
+
 function reorder<T>(list: T[], startIndex: number, endIndex: number): T[] {
   const result = Array.from(list);
   const [removed] = result.splice(startIndex, 1);
@@ -61,7 +65,6 @@ export default function ComprasListaPage() {
   const [note, setNote] = useState("");
   const [price, setPrice] = useState("");
   const [priority, setPriority] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const [adding, setAdding] = useState(false);
 
   // Selection
@@ -127,7 +130,8 @@ export default function ComprasListaPage() {
   useEffect(() => {
     loadList();
     loadItems();
-    cachedFetch<{ context?: { currency?: string } }>("/api/preferences")
+    fetch("/api/preferences")
+      .then((r) => r.json())
       .then((p) => { if (p?.context?.currency) setCurrency(p.context.currency); })
       .catch(() => {});
   }, [loadList, loadItems]);
@@ -244,13 +248,10 @@ export default function ComprasListaPage() {
       const created = (await res.json()) as ShoppingItem;
       if (!created?.id) throw new Error();
       setName(""); setQuantity(""); setNote(""); setPrice(""); setPriority(false);
-      // Insere na hora (sem re-buscar a lista) — o POST já devolve o item criado.
-      setItems((prev) => {
-        if (created.priority) return [created, ...prev];
-        const idx = prev.findIndex((i) => i.checked);
-        if (idx === -1) return [...prev, created];
-        return [...prev.slice(0, idx), created, ...prev.slice(idx)];
-      });
+      // Insere no topo na hora (sem re-buscar) e persiste a ordem para o reload bater.
+      const next = [created, ...items];
+      setItems(next);
+      persistOrder(next);
       invalidateFetchCache(`/api/shopping-list?listId=${listId}`);
       invalidateFetchCache("/api/shopping-list");
       nameRef.current?.focus();
@@ -259,6 +260,12 @@ export default function ComprasListaPage() {
     } finally {
       setAdding(false);
     }
+  };
+
+  // Leva o usuário ao campo de adicionar (FAB) — rola e foca no input.
+  const focusAdd = () => {
+    nameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    nameRef.current?.focus({ preventScroll: true });
   };
 
   // ── Toggle ───────────────────────────────────────────────────
@@ -495,28 +502,20 @@ export default function ComprasListaPage() {
           </button>
         </div>
 
-        <button type="button" onClick={() => setExpanded(!expanded)}
-          style={{ background: "none", border: 0, cursor: "pointer", color: MUTED, fontSize: 12, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4, marginTop: 6, padding: 0 }}>
-          <ChevronDown size={14} style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
-          {t("cp_detalhes")}
-        </button>
-
-        {expanded && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input type="text" value={quantity} onChange={(e) => setQuantity(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={t("cp_quantidade_placeholder")}
-                style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
-              <input type="text" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={t("cp_preco")}
-                style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
-            </div>
-            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={t("cp_nota_placeholder")}
-              style={{ height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
-            <button type="button" onClick={() => setPriority(!priority)}
-              style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, color: priority ? "#fbbf24" : MUTED, padding: 0 }}>
-              <Star size={15} fill={priority ? "#fbbf24" : "none"} /> {t("cp_prioritario")}
-            </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input type="text" value={quantity} onChange={(e) => setQuantity(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={t("cp_quantidade_placeholder")}
+              style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
+            <input type="text" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={`${t("cp_preco")} (${SYMBOL[currency] ?? currency})`}
+              style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
           </div>
-        )}
+          <input type="text" value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={t("cp_nota_placeholder")}
+            style={{ height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
+          <button type="button" onClick={() => setPriority(!priority)}
+            style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, color: priority ? "#fbbf24" : MUTED, padding: 0 }}>
+            <Star size={15} fill={priority ? "#fbbf24" : "none"} /> {t("cp_prioritario")}
+          </button>
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -690,6 +689,18 @@ export default function ComprasListaPage() {
         </div>
       )}
 
+      {/* FAB — adicionar item */}
+      <div className="fixed bottom-20 right-5 z-40">
+        <button
+          type="button"
+          onClick={focusAdd}
+          aria-label={t("cp_adicionar_placeholder")}
+          style={{ width: 56, height: 56, borderRadius: "50%", background: PURPLE_HEX, border: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(124,92,255,0.4)" }}
+        >
+          <Plus size={24} color="#fff" />
+        </button>
+      </div>
+
       {/* Sheet — editar item */}
       {editing && (
         <div onClick={() => setEditing(null)}
@@ -708,7 +719,7 @@ export default function ComprasListaPage() {
                 style={inputStyle} />
               <div style={{ display: "flex", gap: 8 }}>
                 <input type="text" value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} placeholder={t("cp_quantidade")} style={{ ...inputStyle, flex: 1 }} />
-                <input type="text" inputMode="decimal" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} placeholder={t("cp_preco")} style={{ ...inputStyle, flex: 1 }} />
+                <input type="text" inputMode="decimal" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} placeholder={`${t("cp_preco")} (${SYMBOL[currency] ?? currency})`} style={{ ...inputStyle, flex: 1 }} />
               </div>
               <input type="text" value={editNote} onChange={(e) => setEditNote(e.target.value)} placeholder={t("cp_nota")} style={inputStyle} />
               <button type="button" onClick={() => setEditPriority(!editPriority)}

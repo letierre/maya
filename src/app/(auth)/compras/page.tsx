@@ -65,7 +65,8 @@ export default function ComprasPage() {
 
   useEffect(() => {
     load();
-    cachedFetch<{ context?: { currency?: string } }>("/api/preferences")
+    fetch("/api/preferences")
+      .then((r) => r.json())
       .then((p) => {
         if (p?.context?.currency) setCurrency(p.context.currency);
       })
