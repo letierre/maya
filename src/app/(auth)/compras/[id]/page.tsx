@@ -524,7 +524,7 @@ export default function ComprasListaPage() {
 
       {/* List */}
       <div ref={listRef} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}
-        style={{ flex: 1, padding: "0 20px", touchAction: "none" }}>
+        style={{ flex: 1, padding: "0 20px" }}>
         {loading ? (
           <p style={{ textAlign: "center", color: MUTED, fontSize: 13, padding: "24px 0" }}>{t("cp_carregando")}</p>
         ) : items.length === 0 ? (
