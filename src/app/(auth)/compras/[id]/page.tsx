@@ -42,6 +42,18 @@ const SYMBOL: Record<string, string> = {
   BRL: "R$", USD: "$", EUR: "€", GBP: "£", ARS: "$", CLP: "$", MXN: "$",
 };
 
+// Quantidade que multiplica o preço: só quando é um número puro (ou "Nx"),
+// ex.: "10" → 10, "2x" → 2. Unidades de medida ("100g", "1kg", "500ml") não multiplicam.
+function parseCount(q: string | null | undefined): number | null {
+  if (!q) return null;
+  const m = q.trim().toLowerCase().match(/^(\d+(?:[.,]\d+)?)\s*x?$/);
+  if (!m) return null;
+  const n = parseFloat(m[1].replace(",", "."));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+const countOf = (q: string | null | undefined) => parseCount(q) ?? 1;
+
 function reorder<T>(list: T[], startIndex: number, endIndex: number): T[] {
   const result = Array.from(list);
   const [removed] = result.splice(startIndex, 1);
@@ -444,7 +456,12 @@ export default function ComprasListaPage() {
   // ── Derived ──────────────────────────────────────────────────
   const uncheckedCount = items.filter((i) => !i.checked).length;
   const checkedCount = items.filter((i) => i.checked).length;
-  const totalEstimated = items.filter((i) => !i.checked && i.estimated_price).reduce((s, i) => s + (i.estimated_price || 0), 0);
+  const projected = items
+    .filter((i) => !i.checked && i.estimated_price != null)
+    .reduce((s, i) => s + (i.estimated_price || 0) * countOf(i.quantity), 0);
+  const purchased = items
+    .filter((i) => i.checked && i.estimated_price != null)
+    .reduce((s, i) => s + (i.estimated_price || 0) * countOf(i.quantity), 0);
   const allSelected = items.length > 0 && selectedIds.size === items.length;
 
   return (
@@ -458,27 +475,29 @@ export default function ComprasListaPage() {
       }}
     >
       {/* Header */}
-      <div className="px-4 pt-5 pb-1">
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => router.push("/compras")}
-            style={{ width: 40, height: 40, borderRadius: 12, background: "transparent", border: "1px solid rgba(167,139,250,0.15)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-          >
-            <ArrowLeft size={20} color={MUTED} />
-          </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 className="m-0 text-[24px] font-bold tracking-tight leading-[1.1]" style={{ color: FOREGROUND }}>
-              {list ? `${list.emoji} ${list.name}` : t("cp_carregando")}
-            </h1>
-            {list && (
-              <p className="m-0 mt-0.5 text-xs" style={{ color: MUTED }}>
-                {uncheckedCount} {uncheckedCount !== 1 ? t("cp_pendentes") : t("cp_pendente")} · {checkedCount} {checkedCount !== 1 ? t("cp_concluidos") : t("cp_concluido")}
-              </p>
-            )}
+      <div className="px-4 pt-6 pb-1">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+            <button
+              type="button"
+              onClick={() => router.push("/compras")}
+              style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#A78BFA" }}
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: FOREGROUND, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {list ? `${list.emoji} ${list.name}` : t("cp_carregando")}
+              </h1>
+              {list && (
+                <p style={{ margin: "1px 0 0", fontSize: 11, color: MUTED, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {uncheckedCount} {uncheckedCount !== 1 ? t("cp_pendentes") : t("cp_pendente")} · {checkedCount} {checkedCount !== 1 ? t("cp_concluidos") : t("cp_concluido")}
+                </p>
+              )}
+            </div>
           </div>
           <button type="button" onClick={() => setShowMeta(true)}
-            style={{ padding: "8px 12px", borderRadius: 10, background: "transparent", border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer", color: "#A78BFA", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
+            style={{ height: 34, padding: "0 12px", borderRadius: 10, flexShrink: 0, background: "transparent", border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer", color: "#A78BFA", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
             {t("editar")}
           </button>
         </div>
@@ -568,6 +587,8 @@ export default function ComprasListaPage() {
               const isSelected = selectedIds.has(item.id);
               const isDragging = dragFrom === index;
               const isDropTarget = dragTo !== null && dragFrom !== null && dragTo === index && dragFrom !== index;
+              const count = countOf(item.quantity);
+              const itemLineTotal = (item.estimated_price ?? 0) * count;
 
               const itemStyle: React.CSSProperties = {
                 display: "flex", alignItems: "center", gap: 8,
@@ -649,8 +670,15 @@ export default function ComprasListaPage() {
 
                     {/* Price */}
                     {item.estimated_price != null && (
-                      <span style={{ fontSize: 12, fontWeight: 700, color: "#5EEAD4", flexShrink: 0 }}>
-                        {fmt(item.estimated_price, currency)}
+                      <span style={{ textAlign: "right", flexShrink: 0 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#5EEAD4", display: "block" }}>
+                          {fmt(itemLineTotal, currency)}
+                        </span>
+                        {count > 1 && (
+                          <span style={{ fontSize: 10, color: MUTED, display: "block" }}>
+                            {count} × {fmt(item.estimated_price, currency)}
+                          </span>
+                        )}
                       </span>
                     )}
 
@@ -681,11 +709,21 @@ export default function ComprasListaPage() {
         )}
       </div>
 
-      {/* Footer — total */}
+      {/* Footer — totais */}
       {!loading && items.length > 0 && (
-        <div style={{ margin: "12px 20px 0", padding: "12px 16px", borderRadius: 14, background: "#1a1530", border: "1px solid rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 12, color: MUTED }}>{t("cp_total_estimado")} ({uncheckedCount} {uncheckedCount !== 1 ? t("cp_pendentes") : t("cp_pendente")})</span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: "#5EEAD4" }}>{fmt(totalEstimated, currency)}</span>
+        <div style={{ margin: "12px 20px 0", padding: "14px 16px", borderRadius: 16, background: "#1a1530", border: "1px solid rgba(167,139,250,0.15)", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <span style={{ fontSize: 12, color: MUTED }}>
+              {t("cp_a_comprar")} ({uncheckedCount})
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "#5EEAD4" }}>{fmt(projected, currency)}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderTop: "1px solid rgba(167,139,250,0.08)", paddingTop: 10 }}>
+            <span style={{ fontSize: 12, color: MUTED }}>
+              {t("cp_comprado")} ({checkedCount})
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "#22D18B" }}>{fmt(purchased, currency)}</span>
+          </div>
         </div>
       )}
 
