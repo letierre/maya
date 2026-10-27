@@ -8,6 +8,7 @@ import {
   ArrowLeft, Plus, X, Trash2, CheckSquare, Square, Minus, GripVertical, Pencil, Star,
 } from "lucide-react";
 import type { ShoppingItem, ShoppingList } from "@/types";
+import { parseQuantity, lineMultiplier, lineTotal } from "@/lib/shopping-quantity";
 import { useTranslation } from "@/lib/useTranslation";
 
 const MUTED = "#9e96b5";
@@ -42,18 +43,6 @@ const SYMBOL: Record<string, string> = {
   BRL: "R$", USD: "$", EUR: "€", GBP: "£", ARS: "$", CLP: "$", MXN: "$",
 };
 
-// Quantidade que multiplica o preço: só quando é um número puro (ou "Nx"),
-// ex.: "10" → 10, "2x" → 2. Unidades de medida ("100g", "1kg", "500ml") não multiplicam.
-function parseCount(q: string | null | undefined): number | null {
-  if (!q) return null;
-  const m = q.trim().toLowerCase().match(/^(\d+(?:[.,]\d+)?)\s*x?$/);
-  if (!m) return null;
-  const n = parseFloat(m[1].replace(",", "."));
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
-const countOf = (q: string | null | undefined) => parseCount(q) ?? 1;
-
 function reorder<T>(list: T[], startIndex: number, endIndex: number): T[] {
   const result = Array.from(list);
   const [removed] = result.splice(startIndex, 1);
@@ -76,6 +65,7 @@ export default function ComprasListaPage() {
   const [quantity, setQuantity] = useState("");
   const [note, setNote] = useState("");
   const [price, setPrice] = useState("");
+  const [unit, setUnit] = useState("un");
   const [priority, setPriority] = useState(false);
   const [adding, setAdding] = useState(false);
 
@@ -89,6 +79,7 @@ export default function ComprasListaPage() {
   const [editQuantity, setEditQuantity] = useState("");
   const [editNote, setEditNote] = useState("");
   const [editPrice, setEditPrice] = useState("");
+  const [editUnit, setEditUnit] = useState("un");
   const [editPriority, setEditPriority] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
 
@@ -251,15 +242,16 @@ export default function ComprasListaPage() {
           list_id: listId,
           item_name: n,
           quantity: quantity.trim() || null,
+          quantity_unit: unit || null,
           note: note.trim() || null,
-          estimated_price: price.trim() ? price.trim() : null,
+          estimated_price: price.trim() ? price.trim().replace(",", ".") : null,
           priority,
         }),
       });
       if (!res.ok) throw new Error();
       const created = (await res.json()) as ShoppingItem;
       if (!created?.id) throw new Error();
-      setName(""); setQuantity(""); setNote(""); setPrice(""); setPriority(false);
+      setName(""); setQuantity(""); setNote(""); setPrice(""); setPriority(false); setUnit("un");
       // Insere no topo na hora (sem re-buscar) e persiste a ordem para o reload bater.
       const next = [created, ...items];
       setItems(next);
@@ -379,9 +371,11 @@ export default function ComprasListaPage() {
 
   // ── Edit item ────────────────────────────────────────────────
   const openEdit = (item: ShoppingItem) => {
+    const pq = parseQuantity(item.quantity, item.quantity_unit);
     setEditing(item);
     setEditName(item.item_name);
-    setEditQuantity(item.quantity || "");
+    setEditQuantity(pq.num);
+    setEditUnit(pq.unit ?? "un");
     setEditNote(item.note || "");
     setEditPrice(item.estimated_price != null ? String(item.estimated_price) : "");
     setEditPriority(item.priority);
@@ -400,8 +394,9 @@ export default function ComprasListaPage() {
           id: editing.id,
           item_name: n,
           quantity: editQuantity.trim() || null,
+          quantity_unit: editUnit || null,
           note: editNote.trim() || null,
-          estimated_price: editPrice.trim() ? editPrice.trim() : null,
+          estimated_price: editPrice.trim() ? editPrice.trim().replace(",", ".") : null,
           priority: editPriority,
         }),
       });
@@ -453,15 +448,50 @@ export default function ComprasListaPage() {
     }
   };
 
+  // ── Unidade / total ─────────────────────────────────────────
+  const unitLabel = (u: string | null) => {
+    switch (u) {
+      case "un": return t("cp_unit_un");
+      case "pct": return t("cp_unit_pct");
+      case "g": return t("cp_unit_g");
+      case "kg": return t("cp_unit_kg");
+      case "ml": return t("cp_unit_ml");
+      case "l": return t("cp_unit_l");
+      default: return "";
+    }
+  };
+
+  const UNIT_OPTIONS: { value: string; label: string }[] = [
+    { value: "un", label: t("cp_unit_un") },
+    { value: "pct", label: t("cp_unit_pct") },
+    { value: "g", label: t("cp_unit_g") },
+    { value: "kg", label: t("cp_unit_kg") },
+    { value: "ml", label: t("cp_unit_ml") },
+    { value: "l", label: t("cp_unit_l") },
+  ];
+
+  const toNumber = (s: string) => {
+    const n = parseFloat(s.trim().replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const addPriceNum = toNumber(price);
+  const addMultiplier = lineMultiplier(quantity, unit);
+  const addLineTotal = addPriceNum != null ? addPriceNum * addMultiplier : null;
+
+  const editPriceNum = toNumber(editPrice);
+  const editMultiplier = lineMultiplier(editQuantity, editUnit);
+  const editLineTotal = editPriceNum != null ? editPriceNum * editMultiplier : null;
+
   // ── Derived ──────────────────────────────────────────────────
   const uncheckedCount = items.filter((i) => !i.checked).length;
   const checkedCount = items.filter((i) => i.checked).length;
   const projected = items
     .filter((i) => !i.checked && i.estimated_price != null)
-    .reduce((s, i) => s + (i.estimated_price || 0) * countOf(i.quantity), 0);
+    .reduce((s, i) => s + lineTotal(i.estimated_price, i.quantity, i.quantity_unit), 0);
   const purchased = items
     .filter((i) => i.checked && i.estimated_price != null)
-    .reduce((s, i) => s + (i.estimated_price || 0) * countOf(i.quantity), 0);
+    .reduce((s, i) => s + lineTotal(i.estimated_price, i.quantity, i.quantity_unit), 0);
   const allSelected = items.length > 0 && selectedIds.size === items.length;
 
   return (
@@ -523,17 +553,30 @@ export default function ComprasListaPage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
           <div style={{ display: "flex", gap: 8 }}>
-            <input type="text" value={quantity} onChange={(e) => setQuantity(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={t("cp_quantidade_placeholder")}
+            <input type="text" inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={t("cp_quantidade_placeholder")}
               style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
-            <input type="text" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={`${t("cp_preco")} (${SYMBOL[currency] ?? currency})`}
-              style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
+            <select value={unit} onChange={(e) => setUnit(e.target.value)}
+              style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 8px", outline: "none", boxSizing: "border-box" }}>
+              {UNIT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
           </div>
+          <input type="text" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={`${t("cp_preco")} (${SYMBOL[currency] ?? currency})`}
+            style={{ height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
           <input type="text" value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={t("cp_nota_placeholder")}
             style={{ height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
           <button type="button" onClick={() => setPriority(!priority)}
             style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, color: priority ? "#fbbf24" : MUTED, padding: 0 }}>
             <Star size={15} fill={priority ? "#fbbf24" : "none"} /> {t("cp_prioritario")}
           </button>
+          {addLineTotal != null && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, flexWrap: "wrap" }}>
+              <span style={{ color: MUTED }}>{t("cp_item_total")}:</span>
+              <span style={{ color: "#5EEAD4", fontWeight: 700 }}>{fmt(addLineTotal, currency)}</span>
+              {addMultiplier > 1 && (
+                <span style={{ color: MUTED }}>· {addMultiplier} × {fmt(addPriceNum!, currency)}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -587,8 +630,9 @@ export default function ComprasListaPage() {
               const isSelected = selectedIds.has(item.id);
               const isDragging = dragFrom === index;
               const isDropTarget = dragTo !== null && dragFrom !== null && dragTo === index && dragFrom !== index;
-              const count = countOf(item.quantity);
-              const itemLineTotal = (item.estimated_price ?? 0) * count;
+              const parsed = parseQuantity(item.quantity, item.quantity_unit);
+              const multiplier = lineMultiplier(item.quantity, item.quantity_unit);
+              const itemLineTotal = (item.estimated_price ?? 0) * multiplier;
 
               const itemStyle: React.CSSProperties = {
                 display: "flex", alignItems: "center", gap: 8,
@@ -654,9 +698,9 @@ export default function ComprasListaPage() {
                         <span style={{ fontSize: 14, color: item.checked ? MUTED : FOREGROUND, textDecoration: item.checked ? "line-through" : "none", wordBreak: "break-word" }}>
                           {item.item_name}
                         </span>
-                        {item.quantity && (
+                        {parsed.num && (
                           <span style={{ fontSize: 11, fontWeight: 600, color: MUTED, background: "rgba(167,139,250,0.10)", padding: "1px 7px", borderRadius: 9999 }}>
-                            {item.quantity}
+                            {parsed.num}{parsed.unit ? ` ${unitLabel(parsed.unit)}` : ""}
                           </span>
                         )}
                         {item.priority && <Star size={13} color="#fbbf24" fill="#fbbf24" style={{ flexShrink: 0 }} />}
@@ -674,9 +718,9 @@ export default function ComprasListaPage() {
                         <span style={{ fontSize: 12, fontWeight: 700, color: "#5EEAD4", display: "block" }}>
                           {fmt(itemLineTotal, currency)}
                         </span>
-                        {count > 1 && (
+                        {multiplier > 1 && (
                           <span style={{ fontSize: 10, color: MUTED, display: "block" }}>
-                            {count} × {fmt(item.estimated_price, currency)}
+                            {multiplier} × {fmt(item.estimated_price, currency)}
                           </span>
                         )}
                       </span>
@@ -756,14 +800,26 @@ export default function ComprasListaPage() {
               <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder={t("cp_item")}
                 style={inputStyle} />
               <div style={{ display: "flex", gap: 8 }}>
-                <input type="text" value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} placeholder={t("cp_quantidade")} style={{ ...inputStyle, flex: 1 }} />
-                <input type="text" inputMode="decimal" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} placeholder={`${t("cp_preco")} (${SYMBOL[currency] ?? currency})`} style={{ ...inputStyle, flex: 1 }} />
+                <input type="text" inputMode="decimal" value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} placeholder={t("cp_quantidade")} style={{ ...inputStyle, flex: 1 }} />
+                <select value={editUnit} onChange={(e) => setEditUnit(e.target.value)} style={{ ...inputStyle, flex: 1 }}>
+                  {UNIT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
               </div>
+              <input type="text" inputMode="decimal" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} placeholder={`${t("cp_preco")} (${SYMBOL[currency] ?? currency})`} style={inputStyle} />
               <input type="text" value={editNote} onChange={(e) => setEditNote(e.target.value)} placeholder={t("cp_nota")} style={inputStyle} />
               <button type="button" onClick={() => setEditPriority(!editPriority)}
                 style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14, color: editPriority ? "#fbbf24" : MUTED, padding: 0 }}>
                 <Star size={16} fill={editPriority ? "#fbbf24" : "none"} /> {t("cp_prioritario")}
               </button>
+              {editLineTotal != null && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, flexWrap: "wrap" }}>
+                  <span style={{ color: MUTED }}>{t("cp_item_total")}:</span>
+                  <span style={{ color: "#5EEAD4", fontWeight: 700 }}>{fmt(editLineTotal, currency)}</span>
+                  {editMultiplier > 1 && (
+                    <span style={{ color: MUTED }}>· {editMultiplier} × {fmt(editPriceNum!, currency)}</span>
+                  )}
+                </div>
+              )}
 
               <button type="button" onClick={saveEdit} disabled={savingEdit || !editName.trim()}
                 style={{ width: "100%", marginTop: 4, padding: "13px", borderRadius: 12, border: 0, background: editName.trim() ? PURPLE_HEX : "#1e1840", color: "#fff", fontSize: 14, fontWeight: 700, cursor: editName.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>

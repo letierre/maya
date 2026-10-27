@@ -126,6 +126,7 @@ export interface ShoppingItem {
   item_name: string;
   category: string;
   quantity: string | null;
+  quantity_unit: string | null;
   note: string | null;
   estimated_price: number | null;
   priority: boolean;

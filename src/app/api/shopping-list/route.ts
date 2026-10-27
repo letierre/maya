@@ -114,6 +114,7 @@ export async function POST(req: NextRequest) {
         item_name: (it.item_name as string) || "",
         category: (it.category as string) || "geral",
         quantity: (it.quantity as string) || null,
+        quantity_unit: (it.quantity_unit as string) || null,
         note: (it.note as string) || null,
         estimated_price: parsePrice(it.estimated_price),
         priority: Boolean(it.priority),
@@ -146,6 +147,7 @@ export async function POST(req: NextRequest) {
         item_name: String(body.item_name).trim(),
         category: body.category || "geral",
         quantity: body.quantity || null,
+        quantity_unit: body.quantity_unit || null,
         note: body.note || null,
         estimated_price: parsePrice(body.estimated_price),
         priority: Boolean(body.priority),
@@ -204,6 +206,7 @@ export async function PATCH(req: NextRequest) {
     if (body.item_name !== undefined) updates.item_name = body.item_name;
     if (body.category !== undefined) updates.category = body.category;
     if (body.quantity !== undefined) updates.quantity = body.quantity || null;
+    if (body.quantity_unit !== undefined) updates.quantity_unit = body.quantity_unit || null;
     if (body.note !== undefined) updates.note = body.note || null;
     if (body.estimated_price !== undefined) updates.estimated_price = parsePrice(body.estimated_price);
     if (body.priority !== undefined) updates.priority = Boolean(body.priority);

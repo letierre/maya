@@ -6,6 +6,7 @@ import { cachedFetch, invalidateFetchCache } from "@/lib/fetch-cache";
 import { toast } from "sonner";
 import { Plus, X, ShoppingCart } from "lucide-react";
 import type { ShoppingItem, ShoppingList } from "@/types";
+import { lineTotal } from "@/lib/shopping-quantity";
 import { useTranslation } from "@/lib/useTranslation";
 
 const MUTED = "#9e96b5";
@@ -81,7 +82,7 @@ export default function ComprasPage() {
       if (it.checked) s.done++;
       else {
         s.pending++;
-        if (it.estimated_price) s.total += it.estimated_price;
+        s.total += lineTotal(it.estimated_price, it.quantity, it.quantity_unit);
       }
       map.set(it.list_id, s);
     }
