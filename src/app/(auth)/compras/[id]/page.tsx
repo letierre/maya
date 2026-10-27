@@ -19,7 +19,24 @@ const ITEM_GAP = 4;
 
 const EMOJIS = ["🛒", "🍎", "🏠", "🛋️", "🧺", "🎁", "📦", "👕", "🧴", "💊", "🐶", "✈️"];
 
-const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const CURRENCY_CONFIG: Record<string, { locale: string; code: string }> = {
+  BRL: { locale: "pt-BR", code: "BRL" },
+  USD: { locale: "en-US", code: "USD" },
+  EUR: { locale: "de-DE", code: "EUR" },
+  GBP: { locale: "en-GB", code: "GBP" },
+  ARS: { locale: "es-AR", code: "ARS" },
+  CLP: { locale: "es-CL", code: "CLP" },
+  MXN: { locale: "es-MX", code: "MXN" },
+};
+
+const fmt = (n: number, currency = "BRL") => {
+  const conf = CURRENCY_CONFIG[currency] ?? CURRENCY_CONFIG.BRL;
+  try {
+    return new Intl.NumberFormat(conf.locale, { style: "currency", currency: conf.code }).format(n);
+  } catch {
+    return `${currency} ${n.toFixed(2)}`;
+  }
+};
 
 function reorder<T>(list: T[], startIndex: number, endIndex: number): T[] {
   const result = Array.from(list);
@@ -66,6 +83,9 @@ export default function ComprasListaPage() {
   const [metaEmoji, setMetaEmoji] = useState("🛒");
   const [savingMeta, setSavingMeta] = useState(false);
 
+  // Moeda do perfil
+  const [currency, setCurrency] = useState("BRL");
+
   const nameRef = useRef<HTMLInputElement>(null);
 
   // ── Drag state ──────────────────────────────────────────────
@@ -107,6 +127,9 @@ export default function ComprasListaPage() {
   useEffect(() => {
     loadList();
     loadItems();
+    cachedFetch<{ context?: { currency?: string } }>("/api/preferences")
+      .then((p) => { if (p?.context?.currency) setCurrency(p.context.currency); })
+      .catch(() => {});
   }, [loadList, loadItems]);
 
   const persistOrder = useCallback(async (ordered: ShoppingItem[]) => {
@@ -218,10 +241,18 @@ export default function ComprasListaPage() {
         }),
       });
       if (!res.ok) throw new Error();
+      const created = (await res.json()) as ShoppingItem;
+      if (!created?.id) throw new Error();
       setName(""); setQuantity(""); setNote(""); setPrice(""); setPriority(false);
+      // Insere na hora (sem re-buscar a lista) — o POST já devolve o item criado.
+      setItems((prev) => {
+        if (created.priority) return [created, ...prev];
+        const idx = prev.findIndex((i) => i.checked);
+        if (idx === -1) return [...prev, created];
+        return [...prev.slice(0, idx), created, ...prev.slice(idx)];
+      });
       invalidateFetchCache(`/api/shopping-list?listId=${listId}`);
       invalidateFetchCache("/api/shopping-list");
-      await loadItems();
       nameRef.current?.focus();
     } catch {
       toast.error(t("cp_erro_adicionar"));
@@ -234,10 +265,9 @@ export default function ComprasListaPage() {
   const handleToggle = async (item: ShoppingItem) => {
     if (selectionMode || drag.current.active) return;
     const newChecked = !item.checked;
-    setItems((prev) => {
-      const updated = prev.map((i) => (i.id === item.id ? { ...i, checked: newChecked } : i));
-      return [...updated.filter((i) => !i.checked), ...updated.filter((i) => i.checked)];
-    });
+    const updated = items.map((i) => (i.id === item.id ? { ...i, checked: newChecked } : i));
+    const ordered = [...updated.filter((i) => !i.checked), ...updated.filter((i) => i.checked)];
+    setItems(ordered);
     try {
       const res = await fetch("/api/shopping-list", {
         method: "PATCH",
@@ -245,9 +275,7 @@ export default function ComprasListaPage() {
         body: JSON.stringify({ id: item.id, checked: newChecked }),
       });
       if (!res.ok) throw new Error();
-      const unchecked = items.filter((i) => i.id !== item.id && !i.checked).concat(newChecked ? [] : [{ ...item, checked: false }]);
-      const checked = items.filter((i) => i.id !== item.id && i.checked).concat(newChecked ? [{ ...item, checked: true }] : []);
-      await persistOrder([...unchecked, ...checked]);
+      await persistOrder(ordered);
     } catch {
       loadItems();
     }
@@ -255,6 +283,7 @@ export default function ComprasListaPage() {
 
   // ── Delete ───────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
+    if (!confirm(t("cp_excluir_item_confirm"))) return;
     setItems((prev) => prev.filter((i) => i.id !== id));
     try {
       const res = await fetch(`/api/shopping-list?id=${id}`, { method: "DELETE" });
@@ -269,7 +298,12 @@ export default function ComprasListaPage() {
   const handleClearChecked = async () => {
     const checked = items.filter((i) => i.checked);
     if (checked.length === 0) return;
-    setItems((prev) => prev.map((i) => (i.checked ? { ...i, checked: false } : i)));
+    // Desmarca e reordena por posição, para os itens voltarem ao topo (não-concluídos).
+    setItems((prev) =>
+      prev
+        .map((i) => (i.checked ? { ...i, checked: false } : i))
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    );
     let failed = false;
     for (const item of checked) {
       try {
@@ -440,10 +474,6 @@ export default function ComprasListaPage() {
             style={{ padding: "8px 12px", borderRadius: 10, background: "transparent", border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer", color: "#A78BFA", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
             {t("editar")}
           </button>
-          <button type="button" onClick={deleteList}
-            style={{ padding: "8px 12px", borderRadius: 10, background: "transparent", border: "1px solid rgba(255,77,77,0.25)", cursor: "pointer", color: "#FF4D4D", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
-            {t("cp_excluir")}
-          </button>
         </div>
       </div>
 
@@ -474,12 +504,12 @@ export default function ComprasListaPage() {
         {expanded && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
             <div style={{ display: "flex", gap: 8 }}>
-              <input type="text" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder={t("cp_quantidade_placeholder")}
+              <input type="text" value={quantity} onChange={(e) => setQuantity(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={t("cp_quantidade_placeholder")}
                 style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
-              <input type="text" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t("cp_preco")}
+              <input type="text" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={t("cp_preco")}
                 style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
             </div>
-            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("cp_nota_placeholder")}
+            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} placeholder={t("cp_nota_placeholder")}
               style={{ height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "oklch(.18 .015 270 / .5)", color: FOREGROUND, fontSize: 13, fontFamily: "inherit", padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
             <button type="button" onClick={() => setPriority(!priority)}
               style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, color: priority ? "#fbbf24" : MUTED, padding: 0 }}>
@@ -621,23 +651,23 @@ export default function ComprasListaPage() {
                     {/* Price */}
                     {item.estimated_price != null && (
                       <span style={{ fontSize: 12, fontWeight: 700, color: "#5EEAD4", flexShrink: 0 }}>
-                        {fmtBRL(item.estimated_price)}
+                        {fmt(item.estimated_price, currency)}
                       </span>
                     )}
 
                     {/* Edit */}
                     {!selectionMode && (
                       <button type="button" onClick={(e) => { e.stopPropagation(); openEdit(item); }}
-                        style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: "none", border: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4 }}>
-                        <Pencil size={13} color={MUTED} />
+                        style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, background: "#7C5CFF", border: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Pencil size={15} color="#fff" />
                       </button>
                     )}
 
                     {/* Delete */}
                     {!selectionMode && (
                       <button type="button" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                        style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: "none", border: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4 }}>
-                        <X size={14} color={MUTED} />
+                        style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, background: "#FF4D4D", border: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <X size={15} color="#fff" />
                       </button>
                     )}
                   </div>
@@ -656,7 +686,7 @@ export default function ComprasListaPage() {
       {!loading && items.length > 0 && (
         <div style={{ margin: "12px 20px 0", padding: "12px 16px", borderRadius: 14, background: "#1a1530", border: "1px solid rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: 12, color: MUTED }}>{t("cp_total_estimado")} ({uncheckedCount} {uncheckedCount !== 1 ? t("cp_pendentes") : t("cp_pendente")})</span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: "#5EEAD4" }}>{fmtBRL(totalEstimated)}</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "#5EEAD4" }}>{fmt(totalEstimated, currency)}</span>
         </div>
       )}
 
@@ -722,6 +752,10 @@ export default function ComprasListaPage() {
             <button type="button" onClick={saveMeta} disabled={savingMeta || !metaName.trim()}
               style={{ width: "100%", marginTop: 12, padding: "13px", borderRadius: 12, border: 0, background: metaName.trim() ? PURPLE_HEX : "#1e1840", color: "#fff", fontSize: 14, fontWeight: 700, cursor: metaName.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
               {savingMeta ? t("salvando") : t("cp_salvar_lista")}
+            </button>
+            <button type="button" onClick={deleteList}
+              style={{ width: "100%", marginTop: 8, padding: "13px", borderRadius: 12, border: "1px solid rgba(255,77,77,0.3)", background: "transparent", color: "#FF4D4D", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              {t("cp_excluir")}
             </button>
           </div>
         </div>

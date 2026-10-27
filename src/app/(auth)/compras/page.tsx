@@ -15,7 +15,24 @@ const FOREGROUND = "#e0d6ff";
 
 const EMOJIS = ["🛒", "🍎", "🏠", "🛋️", "🧺", "🎁", "📦", "👕", "🧴", "💊", "🐶", "✈️"];
 
-const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const CURRENCY_CONFIG: Record<string, { locale: string; code: string }> = {
+  BRL: { locale: "pt-BR", code: "BRL" },
+  USD: { locale: "en-US", code: "USD" },
+  EUR: { locale: "de-DE", code: "EUR" },
+  GBP: { locale: "en-GB", code: "GBP" },
+  ARS: { locale: "es-AR", code: "ARS" },
+  CLP: { locale: "es-CL", code: "CLP" },
+  MXN: { locale: "es-MX", code: "MXN" },
+};
+
+const fmt = (n: number, currency = "BRL") => {
+  const conf = CURRENCY_CONFIG[currency] ?? CURRENCY_CONFIG.BRL;
+  try {
+    return new Intl.NumberFormat(conf.locale, { style: "currency", currency: conf.code }).format(n);
+  } catch {
+    return `${currency} ${n.toFixed(2)}`;
+  }
+};
 
 export default function ComprasPage() {
   const router = useRouter();
@@ -24,6 +41,7 @@ export default function ComprasPage() {
   const [lists, setLists] = useState<ShoppingList[]>([]);
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currency, setCurrency] = useState("BRL");
 
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState("");
@@ -47,6 +65,11 @@ export default function ComprasPage() {
 
   useEffect(() => {
     load();
+    cachedFetch<{ context?: { currency?: string } }>("/api/preferences")
+      .then((p) => {
+        if (p?.context?.currency) setCurrency(p.context.currency);
+      })
+      .catch(() => {});
   }, [load]);
 
   const stats = useMemo(() => {
@@ -161,7 +184,7 @@ export default function ComprasPage() {
               </div>
               {s.total > 0 && (
                 <span style={{ fontSize: 12, fontWeight: 700, color: "#5EEAD4", whiteSpace: "nowrap" }}>
-                  {fmtBRL(s.total)}
+                  {fmt(s.total, currency)}
                 </span>
               )}
             </button>
