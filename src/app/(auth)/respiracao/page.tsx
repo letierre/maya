@@ -35,6 +35,7 @@ export default function RespiracaoPage() {
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [breathPhase, setBreathPhase] = useState<BreathPhase>("inhale");
   const [cycles, setCycles] = useState(0);
+  const [voiceActive, setVoiceActive] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
@@ -47,6 +48,7 @@ export default function RespiracaoPage() {
   const stopAudio = useCallback(() => {
     audioRef.current?.pause();
     audioRef.current = null;
+    setVoiceActive(false);
   }, []);
 
   const clearTimer = useCallback(() => {
@@ -93,8 +95,10 @@ export default function RespiracaoPage() {
     const url = audioUrlRef.current;
     if (url) {
       const a = new Audio(url);
+      a.onended = () => setVoiceActive(false);
       audioRef.current = a;
       a.play().catch(() => {});
+      setVoiceActive(true);
     }
   }, [totalSeconds]);
 
@@ -135,8 +139,10 @@ export default function RespiracaoPage() {
           audioUrlRef.current = url;
           if (url) {
             const a = new Audio(url);
+            a.onended = () => setVoiceActive(false);
             audioRef.current = a;
             a.play().catch(() => {});
+            setVoiceActive(true);
           }
         })
         .catch(() => {})
@@ -306,6 +312,11 @@ export default function RespiracaoPage() {
           <h1 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: FOREGROUND }}>{t(pattern.labelKey)}</h1>
           {voiceLoading && <p style={{ margin: 0, fontSize: 11, color: MUTED }}>…</p>}
         </div>
+        {voiceActive && (
+          <button type="button" onClick={stopAudio} style={{ padding: "6px 12px", borderRadius: 9999, border: `1px solid ${BORDER}`, background: "transparent", color: MUTED, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+            {t("pr_pular")}
+          </button>
+        )}
         <button type="button" onClick={() => void finish(totalSeconds - secondsLeft)} style={{ padding: "6px 14px", borderRadius: 9999, border: `1px solid ${BORDER}`, background: "transparent", color: MUTED, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
           {t("pr_encerrar")}
         </button>

@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = getSupabaseAdmin();
-    const path = `practices/${kind}/${language}/${key}.mp3`;
+    const path = `practices/v2/${kind}/${language}/${key}.mp3`;
 
     // Cache global: reusa o áudio se já existir no bucket.
     const existing = await admin.storage.from("user-content").download(path);
@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ audioUrl: path });
     }
 
-    const { audio } = await synthesizeSpeech(script, { language, userId: user.id });
+    // Voz mais lenta e pausada para práticas (meditação/relaxamento).
+    const { audio } = await synthesizeSpeech(script, { language, userId: user.id, speed: 0.8 });
 
     const { error: uploadErr } = await admin.storage
       .from("user-content")

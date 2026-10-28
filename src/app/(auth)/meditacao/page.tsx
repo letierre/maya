@@ -6,7 +6,7 @@ import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/useTranslation";
 import { MEDITATION_PRACTICES } from "@/lib/practice-scripts";
-import { BreathingCircle } from "@/components/practices/BreathingCircle";
+import { BreathingCircle, type BreathPhase } from "@/components/practices/BreathingCircle";
 import { AMBIENT_OPTIONS, useAmbient, type AmbientKey } from "@/components/practices/useAmbient";
 import { photoUrl } from "@/lib/photo-storage";
 import { getLocalDate } from "@/lib/utils";
@@ -21,6 +21,9 @@ const LILAC = "#A78BFA";
 
 const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
+const phaseLabelKey = (p: BreathPhase): string =>
+  p === "inhale" ? "rb_inspire" : p === "exhale" ? "rb_expire" : "rb_segure";
+
 export default function MeditacaoPage() {
   const router = useRouter();
   const { t, lang } = useTranslation();
@@ -32,6 +35,8 @@ export default function MeditacaoPage() {
   const [phase, setPhase] = useState<"select" | "running" | "done">("select");
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [voiceLoading, setVoiceLoading] = useState(false);
+  const [breathPhase, setBreathPhase] = useState<BreathPhase>("inhale");
+  const [voiceActive, setVoiceActive] = useState(false);
 
   const { start: startAmbient, stop: stopAmbient, setMuted: setAmbientGain } = useAmbient();
 
@@ -46,12 +51,15 @@ export default function MeditacaoPage() {
   const stopAudio = useCallback(() => {
     audioRef.current?.pause();
     audioRef.current = null;
+    setVoiceActive(false);
   }, []);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
   }, []);
+
+  const handlePhase = useCallback((p: BreathPhase) => setBreathPhase(p), []);
 
   const finish = useCallback(
     async (elapsedSeconds: number) => {
@@ -84,6 +92,7 @@ export default function MeditacaoPage() {
     finishedRef.current = false;
     setSecondsLeft(totalSeconds);
     setAmbientMuted(false);
+    setBreathPhase("inhale");
     setPhase("running");
     // Toca a voz e o ambiente dentro do gesto de "Começar" (iOS só faz autoplay
     // com play dentro do clique do usuário).
@@ -91,8 +100,10 @@ export default function MeditacaoPage() {
     const url = audioUrlRef.current;
     if (url) {
       const a = new Audio(url);
+      a.onended = () => setVoiceActive(false);
       audioRef.current = a;
       a.play().catch(() => {});
+      setVoiceActive(true);
     }
   }, [totalSeconds, startAmbient, ambientKey]);
 
@@ -133,8 +144,10 @@ export default function MeditacaoPage() {
           audioUrlRef.current = url;
           if (url) {
             const a = new Audio(url);
+            a.onended = () => setVoiceActive(false);
             audioRef.current = a;
             a.play().catch(() => {});
+            setVoiceActive(true);
           }
         })
         .catch(() => {})
@@ -335,6 +348,11 @@ export default function MeditacaoPage() {
           <h1 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: FOREGROUND }}>{t(practice.labelKey)}</h1>
           {voiceLoading && <p style={{ margin: 0, fontSize: 11, color: MUTED }}>…</p>}
         </div>
+        {voiceActive && (
+          <button type="button" onClick={stopAudio} style={{ padding: "6px 12px", borderRadius: 9999, border: `1px solid ${BORDER}`, background: "transparent", color: MUTED, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+            {t("pr_pular")}
+          </button>
+        )}
         {ambientKey !== "none" && (
           <button type="button" onClick={() => setAmbientMuted((m) => { const next = !m; setAmbientGain(next); return next; })} style={{ padding: "6px 12px", borderRadius: 9999, border: `1px solid ${BORDER}`, background: "transparent", color: MUTED, fontSize: 16, cursor: "pointer", fontFamily: "inherit", lineHeight: 1 }}>
             {ambientMuted ? "🔇" : "🔊"}
@@ -346,10 +364,11 @@ export default function MeditacaoPage() {
       </div>
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "0 24px" }}>
-        <BreathingCircle phases={{ inhale: 4, hold1: 0, exhale: 6, hold2: 0 }} running />
+        <BreathingCircle phases={{ inhale: 4, hold1: 0, exhale: 6, hold2: 0 }} running onPhase={handlePhase} />
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 44, fontWeight: 200, color: FOREGROUND, fontVariantNumeric: "tabular-nums", letterSpacing: "0.02em" }}>{fmtClock(secondsLeft)}</div>
-          <p style={{ margin: "8px 0 0", fontSize: 13, color: MUTED }}>{t("md_subtitulo")}</p>
+          <div style={{ fontSize: 24, fontWeight: 800, color: LILAC }}>{t(phaseLabelKey(breathPhase))}</div>
+          <div style={{ fontSize: 40, fontWeight: 200, color: FOREGROUND, fontVariantNumeric: "tabular-nums", letterSpacing: "0.02em", marginTop: 4 }}>{fmtClock(secondsLeft)}</div>
+          <p style={{ margin: "8px 0 0", fontSize: 13, color: MUTED }}>{t(practice.guideKey)}</p>
         </div>
       </div>
     </div>

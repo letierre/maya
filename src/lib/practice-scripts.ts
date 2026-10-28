@@ -11,6 +11,7 @@ export interface MeditationPractice {
   emoji: string;
   labelKey: string;
   introKey: string;
+  guideKey: string;
 }
 
 export interface BreathingPhase {
@@ -30,10 +31,10 @@ export interface BreathingPattern {
 }
 
 export const MEDITATION_PRACTICES: MeditationPractice[] = [
-  { key: "breath", emoji: "🌬️", labelKey: "md_pratica_respiracao", introKey: "md_intro_respiracao" },
-  { key: "body", emoji: "🧍", labelKey: "md_pratica_body", introKey: "md_intro_body" },
-  { key: "kindness", emoji: "💗", labelKey: "md_pratica_bondade", introKey: "md_intro_bondade" },
-  { key: "gratitude", emoji: "🙏", labelKey: "md_pratica_gratidao", introKey: "md_intro_gratidao" },
+  { key: "breath", emoji: "🌬️", labelKey: "md_pratica_respiracao", introKey: "md_intro_respiracao", guideKey: "md_guia_respiracao" },
+  { key: "body", emoji: "🧍", labelKey: "md_pratica_body", introKey: "md_intro_body", guideKey: "md_guia_body" },
+  { key: "kindness", emoji: "💗", labelKey: "md_pratica_bondade", introKey: "md_intro_bondade", guideKey: "md_guia_bondade" },
+  { key: "gratitude", emoji: "🙏", labelKey: "md_pratica_gratidao", introKey: "md_intro_gratidao", guideKey: "md_guia_gratidao" },
 ];
 
 export const BREATHING_PATTERNS: BreathingPattern[] = [

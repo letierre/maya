@@ -26,7 +26,7 @@ function voiceIdFor(language?: string): string {
 /** Sintetiza a fala. Retorna o áudio mp3 + o mime type. */
 export async function synthesizeSpeech(
   text: string,
-  opts: { language?: string; userId?: string } = {},
+  opts: { language?: string; userId?: string; speed?: number } = {},
 ): Promise<{ audio: Buffer; mimeType: string }> {
   const key = process.env.ELEVENLABS_API_KEY || "";
   const voiceId = voiceIdFor(opts.language);
@@ -48,7 +48,7 @@ export async function synthesizeSpeech(
     voice_settings: {
       stability: 0.7,
       similarity_boost: 0.75,
-      speed: 0.95,
+      speed: opts.speed ?? 0.95,
     },
   };
 
