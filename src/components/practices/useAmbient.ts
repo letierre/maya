@@ -11,7 +11,7 @@ export const AMBIENT_OPTIONS: { key: AmbientKey; emoji: string; labelKey: string
   { key: "pad", emoji: "🎐", labelKey: "md_amb_pad" },
 ];
 
-const BASE_GAIN = 0.2;
+const BASE_GAIN = 0.1;
 
 function createCtx(): AudioContext | null {
   const Ctor =
@@ -89,7 +89,7 @@ export function useAmbient() {
         let last = 0;
         for (let i = 0; i < size; i++) {
           last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
-          data[i] = last * 3.5;
+          data[i] = last * 1.8;
         }
         const src = ctx.createBufferSource();
         src.buffer = buf;
@@ -131,7 +131,7 @@ export function useAmbient() {
         // pad: acorde de A maior (A2, E3, A3, C#4) em senos levemente detonados
         const freqs = [110, 164.81, 220, 277.18];
         const chordGain = ctx.createGain();
-        chordGain.gain.value = 0.4;
+        chordGain.gain.value = 0.22;
         const lp = ctx.createBiquadFilter();
         lp.type = "lowpass";
         lp.frequency.value = 1000;
@@ -148,7 +148,7 @@ export function useAmbient() {
           o2.frequency.value = f;
           o2.detune.value = 5;
           const g = ctx.createGain();
-          g.gain.value = 0.5;
+          g.gain.value = 0.35;
           o1.connect(g);
           o2.connect(g);
           g.connect(chordGain);
