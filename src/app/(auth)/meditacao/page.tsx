@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useTranslation } from "@/lib/useTranslation";
 import { MEDITATION_PRACTICES } from "@/lib/practice-scripts";
 import { BreathingCircle } from "@/components/practices/BreathingCircle";
+import { AMBIENT_OPTIONS, useAmbient, type AmbientKey } from "@/components/practices/useAmbient";
 import { photoUrl } from "@/lib/photo-storage";
 import { getLocalDate } from "@/lib/utils";
 
@@ -26,9 +27,13 @@ export default function MeditacaoPage() {
 
   const [practiceKey, setPracticeKey] = useState(MEDITATION_PRACTICES[0].key);
   const [durationMin, setDurationMin] = useState(5);
+  const [ambientKey, setAmbientKey] = useState<AmbientKey>("none");
+  const [ambientMuted, setAmbientMuted] = useState(false);
   const [phase, setPhase] = useState<"select" | "running" | "done">("select");
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [voiceLoading, setVoiceLoading] = useState(false);
+
+  const { start: startAmbient, stop: stopAmbient, setMuted: setAmbientGain } = useAmbient();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
@@ -54,6 +59,7 @@ export default function MeditacaoPage() {
       finishedRef.current = true;
       clearTimer();
       stopAudio();
+      stopAmbient();
       setPhase("done");
       try {
         await fetch("/api/practices", {
@@ -71,21 +77,24 @@ export default function MeditacaoPage() {
         /* silencioso — a prática fica registrada no próximo check-in */
       }
     },
-    [clearTimer, stopAudio, practiceKey, t],
+    [clearTimer, stopAudio, stopAmbient, practiceKey, t],
   );
 
   const start = useCallback(() => {
     finishedRef.current = false;
     setSecondsLeft(totalSeconds);
+    setAmbientMuted(false);
     setPhase("running");
-    // Toca a voz dentro do gesto de "Começar" (iOS só faz autoplay com play no clique).
+    // Toca a voz e o ambiente dentro do gesto de "Começar" (iOS só faz autoplay
+    // com play dentro do clique do usuário).
+    startAmbient(ambientKey);
     const url = audioUrlRef.current;
     if (url) {
       const a = new Audio(url);
       audioRef.current = a;
       a.play().catch(() => {});
     }
-  }, [totalSeconds]);
+  }, [totalSeconds, startAmbient, ambientKey]);
 
   // Pré-busca a voz já na seleção: deixa o áudio pronto para tocar dentro do
   // gesto de "Começar" (autoplay no iOS exige o play no clique).
@@ -139,8 +148,9 @@ export default function MeditacaoPage() {
     return () => {
       clearTimer();
       stopAudio();
+      stopAmbient();
     };
-  }, [phase, practiceKey, lang, clearTimer, stopAudio]);
+  }, [phase, practiceKey, lang, clearTimer, stopAudio, stopAmbient]);
 
   // Conclusão ao zerar o cronômetro.
   useEffect(() => {
@@ -235,6 +245,39 @@ export default function MeditacaoPage() {
               );
             })}
           </div>
+
+          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: MUTED, margin: "20px 0 8px" }}>{t("md_ambiente")}</p>
+          <div style={{ display: "flex", gap: 8 }}>
+            {AMBIENT_OPTIONS.map((a) => {
+              const selected = a.key === ambientKey;
+              return (
+                <button
+                  key={a.key}
+                  type="button"
+                  onClick={() => setAmbientKey(a.key)}
+                  style={{
+                    flex: 1,
+                    height: 44,
+                    borderRadius: 12,
+                    border: selected ? `1.5px solid ${PURPLE}` : `1px solid ${BORDER}`,
+                    background: selected ? "rgba(124,92,255,0.14)" : "#1a1530",
+                    color: selected ? FOREGROUND : MUTED,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4,
+                  }}
+                >
+                  <span style={{ fontSize: 15 }}>{a.emoji}</span>
+                  {t(a.labelKey)}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div style={{ padding: "0 16px" }}>
@@ -292,6 +335,11 @@ export default function MeditacaoPage() {
           <h1 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: FOREGROUND }}>{t(practice.labelKey)}</h1>
           {voiceLoading && <p style={{ margin: 0, fontSize: 11, color: MUTED }}>…</p>}
         </div>
+        {ambientKey !== "none" && (
+          <button type="button" onClick={() => setAmbientMuted((m) => { const next = !m; setAmbientGain(next); return next; })} style={{ padding: "6px 12px", borderRadius: 9999, border: `1px solid ${BORDER}`, background: "transparent", color: MUTED, fontSize: 16, cursor: "pointer", fontFamily: "inherit", lineHeight: 1 }}>
+            {ambientMuted ? "🔇" : "🔊"}
+          </button>
+        )}
         <button type="button" onClick={() => void finish(totalSeconds - secondsLeft)} style={{ padding: "6px 14px", borderRadius: 9999, border: `1px solid ${BORDER}`, background: "transparent", color: MUTED, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
           {t("pr_encerrar")}
         </button>
