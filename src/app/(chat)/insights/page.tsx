@@ -26,6 +26,9 @@ interface Message {
   pending?: boolean; // card ainda "enviando" (efeito de onda enquanto processa)
   createdAt?: number; // epoch ms — usado para o "Visto por último" (Maya)
   synced?: boolean;
+  clientId?: string; // id local (sessão) p/ rastrear reenvio/erro de UMA mensagem
+  failed?: boolean; // envio falhou → aviso vermelho + botão "Reenviar"
+  sending?: boolean; // (re)enviando agora
   action?: { label: string; href: string } | null;
 }
 
@@ -245,6 +248,8 @@ export default function MayaChatPage() {
   const voiceStreamRef = useRef<MediaStream | null>(null);
   const voiceProcessingRef = useRef(false);
   const recordingStartRef = useRef(0); // epoch ms — p/ cronometrar a duração do áudio
+  // Payload de voz retido p/ reenvio (blob/mime/duração por clientId — não persiste).
+  const voicePayloadsRef = useRef<Map<string, { blob: Blob; mime: string; duration: number }>>(new Map());
 
   // ── Presença (online / digitando / visto por último) ──
   const [presence, setPresence] = useState<"online" | "lastSeen">("online");
@@ -572,7 +577,73 @@ export default function MayaChatPage() {
     setSelectedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // ── Send message ──
+  // ── Envio de texto (reutilizado pelo "Reenviar") ──
+  // Persiste (só na 1ª tentativa), chama a Maya e, em caso de erro, marca a
+  // mensagem como "não enviada" — sem resposta genérica da Maya.
+  const performTextSend = useCallback(
+    async (msg: Message, list: Message[]) => {
+      const clientId = msg.clientId!;
+      const patch = (p: Partial<Message>) =>
+        setMessages((prev) =>
+          prev.map((m) => (m.clientId === clientId ? { ...m, ...p } : m)),
+        );
+
+      patch({ sending: true, failed: false, status: "sent" });
+      setSending(true);
+      sendingRef.current = true;
+      lastActivityAtRef.current = Date.now();
+      setPresence("online");
+
+      // Persiste a mensagem do usuário (só na 1ª tentativa — evita duplicar no reenvio).
+      if (!msg.synced) {
+        const ok = await persistWithRetry([
+          { role: "user", content: msg.content, image_urls: msg.imageUrls },
+        ]);
+        if (ok) patch({ synced: true, status: "delivered" });
+      }
+
+      try {
+        const contextMsgs = list.slice(-40).map(({ role, content, imageUrls, date, time }) => ({
+          role,
+          content,
+          image_urls: imageUrls,
+          date,
+          time,
+        }));
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const res = await fetch("/api/maya", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: contextMsgs,
+            timezone: tz,
+            localHour: new Date().getHours(),
+            localDate: formatDate(),
+          }),
+        });
+        if (!res.ok) throw new Error("API error");
+        const data = await res.json();
+        const parts = splitIntoParts(data.reply);
+        setSending(false);
+        sendingRef.current = false;
+        // Base limpa: tira o estado de erro da mensagem antes de "entregar" a resposta.
+        const clean = list.map((m): Message =>
+          m.clientId === clientId
+            ? { ...m, failed: false, sending: false, status: "read" }
+            : m,
+        );
+        deliverParts(parts, clean);
+      } catch {
+        patch({ sending: false, failed: true, status: "sent" });
+        setSending(false);
+        sendingRef.current = false;
+        // API falhou / sem conexão → a Maya não está de fato "online" agora.
+        setPresence("lastSeen");
+      }
+    },
+    [deliverParts],
+  );
+
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim();
     const hasImages = selectedImages.length > 0;
@@ -595,6 +666,7 @@ export default function MayaChatPage() {
 
     const now = formatTime();
     const nowDate = formatDate();
+    const clientId = `t-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const userMsg: Message = {
       role: "user",
       content: trimmed || "📷",
@@ -602,6 +674,7 @@ export default function MayaChatPage() {
       time: now,
       date: nowDate,
       status: "sent",
+      clientId,
     };
     const updated = [...messages, userMsg];
     setMessages(updated);
@@ -609,75 +682,14 @@ export default function MayaChatPage() {
     if (textareaRef.current) textareaRef.current.textContent = "";
     setSelectedImages([]);
     setUploadingImages(false);
-    setSending(true);
-    sendingRef.current = true;
-    lastActivityAtRef.current = Date.now();
-    setPresence("online");
 
     // Safety net: keep keyboard open after send
     requestAnimationFrame(() => {
       textareaRef.current?.focus();
     });
 
-    // Persist user message first so DB order is correct
-    await persistWithRetry([{ role: "user", content: userMsg.content, image_urls: uploadedPaths }]);
-
-    // Persistiu → "entregue" (2 vistos brancos). Vira "lida" quando a Maya
-    // começar a responder (em deliverParts).
-    setMessages((prev) => {
-      const updated2 = [...prev];
-      for (let i = updated2.length - 1; i >= 0; i--) {
-        if (updated2[i].role === "user") {
-          updated2[i] = { ...updated2[i], status: "delivered" };
-          break;
-        }
-      }
-      return updated2;
-    });
-
-    try {
-      const contextMsgs = updated.slice(-40).map(({ role, content, imageUrls, date, time }) => ({
-        role,
-        content,
-        image_urls: imageUrls,
-        date,
-        time,
-      }));
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const localHour = new Date().getHours();
-      const localDate = formatDate();
-      const res = await fetch("/api/maya", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: contextMsgs,
-          timezone: tz,
-          localHour,
-          localDate,
-        }),
-      });
-      if (!res.ok) throw new Error("API error");
-      const data = await res.json();
-      const parts = splitIntoParts(data.reply);
-      setSending(false);
-      sendingRef.current = false;
-      deliverParts(parts, updated);
-    } catch {
-      setSending(false);
-      sendingRef.current = false;
-      // API falhou / sem tokens → a Maya não está de fato "online" agora.
-      setPresence("lastSeen");
-      setMessages([
-        ...updated,
-        {
-          role: "assistant",
-          content: t("maya_error"),
-          time: formatTime(),
-          date: formatDate(),
-        },
-      ]);
-    }
-  }, [input, sending, messages, selectedImages, t, deliverParts]);
+    performTextSend(userMsg, updated);
+  }, [input, sending, messages, selectedImages, performTextSend]);
 
   // ── Voz (gravação turno-a-turno → /api/maya/voice) ──
   const pickVoiceMime = () => {
@@ -740,55 +752,56 @@ export default function MayaChatPage() {
     }
   }, []);
 
-  // Envia o áudio gravado → STT → responde → toca a voz da Maya.
-  // Fluxo visual humanizado (estilo WhatsApp): card "enviando" com onda → 1 check
-  // (transcrição aparece) → 2 checks → 2 checks azuis → "Maya gravando áudio"
-  // por ~60% da duração estimada da resposta → resposta em voz.
-  useEffect(() => {
-    if (!voiceBlob || voiceProcessingRef.current) return;
-    voiceProcessingRef.current = true;
-    const { blob, mime, duration: recDuration } = voiceBlob;
+  // ── Envio de voz (reutilizado pelo "Reenviar") ──
+  // STT → responde → toca a voz da Maya. Fluxo visual humanizado (estilo
+  // WhatsApp): card "enviando" → 1 check → 2 checks → 2 checks azuis → "Maya
+  // gravando áudio" → resposta em voz. Em erro, marca a nota como "não enviada"
+  // — sem resposta genérica da Maya.
+  const performVoiceSend = useCallback(
+    async (payload: {
+      blob: Blob;
+      mime: string;
+      duration: number;
+      clientId: string;
+      isResend: boolean;
+    }) => {
+      const { blob, mime, duration: recDuration, clientId, isResend } = payload;
+      const patch = (p: Partial<Message>) =>
+        setMessages((prev) =>
+          prev.map((m) => (m.clientId === clientId ? { ...m, ...p } : m)),
+        );
 
-    // Atualiza a última mensagem do usuário (o card placeholder) sem recriá-la.
-    const patchLastUser = (patch: Partial<Message>) =>
-      setMessages((prev) => {
-        const next = [...prev];
-        for (let i = next.length - 1; i >= 0; i--) {
-          if (next[i].role === "user") {
-            next[i] = { ...next[i], ...patch };
-            break;
-          }
-        }
-        return next;
-      });
+      const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+      // Força o scroll pro fim (só no fluxo de voz), aguardando um frame p/ o
+      // novo conteúdo (transcrição/resposta) entrar no DOM antes de rolar.
+      const scrollNow = () =>
+        requestAnimationFrame(() => requestAnimationFrame(() => scrollToBottom("instant")));
 
-    const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-    // Força o scroll pro fim (só no fluxo de voz), aguardando um frame p/ o
-    // novo conteúdo (transcrição/resposta) entrar no DOM antes de rolar.
-    const scrollNow = () =>
-      requestAnimationFrame(() => requestAnimationFrame(() => scrollToBottom("instant")));
-
-    (async () => {
       setSending(true);
       sendingRef.current = true;
       lastActivityAtRef.current = Date.now();
       setPresence("online");
 
-      // 1) Nota de voz do usuário aparece de imediato (esqueleto pulsante),
-      //    enquanto a transcrição ainda está processando.
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "user",
-          content: "",
-          voiceNote: true,
-          time: formatTime(),
-          date: formatDate(),
-          status: "sent",
-          pending: true,
-        },
-      ]);
+      if (!isResend) {
+        // Nota de voz do usuário aparece de imediato (esqueleto pulsante),
+        // enquanto a transcrição ainda está processando.
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "user",
+            content: "",
+            voiceNote: true,
+            clientId,
+            time: formatTime(),
+            date: formatDate(),
+            status: "sent",
+            pending: true,
+            audioDuration: recDuration,
+          },
+        ]);
+      } else {
+        patch({ sending: true, failed: false, pending: true });
+      }
 
       try {
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -809,39 +822,37 @@ export default function MayaChatPage() {
         const transcript = (data.transcript || "").trim();
         const reply = (data.reply || "").trim();
 
-        // 2) Transcrição preenche a nota de voz (sai do esqueleto) → 1 check.
-        //    O áudio enviado vira nota de voz (igual a da Maya) c/ transcrição
-        //    colapsável — deixa claro que aquilo veio de um áudio, não de digitação.
-        patchLastUser({
+        // Transcrição preenche a nota de voz (sai do esqueleto) → 1 check.
+        patch({
           content: transcript,
           status: "sent",
           pending: false,
+          sending: false,
+          failed: false,
           audioUrl: data.userAudioUrl || null,
           audioDuration: data.audioDuration ?? recDuration,
         });
         scrollNow(); // mostra a transcrição inteira (de baixo p/ cima)
 
-        // 3) 2 checks (entregue)…
+        // 2 checks (entregue)…
         await sleep(1200);
-        patchLastUser({ status: "delivered" });
+        patch({ status: "delivered" });
 
-        // 4) …2 checks azuis (lido).
+        // …2 checks azuis (lido).
         await sleep(1200);
-        patchLastUser({ status: "read" });
+        patch({ status: "read" });
 
-        // 4.5) Maya "lê" a mensagem antes de responder — tempo proporcional ao
-        //      tamanho (comportamento humano: mensagem longa = demora mais).
+        // Maya "lê" a mensagem antes de responder — tempo proporcional ao tamanho.
         const readingSeconds = Math.min(6, Math.max(2, transcript.length / 30));
         await sleep(Math.round(readingSeconds * 1000));
 
-        // 5) "Maya gravando áudio" por ~60% da duração estimada da fala dela
-        //    (estima ~13 caracteres/segundo falados — só p/ dar a sensação de tempo).
+        // "Maya gravando áudio" por ~60% da duração estimada da fala dela.
         setMayaRecording(true);
         scrollNow();
         const estSeconds = Math.max(2.5, reply.length / 13);
         await sleep(Math.round(estSeconds * 1000 * 0.6));
 
-        // 6) Resposta da Maya em voz.
+        // Resposta da Maya em voz.
         setMayaRecording(false);
         setMessages((prev) => [
           ...prev,
@@ -864,35 +875,55 @@ export default function MayaChatPage() {
         } else if (data.ttsError) {
           console.warn("[voice] TTS falhou no servidor:", data.ttsError);
         }
+
+        voicePayloadsRef.current.delete(clientId); // enviou — não precisa mais reenviar
       } catch (e) {
         console.error("[voice] erro:", e);
         setPresence("lastSeen");
         setMayaRecording(false);
-        setMessages((prev) => {
-          const next = [...prev];
-          for (let i = next.length - 1; i >= 0; i--) {
-            if (next[i].role === "user") {
-              next[i] = { ...next[i], pending: false, status: "delivered" };
-              break;
-            }
-          }
-          next.push({
-            role: "assistant",
-            content: t("maya_error"),
-            time: formatTime(),
-            date: formatDate(),
-          });
-          return next;
-        });
+        patch({ pending: false, sending: false, failed: true, status: "sent" });
       } finally {
         setMayaRecording(false);
         setSending(false);
         sendingRef.current = false;
-        voiceProcessingRef.current = false;
-        setVoiceBlob(null);
       }
-    })();
-  }, [voiceBlob, t, scrollToBottom]);
+    },
+    [scrollToBottom],
+  );
+
+  // Dispara o envio de voz quando uma gravação é concluída (voiceBlob).
+  useEffect(() => {
+    if (!voiceBlob || voiceProcessingRef.current) return;
+    voiceProcessingRef.current = true;
+    const { blob, mime, duration } = voiceBlob;
+    const clientId = `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    voicePayloadsRef.current.set(clientId, { blob, mime, duration });
+    performVoiceSend({ blob, mime, duration, clientId, isResend: false }).finally(() => {
+      voiceProcessingRef.current = false;
+      setVoiceBlob(null);
+    });
+  }, [voiceBlob, performVoiceSend]);
+
+  // Reenviar (texto ou voz) — o botão some quando o envio tem sucesso.
+  const resendMessage = useCallback(
+    (msg: Message) => {
+      if (!msg.clientId || msg.sending || sending || sendingRef.current) return;
+      if (msg.voiceNote) {
+        const payload = voicePayloadsRef.current.get(msg.clientId);
+        if (!payload) return;
+        performVoiceSend({
+          blob: payload.blob,
+          mime: payload.mime,
+          duration: payload.duration,
+          clientId: msg.clientId,
+          isResend: true,
+        });
+      } else {
+        performTextSend(msg, messages);
+      }
+    },
+    [performVoiceSend, performTextSend, sending, messages],
+  );
 
   // Auto-limpa o aviso de microfone após alguns segundos.
   useEffect(() => {
@@ -1079,7 +1110,7 @@ export default function MayaChatPage() {
               {separatorLabel && <DateSeparator label={separatorLabel} />}
               <div
                 className={`flex ${isAssistant ? "justify-start" : "justify-end"}`}
-                style={{ marginBottom: gap }}
+                style={{ marginBottom: msg.failed ? 4 : gap }}
               >
                 <div
                   className="whitespace-pre-line"
@@ -1191,6 +1222,35 @@ export default function MayaChatPage() {
                   )}
                 </div>
               </div>
+              {!isAssistant && msg.failed && (
+                <div
+                  className="flex items-center justify-end gap-2"
+                  style={{ marginBottom: gap }}
+                >
+                  <span style={{ color: "#F87171", fontSize: 11.5, fontWeight: 500 }}>
+                    {t("maya_not_sent")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => resendMessage(msg)}
+                    disabled={!!msg.sending || sending}
+                    style={{
+                      padding: "4px 12px",
+                      borderRadius: 9999,
+                      border: "1px solid rgba(248,113,113,0.5)",
+                      background: "transparent",
+                      color: "#F87171",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: msg.sending || sending ? "default" : "pointer",
+                      opacity: msg.sending || sending ? 0.6 : 1,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {msg.sending ? "…" : t("maya_resend")}
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}

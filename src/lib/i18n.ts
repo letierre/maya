@@ -340,6 +340,8 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_voice_sending: "Enviando...",
     maya_error:
       "Tive dificuldade de me conectar agora. Tente novamente em alguns instantes. 💛",
+    maya_not_sent: "Não enviado",
+    maya_resend: "Reenviar",
 
     // CVV
     cvv_warning:
@@ -2848,6 +2850,8 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_voice_sending: "Enviando...",
     maya_error:
       "Tuve dificultad para conectarme ahora. Intenta de nuevo en unos instantes. 💛",
+    maya_not_sent: "No enviado",
+    maya_resend: "Reenviar",
 
     // CVV
     cvv_warning:
@@ -5354,6 +5358,8 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_voice_sending: "Sending...",
     maya_error:
       "I had trouble connecting right now. Please try again in a moment. 💛",
+    maya_not_sent: "Not sent",
+    maya_resend: "Resend",
 
     // CVV
     cvv_warning:
