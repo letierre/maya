@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
     const dayStart = `${checkDate}T00:00:00${getTimezoneOffset("America/Sao_Paulo", checkDate)}`;
     const dayEnd = `${checkDate}T23:59:59${getTimezoneOffset("America/Sao_Paulo", checkDate)}`;
 
-    const [planRes, agendaRes, actionsRes, runningRes, readingRes, mealsRes, sleepRes] = await Promise.all([
+    const [planRes, agendaRes, actionsRes, runningRes, readingRes, meditationRes, breathingRes, mealsRes, sleepRes] = await Promise.all([
       // Tarefas do plano da SEMANA ATUAL concluídas hoje, LIGADAS a uma meta
       // (direto via linked_goal_id, ou via uma ação de meta em linked_action_id).
       // Tarefa avulsa ("limpar a casa", "tirar carne do congelador") não conta.
@@ -173,6 +173,19 @@ export async function POST(req: NextRequest) {
         .eq("user_id", user.id)
         .eq("date", checkDate)
         .limit(1),
+      // Práticas de pausa registradas hoje (auto-marca meditou/respirou)
+      admin.from("practice_sessions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("kind", "meditation")
+        .eq("date", checkDate)
+        .limit(1),
+      admin.from("practice_sessions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("kind", "breathing")
+        .eq("date", checkDate)
+        .limit(1),
       // Refeições do dia (auto-detecta "comeu bem")
       admin.from("meals")
         .select("macros, status_analise, classificacao")
@@ -206,6 +219,16 @@ export async function POST(req: NextRequest) {
     // Auto-marca "leu" quando há sessão de leitura no dia
     if ((readingRes.data?.length ?? 0) > 0) {
       row.read = true;
+    }
+
+    // Auto-marca "meditou"/"respirou" a partir das práticas de pausa do dia
+    if ((meditationRes.data?.length ?? 0) > 0) {
+      row.meditation = true;
+      row.meditation_prayer_breathing = true;
+    }
+    if ((breathingRes.data?.length ?? 0) > 0) {
+      row.breathing = true;
+      row.meditation_prayer_breathing = true;
     }
 
     // Auto-detecta "comeu bem" a partir das refeições do dia (fonte de verdade)

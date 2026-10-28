@@ -272,6 +272,24 @@ export function OutrosRecursos() {
           accent="#fbbf24"
           ready={comprasReady}
         />
+        <ResourceCard
+          emoji="🧘"
+          label={t("md_titulo")}
+          preview="3 · 5 · 10 min"
+          sub={t("md_subtitulo")}
+          href="/meditacao"
+          accent="#A78BFA"
+          ready={true}
+        />
+        <ResourceCard
+          emoji="🌬️"
+          label={t("rb_titulo")}
+          preview="1 · 2 · 3 min"
+          sub={t("rb_subtitulo")}
+          href="/respiracao"
+          accent="#5EEAD4"
+          ready={true}
+        />
       </div>
     </div>
   );
