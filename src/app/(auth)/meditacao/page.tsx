@@ -88,15 +88,15 @@ export default function MeditacaoPage() {
     [clearTimer, stopAudio, stopAmbient, practiceKey, t],
   );
 
-  const start = useCallback(() => {
+  const start = useCallback(async () => {
     finishedRef.current = false;
     setSecondsLeft(totalSeconds);
     setAmbientMuted(false);
     setBreathPhase("inhale");
     setPhase("running");
-    // Toca a voz e o ambiente dentro do gesto de "Começar" (iOS só faz autoplay
-    // com play dentro do clique do usuário).
-    startAmbient(ambientKey);
+    // Destrava o áudio (iOS) e liga o ambiente, depois toca a voz — tudo dentro
+    // do gesto de "Começar" (iOS só faz autoplay com play no clique).
+    await startAmbient(ambientKey);
     const url = audioUrlRef.current;
     if (url) {
       const a = new Audio(url);

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useTranslation } from "@/lib/useTranslation";
 import { BREATHING_PATTERNS } from "@/lib/practice-scripts";
 import { BreathingCircle, type BreathPhase } from "@/components/practices/BreathingCircle";
+import { AMBIENT_OPTIONS, useAmbient, type AmbientKey } from "@/components/practices/useAmbient";
 import { photoUrl } from "@/lib/photo-storage";
 import { getLocalDate } from "@/lib/utils";
 
@@ -36,11 +37,15 @@ export default function RespiracaoPage() {
   const [breathPhase, setBreathPhase] = useState<BreathPhase>("inhale");
   const [cycles, setCycles] = useState(0);
   const [voiceActive, setVoiceActive] = useState(false);
+  const [ambientKey, setAmbientKey] = useState<AmbientKey>("none");
+  const [ambientMuted, setAmbientMuted] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const finishedRef = useRef(false);
+
+  const { start: startAmbient, stop: stopAmbient, setMuted: setAmbientGain } = useAmbient();
 
   const totalSeconds = durationMin * 60;
   const pattern = BREATHING_PATTERNS.find((p) => p.key === patternKey) ?? BREATHING_PATTERNS[0];
@@ -65,6 +70,7 @@ export default function RespiracaoPage() {
       finishedRef.current = true;
       clearTimer();
       stopAudio();
+      stopAmbient();
       setPhase("done");
       try {
         await fetch("/api/practices", {
@@ -82,16 +88,19 @@ export default function RespiracaoPage() {
         /* silencioso */
       }
     },
-    [clearTimer, stopAudio, patternKey, t],
+    [clearTimer, stopAudio, stopAmbient, patternKey, t],
   );
 
-  const start = useCallback(() => {
+  const start = useCallback(async () => {
     finishedRef.current = false;
     setSecondsLeft(totalSeconds);
     setCycles(0);
     setBreathPhase("inhale");
+    setAmbientMuted(false);
     setPhase("running");
-    // Toca a voz dentro do gesto de "Começar" (iOS só faz autoplay com play no clique).
+    // Destrava o áudio (iOS) e liga o ambiente, depois toca a voz — tudo dentro
+    // do gesto de "Começar" (iOS só faz autoplay com play no clique).
+    await startAmbient(ambientKey);
     const url = audioUrlRef.current;
     if (url) {
       const a = new Audio(url);
@@ -100,7 +109,7 @@ export default function RespiracaoPage() {
       a.play().catch(() => {});
       setVoiceActive(true);
     }
-  }, [totalSeconds]);
+  }, [totalSeconds, startAmbient, ambientKey]);
 
   // Pré-busca a voz já na seleção: deixa o áudio pronto para tocar dentro do
   // gesto de "Começar" (autoplay no iOS exige o play no clique).
@@ -156,8 +165,9 @@ export default function RespiracaoPage() {
     return () => {
       clearTimer();
       stopAudio();
+      stopAmbient();
     };
-  }, [phase, patternKey, lang, clearTimer, stopAudio]);
+  }, [phase, patternKey, lang, clearTimer, stopAudio, stopAmbient]);
 
   useEffect(() => {
     if (phase === "running" && secondsLeft === 0) {
@@ -255,6 +265,39 @@ export default function RespiracaoPage() {
               );
             })}
           </div>
+
+          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: MUTED, margin: "20px 0 8px" }}>{t("md_ambiente")}</p>
+          <div style={{ display: "flex", gap: 8 }}>
+            {AMBIENT_OPTIONS.map((a) => {
+              const selected = a.key === ambientKey;
+              return (
+                <button
+                  key={a.key}
+                  type="button"
+                  onClick={() => setAmbientKey(a.key)}
+                  style={{
+                    flex: 1,
+                    height: 44,
+                    borderRadius: 12,
+                    border: selected ? `1.5px solid ${PURPLE}` : `1px solid ${BORDER}`,
+                    background: selected ? "rgba(124,92,255,0.14)" : "#1a1530",
+                    color: selected ? FOREGROUND : MUTED,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4,
+                  }}
+                >
+                  <span style={{ fontSize: 15 }}>{a.emoji}</span>
+                  {t(a.labelKey)}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div style={{ padding: "0 16px" }}>
@@ -315,6 +358,11 @@ export default function RespiracaoPage() {
         {voiceActive && (
           <button type="button" onClick={stopAudio} style={{ padding: "6px 12px", borderRadius: 9999, border: `1px solid ${BORDER}`, background: "transparent", color: MUTED, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             {t("pr_pular")}
+          </button>
+        )}
+        {ambientKey !== "none" && (
+          <button type="button" onClick={() => setAmbientMuted((m) => { const next = !m; setAmbientGain(next); return next; })} style={{ padding: "6px 12px", borderRadius: 9999, border: `1px solid ${BORDER}`, background: "transparent", color: MUTED, fontSize: 16, cursor: "pointer", fontFamily: "inherit", lineHeight: 1 }}>
+            {ambientMuted ? "🔇" : "🔊"}
           </button>
         )}
         <button type="button" onClick={() => void finish(totalSeconds - secondsLeft)} style={{ padding: "6px 14px", borderRadius: 9999, border: `1px solid ${BORDER}`, background: "transparent", color: MUTED, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>

@@ -13,12 +13,24 @@ export const AMBIENT_OPTIONS: { key: AmbientKey; emoji: string; labelKey: string
 
 const BASE_GAIN = 0.2;
 
+function createCtx(): AudioContext | null {
+  const Ctor =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  if (!Ctor) return null;
+  return new Ctor();
+}
+
 /**
  * Sons ambientes de meditação gerados por Web Audio (sem arquivos, sem licença).
  * — "ocean": ruído marrom + lowpass + onda lenta de amplitude (vaivém do mar)
  * — "rain":  ruído branco filtrado (chuva)
  * — "pad":   acorde suave de senos detonados + LFO lento (drone meditativo)
- * O toque dentro do gesto de "Começar" inicia o AudioContext (requisito do iOS).
+ *
+ * iOS: o AudioContext nasce "suspended" e precisa de resume dentro do gesto do
+ * usuário. Sem isso o som sai mudo (ou só toca depois de mexer no volume) — por
+ * isso `start` aguarda o resume e toca um buffer silencioso p/ "destravar" a
+ * sessão de áudio antes de ligar as fontes.
  */
 export function useAmbient() {
   const ctxRef = useRef<AudioContext | null>(null);
@@ -38,17 +50,32 @@ export function useAmbient() {
     }
   }, []);
 
-  const start = useCallback(
-    (key: AmbientKey) => {
-      stop();
-      if (key === "none") return;
+  // Cria o contexto, garante que está "running" e toca um buffer silencioso
+  // para ativar a rota de áudio do iOS. Deve rodar dentro do gesto do usuário.
+  const unlock = useCallback(async (): Promise<AudioContext | null> => {
+    const ctx = createCtx();
+    if (!ctx) return null;
+    ctxRef.current = ctx;
+    if (ctx.state === "suspended") {
+      await ctx.resume().catch(() => {});
+    }
+    try {
+      const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch {
+      /* silencioso — só serve p/ destravar o iOS */
+    }
+    return ctx;
+  }, []);
 
-      const Ctor =
-        window.AudioContext ??
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const ctx = new Ctor();
-      ctxRef.current = ctx;
-      void ctx.resume().catch(() => {});
+  const start = useCallback(
+    async (key: AmbientKey) => {
+      stop();
+      const ctx = await unlock();
+      if (!ctx || key === "none") return;
 
       const master = ctx.createGain();
       master.gain.value = BASE_GAIN;
@@ -138,7 +165,7 @@ export function useAmbient() {
         lfo.start();
       }
     },
-    [stop],
+    [stop, unlock],
   );
 
   return { start, stop, setMuted };
