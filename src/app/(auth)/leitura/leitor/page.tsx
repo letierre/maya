@@ -201,7 +201,7 @@ export default function LeituraTimerPage() {
       minHeight: "100dvh", display: "flex", flexDirection: "column",
       background: `
         radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.55 .18 270 / .14) 0%, transparent 60%),
-        linear-gradient(180deg, oklch(.11 .012 270) 0%, oklch(.14 .015 270) 100%)
+        oklch(.12 .012 270)
       `,
       fontFamily: "var(--font-sans)", color: FOREGROUND,
     }}>

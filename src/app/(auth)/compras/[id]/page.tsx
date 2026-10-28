@@ -500,7 +500,7 @@ export default function ComprasListaPage() {
       style={{
         background: `
           radial-gradient(ellipse 80% 50% at 20% 0%, oklch(.47 .18 270 / .20) 0%, transparent 50%),
-          linear-gradient(180deg, oklch(0.12 0.012 270) 0%, oklch(0.10 0.012 270) 100%)
+          oklch(.12 .012 270)
         `,
       }}
     >

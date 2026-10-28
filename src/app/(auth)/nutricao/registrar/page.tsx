@@ -39,7 +39,7 @@ const CLASSIFICATION_STYLE: Record<string, { bg: string; text: string; emoji: st
 const BG_GRADIENT: React.CSSProperties = {
   background: `
     radial-gradient(ellipse 80% 50% at 50% 0%, oklch(.58 .18 270 / .15) 0%, transparent 60%),
-    linear-gradient(180deg, oklch(.12 .012 270) 0%, oklch(.15 .015 270) 100%)
+    oklch(.12 .012 270)
   `,
   fontFamily: "var(--font-sans)",
   color: FOREGROUND,

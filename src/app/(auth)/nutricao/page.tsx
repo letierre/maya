@@ -33,7 +33,7 @@ const BG_GRADIENT: React.CSSProperties = {
   background: `
     radial-gradient(ellipse 100% 55% at 80% 0%, oklch(.58 .18 270 / .15) 0%, transparent 55%),
     radial-gradient(ellipse 70% 40% at 0% 100%, oklch(.58 .18 270 / .1) 0%, transparent 50%),
-    linear-gradient(180deg, oklch(.12 .012 270) 0%, oklch(.15 .015 270) 100%)
+    oklch(.12 .012 270)
   `,
   fontFamily: "var(--font-sans)",
   color: "#e0d6ff",
