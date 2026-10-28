@@ -31,6 +31,7 @@ export default function MeditacaoPage() {
   const [voiceLoading, setVoiceLoading] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const finishedRef = useRef(false);
 
@@ -77,13 +78,20 @@ export default function MeditacaoPage() {
     finishedRef.current = false;
     setSecondsLeft(totalSeconds);
     setPhase("running");
+    // Toca a voz dentro do gesto de "Começar" (iOS só faz autoplay com play no clique).
+    const url = audioUrlRef.current;
+    if (url) {
+      const a = new Audio(url);
+      audioRef.current = a;
+      a.play().catch(() => {});
+    }
   }, [totalSeconds]);
 
-  // Voz + cronômetro durante a sessão.
+  // Pré-busca a voz já na seleção: deixa o áudio pronto para tocar dentro do
+  // gesto de "Começar" (autoplay no iOS exige o play no clique).
   useEffect(() => {
-    if (phase !== "running") return;
-
-    setVoiceLoading(true);
+    audioUrlRef.current = null;
+    let cancelled = false;
     fetch("/api/practices/voice", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -91,15 +99,38 @@ export default function MeditacaoPage() {
     })
       .then((r) => r.json())
       .then((d) => {
-        const url = photoUrl(d.audioUrl);
-        if (url) {
-          const a = new Audio(url);
-          audioRef.current = a;
-          a.play().catch(() => {});
-        }
+        if (!cancelled) audioUrlRef.current = photoUrl(d.audioUrl);
       })
-      .catch(() => {})
-      .finally(() => setVoiceLoading(false));
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [practiceKey, lang]);
+
+  // Cronômetro da sessão + fallback de voz (caso o prefetch não tenha resolvido).
+  useEffect(() => {
+    if (phase !== "running") return;
+
+    if (!audioUrlRef.current) {
+      setVoiceLoading(true);
+      fetch("/api/practices/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "meditation", pattern: practiceKey, language: lang }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          const url = photoUrl(d.audioUrl);
+          audioUrlRef.current = url;
+          if (url) {
+            const a = new Audio(url);
+            audioRef.current = a;
+            a.play().catch(() => {});
+          }
+        })
+        .catch(() => {})
+        .finally(() => setVoiceLoading(false));
+    }
 
     timerRef.current = setInterval(() => {
       setSecondsLeft((s) => Math.max(0, s - 1));

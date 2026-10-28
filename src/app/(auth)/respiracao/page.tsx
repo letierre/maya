@@ -37,6 +37,7 @@ export default function RespiracaoPage() {
   const [cycles, setCycles] = useState(0);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const finishedRef = useRef(false);
 
@@ -88,12 +89,20 @@ export default function RespiracaoPage() {
     setCycles(0);
     setBreathPhase("inhale");
     setPhase("running");
+    // Toca a voz dentro do gesto de "Começar" (iOS só faz autoplay com play no clique).
+    const url = audioUrlRef.current;
+    if (url) {
+      const a = new Audio(url);
+      audioRef.current = a;
+      a.play().catch(() => {});
+    }
   }, [totalSeconds]);
 
+  // Pré-busca a voz já na seleção: deixa o áudio pronto para tocar dentro do
+  // gesto de "Começar" (autoplay no iOS exige o play no clique).
   useEffect(() => {
-    if (phase !== "running") return;
-
-    setVoiceLoading(true);
+    audioUrlRef.current = null;
+    let cancelled = false;
     fetch("/api/practices/voice", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -101,15 +110,38 @@ export default function RespiracaoPage() {
     })
       .then((r) => r.json())
       .then((d) => {
-        const url = photoUrl(d.audioUrl);
-        if (url) {
-          const a = new Audio(url);
-          audioRef.current = a;
-          a.play().catch(() => {});
-        }
+        if (!cancelled) audioUrlRef.current = photoUrl(d.audioUrl);
       })
-      .catch(() => {})
-      .finally(() => setVoiceLoading(false));
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [patternKey, lang]);
+
+  // Cronômetro da sessão + fallback de voz (caso o prefetch não tenha resolvido).
+  useEffect(() => {
+    if (phase !== "running") return;
+
+    if (!audioUrlRef.current) {
+      setVoiceLoading(true);
+      fetch("/api/practices/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "breathing", pattern: patternKey, language: lang }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          const url = photoUrl(d.audioUrl);
+          audioUrlRef.current = url;
+          if (url) {
+            const a = new Audio(url);
+            audioRef.current = a;
+            a.play().catch(() => {});
+          }
+        })
+        .catch(() => {})
+        .finally(() => setVoiceLoading(false));
+    }
 
     timerRef.current = setInterval(() => {
       setSecondsLeft((s) => Math.max(0, s - 1));
