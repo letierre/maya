@@ -59,27 +59,21 @@ export function ModuloPreviewCard({
       </span>
 
       <p
-        className="m-0 text-[10px] font-bold tracking-[.1em] uppercase"
+        className="m-0 text-[10px] font-bold tracking-[.1em] uppercase truncate"
         style={{ color: accent }}
       >
         {label}
       </p>
 
       <p
-        className="m-0 text-[12px] font-medium leading-snug flex-1"
-        style={{
-          color: "#e0d6ff",
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-        }}
+        className="m-0 text-[12px] font-medium leading-snug truncate"
+        style={{ color: "#e0d6ff" }}
       >
         {preview || sub || "—"}
       </p>
 
       {sub && (
-        <p className="m-0 text-[10px]" style={{ color: "var(--text-muted)" }}>
+        <p className="m-0 text-[10px] truncate" style={{ color: "var(--text-muted)" }}>
           {sub}
         </p>
       )}

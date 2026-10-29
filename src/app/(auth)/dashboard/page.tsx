@@ -280,16 +280,15 @@ export default function DashboardPage() {
         else if (prefsData.context?.gender) setUserGender(prefsData.context.gender as string);
         if (prefsData.context?.currency) setCurrency(prefsData.context.currency as string);
 
-        // Diário
-        if (diaryData && diaryData.length > 0) {
-          const e = diaryData[0];
-          const isToday = e.date === today;
-          const text = e.content?.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
-          setDiaryPreview(text ? text.slice(0, 60) + (text.length > 60 ? "…" : "") : e.title || t("dash_entrada_dia"));
-          setDiarySub(isToday ? t("ag_hoje") : new Date(e.date + "T12:00:00").toLocaleDateString(getLocale(), { day: "numeric", month: "short" }));
+        // Diário — nunca expõe o conteúdo no dashboard (pode ser íntimo).
+        // Mostra só o estado: "registrado hoje" ou um convite a escrever.
+        const latestDiary = diaryData && diaryData.length > 0 ? diaryData[0] : null;
+        if (latestDiary && latestDiary.date === today) {
+          setDiaryPreview(t("dash_diario_feito"));
+          setDiarySub(t("dash_diario_ver"));
         } else {
           setDiaryPreview(t("dash_escreva_dia"));
-          setDiarySub(t("dash_nova_entrada"));
+          setDiarySub(t("dash_diario_prompt"));
         }
 
         // Nutrição
