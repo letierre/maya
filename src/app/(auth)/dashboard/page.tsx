@@ -408,13 +408,13 @@ export default function DashboardPage() {
         >
           {t("dash_bemestar")}
         </p>
-        <div className="grid grid-cols-2 gap-2">
-          <DiarioPreview loading={loading} preview={diaryPreview} sub={diarySub} />
-          <SonoPreview loading={loading} recentSleep={recentSleep} />
-          <NutricaoPreview loading={loading} preview={nutricaoPreview} sub={nutricaoSub} />
-          <MeditacaoCard />
-          <RespiracaoCard />
-          <CorridaCard />
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="min-w-[148px] shrink-0"><DiarioPreview loading={loading} preview={diaryPreview} sub={diarySub} /></div>
+          <div className="min-w-[148px] shrink-0"><SonoPreview loading={loading} recentSleep={recentSleep} /></div>
+          <div className="min-w-[148px] shrink-0"><NutricaoPreview loading={loading} preview={nutricaoPreview} sub={nutricaoSub} /></div>
+          <div className="min-w-[148px] shrink-0"><MeditacaoCard /></div>
+          <div className="min-w-[148px] shrink-0"><RespiracaoCard /></div>
+          <div className="min-w-[148px] shrink-0"><CorridaCard /></div>
         </div>
       </div>
 
@@ -426,13 +426,13 @@ export default function DashboardPage() {
         >
           {t("dash_mais_espacos")}
         </p>
-        <div className="grid grid-cols-2 gap-2">
-          <PlanejamentoPreview loading={loading} todayTasks={todayTasks} />
-          <FinancasPreview loading={loading} todaySpending={todaySpending} weeklyDailyAvg={weeklyDailyAvg} currency={currency} />
-          <LeituraCard />
-          <PorquesCard />
-          <HistoricoCard />
-          <ComprasCard />
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="min-w-[148px] shrink-0"><PlanejamentoPreview loading={loading} todayTasks={todayTasks} /></div>
+          <div className="min-w-[148px] shrink-0"><FinancasPreview loading={loading} todaySpending={todaySpending} weeklyDailyAvg={weeklyDailyAvg} currency={currency} /></div>
+          <div className="min-w-[148px] shrink-0"><LeituraCard /></div>
+          <div className="min-w-[148px] shrink-0"><PorquesCard /></div>
+          <div className="min-w-[148px] shrink-0"><HistoricoCard /></div>
+          <div className="min-w-[148px] shrink-0"><ComprasCard /></div>
         </div>
       </div>
 
