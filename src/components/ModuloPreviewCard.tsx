@@ -47,7 +47,8 @@ export function ModuloPreviewCard({
       className="rounded-2xl p-4 text-left cursor-pointer transition-all active:scale-[0.98] flex flex-col gap-2 group relative overflow-hidden"
       style={{
         background: "var(--surface)",
-        border: "1px solid rgba(167,139,250,0.16)",
+        border: "1px solid rgba(167,139,250,0.32)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
       }}
     >
       <span
