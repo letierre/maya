@@ -1,15 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStripe, priceIdFor } from "@/lib/stripe";
 
 // GET /api/checkout — recebe a atribuição do anúncio que o quiz repassa
 // (fbp/fbc/fbclid + UTMs), captura IP/User-Agent do navegador e cria a sessão de
 // Checkout. O plano é decidido DENTRO do Stripe (upsell mensal → anual), então só
 // entra o preço mensal base. Tudo vai no `metadata` da sessão para o webhook
 // `checkout.session.completed` montar o evento CAPI completo pra Oryen.
-export async function GET(req: NextRequest) {
-  const stripe = getStripe();
-  const params = req.nextUrl.searchParams;
+//
+// Roda no Edge (runtime) e chama a API REST do Stripe via `fetch` em vez do SDK:
+// o SDK é pesado e não roda no Edge. Isso elimina o cold start (~1–3s do Node
+// serverless) e corta o import do SDK — o maior gargalo do fluxo quiz → checkout.
 
+export const runtime = "edge";
+
+const STRIPE_SESSIONS_URL = "https://api.stripe.com/v1/checkout/sessions";
+
+// Marco de carregamento do módulo — usado pra estimar o cold start (tempo entre o
+// boot/isolate e a entrada do handler).
+const MODULE_LOAD_TS = Date.now();
+
+// Mesmo mapeamento de `priceIdFor` de @/lib/stripe, inlined pra não puxar o SDK
+// (Node-only) no Edge.
+function priceIdFor(plan: "monthly" | "annual"): string {
+  return plan === "annual"
+    ? process.env.STRIPE_PRICE_ANNUAL_ID || ""
+    : process.env.STRIPE_PRICE_MONTHLY_ID || "";
+}
+
+export async function GET(req: NextRequest) {
+  const t0 = Date.now();
+  const coldStartMs = t0 - MODULE_LOAD_TS;
+
+  const params = req.nextUrl.searchParams;
   const get = (k: string) => params.get(k)?.slice(0, 500) ?? "";
 
   const fbp = get("fbp");
@@ -26,7 +47,7 @@ export async function GET(req: NextRequest) {
   // IP e User-Agent do visitante (esta requisição vem do navegador dele via redirect).
   const forwarded = req.headers.get("x-forwarded-for");
   const ip = forwarded?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "";
-  const userAgent = req.headers.get("user-agent") || "";
+  const userAgent = (req.headers.get("user-agent") || "").slice(0, 500);
 
   // Plano escolhido na landing do quiz: "monthly" (padrão) ou "annual".
   const plan: "monthly" | "annual" = params.get("plan") === "annual" ? "annual" : "monthly";
@@ -46,41 +67,47 @@ export async function GET(req: NextRequest) {
   if (ip) metadata.client_ip = ip;
   if (userAgent) metadata.client_user_agent = userAgent;
 
-  // LOG TEMPORÁRIO — verificação do fluxo do quiz. Remove depois de validar.
-  console.log(
-    "[checkout] dados recebidos do quiz:",
-    JSON.stringify({
-      plan,
-      fbp,
-      fbc,
-      fbclid,
-      utm_source,
-      utm_medium,
-      utm_campaign,
-      utm_content,
-      ip,
-      userAgent,
-    })
-  );
-
   const origin = req.nextUrl.origin;
 
+  // Corpo form-encoded (equivale 1:1 ao que o SDK envia). `adaptive_pricing`
+  // cobra na moeda local do cliente (evita "moeda não suportada").
+  const body = new URLSearchParams();
+  body.set("mode", "subscription");
+  body.set("line_items[0][price]", price);
+  body.set("line_items[0][quantity]", "1");
+  body.set("success_url", `${origin}/checkout/success`);
+  body.set("cancel_url", `${origin}/login`);
+  body.set("adaptive_pricing[enabled]", "true");
+  for (const [k, v] of Object.entries(metadata)) {
+    body.set(`metadata[${k}]`, v);
+  }
+
   try {
-    const checkout = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      // Só o plano mensal nesta fase (sem upsell). adaptive_pricing cobra na
-      // moeda local do cliente (evita "moeda não suportada").
-      adaptive_pricing: { enabled: true },
-      line_items: [{ price, quantity: 1 }],
-      metadata,
-      success_url: `${origin}/checkout/success`,
-      cancel_url: `${origin}/login`,
+    const res = await fetch(STRIPE_SESSIONS_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY || ""}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: body.toString(),
     });
 
-    if (!checkout.url) {
+    const totalMs = Date.now() - t0;
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(`[checkout] Stripe ${res.status}: ${text.slice(0, 300)}`);
+      return NextResponse.json({ error: "Erro ao criar checkout" }, { status: 500 });
+    }
+
+    const data = (await res.json()) as { url?: string };
+    const url = data.url;
+    if (!url) {
       return NextResponse.json({ error: "Falha ao criar checkout" }, { status: 500 });
     }
-    return NextResponse.redirect(checkout.url);
+
+    console.log(`[checkout] timing cold_start_ms=${coldStartMs} handler_ms=${totalMs}`);
+    return NextResponse.redirect(url);
   } catch (error) {
     console.error("GET /api/checkout error:", error);
     return NextResponse.json(
