@@ -21,15 +21,57 @@ export interface ThreadDay {
   today: boolean;
 }
 
+function SparkSmall({ data, color = "oklch(.58 .18 270)" }: { data: number[]; color?: string }) {
+  const W = 140;
+  const H = 32;
+  const P = 2;
+  const max = Math.max(...data, 1);
+  const xStep = (W - P * 2) / Math.max(data.length - 1, 1);
+  const points = data.map((v, i) => {
+    const x = P + i * xStep;
+    const y = P + (H - P * 2) * (1 - v / max);
+    return [x, y] as const;
+  });
+  const line = points.map((p, i) => (i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`)).join(" ");
+  const fill = `${line} L ${points[points.length - 1][0]} ${H} L ${points[0][0]} ${H} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 32, display: "block" }} preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="rtSparkFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity=".25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={fill} fill="url(#rtSparkFill)" />
+      <path d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 interface RecentThreadProps {
   days: ThreadDay[];
   userGender: string;
+  /** Evolução 14d (fundida no rodapé do mesmo card). */
+  sparkData?: number[];
 }
 
-export function RecentThread({ days, userGender }: RecentThreadProps) {
+export function RecentThread({ days, userGender, sparkData }: RecentThreadProps) {
   const { t } = useTranslation();
-  const last3 = days.slice(-3).reverse(); // [today, yesterday, 2d ago]
-  const labels = [t("rt_hoje"), t("rt_ontem"), t("rt_anteontem")];
+  const last7 = days.slice(-7).reverse(); // [today, yesterday, ... 6d ago]
+
+  const hasSpark = !!sparkData && sparkData.some((v) => v > 0);
+  const sparkAvg = hasSpark
+    ? sparkData!.reduce((a, b) => a + b, 0) / sparkData!.length
+    : 0;
+  const sparkTrend = (() => {
+    if (!hasSpark || sparkData!.filter((v) => v > 0).length < 2) return "";
+    const avg1 = sparkData!.slice(0, 7).reduce((a, b) => a + b, 0) / 7;
+    const avg2 = sparkData!.slice(7).reduce((a, b) => a + b, 0) / 7;
+    if (avg2 - avg1 > 0.5) return t("subindo");
+    if (avg1 - avg2 > 0.5) return t("caindo");
+    return t("estavel");
+  })();
 
   return (
     <div className="px-3.5 pt-2">
@@ -51,8 +93,8 @@ export function RecentThread({ days, userGender }: RecentThreadProps) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          {last3.map((day, i) => {
-            const isToday = i === 0;
+          {last7.map((day, i) => {
+            const isToday = day.today;
             const moodTag = day.mood_tags?.[0];
             const extraMoods = (day.mood_tags?.length ?? 0) - 1;
             const hasScore = day.cuidados !== null && (day.cuidadosTotal ?? 0) > 0;
@@ -78,7 +120,7 @@ export function RecentThread({ days, userGender }: RecentThreadProps) {
                   className="text-[11px] font-semibold tracking-tight"
                   style={{ color: isToday ? "#A78BFA" : "var(--text-muted)" }}
                 >
-                  {labels[i]}
+                  {isToday ? t("rt_hoje") : day.label}
                 </span>
 
                 <span className="text-[13px] leading-none text-center" style={{ opacity: sleepOpacity }}>
@@ -135,6 +177,22 @@ export function RecentThread({ days, userGender }: RecentThreadProps) {
             );
           })}
         </div>
+
+        {/* Evolução 14d — fundida no rodapé do mesmo card */}
+        {hasSpark && (
+          <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--divider)" }}>
+            <div className="flex items-baseline justify-between mb-1.5">
+              <span className="text-[10px] font-bold tracking-[.1em] uppercase" style={{ color: "var(--text-muted)" }}>
+                {t("ev_titulo")}
+              </span>
+              <span className="text-[11px] font-semibold tabular-nums" style={{ color: "#e0d6ff" }}>
+                {sparkAvg.toFixed(1)} {t("ev_media")}
+                {sparkTrend ? ` · ${sparkTrend}` : ""}
+              </span>
+            </div>
+            <SparkSmall data={sparkData!} />
+          </div>
+        )}
       </div>
     </div>
   );

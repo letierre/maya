@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { cachedFetch, safeCachedFetch } from "@/lib/fetch-cache";
 import { calculateStreak } from "@/lib/utils";
 import { useTranslation } from "@/lib/useTranslation";
+import { ModuloPreviewCard } from "@/components/ModuloPreviewCard";
 
 interface RunningSession {
   id: string;
@@ -15,7 +14,7 @@ interface RunningSession {
   start_time: string;
 }
 
-interface ReadingBook { status: string }
+interface ReadingBook { id: string; status: string }
 interface ReadingSession { date: string }
 
 function formatPace(secPerKm: number): string {
@@ -32,120 +31,78 @@ function formatDuration(sec: number): string {
   return `${m}min ${s}s`;
 }
 
-// ── Card compacto (strip horizontal) ───────────────────────────
+// ── Cards auto-contidos (cada um busca o próprio preview) ──────
 
-function ResourceCard({
-  emoji,
-  label,
-  preview,
-  sub,
-  href,
-  accent,
-  ready,
-}: {
-  emoji: string;
-  label: string;
-  preview: string | null;
-  sub: string;
-  href: string;
-  accent: string;
-  ready: boolean;
-}) {
-  if (!ready) {
-    return (
-      <div
-        className="rounded-2xl animate-pulse flex flex-col gap-2 p-4 min-w-[148px]"
-        style={{
-          background: "var(--surface)",
-          border: "1px solid var(--surface-border)",
-        }}
-      >
-        <div className="w-8 h-8 rounded-full" style={{ background: "var(--surface-3)" }} />
-        <div className="h-3 rounded-full w-16" style={{ background: "var(--surface-3)" }} />
-        <div className="h-3 rounded-full w-24" style={{ background: "var(--surface-3)" }} />
-      </div>
-    );
-  }
-
+export function MeditacaoCard() {
+  const { t } = useTranslation();
   return (
-    <Link
-      href={href}
-      className="rounded-2xl p-4 text-left cursor-pointer transition-all active:scale-[0.98] flex flex-col gap-2 min-w-[148px] shrink-0 group relative overflow-hidden"
-      style={{
-        background: "var(--surface)",
-        border: "1px solid rgba(167,139,250,0.32)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
-        textDecoration: "none",
-      }}
-    >
-      <span className="text-2xl leading-none relative">{emoji}</span>
-
-      <p
-        className="m-0 text-[10px] font-bold tracking-[.1em] uppercase"
-        style={{ color: accent }}
-      >
-        {label}
-      </p>
-
-      <p className="m-0 text-[12px] font-medium leading-snug" style={{ color: "#e0d6ff" }}>
-        {preview || sub || "—"}
-      </p>
-
-      {sub && (
-        <p className="m-0 text-[10px]" style={{ color: "var(--text-muted)" }}>
-          {sub}
-        </p>
-      )}
-
-      <ArrowRight
-        className="w-3 h-3 absolute bottom-3 right-3 opacity-30 group-hover:opacity-70 transition-opacity"
-        style={{ color: accent }}
-      />
-    </Link>
+    <ModuloPreviewCard
+      emoji="🧘"
+      label={t("md_titulo")}
+      preview="3 · 5 · 10 min"
+      sub={t("md_subtitulo")}
+      href="/meditacao"
+      accent="#A78BFA"
+    />
   );
 }
 
-// ── Seção ──────────────────────────────────────────────────────
-
-export function OutrosRecursos() {
+export function RespiracaoCard() {
   const { t } = useTranslation();
-  const [runPreview, setRunPreview] = useState<string | null>(null);
-  const [runSub, setRunSub] = useState("");
-  const [runReady, setRunReady] = useState(false);
+  return (
+    <ModuloPreviewCard
+      emoji="🌬️"
+      label={t("rb_titulo")}
+      preview="1 · 2 · 3 min"
+      sub={t("rb_subtitulo")}
+      href="/respiracao"
+      accent="#5EEAD4"
+    />
+  );
+}
 
-  const [readPreview, setReadPreview] = useState<string | null>(null);
-  const [readSub, setReadSub] = useState("");
-  const [readReady, setReadReady] = useState(false);
-
-  const [porquePreview, setPorquePreview] = useState<string | null>(null);
-  const [porqueSub, setPorqueSub] = useState("");
-  const [porqueReady, setPorqueReady] = useState(false);
-
-  const [histPreview, setHistPreview] = useState<string | null>(null);
-  const [histSub, setHistSub] = useState("");
-  const [histReady, setHistReady] = useState(false);
-
-  const [comprasPreview, setComprasPreview] = useState<string | null>(null);
-  const [comprasSub, setComprasSub] = useState("");
-  const [comprasReady, setComprasReady] = useState(false);
+export function CorridaCard() {
+  const { t } = useTranslation();
+  const [preview, setPreview] = useState<string | null>(null);
+  const [sub, setSub] = useState("");
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Corrida — última sessão
     safeCachedFetch<RunningSession[]>("/api/running?limit=1")
       .then((sessions) => {
         if (sessions && sessions.length > 0) {
           const s = sessions[0];
-          setRunPreview(`${(s.distance_meters / 1000).toFixed(2)} km`);
-          setRunSub(`${formatDuration(s.duration_seconds)} · ${formatPace(s.avg_pace || 0)}`);
+          setPreview(`${(s.distance_meters / 1000).toFixed(2)} km`);
+          setSub(`${formatDuration(s.duration_seconds)} · ${formatPace(s.avg_pace || 0)}`);
         } else {
-          setRunPreview(t("or_comece_correr"));
-          setRunSub(t("or_rastreie_gps"));
+          setPreview(t("or_comece_correr"));
+          setSub(t("or_rastreie_gps"));
         }
       })
       .catch(() => {})
-      .finally(() => setRunReady(true));
+      .finally(() => setReady(true));
+  }, [t]);
 
-    // Leitura — livros em leitura + sequência de dias
+  return (
+    <ModuloPreviewCard
+      emoji="🏃"
+      label={t("or_lbl_corrida")}
+      preview={preview}
+      sub={sub}
+      href="/corrida"
+      accent="#22D18B"
+      loading={!ready}
+    />
+  );
+}
+
+export function LeituraCard() {
+  const { t } = useTranslation();
+  const [preview, setPreview] = useState<string | null>(null);
+  const [sub, setSub] = useState("");
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
     Promise.all([
       safeCachedFetch<ReadingBook[]>("/api/leitura/books"),
       safeCachedFetch<ReadingSession[]>("/api/leitura/sessions"),
@@ -154,44 +111,103 @@ export function OutrosRecursos() {
         const lendo = (books ?? []).filter((b) => b.status === "lendo").length;
         const dates = Array.from(new Set((sessions ?? []).map((s) => s.date)));
         const streak = calculateStreak(dates);
-
         if (lendo > 0) {
-          setReadPreview(lendo === 1 ? t("or_livro_em_leitura", { n: String(lendo) }) : t("or_livros_em_leitura", { n: String(lendo) }));
-          setReadSub(streak > 0 ? (streak === 1 ? t("or_dia_seguido", { n: String(streak) }) : t("or_dias_seguidos", { n: String(streak) })) : t("or_comece_hoje"));
+          setPreview(lendo === 1 ? t("or_livro_em_leitura", { n: String(lendo) }) : t("or_livros_em_leitura", { n: String(lendo) }));
+          setSub(streak > 0 ? (streak === 1 ? t("or_dia_seguido", { n: String(streak) }) : t("or_dias_seguidos", { n: String(streak) })) : t("or_comece_hoje"));
         } else {
-          setReadPreview(t("or_monte_estante"));
-          setReadSub(t("or_adicione_livro"));
+          setPreview(t("or_monte_estante"));
+          setSub(t("or_adicione_livro"));
         }
       })
       .catch(() => {})
-      .finally(() => setReadReady(true));
+      .finally(() => setReady(true));
+  }, [t]);
 
-    // Porquês — contagem de "porquês" escritos
+  return (
+    <ModuloPreviewCard
+      emoji="📚"
+      label={t("or_lbl_leitura")}
+      preview={preview}
+      sub={sub}
+      href="/leitura"
+      accent="#A78BFA"
+      loading={!ready}
+    />
+  );
+}
+
+export function PorquesCard() {
+  const { t } = useTranslation();
+  const [preview, setPreview] = useState<string | null>(null);
+  const [sub, setSub] = useState("");
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
     cachedFetch<{ porques?: unknown[] }>("/api/profile")
       .then((data) => {
         const count = (data.porques ?? []).length;
         if (count > 0) {
-          setPorquePreview(count === 1 ? t("or_porque_escrito", { n: String(count) }) : t("or_porques_escritos", { n: String(count) }));
-          setPorqueSub(t("or_o_que_move"));
+          setPreview(count === 1 ? t("or_porque_escrito", { n: String(count) }) : t("or_porques_escritos", { n: String(count) }));
+          setSub(t("or_o_que_move"));
         } else {
-          setPorquePreview(t("or_descubra_porques"));
-          setPorqueSub(t("or_o_que_move"));
+          setPreview(t("or_descubra_porques"));
+          setSub(t("or_o_que_move"));
         }
       })
       .catch(() => {})
-      .finally(() => setPorqueReady(true));
+      .finally(() => setReady(true));
+  }, [t]);
 
-    // Histórico — total de check-ins registrados
+  return (
+    <ModuloPreviewCard
+      emoji="💗"
+      label={t("or_lbl_porques")}
+      preview={preview}
+      sub={sub}
+      href="/porques"
+      accent="#f472b6"
+      loading={!ready}
+    />
+  );
+}
+
+export function HistoricoCard() {
+  const { t } = useTranslation();
+  const [preview, setPreview] = useState<string | null>(null);
+  const [sub, setSub] = useState("");
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
     safeCachedFetch<{ date: string }[]>("/api/check-ins")
       .then((list) => {
         const count = (list ?? []).length;
-        setHistPreview(count > 0 ? t("or_checkins", { n: String(count) }) : t("or_revise_jornada"));
-        setHistSub(count > 0 ? t("or_historico_completo") : t("or_comece_hoje"));
+        setPreview(count > 0 ? t("or_checkins", { n: String(count) }) : t("or_revise_jornada"));
+        setSub(count > 0 ? t("or_historico_completo") : t("or_comece_hoje"));
       })
       .catch(() => {})
-      .finally(() => setHistReady(true));
+      .finally(() => setReady(true));
+  }, [t]);
 
-    // Compras — listas + itens pendentes
+  return (
+    <ModuloPreviewCard
+      emoji="📊"
+      label={t("or_lbl_historico")}
+      preview={preview}
+      sub={sub}
+      href="/historico"
+      accent="#38bdf8"
+      loading={!ready}
+    />
+  );
+}
+
+export function ComprasCard() {
+  const { t } = useTranslation();
+  const [preview, setPreview] = useState<string | null>(null);
+  const [sub, setSub] = useState("");
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
     Promise.all([
       safeCachedFetch<{ id: string }[]>("/api/shopping-lists"),
       safeCachedFetch<{ checked: boolean }[]>("/api/shopping-list"),
@@ -200,91 +216,26 @@ export function OutrosRecursos() {
         const listCount = (lists ?? []).length;
         const pending = (items ?? []).filter((i) => !i.checked).length;
         if (listCount > 0) {
-          setComprasPreview(listCount === 1 ? t("or_lista", { n: String(listCount) }) : t("or_listas", { n: String(listCount) }));
-          setComprasSub(pending > 0 ? (pending === 1 ? t("or_pendente", { n: String(pending) }) : t("or_pendentes", { n: String(pending) })) : t("or_tudo_em_dia"));
+          setPreview(listCount === 1 ? t("or_lista", { n: String(listCount) }) : t("or_listas", { n: String(listCount) }));
+          setSub(pending > 0 ? (pending === 1 ? t("or_pendente", { n: String(pending) }) : t("or_pendentes", { n: String(pending) })) : t("or_tudo_em_dia"));
         } else {
-          setComprasPreview(t("or_crie_listas"));
-          setComprasSub(t("or_mercado_casa"));
+          setPreview(t("or_crie_listas"));
+          setSub(t("or_mercado_casa"));
         }
       })
       .catch(() => {})
-      .finally(() => setComprasReady(true));
-  }, []);
+      .finally(() => setReady(true));
+  }, [t]);
 
   return (
-    <div className="px-3.5 pt-4">
-      <p
-        className="m-0 mb-2.5 text-[10px] font-bold tracking-[.12em] uppercase"
-        style={{ color: "oklch(0.65 0.12 270)", paddingLeft: 4 }}
-      >
-        {t("or_titulo")}
-      </p>
-
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        <ResourceCard
-          emoji="🏃"
-          label={t("or_lbl_corrida")}
-          preview={runPreview}
-          sub={runSub}
-          href="/corrida"
-          accent="#22D18B"
-          ready={runReady}
-        />
-        <ResourceCard
-          emoji="📚"
-          label={t("or_lbl_leitura")}
-          preview={readPreview}
-          sub={readSub}
-          href="/leitura"
-          accent="#A78BFA"
-          ready={readReady}
-        />
-        <ResourceCard
-          emoji="💗"
-          label={t("or_lbl_porques")}
-          preview={porquePreview}
-          sub={porqueSub}
-          href="/porques"
-          accent="#f472b6"
-          ready={porqueReady}
-        />
-        <ResourceCard
-          emoji="📊"
-          label={t("or_lbl_historico")}
-          preview={histPreview}
-          sub={histSub}
-          href="/historico"
-          accent="#38bdf8"
-          ready={histReady}
-        />
-        <ResourceCard
-          emoji="🛒"
-          label={t("or_lbl_compras")}
-          preview={comprasPreview}
-          sub={comprasSub}
-          href="/compras"
-          accent="#fbbf24"
-          ready={comprasReady}
-        />
-        <ResourceCard
-          emoji="🧘"
-          label={t("md_titulo")}
-          preview="3 · 5 · 10 min"
-          sub={t("md_subtitulo")}
-          href="/meditacao"
-          accent="#A78BFA"
-          ready={true}
-        />
-        <ResourceCard
-          emoji="🌬️"
-          label={t("rb_titulo")}
-          preview="1 · 2 · 3 min"
-          sub={t("rb_subtitulo")}
-          href="/respiracao"
-          accent="#5EEAD4"
-          ready={true}
-        />
-      </div>
-    </div>
+    <ModuloPreviewCard
+      emoji="🛒"
+      label={t("or_lbl_compras")}
+      preview={preview}
+      sub={sub}
+      href="/compras"
+      accent="#fbbf24"
+      loading={!ready}
+    />
   );
 }

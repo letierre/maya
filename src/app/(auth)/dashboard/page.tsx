@@ -13,10 +13,20 @@ import { toast } from "sonner";
 import { MayaHero } from "@/components/MayaHero";
 import { RecentThread, type ThreadDay } from "@/components/RecentThread";
 import { ModuloPreviewCard } from "@/components/ModuloPreviewCard";
-import { OutrosRecursos } from "@/components/OutrosRecursos";
+import {
+  MeditacaoCard,
+  RespiracaoCard,
+  CorridaCard,
+  LeituraCard,
+  PorquesCard,
+  HistoricoCard,
+  ComprasCard,
+} from "@/components/OutrosRecursos";
+import { ContinueCard } from "@/components/ContinueCard";
+import { MeuPorque } from "@/components/MeuPorque";
+import { MetasSemanaCard } from "@/components/MetasSemanaCard";
 import { CheckinProgress } from "@/components/CheckinProgress";
 import { InsightsCarousel } from "@/components/InsightsCarousel";
-import { EvolucaoSpark } from "@/components/EvolucaoSpark";
 import { CareList } from "@/components/CareList";
 import { TrialBanner, SubscriptionNotice } from "@/components/SubscriptionStatus";
 import type { CheckIn, SleepLog, WeeklyTask } from "@/types";
@@ -45,8 +55,6 @@ type DashboardSnapshot = {
   todayTasks: WeeklyTask[];
   diaryPreview: string | null;
   diarySub: string;
-  metasPreview: string | null;
-  metasSub: string;
   nutricaoPreview: string | null;
   nutricaoSub: string;
 };
@@ -106,8 +114,6 @@ export default function DashboardPage() {
   // Previews de "Seus espaços" (diário, metas, nutrição) — dados carregados no core
   const [diaryPreview, setDiaryPreview] = useState<string | null>(snap?.diaryPreview ?? null);
   const [diarySub, setDiarySub] = useState<string>(snap?.diarySub ?? "");
-  const [metasPreview, setMetasPreview] = useState<string | null>(snap?.metasPreview ?? null);
-  const [metasSub, setMetasSub] = useState<string>(snap?.metasSub ?? "");
   const [nutricaoPreview, setNutricaoPreview] = useState<string | null>(snap?.nutricaoPreview ?? null);
   const [nutricaoSub, setNutricaoSub] = useState<string>(snap?.nutricaoSub ?? "");
 
@@ -130,8 +136,6 @@ export default function DashboardPage() {
       todayTasks,
       diaryPreview,
       diarySub,
-      metasPreview,
-      metasSub,
       nutricaoPreview,
       nutricaoSub,
     };
@@ -152,8 +156,6 @@ export default function DashboardPage() {
     todayTasks,
     diaryPreview,
     diarySub,
-    metasPreview,
-    metasSub,
     nutricaoPreview,
     nutricaoSub,
   ]);
@@ -174,10 +176,9 @@ export default function DashboardPage() {
       cachedFetch<{ name?: string; gender?: string }>("/api/profile").catch(() => ({}) as { name?: string; gender?: string }),
       cachedFetch<SleepLog[]>("/api/sleep?limit=7"),
       safeCachedFetch<Array<{ date: string; content: string; title: string }>>("/api/diary?limit=1"),
-      safeCachedFetch<Array<{ status: string; title: string; goal_stages?: Array<{ status: string }> }>>("/api/goals"),
       safeCachedFetch<Array<{ date: string; meal_type: string }>>(`/api/meals?date=${today}&tz=${encodeURIComponent(userTz)}`),
     ])
-      .then(([checkInsData, prefsData, profileData, sleepData, diaryData, goalsData, mealsData]) => {
+      .then(([checkInsData, prefsData, profileData, sleepData, diaryData, mealsData]) => {
         setEnabledKeys(prefsData.enabled_questions || []);
 
         if (Array.isArray(checkInsData)) {
@@ -206,27 +207,6 @@ export default function DashboardPage() {
         } else {
           setDiaryPreview(t("dash_escreva_dia"));
           setDiarySub(t("dash_nova_entrada"));
-        }
-
-        // Metas
-        if (goalsData && goalsData.length > 0) {
-          const active = goalsData.filter((g) => g.status === "ativa" || g.status === "pausada");
-          if (active.length > 0) {
-            const totalStages = active.reduce((sum, g) => sum + (g.goal_stages?.length || 0), 0);
-            const doneStages = active.reduce(
-              (sum, g) => sum + (g.goal_stages?.filter((s) => s.status === "concluida").length || 0), 0
-            );
-            const pct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
-            setMetasPreview(active.length === 1 ? t("dash_meta_ativa", { count: String(active.length) }) : t("dash_metas_ativas", { count: String(active.length) }));
-            setMetasSub(t("dash_etapas_concluidas", { pct: String(pct), done: String(doneStages), total: String(totalStages) }));
-          } else {
-            const done = goalsData.filter((g) => g.status === "concluida").length;
-            setMetasPreview(done > 0 ? (done === 1 ? t("dash_meta_concluida", { count: String(done) }) : t("dash_metas_concluidas", { count: String(done) })) : t("dash_crie_meta"));
-            setMetasSub(done > 0 ? t("dash_todas_completas") : t("dash_comece_agora"));
-          }
-        } else {
-          setMetasPreview(t("dash_crie_meta"));
-          setMetasSub(t("dash_comece_agora"));
         }
 
         // Nutrição
@@ -408,32 +388,56 @@ export default function DashboardPage() {
       {/* ═══ CHECK-IN DE HOJE ═══ */}
       <CheckinCard todayCheckIn={todayCheckIn} userGender={userGender} loading={loading} />
 
+      {/* ═══ CONTINUAR DE ONDE PAROU ═══ */}
+      <ContinueCard />
+
+      {/* ═══ MEU PORQUÊ ═══ */}
+      <MeuPorque />
+
       {/* ═══ O QUE CUIDAR NOS PRÓXIMOS DIAS ═══ */}
       <CareList />
 
-      {/* ═══ SEUS ESPAÇOS ═══ */}
+      {/* ═══ METAS DA SEMANA ═══ */}
+      <MetasSemanaCard />
+
+      {/* ═══ BEM-ESTAR ═══ */}
       <div className="px-3.5 pt-4">
         <p
           className="m-0 mb-2.5 text-[10px] font-bold tracking-[.12em] uppercase"
           style={{ color: "oklch(0.65 0.12 270)", paddingLeft: 4 }}
         >
-          {t("dash_seus_espacos")}
+          {t("dash_bemestar")}
         </p>
         <div className="grid grid-cols-2 gap-2">
           <DiarioPreview loading={loading} preview={diaryPreview} sub={diarySub} />
           <SonoPreview loading={loading} recentSleep={recentSleep} />
           <NutricaoPreview loading={loading} preview={nutricaoPreview} sub={nutricaoSub} />
-          <FinancasPreview loading={loading} todaySpending={todaySpending} weeklyDailyAvg={weeklyDailyAvg} currency={currency} />
-          <MetasPreview loading={loading} preview={metasPreview} sub={metasSub} />
-          <PlanejamentoPreview loading={loading} todayTasks={todayTasks} />
+          <MeditacaoCard />
+          <RespiracaoCard />
+          <CorridaCard />
         </div>
       </div>
 
-      {/* ═══ OUTROS RECURSOS ═══ */}
-      <OutrosRecursos />
+      {/* ═══ MAIS ESPAÇOS ═══ */}
+      <div className="px-3.5 pt-4">
+        <p
+          className="m-0 mb-2.5 text-[10px] font-bold tracking-[.12em] uppercase"
+          style={{ color: "oklch(0.65 0.12 270)", paddingLeft: 4 }}
+        >
+          {t("dash_mais_espacos")}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <PlanejamentoPreview loading={loading} todayTasks={todayTasks} />
+          <FinancasPreview loading={loading} todaySpending={todaySpending} weeklyDailyAvg={weeklyDailyAvg} currency={currency} />
+          <LeituraCard />
+          <PorquesCard />
+          <HistoricoCard />
+          <ComprasCard />
+        </div>
+      </div>
 
       {/* ═══ O FIO ═══ */}
-      <RecentThread days={weekDays} userGender={userGender} />
+      <RecentThread days={weekDays} userGender={userGender} sparkData={sparkData} />
 
       {/* ═══ CUIDADOS DE HOJE ═══ */}
       {todayCheckIn && (
@@ -449,8 +453,6 @@ export default function DashboardPage() {
       {/* ═══ CARROSSEL ═══ */}
       <InsightsCarousel />
 
-      {/* ═══ EVOLUÇÃO 14d ═══ */}
-      <EvolucaoSpark data={sparkData} loading={loading} />
     </div>
   );
 }
@@ -597,21 +599,6 @@ function FinancasPreview({ loading, todaySpending, weeklyDailyAvg, currency }: {
         : t("dash_registre_despesas")}
       href="/financas"
       accent="#fbbf24"
-      loading={loading}
-    />
-  );
-}
-
-function MetasPreview({ loading, preview, sub }: { loading: boolean; preview: string | null; sub: string }) {
-  const { t } = useTranslation();
-  return (
-    <ModuloPreviewCard
-      emoji="🎯"
-      label={t("dash_metas")}
-      preview={preview}
-      sub={sub}
-      href="/agenda?tab=metas"
-      accent="#f59e0b"
       loading={loading}
     />
   );
