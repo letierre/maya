@@ -73,17 +73,10 @@ function ResourceCard({
       className="rounded-2xl p-4 text-left cursor-pointer transition-all active:scale-[0.98] flex flex-col gap-2 min-w-[148px] shrink-0 group relative overflow-hidden"
       style={{
         background: "var(--surface)",
-        border: "1px solid var(--surface-border)",
-        boxShadow: "inset 0 1px 0 var(--surface-highlight)",
+        border: "1px solid rgba(167,139,250,0.16)",
         textDecoration: "none",
       }}
     >
-      {/* Accent glow */}
-      <div
-        className="absolute -top-4 -right-4 w-16 h-16 rounded-full opacity-20 pointer-events-none"
-        style={{ background: `radial-gradient(circle, ${accent} 0%, transparent 70%)` }}
-      />
-
       <span className="text-2xl leading-none relative">{emoji}</span>
 
       <p

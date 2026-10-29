@@ -135,10 +135,6 @@ export function RecentThread({ days, userGender }: RecentThreadProps) {
             );
           })}
         </div>
-
-        <p className="m-0 mt-3 text-center text-[10px]" style={{ color: "var(--text-dim)" }}>
-          {t("rt_deslize")}
-        </p>
       </div>
     </div>
   );

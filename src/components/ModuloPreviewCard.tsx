@@ -47,16 +47,9 @@ export function ModuloPreviewCard({
       className="rounded-2xl p-4 text-left cursor-pointer transition-all active:scale-[0.98] flex flex-col gap-2 group relative overflow-hidden"
       style={{
         background: "var(--surface)",
-        border: "1px solid var(--surface-border)",
-        boxShadow: "inset 0 1px 0 var(--surface-highlight)",
+        border: "1px solid rgba(167,139,250,0.16)",
       }}
     >
-      {/* Accent glow */}
-      <div
-        className="absolute -top-4 -right-4 w-16 h-16 rounded-full opacity-25 pointer-events-none"
-        style={{ background: `radial-gradient(circle, ${accent} 0%, transparent 70%)` }}
-      />
-
       <span
         className="size-9 rounded-xl flex items-center justify-center text-[18px] leading-none relative"
         style={{ background: `${accent}1a`, boxShadow: `inset 0 0 0 1px ${accent}30` }}
