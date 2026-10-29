@@ -9,12 +9,17 @@ import { onCareDataChanged } from "@/lib/care-events";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { useTranslation } from "@/lib/useTranslation";
 
+// ── Snapshot em memória (módulo): a volta à home é instantânea, sem refetch
+// dos sinais enquanto não houver gatilho (care-data-changed). ──────────────
+type CareListSnapshot = { items: CareSignal[]; dismissed: boolean; ready: boolean };
+let careListSnapshot: CareListSnapshot | null = null;
+
 export function CareList() {
   const router = useRouter();
   const { t } = useTranslation();
-  const [items, setItems] = useState<CareSignal[]>([]);
-  const [dismissed, setDismissed] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [items, setItems] = useState<CareSignal[]>(careListSnapshot?.items ?? []);
+  const [dismissed, setDismissed] = useState(careListSnapshot?.dismissed ?? false);
+  const [ready, setReady] = useState(careListSnapshot?.ready ?? false);
 
   const loadItems = useCallback((fresh = false) => {
     // Sinais crônicos saem da lista: não martelar o mesmo alerta por semanas.
@@ -43,8 +48,15 @@ export function CareList() {
       setReady(true);
       return;
     }
+    // Já renderizado antes (snapshot em memória): não refetcha sem gatilho.
+    if (careListSnapshot?.ready) return;
     loadItems();
   }, [loadItems]);
+
+  // Persiste o último estado renderizado para a próxima montagem.
+  useEffect(() => {
+    careListSnapshot = { items, dismissed, ready };
+  }, [items, dismissed, ready]);
 
   // Atualiza em tempo real quando um dado que alimenta os sinais muda
   // (check-in salvo, corrida, sono, refeições…).

@@ -1,48 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import { cachedFetch } from "@/lib/fetch-cache";
 import { useTranslation } from "@/lib/useTranslation";
 
-interface Book { title: string; current_page?: number; total_pages?: number; }
-interface Goal { title: string; status: string; }
+export interface ContinueItem {
+  kind: "book" | "goal";
+  title: string;
+  sub: string;
+  href: string;
+}
 
 /**
  * Chip "Continuar de onde parou" — uma única ação contextual logo abaixo do
  * check-in. Prioriza o livro em leitura; senão, a primeira meta ativa.
+ * O item é resolvido na página (via props) para a home renderizar tudo junto.
  */
-export function ContinueCard() {
+export function ContinueCard({ item }: { item: ContinueItem | null }) {
   const router = useRouter();
   const { t } = useTranslation();
-  const [item, setItem] = useState<{ kind: "book" | "goal"; title: string; sub: string; href: string } | null>(null);
-  const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    Promise.all([
-      cachedFetch<Book[]>("/api/leitura/books?status=lendo").catch(() => [] as Book[]),
-      cachedFetch<Goal[]>("/api/goals").catch(() => [] as Goal[]),
-    ])
-      .then(([books, goals]) => {
-        const book = books[0];
-        if (book) {
-          const sub = book.total_pages
-            ? `pág. ${book.current_page ?? 0} de ${book.total_pages}`
-            : book.current_page
-              ? `pág. ${book.current_page}`
-              : "";
-          setItem({ kind: "book", title: book.title, sub, href: "/leitura" });
-          return;
-        }
-        const goal = (goals ?? []).find((g) => g.status === "ativa" || g.status === "pausada");
-        if (goal) setItem({ kind: "goal", title: goal.title, sub: "", href: "/agenda?tab=metas" });
-      })
-      .catch(() => {})
-      .finally(() => setReady(true));
-  }, []);
-
-  if (!ready || !item) return null;
+  if (!item) return null;
 
   const emoji = item.kind === "book" ? "📖" : "🎯";
   const main = item.kind === "book"

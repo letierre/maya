@@ -1,21 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { cachedFetch, safeCachedFetch } from "@/lib/fetch-cache";
 import { calculateStreak } from "@/lib/utils";
 import { useTranslation } from "@/lib/useTranslation";
 import { ModuloPreviewCard } from "@/components/ModuloPreviewCard";
 
-interface RunningSession {
+export interface RunningSession {
   id: string;
   distance_meters: number;
   duration_seconds: number;
   avg_pace: number | null;
   start_time: string;
 }
-
-interface ReadingBook { id: string; status: string }
-interface ReadingSession { date: string }
+export interface ReadingBook { id: string; status: string }
+export interface ReadingSession { date: string }
+export interface ShoppingList { id: string }
+export interface ShoppingItem { checked: boolean }
 
 function formatPace(secPerKm: number): string {
   if (!secPerKm || secPerKm <= 0) return "--";
@@ -31,7 +30,7 @@ function formatDuration(sec: number): string {
   return `${m}min ${s}s`;
 }
 
-// ── Cards auto-contidos (cada um busca o próprio preview) ──────
+// ── Cards de espaços (dados vindos da página via props; null = carregando) ──
 
 export function MeditacaoCard() {
   const { t } = useTranslation();
@@ -61,27 +60,16 @@ export function RespiracaoCard() {
   );
 }
 
-export function CorridaCard() {
+export function CorridaCard({ sessions }: { sessions: RunningSession[] | null }) {
   const { t } = useTranslation();
-  const [preview, setPreview] = useState<string | null>(null);
-  const [sub, setSub] = useState("");
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    safeCachedFetch<RunningSession[]>("/api/running?limit=1")
-      .then((sessions) => {
-        if (sessions && sessions.length > 0) {
-          const s = sessions[0];
-          setPreview(`${(s.distance_meters / 1000).toFixed(2)} km`);
-          setSub(`${formatDuration(s.duration_seconds)} · ${formatPace(s.avg_pace || 0)}`);
-        } else {
-          setPreview(t("or_comece_correr"));
-          setSub(t("or_rastreie_gps"));
-        }
-      })
-      .catch(() => {})
-      .finally(() => setReady(true));
-  }, [t]);
+  const loading = sessions === null;
+  const s = sessions && sessions.length > 0 ? sessions[0] : null;
+  const preview = loading
+    ? null
+    : s
+      ? `${(s.distance_meters / 1000).toFixed(2)} km`
+      : t("or_comece_correr");
+  const sub = loading ? "" : s ? `${formatDuration(s.duration_seconds)} · ${formatPace(s.avg_pace || 0)}` : t("or_rastreie_gps");
 
   return (
     <ModuloPreviewCard
@@ -91,37 +79,29 @@ export function CorridaCard() {
       sub={sub}
       href="/corrida"
       accent="#22D18B"
-      loading={!ready}
+      loading={loading}
     />
   );
 }
 
-export function LeituraCard() {
+export function LeituraCard({ books, sessions }: { books: ReadingBook[] | null; sessions: ReadingSession[] | null }) {
   const { t } = useTranslation();
-  const [preview, setPreview] = useState<string | null>(null);
-  const [sub, setSub] = useState("");
-  const [ready, setReady] = useState(false);
+  const loading = books === null || sessions === null;
+  const lendo = (books ?? []).filter((b) => b.status === "lendo").length;
+  const dates = Array.from(new Set((sessions ?? []).map((s) => s.date)));
+  const streak = calculateStreak(dates);
 
-  useEffect(() => {
-    Promise.all([
-      safeCachedFetch<ReadingBook[]>("/api/leitura/books"),
-      safeCachedFetch<ReadingSession[]>("/api/leitura/sessions"),
-    ])
-      .then(([books, sessions]) => {
-        const lendo = (books ?? []).filter((b) => b.status === "lendo").length;
-        const dates = Array.from(new Set((sessions ?? []).map((s) => s.date)));
-        const streak = calculateStreak(dates);
-        if (lendo > 0) {
-          setPreview(lendo === 1 ? t("or_livro_em_leitura", { n: String(lendo) }) : t("or_livros_em_leitura", { n: String(lendo) }));
-          setSub(streak > 0 ? (streak === 1 ? t("or_dia_seguido", { n: String(streak) }) : t("or_dias_seguidos", { n: String(streak) })) : t("or_comece_hoje"));
-        } else {
-          setPreview(t("or_monte_estante"));
-          setSub(t("or_adicione_livro"));
-        }
-      })
-      .catch(() => {})
-      .finally(() => setReady(true));
-  }, [t]);
+  let preview: string | null = null;
+  let sub = "";
+  if (!loading) {
+    if (lendo > 0) {
+      preview = lendo === 1 ? t("or_livro_em_leitura", { n: String(lendo) }) : t("or_livros_em_leitura", { n: String(lendo) });
+      sub = streak > 0 ? (streak === 1 ? t("or_dia_seguido", { n: String(streak) }) : t("or_dias_seguidos", { n: String(streak) })) : t("or_comece_hoje");
+    } else {
+      preview = t("or_monte_estante");
+      sub = t("or_adicione_livro");
+    }
+  }
 
   return (
     <ModuloPreviewCard
@@ -131,32 +111,21 @@ export function LeituraCard() {
       sub={sub}
       href="/leitura"
       accent="#A78BFA"
-      loading={!ready}
+      loading={loading}
     />
   );
 }
 
-export function PorquesCard() {
+export function PorquesCard({ count }: { count: number | null }) {
   const { t } = useTranslation();
-  const [preview, setPreview] = useState<string | null>(null);
-  const [sub, setSub] = useState("");
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    cachedFetch<{ porques?: unknown[] }>("/api/profile")
-      .then((data) => {
-        const count = (data.porques ?? []).length;
-        if (count > 0) {
-          setPreview(count === 1 ? t("or_porque_escrito", { n: String(count) }) : t("or_porques_escritos", { n: String(count) }));
-          setSub(t("or_o_que_move"));
-        } else {
-          setPreview(t("or_descubra_porques"));
-          setSub(t("or_o_que_move"));
-        }
-      })
-      .catch(() => {})
-      .finally(() => setReady(true));
-  }, [t]);
+  const loading = count === null;
+  const n = count ?? 0;
+  const preview = loading
+    ? null
+    : n > 0
+      ? (n === 1 ? t("or_porque_escrito", { n: String(n) }) : t("or_porques_escritos", { n: String(n) }))
+      : t("or_descubra_porques");
+  const sub = loading ? "" : t("or_o_que_move");
 
   return (
     <ModuloPreviewCard
@@ -166,27 +135,21 @@ export function PorquesCard() {
       sub={sub}
       href="/porques"
       accent="#f472b6"
-      loading={!ready}
+      loading={loading}
     />
   );
 }
 
-export function HistoricoCard() {
+export function HistoricoCard({ count }: { count: number | null }) {
   const { t } = useTranslation();
-  const [preview, setPreview] = useState<string | null>(null);
-  const [sub, setSub] = useState("");
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    safeCachedFetch<{ date: string }[]>("/api/check-ins")
-      .then((list) => {
-        const count = (list ?? []).length;
-        setPreview(count > 0 ? t("or_checkins", { n: String(count) }) : t("or_revise_jornada"));
-        setSub(count > 0 ? t("or_historico_completo") : t("or_comece_hoje"));
-      })
-      .catch(() => {})
-      .finally(() => setReady(true));
-  }, [t]);
+  const loading = count === null;
+  const n = count ?? 0;
+  const preview = loading
+    ? null
+    : n > 0
+      ? t("or_checkins", { n: String(n) })
+      : t("or_revise_jornada");
+  const sub = loading ? "" : n > 0 ? t("or_historico_completo") : t("or_comece_hoje");
 
   return (
     <ModuloPreviewCard
@@ -196,36 +159,28 @@ export function HistoricoCard() {
       sub={sub}
       href="/historico"
       accent="#38bdf8"
-      loading={!ready}
+      loading={loading}
     />
   );
 }
 
-export function ComprasCard() {
+export function ComprasCard({ lists, items }: { lists: ShoppingList[] | null; items: ShoppingItem[] | null }) {
   const { t } = useTranslation();
-  const [preview, setPreview] = useState<string | null>(null);
-  const [sub, setSub] = useState("");
-  const [ready, setReady] = useState(false);
+  const loading = lists === null || items === null;
+  const listCount = (lists ?? []).length;
+  const pending = (items ?? []).filter((i) => !i.checked).length;
 
-  useEffect(() => {
-    Promise.all([
-      safeCachedFetch<{ id: string }[]>("/api/shopping-lists"),
-      safeCachedFetch<{ checked: boolean }[]>("/api/shopping-list"),
-    ])
-      .then(([lists, items]) => {
-        const listCount = (lists ?? []).length;
-        const pending = (items ?? []).filter((i) => !i.checked).length;
-        if (listCount > 0) {
-          setPreview(listCount === 1 ? t("or_lista", { n: String(listCount) }) : t("or_listas", { n: String(listCount) }));
-          setSub(pending > 0 ? (pending === 1 ? t("or_pendente", { n: String(pending) }) : t("or_pendentes", { n: String(pending) })) : t("or_tudo_em_dia"));
-        } else {
-          setPreview(t("or_crie_listas"));
-          setSub(t("or_mercado_casa"));
-        }
-      })
-      .catch(() => {})
-      .finally(() => setReady(true));
-  }, [t]);
+  let preview: string | null = null;
+  let sub = "";
+  if (!loading) {
+    if (listCount > 0) {
+      preview = listCount === 1 ? t("or_lista", { n: String(listCount) }) : t("or_listas", { n: String(listCount) });
+      sub = pending > 0 ? (pending === 1 ? t("or_pendente", { n: String(pending) }) : t("or_pendentes", { n: String(pending) })) : t("or_tudo_em_dia");
+    } else {
+      preview = t("or_crie_listas");
+      sub = t("or_mercado_casa");
+    }
+  }
 
   return (
     <ModuloPreviewCard
@@ -235,7 +190,7 @@ export function ComprasCard() {
       sub={sub}
       href="/compras"
       accent="#fbbf24"
-      loading={!ready}
+      loading={loading}
     />
   );
 }

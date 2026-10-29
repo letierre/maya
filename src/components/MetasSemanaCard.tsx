@@ -1,57 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import { cachedFetch } from "@/lib/fetch-cache";
 import { useTranslation } from "@/lib/useTranslation";
 
-interface Stage { id: string; title: string; status: string; }
-interface Goal { id: string; title: string; status: string; goal_stages?: Stage[]; }
+export interface Stage { id: string; title: string; status: string; }
+export interface Goal { id: string; title: string; status: string; goal_stages?: Stage[]; }
 
 /**
  * "Metas da semana" — lista metas ativas com o próximo estágio pendente como
  * checkbox. Concluir/desfazer um estágio direto da home (PATCH do estágio).
+ * Metas vêm da página (via props); o toggle é tratado pela página (optimistic).
  */
-export function MetasSemanaCard() {
+export function MetasSemanaCard({ goals, onToggle }: {
+  goals: Goal[];
+  onToggle: (goalId: string, stageId: string, nextStatus: string) => void;
+}) {
   const router = useRouter();
   const { t } = useTranslation();
-  const [goals, setGoals] = useState<Goal[] | null>(null);
 
-  useEffect(() => {
-    cachedFetch<Goal[]>("/api/goals")
-      .then((g) => setGoals(g ?? []))
-      .catch(() => setGoals([]));
-  }, []);
-
-  const active = (goals ?? [])
+  const active = goals
     .filter((g) => g.status === "ativa" || g.status === "pausada")
     .slice(0, 3);
 
-  if (goals === null || active.length === 0) return null;
-
-  const toggle = async (goal: Goal, stage: Stage) => {
-    const next = stage.status === "concluida" ? "pendente" : "concluida";
-    setGoals((prev) =>
-      (prev ?? []).map((g) =>
-        g.id === goal.id
-          ? {
-              ...g,
-              goal_stages: (g.goal_stages ?? []).map((s) =>
-                s.id === stage.id ? { ...s, status: next } : s,
-              ),
-            }
-          : g,
-      ),
-    );
-    try {
-      await fetch(`/api/goals/${goal.id}/stages/${stage.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: next }),
-      });
-    } catch {}
-  };
+  if (active.length === 0) return null;
 
   return (
     <div className="px-3.5 pt-4">
@@ -89,7 +61,9 @@ export function MetasSemanaCard() {
                 <button
                   type="button"
                   aria-label={allDone ? t("mws_concluida") : goal.title}
-                  onClick={() => { if (next) toggle(goal, next); }}
+                  onClick={() => {
+                    if (next) onToggle(goal.id, next.id, next.status === "concluida" ? "pendente" : "concluida");
+                  }}
                   disabled={!next}
                   className="size-[20px] rounded-md flex-none flex items-center justify-center"
                   style={{

@@ -5,7 +5,7 @@ import { Heart } from "lucide-react";
 import { photoUrl } from "@/lib/photo-storage";
 import { useTranslation } from "@/lib/useTranslation";
 
-interface Porque {
+export interface Porque {
   id: string;
   text: string;
   photoPath: string | null;
@@ -17,23 +17,11 @@ const ROTATE_MS = 8000;
  * "Meu Porquê" — âncora emocional na home: foto + frase pessoal. Onde o
  * usuário vê e relembra o porquê (hoje só existe botão de editar no perfil).
  * Rotaciona entre os porquês cadastrados quando há mais de um.
+ * Dados vêm da página (via props) — sem fetch próprio, para a home renderizar tudo junto.
  */
-export function MeuPorque() {
+export function MeuPorque({ porques }: { porques: Porque[] }) {
   const { t } = useTranslation();
-  const [porques, setPorques] = useState<Porque[]>([]);
   const [idx, setIdx] = useState(0);
-
-  useEffect(() => {
-    fetch("/api/profile")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.porques?.length > 0) {
-          setPorques(data.porques);
-          setIdx(Math.floor(Math.random() * data.porques.length));
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (porques.length < 2) return;
@@ -43,7 +31,7 @@ export function MeuPorque() {
 
   if (porques.length === 0) return null;
 
-  const pq = porques[idx];
+  const pq = porques[idx] ?? porques[0];
   const src = pq.photoPath ? photoUrl(pq.photoPath) : null;
 
   return (

@@ -1,11 +1,11 @@
 "use client";
 import { getLocale } from "@/lib/language";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { getLocalDate, getLocalDateDaysAgo, getUserTimezone } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import { cachedFetch, safeCachedFetch } from "@/lib/fetch-cache";
+import { cachedFetch, safeCachedFetch, invalidateFetchCache } from "@/lib/fetch-cache";
 import { habitProgress } from "@/lib/checkin-answered";
 import { getMoodById, getMoodLabel } from "@/lib/checkin-moods";
 import { useTranslation } from "@/lib/useTranslation";
@@ -21,19 +21,21 @@ import {
   PorquesCard,
   HistoricoCard,
   ComprasCard,
+  type RunningSession,
+  type ReadingBook,
+  type ReadingSession,
+  type ShoppingList,
+  type ShoppingItem,
 } from "@/components/OutrosRecursos";
-import { ContinueCard } from "@/components/ContinueCard";
-import { MeuPorque } from "@/components/MeuPorque";
-import { MetasSemanaCard } from "@/components/MetasSemanaCard";
+import { ContinueCard, type ContinueItem } from "@/components/ContinueCard";
+import { MeuPorque, type Porque } from "@/components/MeuPorque";
+import { MetasSemanaCard, type Goal } from "@/components/MetasSemanaCard";
 import { CheckinProgress } from "@/components/CheckinProgress";
 import { InsightsCarousel } from "@/components/InsightsCarousel";
 import { CareList } from "@/components/CareList";
+import { onCareDataChanged } from "@/lib/care-events";
 import { TrialBanner, SubscriptionNotice } from "@/components/SubscriptionStatus";
 import type { CheckIn, SleepLog, WeeklyTask } from "@/types";
-
-// LLM endpoints já são cacheados no servidor 1x/dia; cacheamos no cliente por
-// mais tempo para a volta à home não re-disparar a geração/consulta do LLM.
-const MAYA_TTL = 10 * 60 * 1000; // 10 minutos
 
 // ── Snapshot da home (stale-while-revalidate) ───────────────────
 // Mantém o último estado renderizado em memória (módulo) para a volta à home
@@ -57,6 +59,14 @@ type DashboardSnapshot = {
   diarySub: string;
   nutricaoPreview: string | null;
   nutricaoSub: string;
+  porques: Porque[];
+  goals: Goal[];
+  continueItem: ContinueItem | null;
+  corridaSessions: RunningSession[] | null;
+  readingBooks: ReadingBook[] | null;
+  readingSessions: ReadingSession[] | null;
+  shoppingLists: ShoppingList[] | null;
+  shoppingItems: ShoppingItem[] | null;
 };
 
 let dashboardSnapshot: DashboardSnapshot | null = null;
@@ -95,13 +105,13 @@ export default function DashboardPage() {
   const [mayaNudgeAction, setMayaNudgeAction] = useState<{ label: string; href: string } | null>(null);
 
   // Maya home message (from LLM, via /api/maya/home-message)
-  // Refetcha a cada montagem (não restaura do snapshot) para refletir um check-in
-  // feito há instantes — o servidor já invalida o cache diário no POST de check-in.
+  // Restaura do snapshot (a volta é instantânea) e só refetcha no primeiro load
+  // ou quando um gatilho (care-data-changed) dispara — não a cada montagem.
   const [homeMessage, setHomeMessage] = useState<{
     message: string;
     state?: string;
     action?: { label: string; href: string };
-  } | null>(null);
+  } | null>(snap?.homeMessage ?? null);
 
   // Finance
   const [todaySpending, setTodaySpending] = useState<number | null>(snap?.todaySpending ?? null);
@@ -116,6 +126,17 @@ export default function DashboardPage() {
   const [diarySub, setDiarySub] = useState<string>(snap?.diarySub ?? "");
   const [nutricaoPreview, setNutricaoPreview] = useState<string | null>(snap?.nutricaoPreview ?? null);
   const [nutricaoSub, setNutricaoSub] = useState<string>(snap?.nutricaoSub ?? "");
+
+  // Dados das seções secundárias (porquês, metas, continuar, tiles) — carregados
+  // no mesmo Promise.all do core para a home renderizar tudo junto.
+  const [porques, setPorques] = useState<Porque[]>(snap?.porques ?? []);
+  const [goals, setGoals] = useState<Goal[]>(snap?.goals ?? []);
+  const [continueItem, setContinueItem] = useState<ContinueItem | null>(snap?.continueItem ?? null);
+  const [corridaSessions, setCorridaSessions] = useState<RunningSession[] | null>(snap?.corridaSessions ?? null);
+  const [readingBooks, setReadingBooks] = useState<ReadingBook[] | null>(snap?.readingBooks ?? null);
+  const [readingSessions, setReadingSessions] = useState<ReadingSession[] | null>(snap?.readingSessions ?? null);
+  const [shoppingLists, setShoppingLists] = useState<ShoppingList[] | null>(snap?.shoppingLists ?? null);
+  const [shoppingItems, setShoppingItems] = useState<ShoppingItem[] | null>(snap?.shoppingItems ?? null);
 
   // Salva o estado renderizado para a próxima montagem da home ser instantânea.
   useEffect(() => {
@@ -138,6 +159,14 @@ export default function DashboardPage() {
       diarySub,
       nutricaoPreview,
       nutricaoSub,
+      porques,
+      goals,
+      continueItem,
+      corridaSessions,
+      readingBooks,
+      readingSessions,
+      shoppingLists,
+      shoppingItems,
     };
   }, [
     loading,
@@ -158,9 +187,55 @@ export default function DashboardPage() {
     diarySub,
     nutricaoPreview,
     nutricaoSub,
+    porques,
+    goals,
+    continueItem,
+    corridaSessions,
+    readingBooks,
+    readingSessions,
+    shoppingLists,
+    shoppingItems,
   ]);
 
   // ── Fetch core data ──────────────────────────────────────────
+
+  // Mensagem + nudge da Maya: restauradas do snapshot e refetchadas apenas no
+  // primeiro load ou quando um gatilho (care-data-changed) dispara — nunca a
+  // cada montagem (evita a fala aparecer por último e re-disparar o LLM).
+  const loadMayaMessage = useCallback(async () => {
+    const userTz = getUserTimezone();
+    // Busca fresca (sem cache do cliente): só roda no primeiro load ou num
+    // gatilho — nesses casos queremos o estado mais recente, não o cache.
+    try {
+      const res = await fetch(`/api/maya/home-message?tz=${encodeURIComponent(userTz)}`);
+      const data = await res.json();
+      if (data.message) setHomeMessage((prev) => ({ message: data.message, state: data.state, action: prev?.action }));
+    } catch {}
+
+    try {
+      const res = await fetch("/api/maya/nudge");
+      const data = await res.json();
+      const n = data.nudges?.[0];
+      if (n?.action) setMayaNudgeAction(n.action);
+      // Se o nudge trouxer mensagem própria, ela substitui a home message.
+      if (n?.message) {
+        setHomeMessage((prev) => ({
+          message: n.message!,
+          state: prev?.state,
+          action: n.action || prev?.action,
+        }));
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (snap) return; // snapshot já restaurado — não refetcha sem gatilho
+    loadMayaMessage();
+  }, [snap, loadMayaMessage]);
+
+  useEffect(() => {
+    return onCareDataChanged(() => loadMayaMessage());
+  }, [loadMayaMessage]);
 
   useEffect(() => {
     const today = getLocalDate();
@@ -173,13 +248,21 @@ export default function DashboardPage() {
         enabled_questions?: string[];
         context?: Record<string, unknown>;
       }>("/api/preferences"),
-      cachedFetch<{ name?: string; gender?: string }>("/api/profile").catch(() => ({}) as { name?: string; gender?: string }),
+      cachedFetch<{ name?: string; gender?: string; porques?: Porque[] }>("/api/profile").catch(() => ({}) as { name?: string; gender?: string; porques?: Porque[] }),
       cachedFetch<SleepLog[]>("/api/sleep?limit=7"),
       safeCachedFetch<Array<{ date: string; content: string; title: string }>>("/api/diary?limit=1"),
       safeCachedFetch<Array<{ date: string; meal_type: string }>>(`/api/meals?date=${today}&tz=${encodeURIComponent(userTz)}`),
+      safeCachedFetch<Goal[]>("/api/goals"),
+      safeCachedFetch<Array<{ title: string; current_page?: number; total_pages?: number }>>("/api/leitura/books?status=lendo"),
+      safeCachedFetch<RunningSession[]>("/api/running?limit=1"),
+      safeCachedFetch<ReadingBook[]>("/api/leitura/books"),
+      safeCachedFetch<ReadingSession[]>("/api/leitura/sessions"),
+      safeCachedFetch<ShoppingList[]>("/api/shopping-lists"),
+      safeCachedFetch<ShoppingItem[]>("/api/shopping-list"),
     ])
-      .then(([checkInsData, prefsData, profileData, sleepData, diaryData, mealsData]) => {
+      .then(([checkInsData, prefsData, profileData, sleepData, diaryData, mealsData, goalsData, booksLendoData, runningData, readingBooksData, readingSessionsData, shoppingListsData, shoppingItemsData]) => {
         setEnabledKeys(prefsData.enabled_questions || []);
+        setPorques(profileData.porques ?? []);
 
         if (Array.isArray(checkInsData)) {
           setCheckIns(checkInsData);
@@ -221,41 +304,34 @@ export default function DashboardPage() {
           setNutricaoSub(t("dash_registre_primeira"));
         }
 
+        // Metas (alimenta "Metas da semana" e o fallback do "Continuar")
+        const goalsList = goalsData ?? [];
+        setGoals(goalsList);
+
+        // Continuar de onde parou: livro em leitura > primeira meta ativa
+        const book = (booksLendoData ?? [])[0];
+        if (book) {
+          const sub = book.total_pages
+            ? `pág. ${book.current_page ?? 0} de ${book.total_pages}`
+            : book.current_page
+              ? `pág. ${book.current_page}`
+              : "";
+          setContinueItem({ kind: "book", title: book.title, sub, href: "/leitura" });
+        } else {
+          const goal = goalsList.find((g) => g.status === "ativa" || g.status === "pausada");
+          setContinueItem(goal ? { kind: "goal", title: goal.title, sub: "", href: "/agenda?tab=metas" } : null);
+        }
+
+        // Tiles (corrida, leitura, compras)
+        setCorridaSessions(runningData ?? []);
+        setReadingBooks(readingBooksData ?? []);
+        setReadingSessions(readingSessionsData ?? []);
+        setShoppingLists(shoppingListsData ?? []);
+        setShoppingItems(shoppingItemsData ?? []);
+
         setLoading(false);
       })
       .catch(() => setLoading(false));
-
-    // Maya home message — independent (LLM-generated, cached 1x/day no servidor;
-    // cacheamos no cliente por mais tempo para a volta à home não re-disparar o LLM)
-    cachedFetch<{ message: string; state?: string }>(
-      `/api/maya/home-message?tz=${encodeURIComponent(userTz)}`,
-      undefined,
-      MAYA_TTL,
-    )
-      .then((data) => {
-        if (data.message) setHomeMessage({ message: data.message, state: data.state });
-      })
-      .catch(() => setHomeMessage(null));
-
-    // Maya nudge — independent (gives extra CTA if a trigger fired)
-    cachedFetch<{ nudges?: Array<{ message?: string; action?: { label: string; href: string } }> }>(
-      "/api/maya/nudge",
-      undefined,
-      MAYA_TTL,
-    )
-      .then((data) => {
-        const n = data.nudges?.[0];
-        if (n?.action) setMayaNudgeAction(n.action);
-        // If nudge has a message different from home message, use it
-        if (n?.message) {
-          setHomeMessage((prev) => ({
-            message: n.message!,
-            state: prev?.state,
-            action: n.action || prev?.action,
-          }));
-        }
-      })
-      .catch(() => {});
 
     // Finance — média diária dos últimos 7 dias (janela rolante), para contas
     // grandes no dia 1 (aluguel, luz…) não poluírem a média do mês inteiro.
@@ -358,6 +434,29 @@ export default function DashboardPage() {
     return points;
   }, [checkIns, scoreKeys]);
 
+  // Toggle de estágio de meta direto da home (optimistic + PATCH silencioso).
+  const toggleStage = useCallback((goalId: string, stageId: string, nextStatus: string) => {
+    setGoals((prev) =>
+      prev.map((g) =>
+        g.id === goalId
+          ? {
+              ...g,
+              goal_stages: (g.goal_stages ?? []).map((s) =>
+                s.id === stageId ? { ...s, status: nextStatus } : s,
+              ),
+            }
+          : g,
+      ),
+    );
+    fetch(`/api/goals/${goalId}/stages/${stageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: nextStatus }),
+    })
+      .then(() => invalidateFetchCache("/api/goals"))
+      .catch(() => {});
+  }, []);
+
   // ── Render ───────────────────────────────────────────────────
 
   return (
@@ -389,16 +488,16 @@ export default function DashboardPage() {
       <CheckinCard todayCheckIn={todayCheckIn} userGender={userGender} loading={loading} />
 
       {/* ═══ CONTINUAR DE ONDE PAROU ═══ */}
-      <ContinueCard />
+      <ContinueCard item={continueItem} />
 
       {/* ═══ MEU PORQUÊ ═══ */}
-      <MeuPorque />
+      <MeuPorque porques={porques} />
 
       {/* ═══ O QUE CUIDAR NOS PRÓXIMOS DIAS ═══ */}
       <CareList />
 
       {/* ═══ METAS DA SEMANA ═══ */}
-      <MetasSemanaCard />
+      <MetasSemanaCard goals={goals} onToggle={toggleStage} />
 
       {/* ═══ BEM-ESTAR ═══ */}
       <div className="px-3.5 pt-4">
@@ -414,7 +513,7 @@ export default function DashboardPage() {
           <div className="min-w-[148px] shrink-0"><NutricaoPreview loading={loading} preview={nutricaoPreview} sub={nutricaoSub} /></div>
           <div className="min-w-[148px] shrink-0"><MeditacaoCard /></div>
           <div className="min-w-[148px] shrink-0"><RespiracaoCard /></div>
-          <div className="min-w-[148px] shrink-0"><CorridaCard /></div>
+          <div className="min-w-[148px] shrink-0"><CorridaCard sessions={corridaSessions} /></div>
         </div>
       </div>
 
@@ -429,10 +528,10 @@ export default function DashboardPage() {
         <div className="flex gap-2 overflow-x-auto pb-1">
           <div className="min-w-[148px] shrink-0"><PlanejamentoPreview loading={loading} todayTasks={todayTasks} /></div>
           <div className="min-w-[148px] shrink-0"><FinancasPreview loading={loading} todaySpending={todaySpending} weeklyDailyAvg={weeklyDailyAvg} currency={currency} /></div>
-          <div className="min-w-[148px] shrink-0"><LeituraCard /></div>
-          <div className="min-w-[148px] shrink-0"><PorquesCard /></div>
-          <div className="min-w-[148px] shrink-0"><HistoricoCard /></div>
-          <div className="min-w-[148px] shrink-0"><ComprasCard /></div>
+          <div className="min-w-[148px] shrink-0"><LeituraCard books={readingBooks} sessions={readingSessions} /></div>
+          <div className="min-w-[148px] shrink-0"><PorquesCard count={loading ? null : porques.length} /></div>
+          <div className="min-w-[148px] shrink-0"><HistoricoCard count={loading ? null : checkIns.length} /></div>
+          <div className="min-w-[148px] shrink-0"><ComprasCard lists={shoppingLists} items={shoppingItems} /></div>
         </div>
       </div>
 
