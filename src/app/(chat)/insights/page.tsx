@@ -957,7 +957,7 @@ export default function MayaChatPage() {
       className="flex flex-col"
       style={{
         height: containerHeight,
-        background: "linear-gradient(180deg, #090A10 0%, #06070B 100%)",
+        background: "#090A10",
       }}
     >
       {/* ── Header ── */}
