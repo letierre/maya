@@ -27,7 +27,7 @@ export function ModuloPreviewCard({
   if (loading) {
     return (
       <div
-        className="rounded-2xl animate-pulse flex flex-col gap-2 p-4"
+        className="rounded-2xl animate-pulse flex flex-col gap-2 p-4 h-full"
         style={{
           background: "var(--surface)",
           border: "1px solid var(--surface-border)",
@@ -44,7 +44,7 @@ export function ModuloPreviewCard({
     <button
       type="button"
       onClick={() => router.push(href)}
-      className="rounded-2xl p-4 text-left cursor-pointer transition-all active:scale-[0.98] flex flex-col gap-2 group relative overflow-hidden"
+      className="rounded-2xl p-4 text-left cursor-pointer transition-all active:scale-[0.98] flex flex-col gap-2 group relative overflow-hidden h-full"
       style={{
         background: "var(--surface)",
         border: "1px solid rgba(167,139,250,0.32)",
