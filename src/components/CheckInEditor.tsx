@@ -23,6 +23,7 @@ export const HABIT_ORDER = [
   "meditation",
   "prayer",
   "breathing",
+  "visualization",
   "creative_activity",
   "walked",
   "ran",
@@ -50,6 +51,7 @@ export const HABIT_COPY: Record<string, HabitCopy> = {
   meditation:                  { emoji: "🧘", labelKey: "ck_habit_meditation",        aKey: "sim", bKey: "ck_not_yet" },
   prayer:                      { emoji: "🙏", labelKey: "ck_habit_prayer",            aKey: "sim", bKey: "ck_not_yet" },
   breathing:                   { emoji: "🌬️", labelKey: "ck_habit_breathing",         aKey: "sim", bKey: "ck_not_yet" },
+  visualization:               { emoji: "🌄", labelKey: "ck_habit_visualization",     aKey: "sim", bKey: "ck_not_yet" },
   creative_activity:           { emoji: "🎨", labelKey: "ck_habit_creative",          aKey: "sim", bKey: "ck_not_yet" },
   walked:                      { emoji: "🚶", labelKey: "ck_habit_walked",            aKey: "sim", bKey: "ck_not_yet" },
   ran:                         { emoji: "🏃", labelKey: "ck_habit_ran",               aKey: "sim", bKey: "ck_not_yet" },
@@ -136,6 +138,7 @@ export interface CheckInAnswers {
   meditation: boolean;
   prayer: boolean;
   breathing: boolean;
+  visualization: boolean;
   creative_activity: boolean;
   walked: boolean;
   ran: boolean;
@@ -168,6 +171,7 @@ export function defaultAnswers(): CheckInAnswers {
     meditation: false,
     prayer: false,
     breathing: false,
+    visualization: false,
     creative_activity: false,
     walked: false,
     ran: false,

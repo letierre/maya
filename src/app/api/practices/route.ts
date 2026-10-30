@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const kind = body.kind === "breathing" ? "breathing" : "meditation";
+    const kind = body.kind === "breathing" ? "breathing" : body.kind === "visualization" ? "visualization" : "meditation";
     const pattern = body.pattern ? String(body.pattern) : null;
     const duration = Number(body.duration_seconds) || 0;
     const date = String(body.date || getLocalDate());
@@ -39,13 +39,19 @@ export async function POST(req: NextRequest) {
 
     // 2) Marca o hábito no check-in do dia (update parcial — não cria linha,
     //    preservando os demais hábitos e o fluxo do ritual).
-    const isMeditation = kind === "meditation";
     const patch: Record<string, unknown> = {
-      meditation_prayer_breathing: true,
       updated_at: new Date().toISOString(),
     };
-    if (isMeditation) patch.meditation = true;
-    else patch.breathing = true;
+    if (kind === "meditation") {
+      patch.meditation = true;
+      patch.meditation_prayer_breathing = true;
+    } else if (kind === "breathing") {
+      patch.breathing = true;
+      patch.meditation_prayer_breathing = true;
+    } else {
+      // Visualização é hábito distinto — não mexe no agregado legado de pausa.
+      patch.visualization = true;
+    }
 
     const { data: existingCi } = await admin
       .from("check_ins")

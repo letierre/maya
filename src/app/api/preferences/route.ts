@@ -26,8 +26,9 @@ function normalizeEnabledQuestions(
       out.add(k);
     }
   }
-  // Novo hábito de leitura: habilitado por padrão para usuários existentes
+  // Novos hábitos: habilitados por padrão para usuários existentes.
   out.add("read");
+  out.add("visualization");
   return [...out];
 }
 

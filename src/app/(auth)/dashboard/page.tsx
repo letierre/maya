@@ -16,6 +16,7 @@ import { ModuloPreviewCard } from "@/components/ModuloPreviewCard";
 import {
   MeditacaoCard,
   RespiracaoCard,
+  VisualizacaoCard,
   CorridaCard,
   LeituraCard,
   PorquesCard,
@@ -512,6 +513,7 @@ export default function DashboardPage() {
           <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><SonoPreview loading={loading} recentSleep={recentSleep} /></div>
           <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><MeditacaoCard /></div>
           <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><RespiracaoCard /></div>
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><VisualizacaoCard /></div>
           <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><CorridaCard sessions={corridaSessions} /></div>
         </div>
       </div>

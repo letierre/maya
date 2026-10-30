@@ -90,6 +90,7 @@ type HabitCheckIn = {
   meditation?: boolean;
   prayer?: boolean;
   breathing?: boolean;
+  visualization?: boolean;
 };
 
 /** Feitos/total dos hábitos habilitados, tratando o legado: exercício/pausa

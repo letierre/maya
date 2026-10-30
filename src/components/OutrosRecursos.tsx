@@ -60,6 +60,20 @@ export function RespiracaoCard() {
   );
 }
 
+export function VisualizacaoCard() {
+  const { t } = useTranslation();
+  return (
+    <ModuloPreviewCard
+      emoji="🌄"
+      label={t("vi_titulo")}
+      preview="3 · 5 · 10 min"
+      sub={t("vi_subtitulo")}
+      href="/visualizacao"
+      accent="#c084fc"
+    />
+  );
+}
+
 export function CorridaCard({ sessions }: { sessions: RunningSession[] | null }) {
   const { t } = useTranslation();
   const loading = sessions === null;

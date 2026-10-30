@@ -3,13 +3,13 @@
 import { usePathname } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
 
-const FULLBLEED_ROUTES = ["/dashboard", "/diario", "/diario/novo", "/check-in", "/historico", "/nutricao", "/nutricao/registrar", "/sono", "/perfil", "/financas", "/financas/registrar", "/analise", "/agenda", "/leitura", "/configurações", "/meditacao", "/respiracao"];
+const FULLBLEED_ROUTES = ["/dashboard", "/diario", "/diario/novo", "/check-in", "/historico", "/nutricao", "/nutricao/registrar", "/sono", "/perfil", "/financas", "/financas/registrar", "/analise", "/agenda", "/leitura", "/configurações", "/meditacao", "/respiracao", "/visualizacao"];
 const FULLBLEED_PREFIXES = ["/financas", "/check-in", "/diario", "/nutricao", "/compras"];
 
 const NO_BOTTOM_NAV = [
   "/check-in", "/metas/coach",
   "/nutricao/registrar", "/financas/registrar",
-  "/meditacao", "/respiracao",
+  "/meditacao", "/respiracao", "/visualizacao",
 ];
 const NO_BOTTOM_NAV_PREFIXES = ["/insights"];
 

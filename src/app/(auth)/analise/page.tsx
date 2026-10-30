@@ -308,6 +308,7 @@ export default function AnalisePage() {
       meditation: t("an_meditacao"),
       prayer: t("an_oracao"),
       breathing: t("an_respiracao"),
+      visualization: t("an_visualizacao"),
       walked: t("an_caminhada"),
       ran: t("an_corrida"),
       strength_training: t("an_musculacao"),

@@ -44,6 +44,7 @@ function checkInToAnswers(ci: CheckIn): CheckInAnswers {
     meditation: ci.meditation ?? false,
     prayer: ci.prayer ?? false,
     breathing: ci.breathing ?? false,
+    visualization: ci.visualization ?? false,
     creative_activity: ci.creative_activity ?? false,
     walked: ci.walked ?? false,
     ran: ci.ran ?? false,

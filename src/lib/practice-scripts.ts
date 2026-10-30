@@ -4,7 +4,7 @@ import { t as tFn, type Lang } from "@/lib/i18n";
 // Metadata das práticas/padrões + roteiros falados (voz da Maya). O texto real
 // vive nas chaves i18n (pt/es/en) — buildScript monta o que vai ser sintetizado.
 
-export type PracticeKind = "meditation" | "breathing";
+export type PracticeKind = "meditation" | "breathing" | "visualization";
 
 export interface MeditationPractice {
   key: string;
@@ -59,4 +59,30 @@ export function buildScript(kind: PracticeKind, key: string, lang: Lang): string
   }
   const b = getBreathingPattern(key);
   return b ? tFn(lang, b.introKey) : "";
+}
+
+// ── Visualização guiada de meta ─────────────────────────────────────────
+// Roteiro personalizado: cita o título e o porquê da meta do usuário. O texto
+// real vive nas chaves i18n (vi_intro / vi_corpo_* / vi_outro) com placeholders
+// {{title}}, {{why}} e {{reward}}.
+
+export interface VisualizationGoal {
+  title: string;
+  why_it_matters: string;
+  reward?: string | null;
+}
+
+export function buildVisualizationScript(goal: VisualizationGoal, lang: Lang): string {
+  const title = (goal.title || "").trim();
+  const why = (goal.why_it_matters || "").trim();
+  const reward = (goal.reward || "").trim();
+  // Limita o porquê para o áudio não estourar de tamanho.
+  const shortWhy = why.length > 220 ? `${why.slice(0, 220)}...` : why;
+
+  const parts: string[] = [tFn(lang, "vi_intro")];
+  if (title) parts.push(tFn(lang, "vi_corpo_titulo", { title }));
+  if (shortWhy) parts.push(tFn(lang, "vi_corpo_porque", { why: shortWhy }));
+  if (reward) parts.push(tFn(lang, "vi_corpo_recompensa", { reward }));
+  parts.push(tFn(lang, "vi_outro"));
+  return parts.filter(Boolean).join(" ");
 }

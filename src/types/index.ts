@@ -9,6 +9,7 @@ export interface CheckIn {
   meditation: boolean;
   prayer: boolean;
   breathing: boolean;
+  visualization: boolean;
   creative_activity: boolean;
   ate_well: boolean;
   bowel_movement: boolean;
