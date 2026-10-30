@@ -506,7 +506,7 @@ export default function DashboardPage() {
         >
           {t("dash_bemestar")}
         </p>
-        <div className="flex gap-1 overflow-x-auto pb-1">
+        <div className="flex flex-nowrap gap-1 overflow-x-auto pb-1">
           <div className="w-[148px] shrink-0"><DiarioPreview loading={loading} preview={diaryPreview} sub={diarySub} /></div>
           <div className="w-[148px] shrink-0"><SonoPreview loading={loading} recentSleep={recentSleep} /></div>
           <div className="w-[148px] shrink-0"><NutricaoPreview loading={loading} preview={nutricaoPreview} sub={nutricaoSub} /></div>
@@ -524,7 +524,7 @@ export default function DashboardPage() {
         >
           {t("dash_mais_espacos")}
         </p>
-        <div className="flex gap-1 overflow-x-auto pb-1">
+        <div className="flex flex-nowrap gap-1 overflow-x-auto pb-1">
           <div className="w-[148px] shrink-0"><PlanejamentoPreview loading={loading} todayTasks={todayTasks} /></div>
           <div className="w-[148px] shrink-0"><FinancasPreview loading={loading} todaySpending={todaySpending} weeklyDailyAvg={weeklyDailyAvg} currency={currency} /></div>
           <div className="w-[148px] shrink-0"><LeituraCard books={readingBooks} sessions={readingSessions} /></div>
