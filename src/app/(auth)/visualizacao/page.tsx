@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useTranslation } from "@/lib/useTranslation";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { AMBIENT_OPTIONS, useAmbient, type AmbientKey } from "@/components/practices/useAmbient";
+import { usePracticeNarration, type NarrationCue } from "@/components/practices/usePracticeNarration";
 import { AREA_CONFIG } from "@/lib/planejamento-constants";
 import { safeCachedFetch } from "@/lib/fetch-cache";
 import { photoUrl } from "@/lib/photo-storage";
@@ -38,16 +39,15 @@ export default function VisualizacaoPage() {
   const [phase, setPhase] = useState<"select" | "running" | "done">("select");
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [voiceLoading, setVoiceLoading] = useState(false);
-  const [voiceActive, setVoiceActive] = useState(false);
   const [ambientKey, setAmbientKey] = useState<AmbientKey>("none");
   const [ambientMuted, setAmbientMuted] = useState(false);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioUrlRef = useRef<string | null>(null);
+  const { start: startAmbient, stop: stopAmbient, setMuted: setAmbientGain } = useAmbient();
+  const { voiceActive, start: startNarration, skip: skipNarration, clearAll: clearNarration } = usePracticeNarration();
+
+  const blocksRef = useRef<NarrationCue[] | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const finishedRef = useRef(false);
-
-  const { start: startAmbient, stop: stopAmbient, setMuted: setAmbientGain } = useAmbient();
 
   const totalSeconds = durationMin * 60;
   const activeGoals = goals.filter((g) => g.status === "ativa");
@@ -66,12 +66,6 @@ export default function VisualizacaoPage() {
     };
   }, []);
 
-  const stopAudio = useCallback(() => {
-    audioRef.current?.pause();
-    audioRef.current = null;
-    setVoiceActive(false);
-  }, []);
-
   const clearTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
@@ -82,7 +76,7 @@ export default function VisualizacaoPage() {
       if (finishedRef.current) return;
       finishedRef.current = true;
       clearTimer();
-      stopAudio();
+      clearNarration();
       stopAmbient();
       setPhase("done");
       try {
@@ -101,7 +95,7 @@ export default function VisualizacaoPage() {
         /* silencioso */
       }
     },
-    [clearTimer, stopAudio, stopAmbient, goalId, t],
+    [clearTimer, clearNarration, stopAmbient, goalId, t],
   );
 
   const start = useCallback(async () => {
@@ -109,62 +103,51 @@ export default function VisualizacaoPage() {
     setSecondsLeft(totalSeconds);
     setAmbientMuted(false);
     setPhase("running");
-    // Destrava o áudio (iOS) e liga o ambiente, depois toca a voz — tudo dentro
-    // do gesto de "Começar" (iOS só faz autoplay com play no clique).
+    // Destrava o áudio (iOS) e liga o ambiente, depois inicia a narração em
+    // blocos — tudo dentro do gesto de "Começar" (autoplay no iOS exige o play
+    // no clique, que o hook faz para o 1º bloco).
     await startAmbient(ambientKey);
-    const url = audioUrlRef.current;
-    if (url) {
-      const a = new Audio(url);
-      a.onended = () => setVoiceActive(false);
-      audioRef.current = a;
-      a.play().catch(() => {});
-      setVoiceActive(true);
-    }
-  }, [totalSeconds, startAmbient, ambientKey]);
+    if (blocksRef.current) startNarration(blocksRef.current);
+  }, [totalSeconds, startAmbient, ambientKey, startNarration]);
 
-  // Pré-busca a voz já na seleção: deixa o áudio pronto para tocar dentro do
-  // gesto de "Começar" (autoplay no iOS exige o play no clique).
+  // Pré-busca a playlist de blocos já na seleção: deixa tudo pronto para tocar
+  // dentro do gesto de "Começar" (autoplay no iOS exige o play no clique).
   useEffect(() => {
-    audioUrlRef.current = null;
+    blocksRef.current = null;
     if (!goalId) return;
     let cancelled = false;
-    fetch("/api/practices/visualization/voice", {
+    fetch("/api/practices/narration", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ goal_id: goalId, language: lang }),
+      body: JSON.stringify({ kind: "visualization", goal_id: goalId, language: lang, duration_seconds: totalSeconds }),
     })
       .then((r) => r.json())
       .then((d) => {
-        if (!cancelled) audioUrlRef.current = photoUrl(d.audioUrl);
+        if (cancelled) return;
+        blocksRef.current = (d.blocks ?? []).map((b: { url: string; atSec: number }) => ({ url: photoUrl(b.url) ?? "", atSec: b.atSec }));
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [goalId, lang]);
+  }, [goalId, lang, totalSeconds]);
 
-  // Cronômetro da sessão + fallback de voz (caso o prefetch não tenha resolvido).
+  // Cronômetro da sessão + fallback da narração (caso o prefetch não resolva).
   useEffect(() => {
     if (phase !== "running") return;
 
-    if (!audioUrlRef.current) {
+    if (!blocksRef.current) {
       setVoiceLoading(true);
-      fetch("/api/practices/visualization/voice", {
+      fetch("/api/practices/narration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goal_id: goalId, language: lang }),
+        body: JSON.stringify({ kind: "visualization", goal_id: goalId, language: lang, duration_seconds: totalSeconds }),
       })
         .then((r) => r.json())
         .then((d) => {
-          const url = photoUrl(d.audioUrl);
-          audioUrlRef.current = url;
-          if (url) {
-            const a = new Audio(url);
-            a.onended = () => setVoiceActive(false);
-            audioRef.current = a;
-            a.play().catch(() => {});
-            setVoiceActive(true);
-          }
+          const cues: NarrationCue[] = (d.blocks ?? []).map((b: { url: string; atSec: number }) => ({ url: photoUrl(b.url) ?? "", atSec: b.atSec }));
+          blocksRef.current = cues;
+          startNarration(cues);
         })
         .catch(() => {})
         .finally(() => setVoiceLoading(false));
@@ -176,10 +159,10 @@ export default function VisualizacaoPage() {
 
     return () => {
       clearTimer();
-      stopAudio();
+      clearNarration();
       stopAmbient();
     };
-  }, [phase, goalId, lang, clearTimer, stopAudio, stopAmbient]);
+  }, [phase, goalId, lang, totalSeconds, clearTimer, clearNarration, stopAmbient, startNarration]);
 
   useEffect(() => {
     if (phase === "running" && secondsLeft === 0) {
@@ -383,7 +366,7 @@ export default function VisualizacaoPage() {
           {voiceLoading && <p style={{ margin: 0, fontSize: 11, color: MUTED }}>…</p>}
         </div>
         {voiceActive && (
-          <button type="button" onClick={stopAudio} style={{ padding: "6px 12px", borderRadius: 9999, border: `1px solid ${BORDER}`, background: "transparent", color: MUTED, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+          <button type="button" onClick={skipNarration} style={{ padding: "6px 12px", borderRadius: 9999, border: `1px solid ${BORDER}`, background: "transparent", color: MUTED, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             {t("pr_pular")}
           </button>
         )}

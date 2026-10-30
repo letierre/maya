@@ -8,6 +8,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { MEDITATION_PRACTICES } from "@/lib/practice-scripts";
 import { BreathingCircle, type BreathPhase } from "@/components/practices/BreathingCircle";
 import { AMBIENT_OPTIONS, useAmbient, type AmbientKey } from "@/components/practices/useAmbient";
+import { usePracticeNarration, type NarrationCue } from "@/components/practices/usePracticeNarration";
 import { photoUrl } from "@/lib/photo-storage";
 import { getLocalDate } from "@/lib/utils";
 
@@ -36,23 +37,16 @@ export default function MeditacaoPage() {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [breathPhase, setBreathPhase] = useState<BreathPhase>("inhale");
-  const [voiceActive, setVoiceActive] = useState(false);
 
   const { start: startAmbient, stop: stopAmbient, setMuted: setAmbientGain } = useAmbient();
+  const { voiceActive, start: startNarration, skip: skipNarration, clearAll: clearNarration } = usePracticeNarration();
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioUrlRef = useRef<string | null>(null);
+  const blocksRef = useRef<NarrationCue[] | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const finishedRef = useRef(false);
 
   const totalSeconds = durationMin * 60;
   const practice = MEDITATION_PRACTICES.find((p) => p.key === practiceKey) ?? MEDITATION_PRACTICES[0];
-
-  const stopAudio = useCallback(() => {
-    audioRef.current?.pause();
-    audioRef.current = null;
-    setVoiceActive(false);
-  }, []);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -66,7 +60,7 @@ export default function MeditacaoPage() {
       if (finishedRef.current) return;
       finishedRef.current = true;
       clearTimer();
-      stopAudio();
+      clearNarration();
       stopAmbient();
       setPhase("done");
       try {
@@ -85,7 +79,7 @@ export default function MeditacaoPage() {
         /* silencioso — a prática fica registrada no próximo check-in */
       }
     },
-    [clearTimer, stopAudio, stopAmbient, practiceKey, t],
+    [clearTimer, clearNarration, stopAmbient, practiceKey, t],
   );
 
   const start = useCallback(async () => {
@@ -94,61 +88,50 @@ export default function MeditacaoPage() {
     setAmbientMuted(false);
     setBreathPhase("inhale");
     setPhase("running");
-    // Destrava o áudio (iOS) e liga o ambiente, depois toca a voz — tudo dentro
-    // do gesto de "Começar" (iOS só faz autoplay com play no clique).
+    // Destrava o áudio (iOS) e liga o ambiente, depois inicia a narração em
+    // blocos — tudo dentro do gesto de "Começar" (autoplay no iOS exige o play
+    // no clique, que o hook faz para o 1º bloco).
     await startAmbient(ambientKey);
-    const url = audioUrlRef.current;
-    if (url) {
-      const a = new Audio(url);
-      a.onended = () => setVoiceActive(false);
-      audioRef.current = a;
-      a.play().catch(() => {});
-      setVoiceActive(true);
-    }
-  }, [totalSeconds, startAmbient, ambientKey]);
+    if (blocksRef.current) startNarration(blocksRef.current);
+  }, [totalSeconds, startAmbient, ambientKey, startNarration]);
 
-  // Pré-busca a voz já na seleção: deixa o áudio pronto para tocar dentro do
-  // gesto de "Começar" (autoplay no iOS exige o play no clique).
+  // Pré-busca a playlist de blocos já na seleção: deixa tudo pronto para tocar
+  // dentro do gesto de "Começar" (autoplay no iOS exige o play no clique).
   useEffect(() => {
-    audioUrlRef.current = null;
+    blocksRef.current = null;
     let cancelled = false;
-    fetch("/api/practices/voice", {
+    fetch("/api/practices/narration", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "meditation", pattern: practiceKey, language: lang }),
+      body: JSON.stringify({ kind: "meditation", pattern: practiceKey, language: lang, duration_seconds: totalSeconds }),
     })
       .then((r) => r.json())
       .then((d) => {
-        if (!cancelled) audioUrlRef.current = photoUrl(d.audioUrl);
+        if (cancelled) return;
+        blocksRef.current = (d.blocks ?? []).map((b: { url: string; atSec: number }) => ({ url: photoUrl(b.url) ?? "", atSec: b.atSec }));
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [practiceKey, lang]);
+  }, [practiceKey, lang, totalSeconds]);
 
-  // Cronômetro da sessão + fallback de voz (caso o prefetch não tenha resolvido).
+  // Cronômetro da sessão + fallback da narração (caso o prefetch não resolva).
   useEffect(() => {
     if (phase !== "running") return;
 
-    if (!audioUrlRef.current) {
+    if (!blocksRef.current) {
       setVoiceLoading(true);
-      fetch("/api/practices/voice", {
+      fetch("/api/practices/narration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "meditation", pattern: practiceKey, language: lang }),
+        body: JSON.stringify({ kind: "meditation", pattern: practiceKey, language: lang, duration_seconds: totalSeconds }),
       })
         .then((r) => r.json())
         .then((d) => {
-          const url = photoUrl(d.audioUrl);
-          audioUrlRef.current = url;
-          if (url) {
-            const a = new Audio(url);
-            a.onended = () => setVoiceActive(false);
-            audioRef.current = a;
-            a.play().catch(() => {});
-            setVoiceActive(true);
-          }
+          const cues: NarrationCue[] = (d.blocks ?? []).map((b: { url: string; atSec: number }) => ({ url: photoUrl(b.url) ?? "", atSec: b.atSec }));
+          blocksRef.current = cues;
+          startNarration(cues);
         })
         .catch(() => {})
         .finally(() => setVoiceLoading(false));
@@ -160,10 +143,10 @@ export default function MeditacaoPage() {
 
     return () => {
       clearTimer();
-      stopAudio();
+      clearNarration();
       stopAmbient();
     };
-  }, [phase, practiceKey, lang, clearTimer, stopAudio, stopAmbient]);
+  }, [phase, practiceKey, lang, totalSeconds, clearTimer, clearNarration, stopAmbient, startNarration]);
 
   // Conclusão ao zerar o cronômetro.
   useEffect(() => {
@@ -349,7 +332,7 @@ export default function MeditacaoPage() {
           {voiceLoading && <p style={{ margin: 0, fontSize: 11, color: MUTED }}>…</p>}
         </div>
         {voiceActive && (
-          <button type="button" onClick={stopAudio} style={{ padding: "6px 12px", borderRadius: 9999, border: `1px solid ${BORDER}`, background: "transparent", color: MUTED, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+          <button type="button" onClick={skipNarration} style={{ padding: "6px 12px", borderRadius: 9999, border: `1px solid ${BORDER}`, background: "transparent", color: MUTED, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             {t("pr_pular")}
           </button>
         )}
