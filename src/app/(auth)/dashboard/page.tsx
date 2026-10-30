@@ -507,12 +507,12 @@ export default function DashboardPage() {
           {t("dash_bemestar")}
         </p>
         <div className="flex flex-nowrap gap-1 overflow-x-auto pb-1">
-          <div className="shrink-0" style={{ width: 148 }}><DiarioPreview loading={loading} preview={diaryPreview} sub={diarySub} /></div>
-          <div className="shrink-0" style={{ width: 148 }}><SonoPreview loading={loading} recentSleep={recentSleep} /></div>
-          <div className="shrink-0" style={{ width: 148 }}><NutricaoPreview loading={loading} preview={nutricaoPreview} sub={nutricaoSub} /></div>
-          <div className="shrink-0" style={{ width: 148 }}><MeditacaoCard /></div>
-          <div className="shrink-0" style={{ width: 148 }}><RespiracaoCard /></div>
-          <div className="shrink-0" style={{ width: 148 }}><CorridaCard sessions={corridaSessions} /></div>
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><DiarioPreview loading={loading} preview={diaryPreview} sub={diarySub} /></div>
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><SonoPreview loading={loading} recentSleep={recentSleep} /></div>
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><NutricaoPreview loading={loading} preview={nutricaoPreview} sub={nutricaoSub} /></div>
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><MeditacaoCard /></div>
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><RespiracaoCard /></div>
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><CorridaCard sessions={corridaSessions} /></div>
         </div>
       </div>
 
@@ -525,12 +525,12 @@ export default function DashboardPage() {
           {t("dash_mais_espacos")}
         </p>
         <div className="flex flex-nowrap gap-1 overflow-x-auto pb-1">
-          <div className="shrink-0" style={{ width: 148 }}><PlanejamentoPreview loading={loading} todayTasks={todayTasks} /></div>
-          <div className="shrink-0" style={{ width: 148 }}><FinancasPreview loading={loading} todaySpending={todaySpending} weeklyDailyAvg={weeklyDailyAvg} currency={currency} /></div>
-          <div className="shrink-0" style={{ width: 148 }}><LeituraCard books={readingBooks} sessions={readingSessions} /></div>
-          <div className="shrink-0" style={{ width: 148 }}><PorquesCard count={loading ? null : porques.length} /></div>
-          <div className="shrink-0" style={{ width: 148 }}><HistoricoCard count={loading ? null : checkIns.length} /></div>
-          <div className="shrink-0" style={{ width: 148 }}><ComprasCard lists={shoppingLists} items={shoppingItems} /></div>
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><PlanejamentoPreview loading={loading} todayTasks={todayTasks} /></div>
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><FinancasPreview loading={loading} todaySpending={todaySpending} weeklyDailyAvg={weeklyDailyAvg} currency={currency} /></div>
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><LeituraCard books={readingBooks} sessions={readingSessions} /></div>
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><PorquesCard count={loading ? null : porques.length} /></div>
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><HistoricoCard count={loading ? null : checkIns.length} /></div>
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><ComprasCard lists={shoppingLists} items={shoppingItems} /></div>
         </div>
       </div>
 

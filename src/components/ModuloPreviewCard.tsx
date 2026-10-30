@@ -49,6 +49,9 @@ export function ModuloPreviewCard({
         background: "var(--surface)",
         border: "1px solid rgba(167,139,250,0.32)",
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
+        overflow: "hidden",
+        width: "100%",
+        minWidth: 0,
       }}
     >
       <span
