@@ -21,7 +21,10 @@ export function MainWrapper({ children }: { children: React.ReactNode }) {
   const isFullBleed = FULLBLEED_ROUTES.includes(decodedPathname) || FULLBLEED_PREFIXES.some((p) => decodedPathname.startsWith(p));
 
   if (isFullBleed) {
-    return <main className="flex-1 overflow-y-auto min-h-0 w-full">{children}</main>;
+    // `viewport-fit: cover` estende o conteúdo até a borda; o padding-top do
+    // safe-area empurra o cabeçalho para baixo do notch, evitando que o conteúdo
+    // (título, foto da Maya) fique cortado sob a status bar.
+    return <main className="flex-1 overflow-y-auto min-h-0 w-full" style={{ paddingTop: "env(safe-area-inset-top)" }}>{children}</main>;
   }
   return (
     <main className="flex-1 overflow-y-auto min-h-0 max-w-4xl mx-auto w-full p-4 sm:p-6 pb-28">
