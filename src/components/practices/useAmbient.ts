@@ -123,9 +123,14 @@ export function useAmbient() {
         const lp = ctx.createBiquadFilter();
         lp.type = "lowpass";
         lp.frequency.value = 9000;
+        // Ruído branco tem espectro cheio em amplitude total → perceptualmente
+        // muito mais alto que oceano/pad. Atenua para a chuva não cobrir a voz.
+        const rainGain = ctx.createGain();
+        rainGain.gain.value = 0.22;
         src.connect(hp);
         hp.connect(lp);
-        lp.connect(master);
+        lp.connect(rainGain);
+        rainGain.connect(master);
         src.start();
       } else {
         // pad: acorde de A maior (A2, E3, A3, C#4) em senos levemente detonados
