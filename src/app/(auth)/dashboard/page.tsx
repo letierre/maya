@@ -507,9 +507,9 @@ export default function DashboardPage() {
           {t("dash_bemestar")}
         </p>
         <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
+          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><NutricaoPreview loading={loading} preview={nutricaoPreview} sub={nutricaoSub} /></div>
           <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><DiarioPreview loading={loading} preview={diaryPreview} sub={diarySub} /></div>
           <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><SonoPreview loading={loading} recentSleep={recentSleep} /></div>
-          <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><NutricaoPreview loading={loading} preview={nutricaoPreview} sub={nutricaoSub} /></div>
           <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><MeditacaoCard /></div>
           <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><RespiracaoCard /></div>
           <div className="shrink-0" style={{ width: 148, minWidth: 148, maxWidth: 148 }}><CorridaCard sessions={corridaSessions} /></div>

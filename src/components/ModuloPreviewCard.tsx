@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
 
 interface ModuloPreviewCardProps {
   emoji: string;
@@ -44,7 +43,7 @@ export function ModuloPreviewCard({
     <button
       type="button"
       onClick={() => router.push(href)}
-      className="rounded-2xl p-4 text-left cursor-pointer transition-all active:scale-[0.98] flex flex-col gap-2 group relative overflow-hidden"
+      className="rounded-2xl p-4 text-left cursor-pointer transition-all active:scale-[0.98] flex flex-col gap-2 overflow-hidden"
       style={{
         background: "var(--surface)",
         border: "1px solid rgba(167,139,250,0.32)",
@@ -81,10 +80,6 @@ export function ModuloPreviewCard({
         </p>
       )}
 
-      <ArrowRight
-        className="w-3 h-3 absolute bottom-3 right-3 opacity-30 group-hover:opacity-70 transition-opacity"
-        style={{ color: accent }}
-      />
     </button>
   );
 }
