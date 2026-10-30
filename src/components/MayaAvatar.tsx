@@ -103,7 +103,7 @@ export function MayaAvatar({ state = "idle", size = 60, className = "" }: MayaAv
           : "0 0 16px rgba(124,92,255,0.4), 0 0 32px rgba(124,92,255,0.2)",
         animation:
           isSpeaking
-            ? "mayaBreathe 1.5s ease-in-out infinite"
+            ? "mayaBreathe 2.6s ease-in-out infinite"
             : "none",
       }}
     >
@@ -125,7 +125,7 @@ export function MayaAvatar({ state = "idle", size = 60, className = "" }: MayaAv
             isProcessing
               ? "mayaBreathe 1s ease-in-out infinite"
               : isSpeaking
-              ? "mayaBreathe 0.8s ease-in-out infinite"
+              ? "mayaBreathe 2.6s ease-in-out infinite"
               : "mayaBreathe 3s ease-in-out infinite",
         }}
       />
@@ -216,7 +216,7 @@ function WaveformOverlay({ size }: { size: number }) {
             borderRadius: 9999,
             background: i % 2 === 0 ? "#A78BFA" : "#5EEAD4",
             opacity: 0.6,
-            animation: `waveBar 0.6s ease-in-out ${i * 0.08}s infinite alternate`,
+            animation: `waveBar 0.9s ease-in-out ${i * 0.08}s infinite alternate`,
           }}
         />
       ))}
