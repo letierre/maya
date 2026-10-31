@@ -964,7 +964,8 @@ export default function MayaChatPage() {
       <div
         className="shrink-0 flex items-center gap-3 px-4"
         style={{
-          minHeight: 58,
+          minHeight: 80,
+          paddingTop: 22,
           background: "rgba(13,14,20,0.6)",
           borderBottom: "1px solid rgba(255,255,255,0.05)",
         }}

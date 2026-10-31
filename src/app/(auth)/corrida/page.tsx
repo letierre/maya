@@ -594,7 +594,7 @@ export default function CorridaPage() {
   return (
     <div style={{ height: "100dvh", background: "#0B0B10", display: "flex", flexDirection: "column" }}>
       {/* Header */}
-      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, zIndex: 10, background: "#0B0B10" }}>
+      <div style={{ padding: "22px 16px", display: "flex", alignItems: "center", gap: 12, zIndex: 10, background: "#0B0B10" }}>
         <button type="button" onClick={() => router.push("/dashboard")} style={{ width: 36, height: 36, borderRadius: "50%", background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#A78BFA" }}>
           <ChevronLeft size={18} />
         </button>

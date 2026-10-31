@@ -188,7 +188,7 @@ export default function VisualizacaoPage() {
   if (phase === "select") {
     return (
       <div style={{ minHeight: "100dvh", background: "#0B0B10", display: "flex", flexDirection: "column", paddingBottom: "calc(48px + env(safe-area-inset-bottom))" }}>
-        <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ padding: "22px 16px", display: "flex", alignItems: "center", gap: 12 }}>
           <button type="button" onClick={() => router.push("/dashboard")} style={{ width: 36, height: 36, borderRadius: "50%", background: "#1a1530", border: `1px solid ${BORDER}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: LILAC }}>
             <ChevronLeft size={18} />
           </button>
@@ -355,7 +355,7 @@ export default function VisualizacaoPage() {
   // ── Sessão ───────────────────────────────────────────────────────────
   return (
     <div style={{ height: "100dvh", background: "#0B0B10", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, zIndex: 10 }}>
+      <div style={{ padding: "22px 16px", display: "flex", alignItems: "center", gap: 12, zIndex: 10 }}>
         <button type="button" onClick={handleBack} style={{ width: 36, height: 36, borderRadius: "50%", background: "#1a1530", border: `1px solid ${BORDER}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: LILAC }}>
           <ChevronLeft size={18} />
         </button>
