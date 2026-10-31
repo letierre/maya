@@ -42,6 +42,7 @@ export function MeditacaoCard() {
       sub={t("md_subtitulo")}
       href="/meditacao"
       accent="#A78BFA"
+      beta
     />
   );
 }
@@ -56,6 +57,7 @@ export function RespiracaoCard() {
       sub={t("rb_subtitulo")}
       href="/respiracao"
       accent="#5EEAD4"
+      beta
     />
   );
 }
@@ -70,6 +72,7 @@ export function VisualizacaoCard() {
       sub={t("vi_subtitulo")}
       href="/visualizacao"
       accent="#c084fc"
+      beta
     />
   );
 }

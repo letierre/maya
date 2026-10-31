@@ -10,6 +10,7 @@ interface ModuloPreviewCardProps {
   href: string;
   accent?: string;
   loading?: boolean;
+  beta?: boolean;
 }
 
 export function ModuloPreviewCard({
@@ -20,6 +21,7 @@ export function ModuloPreviewCard({
   href,
   accent = "#A78BFA",
   loading,
+  beta,
 }: ModuloPreviewCardProps) {
   const router = useRouter();
 
@@ -60,12 +62,22 @@ export function ModuloPreviewCard({
         {emoji}
       </span>
 
-      <p
-        className="m-0 text-[10px] font-bold tracking-[.1em] uppercase truncate"
-        style={{ color: accent }}
-      >
-        {label}
-      </p>
+      <div className="flex items-center gap-1.5 min-w-0">
+        <p
+          className="m-0 text-[10px] font-bold tracking-[.1em] uppercase truncate"
+          style={{ color: accent }}
+        >
+          {label}
+        </p>
+        {beta && (
+          <span
+            className="shrink-0 text-[8px] font-extrabold uppercase tracking-[.06em] rounded-[5px] px-1.5 py-0.5 leading-none"
+            style={{ color: accent, background: `${accent}1f`, border: `1px solid ${accent}40` }}
+          >
+            Beta
+          </span>
+        )}
+      </div>
 
       <p
         className="m-0 text-[12px] font-medium leading-snug truncate"

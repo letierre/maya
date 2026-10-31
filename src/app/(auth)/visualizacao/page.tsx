@@ -193,7 +193,10 @@ export default function VisualizacaoPage() {
             <ChevronLeft size={18} />
           </button>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: FOREGROUND }}>{t("vi_titulo")}</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: FOREGROUND }}>{t("vi_titulo")}</h1>
+              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: LILAC, background: "rgba(167,139,250,0.14)", border: "1px solid rgba(167,139,250,0.35)", borderRadius: 6, padding: "2px 6px", lineHeight: 1 }}>Beta</span>
+            </div>
             <p style={{ margin: 0, fontSize: 11, color: MUTED }}>{t("vi_subtitulo")}</p>
           </div>
         </div>
