@@ -55,29 +55,29 @@ export function ModuloPreviewCard({
         minWidth: 0,
       }}
     >
-      <span
-        className="size-9 rounded-xl flex items-center justify-center text-[18px] leading-none relative"
-        style={{ background: `${accent}1a`, boxShadow: `inset 0 0 0 1px ${accent}30` }}
-      >
-        {emoji}
-      </span>
-
-      <div className="flex items-center gap-1.5 min-w-0">
-        <p
-          className="m-0 text-[10px] font-bold tracking-[.1em] uppercase truncate"
-          style={{ color: accent }}
+      <div className="flex items-center gap-2">
+        <span
+          className="size-9 rounded-xl flex items-center justify-center text-[18px] leading-none"
+          style={{ background: `${accent}1a`, boxShadow: `inset 0 0 0 1px ${accent}30` }}
         >
-          {label}
-        </p>
+          {emoji}
+        </span>
         {beta && (
           <span
-            className="shrink-0 text-[8px] font-extrabold uppercase tracking-[.06em] rounded-[5px] px-1.5 py-0.5 leading-none"
+            className="text-[8px] font-extrabold uppercase tracking-[.06em] rounded-[5px] px-1.5 py-0.5 leading-none"
             style={{ color: accent, background: `${accent}1f`, border: `1px solid ${accent}40` }}
           >
             Beta
           </span>
         )}
       </div>
+
+      <p
+        className="m-0 text-[10px] font-bold tracking-[.1em] uppercase truncate"
+        style={{ color: accent }}
+      >
+        {label}
+      </p>
 
       <p
         className="m-0 text-[12px] font-medium leading-snug truncate"
