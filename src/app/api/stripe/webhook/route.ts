@@ -135,6 +135,13 @@ export async function POST(req: NextRequest) {
           { onConflict: "user_id" }
         );
 
+        // Email normalizado (minúsculo + trim) — consistente entre TODOS os eventos
+        // pra Oryen. `user.created`/`subscription.activated` leem o email direto do
+        // Stripe (caixa original); `canceled`/`past_due` leem do Supabase (minúsculo).
+        // Sem normalizar, o dedup por email da Oryen falha entre eventos.
+        const customerEmail =
+          (session.customer_details?.email || session.customer_email || "").trim().toLowerCase() || null;
+
         // Conta criada de fato neste checkout (não em retry): cria o lead na Oryen
         // já na etapa "active" (fluxo novo, sem trial), antes do subscription.activated.
         if (createdNewUser) {
@@ -142,7 +149,7 @@ export async function POST(req: NextRequest) {
           sendOryenEvent("user.created", {
             external_id: userId,
             name: session.customer_details?.name ?? null,
-            email: session.customer_details?.email || session.customer_email || null,
+            email: customerEmail,
             plan,
             plan_status: "paid",
             stage: "active",
@@ -173,7 +180,7 @@ export async function POST(req: NextRequest) {
           const meta = session.metadata ?? {};
           sendOryenEvent("subscription.activated", {
             external_id: userId,
-            email: session.customer_details?.email || session.customer_email || null,
+            email: customerEmail,
             subscription_id: subId,
             plan,
             plan_status: "paid",
