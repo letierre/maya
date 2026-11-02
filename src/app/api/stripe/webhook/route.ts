@@ -168,7 +168,8 @@ export async function POST(req: NextRequest) {
         // carrega stage=active + plan_status=paid + atribuição — mandar os dois faria a
         // Oryen criar 2 leads e disparar 2 conversões na Meta (Purchase + Subscribe).
         if (sub.status === "active" && (prev?.status ?? null) !== "active" && !createdNewUser) {
-          // Atribuição capturada no /api/checkout (metadata da sessão): browser + UTMs.
+          // Metadata vem vazio (o Payment Link não carrega UTM/fbp/fbc): a atribuição
+          // agora é feita pela integração Meta ↔ Stripe, não via metadata/CAPI.
           const meta = session.metadata ?? {};
           sendOryenEvent("subscription.activated", {
             external_id: userId,

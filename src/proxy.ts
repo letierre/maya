@@ -8,7 +8,6 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 const API_ALLOW = [
   "/api/subscription",
   "/api/stripe",
-  "/api/checkout", // fluxo público do quiz → cria a sessão antes de existir conta
   "/api/preferences",
   "/api/check-ins",
   "/api/geo",
