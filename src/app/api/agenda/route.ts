@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
       repeat_type: body.repeat_type || "none",
       repeat_until: body.repeat_until || null,
       excluded: body.excluded || false,
+      show_in_hub: body.show_in_hub ?? true,
       notify_minutes: body.notify_minutes || null,
       due_date: body.due_date || null,
       linked_goal_id: body.linked_goal_id || null,
@@ -122,6 +123,7 @@ export async function PATCH(req: NextRequest) {
   if (body.repeat_type !== undefined) updates.repeat_type = body.repeat_type;
   if (body.repeat_until !== undefined) updates.repeat_until = body.repeat_until;
   if (body.excluded !== undefined) updates.excluded = body.excluded;
+  if (body.show_in_hub !== undefined) updates.show_in_hub = body.show_in_hub;
   if (body.notify_minutes !== undefined) updates.notify_minutes = body.notify_minutes;
   if (body.due_date !== undefined) updates.due_date = body.due_date;
   updates.updated_at = new Date().toISOString();

@@ -281,6 +281,7 @@ function AgendaPage() {
   const [newNotify, setNewNotify] = useState<number | null>(null);
   const [newDueDate, setNewDueDate] = useState("");
   const [newLinkedGoalId, setNewLinkedGoalId] = useState("");
+  const [newShowInHub, setNewShowInHub] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeGoals, setActiveGoals] = useState<any[]>([]);
   const [weekPedras, setWeekPedras] = useState<{ id: string; title: string }[]>([]);
@@ -309,6 +310,7 @@ function AgendaPage() {
       notify_minutes: newNotify,
       due_date: newDueDate || null,
       linked_goal_id: newLinkedGoalId || null,
+      show_in_hub: newShowInHub,
     };
 
     if (editingId && editingIsRepeat) {
@@ -370,7 +372,7 @@ function AgendaPage() {
     setNewTitle(""); setNewEmoji(""); setNewPriority("importante_nao_urgente");
     setNewStartTime("09:00"); setNewEndTime("10:00");
     setNewDescription(""); setNewColor("#7C5CFF"); setNewArea("");
-    setNewRepeat("none"); setNewNotify(null); setNewDueDate(""); setNewLinkedGoalId("");
+    setNewRepeat("none"); setNewNotify(null); setNewDueDate(""); setNewLinkedGoalId(""); setNewShowInHub(true);
   };
 
   const openEditor = (item: AgendaItem) => {
@@ -388,6 +390,7 @@ function AgendaPage() {
     setNewNotify(item.notify_minutes ?? null);
     setNewDueDate(item.due_date || "");
     setNewLinkedGoalId(item.linked_goal_id || "");
+    setNewShowInHub(item.show_in_hub !== false);
     setEditingId(realId(item));
     setEditingIsRepeat(item.id.includes("_r_") || item.id.includes("_cross"));
     setEditingOrig({
@@ -1650,6 +1653,25 @@ function AgendaPage() {
               </div>
             </div>
 
+            {/* Mostrar no hub (resumo da semana) */}
+            <button type="button" onClick={() => setNewShowInHub(v => !v)}
+              style={{
+                marginTop: 14, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.15)",
+                background: "#0B0B10", cursor: "pointer", fontFamily: "inherit",
+              }}>
+              <span style={{ fontSize: 12, color: "#e0d6ff" }}>{tr("ag_mostrar_hub")}</span>
+              <span style={{
+                width: 40, height: 22, borderRadius: 9999, position: "relative", flexShrink: 0,
+                background: newShowInHub ? "#7C5CFF" : "#2a2440", transition: "background .15s",
+              }}>
+                <span style={{
+                  position: "absolute", top: 2, left: newShowInHub ? 20 : 2, width: 18, height: 18,
+                  borderRadius: "50%", background: "#fff", transition: "left .15s",
+                }} />
+              </span>
+            </button>
+
             {/* Actions */}
             <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
               <button type="button" onClick={closeNewItemModal}
@@ -1893,8 +1915,8 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
     }
   };
 
-  const todayComp = compromissos.filter(c => c.item_type === "compromisso");
-  const todayAgendaTarefas = compromissos.filter(c => c.item_type === "tarefa");
+  const todayComp = compromissos.filter(c => c.item_type === "compromisso" && c.show_in_hub !== false);
+  const todayAgendaTarefas = compromissos.filter(c => c.item_type === "tarefa" && c.show_in_hub !== false);
 
   const activeGoals = goals.slice(0, 5);
   // Segunda-feira (YYYY-MM-DD) da semana selecionada — o hub Lista mostra a
@@ -1960,6 +1982,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
     repeat_type: "none",
     status: over.status ?? item.status ?? "pendente",
     excluded: over.excluded ?? false,
+    show_in_hub: item.show_in_hub !== false,
     notify_minutes: item.notify_minutes || null,
     linked_goal_id: item.linked_goal_id || null,
     linked_action_id: item.linked_action_id || null,
