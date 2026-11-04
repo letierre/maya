@@ -61,7 +61,7 @@ function formatMemory(m: Record<string, unknown>, todayStr?: string, tz?: string
   const createdAt = m.created_at as string | undefined;
   const day = createdAt ? relativeDayLabel(getLocalDateFromISO(createdAt, tz), todayStr) : "";
   let when = "";
-  if (m.event_date) when = `em ${m.event_date}`;
+  if (m.event_date) when = relativeDayLabel(String(m.event_date), todayStr) || `em ${String(m.event_date)}`;
   else if (m.temporal_hint) when = m.temporal_hint as string;
   const prefix = day ? `${day}: ` : "";
   const suffix = when ? ` (${when})` : "";
