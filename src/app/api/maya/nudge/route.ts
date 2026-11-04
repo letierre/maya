@@ -58,10 +58,9 @@ Mensagem template (use como inspiração, melhore-a): "${templateMessage}"`;
 
 export async function GET() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
@@ -206,9 +205,8 @@ async function cacheNudge(admin: any, userId: string, context: Record<string, un
 
 export async function POST() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
-  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
   const { data: prefs } = await admin

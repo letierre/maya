@@ -338,6 +338,7 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_voice_transcript: "Transcrição",
     maya_voice_recording_reply: "Maya está gravando áudio...",
     maya_voice_sending: "Enviando...",
+    maya_voice_long: "Áudio longo: transcrevendo… pode levar um pouco.",
     maya_error:
       "Tive dificuldade de me conectar agora. Tente novamente em alguns instantes. 💛",
     maya_not_sent: "Não enviado",
@@ -2948,6 +2949,7 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_voice_transcript: "Transcripción",
     maya_voice_recording_reply: "Maya está grabando audio...",
     maya_voice_sending: "Enviando...",
+    maya_voice_long: "Audio largo: transcribiendo… puede tardar un poco.",
     maya_error:
       "Tuve dificultad para conectarme ahora. Intenta de nuevo en unos instantes. 💛",
     maya_not_sent: "No enviado",
@@ -5556,6 +5558,7 @@ const translations: Record<Lang, Record<string, string>> = {
     maya_voice_transcript: "Transcript",
     maya_voice_recording_reply: "Maya is recording audio...",
     maya_voice_sending: "Sending...",
+    maya_voice_long: "Long audio: transcribing… may take a moment.",
     maya_error:
       "I had trouble connecting right now. Please try again in a moment. 💛",
     maya_not_sent: "Not sent",

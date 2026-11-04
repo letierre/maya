@@ -5,9 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
 // GET — load user's chat messages
 export async function GET(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
-  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const before = searchParams.get("before"); // cursor: load messages older than this
@@ -37,9 +36,8 @@ export async function GET(req: NextRequest) {
 // POST — save a batch of new messages
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
-  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const messages = body.messages as Array<{ role: string; content: string; image_urls?: string[] }> | undefined;

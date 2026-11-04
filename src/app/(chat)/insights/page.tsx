@@ -1206,6 +1206,18 @@ export default function MayaChatPage() {
                   ) : (
                     msg.content
                   )}
+                  {isVoice && msg.pending && msg.voiceNote && (msg.audioDuration ?? 0) >= 30 && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 11.5,
+                        lineHeight: 1.4,
+                        color: "rgba(255,255,255,0.6)",
+                      }}
+                    >
+                      {t("maya_voice_long")}
+                    </div>
+                  )}
                   {/* Images attached to the message */}
                   {msg.imageUrls && msg.imageUrls.length > 0 && (
                     <div

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Play, Pause, ChevronDown, ChevronUp } from "lucide-react";
+import { Play, Pause, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { photoUrl } from "@/lib/photo-storage";
 import { useTranslation } from "@/lib/useTranslation";
 import { MessageTicks } from "@/components/MessageTicks";
@@ -140,16 +140,21 @@ export function VoiceNote({
             justifyContent: "center",
             background: variant === "user" ? "rgba(255,255,255,0.22)" : "rgba(167,139,250,0.18)",
             color: accent,
-            opacity: loading ? 0.5 : 1,
+            opacity: 1,
           }}
         >
-          {playing ? <Pause className="size-4" /> : <Play className="size-4" style={{ marginLeft: 2 }} />}
+          {loading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : playing ? (
+            <Pause className="size-4" />
+          ) : (
+            <Play className="size-4" style={{ marginLeft: 2 }} />
+          )}
         </button>
 
         {/* Waveform — preenche da esquerda p/ direita + bolinha de posição */}
         <div
           ref={waveRef}
-          className={loading ? "animate-pulse" : undefined}
           onPointerDown={(e) => {
             if (loading) return;
             draggingRef.current = true;

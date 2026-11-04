@@ -6,10 +6,9 @@ import { NextResponse } from "next/server";
 // GET /api/maya/care-list — top 3 sinais priorizados de "o que cuidar".
 export async function GET() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
