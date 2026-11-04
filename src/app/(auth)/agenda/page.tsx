@@ -217,6 +217,7 @@ function AgendaPage() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [viewMode, setViewMode] = useState<ViewMode>(initialTab);
   const [activeModule, setActiveModule] = useState<ActiveModule>(tabToModule(initialTab));
+  const [listaFilter, setListaFilter] = useState<string>("todos");
 
   // Sync when URL param changes (client-side navigation reuses component)
   useEffect(() => {
@@ -1273,7 +1274,24 @@ function AgendaPage() {
 
       {/* ── LISTA ───────────────────────────────────────────── */}
       {viewMode === "lista" && (
-        <ListView allWeekTasks={allWeekTasks} compromissos={weekItems} selectedDate={selectedDate} setAllWeekTasks={setAllWeekTasks} refreshItems={() => fetchItems(selectedDate, true)} loading={loading || weekLoading} toggleAgendaTask={toggleTask} />
+        <>
+          {/* Filtro de seções do hub Lista */}
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 12, WebkitOverflowScrolling: "touch" }}>
+            {LISTA_FILTERS.map(({ key, labelKey }) => (
+              <button key={key} type="button" onClick={() => setListaFilter(key)}
+                style={{
+                  flexShrink: 0, padding: "7px 14px", borderRadius: 9999, border: "1px solid rgba(167,139,250,0.2)",
+                  cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600,
+                  background: listaFilter === key ? "linear-gradient(135deg, #7C5CFF, #A78BFA)" : "transparent",
+                  color: listaFilter === key ? "#fff" : "#9e96b5",
+                  whiteSpace: "nowrap",
+                }}>
+                {tr(labelKey)}
+              </button>
+            ))}
+          </div>
+          <ListView allWeekTasks={allWeekTasks} compromissos={weekItems} selectedDate={selectedDate} setAllWeekTasks={setAllWeekTasks} refreshItems={() => fetchItems(selectedDate, true)} loading={loading || weekLoading} toggleAgendaTask={toggleTask} listaFilter={listaFilter} />
+        </>
       )}
 
       </div>
@@ -1810,7 +1828,7 @@ const navBtnStyle: React.CSSProperties = {
   color: "#e0d6ff",
 };
 
-function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, refreshItems, loading, toggleAgendaTask }: { allWeekTasks: any[]; compromissos: AgendaItem[]; selectedDate: string; setAllWeekTasks: React.Dispatch<React.SetStateAction<any[]>>; refreshItems: () => void; loading: boolean; toggleAgendaTask: (item: AgendaItem, coords?: { x: number; y: number }) => void }) {
+function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, refreshItems, loading, toggleAgendaTask, listaFilter }: { allWeekTasks: any[]; compromissos: AgendaItem[]; selectedDate: string; setAllWeekTasks: React.Dispatch<React.SetStateAction<any[]>>; refreshItems: () => void; loading: boolean; toggleAgendaTask: (item: AgendaItem, coords?: { x: number; y: number }) => void; listaFilter: string }) {
   const { t: tr } = useTranslation();
   const [goals, setGoals] = useState<any[]>([]);
   const [goalsLoading, setGoalsLoading] = useState(true);
@@ -2241,9 +2259,12 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
     toast.success(`↩️ ${tr("ag_toast_reaberta", { title: t.title })}`);
   };
 
+  const showSection = (k: string) => listaFilter === "todos" || listaFilter === k;
+
   return (
     <div>
       {/* Atrasadas (overdue weekly plan tasks) */}
+      {showSection("atrasadas") && (
       <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#FF9F43", textTransform: "uppercase", letterSpacing: ".06em" }}>⚠️ {tr("ag_atrasadas")}</h3>
         {overdueTasks.length > 0 ? overdueTasks.map((t: any) => {
@@ -2282,8 +2303,10 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_atrasadas")}</p>
         )}
       </div>
+      )}
 
       {/* Em aberto (weekly tasks without day) */}
+      {showSection("em_aberto") && (
       <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>📋 {tr("ag_em_aberto")}</h3>
         {openWeekTasks.length > 0 ? openWeekTasks.map((t: any) => {
@@ -2309,8 +2332,10 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_em_aberto")}</p>
         )}
       </div>
+      )}
 
       {/* Compromissos da semana */}
+      {showSection("compromissos") && (
       <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_compromissos_semana")}</h3>
         {todayComp.length > 0 ? todayComp.map(c => {
@@ -2331,8 +2356,10 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_compromissos")}</p>
         )}
       </div>
+      )}
 
       {/* Tarefas da agenda (semana) */}
+      {showSection("tarefas") && (
       <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_tarefas_semana")}</h3>
         {todayAgendaTarefas.length > 0 ? todayAgendaTarefas.map(t => {
@@ -2353,8 +2380,10 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_tarefas")}</p>
         )}
       </div>
+      )}
 
       {/* Tarefas do planejamento (semana) */}
+      {showSection("plano") && (
       <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_plano_semana")}</h3>
         {dayPlanTasks.length > 0 ? dayPlanTasks.map((t: any) => {
@@ -2376,8 +2405,10 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_plano_dia")}</p>
         )}
       </div>
+      )}
 
       {/* Metas ativas */}
+      {showSection("metas") && (
       <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_metas_ativas")}</h3>
         {activeGoals.length > 0 ? activeGoals.map((g: any) => (
@@ -2390,8 +2421,10 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_metas")}</p>
         )}
       </div>
+      )}
 
       {/* Puladas (descartadas sem apagar) */}
+      {showSection("puladas") && (
       <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#5a5470", textTransform: "uppercase", letterSpacing: ".06em" }}>⏭️ {tr("ag_puladas")}</h3>
         {puladaTasks.length > 0 ? puladaTasks.map((t: any) => (
@@ -2406,6 +2439,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_puladas")}</p>
         )}
       </div>
+      )}
 
       {/* Delete dialog (compromisso repetido) */}
       {deleteOpts && (
@@ -2558,3 +2592,15 @@ const sectionCardStyle: React.CSSProperties = {
   borderRadius: 16,
   padding: "14px",
 };
+
+// Filtro do hub Lista: o usuário escolhe qual seção quer ver naquele momento.
+const LISTA_FILTERS: { key: string; labelKey: string }[] = [
+  { key: "todos", labelKey: "ag_todos" },
+  { key: "atrasadas", labelKey: "ag_atrasadas" },
+  { key: "em_aberto", labelKey: "ag_em_aberto" },
+  { key: "compromissos", labelKey: "ag_compromissos_semana" },
+  { key: "tarefas", labelKey: "ag_tarefas_semana" },
+  { key: "plano", labelKey: "ag_plano_semana" },
+  { key: "metas", labelKey: "ag_metas_ativas" },
+  { key: "puladas", labelKey: "ag_puladas" },
+];
