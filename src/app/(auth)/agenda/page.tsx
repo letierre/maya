@@ -1382,12 +1382,11 @@ function AgendaPage() {
 
             {/* Actions */}
             <div style={{ display: "flex", gap: 10 }}>
-              <button type="button" onClick={async () => {
-                if (!confirm(tr("ag_excluir_tarefa"))) return;
+              <button type="button" onClick={() => showConfirm(tr("ag_excluir_tarefa"), async () => {
                 await fetch(`/api/weekly-plans/tasks/${editingPlanTask.id}`, { method: "DELETE" });
                 setAllWeekTasks((prev: any[]) => prev.filter((wt: any) => wt.id !== editingPlanTask.id));
                 setEditingPlanTask(null);
-              }}
+              })}
                 style={{ flex: 1, padding: "12px 0", borderRadius: 14, border: 0, background: "rgba(255,92,92,0.1)", color: "#FF5C5C", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                 🗑 {tr("ag_excluir")}
               </button>
@@ -1823,6 +1822,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   const [movingId, setMovingId] = useState<string | null>(null);
   const [deleteOpts, setDeleteOpts] = useState<any | null>(null);
   const [repeatEditDialog, setRepeatEditDialog] = useState<{ item: any; title: string; newDate: string; statusChanged: boolean; editDone: boolean; newStatus: string; originalDate: string } | null>(null);
+  const [confirmDeleteDialog, setConfirmDeleteDialog] = useState<{ onOk: () => void } | null>(null);
 
   const refreshGoals = () => {
     setGoalsLoading(true);
@@ -2197,17 +2197,23 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
         setDeleteOpts(editingItem);
         return;
       }
-      if (!confirm(tr("ag_certeza_excluir"))) return;
-      await fetch(`/api/agenda?id=${realItemId(editingItem)}`, { method: "DELETE" });
-      refreshItems();
-      setEditingItem(null);
-      toast.success(tr("ag_atividade_excluida"));
+      setConfirmDeleteDialog({
+        onOk: async () => {
+          await fetch(`/api/agenda?id=${realItemId(editingItem)}`, { method: "DELETE" });
+          refreshItems();
+          setEditingItem(null);
+          toast.success(tr("ag_atividade_excluida"));
+        },
+      });
     } else {
-      if (!confirm(tr("ag_certeza_excluir"))) return;
-      await fetch(`/api/weekly-plans/tasks/${editingItem.id}`, { method: "DELETE" });
-      setAllWeekTasks((prev: any[]) => prev.filter((wt: any) => wt.id !== editingItem.id));
-      setEditingItem(null);
-      toast.success(tr("ag_atividade_excluida"));
+      setConfirmDeleteDialog({
+        onOk: async () => {
+          await fetch(`/api/weekly-plans/tasks/${editingItem.id}`, { method: "DELETE" });
+          setAllWeekTasks((prev: any[]) => prev.filter((wt: any) => wt.id !== editingItem.id));
+          setEditingItem(null);
+          toast.success(tr("ag_atividade_excluida"));
+        },
+      });
     }
   };
 
@@ -2238,7 +2244,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   return (
     <div>
       {/* Atrasadas (overdue weekly plan tasks) */}
-      <div style={{ marginBottom: 12 }}>
+      <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#FF9F43", textTransform: "uppercase", letterSpacing: ".06em" }}>⚠️ {tr("ag_atrasadas")}</h3>
         {overdueTasks.length > 0 ? overdueTasks.map((t: any) => {
             const area = AREA_CONFIG_PT[t.area] || { emoji: "⚪" };
@@ -2278,7 +2284,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       </div>
 
       {/* Em aberto (weekly tasks without day) */}
-      <div style={{ marginBottom: 12 }}>
+      <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>📋 {tr("ag_em_aberto")}</h3>
         {openWeekTasks.length > 0 ? openWeekTasks.map((t: any) => {
             const area = AREA_CONFIG_PT[t.area] || { emoji: "⚪" };
@@ -2305,22 +2311,29 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       </div>
 
       {/* Compromissos da semana */}
-      <div style={{ marginBottom: 12 }}>
+      <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_compromissos_semana")}</h3>
-        {todayComp.length > 0 ? todayComp.map(c => (
-            <button key={c.id} type="button" onClick={() => openEditor(c)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)", background: "none", borderLeft: 0, borderRight: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-              <span style={{ fontSize: 12 }}>{c.emoji || "📅"}</span>
-              <span style={{ flex: 1, fontSize: 12, color: "#e0d6ff" }}>{c.title}</span>
-              <span style={{ fontSize: 9, color: "#6a657a", flexShrink: 0 }}>{shortDate(c.date)}</span>
-              {c.start_time && <span style={{ fontSize: 9, color: "#9e96b5", fontFamily: "monospace" }}>{c.start_time.slice(0,5)}</span>}
-            </button>
-        )) : (
+        {todayComp.length > 0 ? todayComp.map(c => {
+            const done = c.status === "concluida";
+            return (
+              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)" }}>
+                <span style={{ fontSize: 12, flexShrink: 0, width: 18, height: 18, borderRadius: "50%", border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}
+                  onClick={(e) => { e.stopPropagation(); toggleAgendaTask(c, { x: e.clientX, y: e.clientY }); }}>
+                  {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10"/></svg>}
+                </span>
+                <span style={{ fontSize: 12, flexShrink: 0 }}>{c.emoji || "📅"}</span>
+                <span style={{ flex: 1, fontSize: 12, color: done ? "#5a5470" : "#e0d6ff", textDecoration: done ? "line-through" : "none", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} onClick={() => openEditor(c)}>{c.title}</span>
+                <span style={{ fontSize: 9, color: "#6a657a", flexShrink: 0 }}>{shortDate(c.date)}</span>
+                {c.start_time && <span style={{ fontSize: 9, color: "#9e96b5", fontFamily: "monospace", flexShrink: 0 }}>{c.start_time.slice(0,5)}</span>}
+              </div>
+            );
+        }) : (
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6a657a" }}>{tr("ag_vazio_compromissos")}</p>
         )}
       </div>
 
       {/* Tarefas da agenda (semana) */}
-      <div style={{ marginBottom: 12 }}>
+      <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_tarefas_semana")}</h3>
         {todayAgendaTarefas.length > 0 ? todayAgendaTarefas.map(t => {
             const done = t.status === "concluida";
@@ -2342,7 +2355,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       </div>
 
       {/* Tarefas do planejamento (semana) */}
-      <div style={{ marginBottom: 12 }}>
+      <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_plano_semana")}</h3>
         {dayPlanTasks.length > 0 ? dayPlanTasks.map((t: any) => {
             const area = AREA_CONFIG_PT[t.area] || { emoji: "⚪" };
@@ -2365,7 +2378,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       </div>
 
       {/* Metas ativas */}
-      <div style={{ marginBottom: 12 }}>
+      <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#A78BFA", textTransform: "uppercase", letterSpacing: ".06em" }}>{tr("ag_metas_ativas")}</h3>
         {activeGoals.length > 0 ? activeGoals.map((g: any) => (
             <button key={g.id} type="button" onClick={() => setDetailGoalId(g.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(167,139,250,0.05)", background: "none", borderLeft: 0, borderRight: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
@@ -2379,7 +2392,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       </div>
 
       {/* Puladas (descartadas sem apagar) */}
-      <div style={{ marginBottom: 12 }}>
+      <div style={sectionCardStyle}>
         <h3 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#5a5470", textTransform: "uppercase", letterSpacing: ".06em" }}>⏭️ {tr("ag_puladas")}</h3>
         {puladaTasks.length > 0 ? puladaTasks.map((t: any) => (
             <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(167,139,250,0.05)" }}>
@@ -2494,6 +2507,28 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
           </div>
         </div>
       )}
+
+      {/* ── Confirmação de exclusão (Maya) ─────────────── */}
+      {confirmDeleteDialog && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 230, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ width: "100%", maxWidth: 320, background: "#1a1530", borderRadius: 20, padding: 24, border: "1px solid rgba(167,139,250,0.25)", textAlign: "center" }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+              <MayaAvatar state="mini" size={40} />
+            </div>
+            <p style={{ margin: "0 0 18px", fontSize: 14, fontWeight: 600, color: "#e0d6ff", lineHeight: 1.5 }}>{tr("ag_certeza_excluir")}</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="button" onClick={() => setConfirmDeleteDialog(null)}
+                style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                {tr("cancelar")}
+              </button>
+              <button type="button" onClick={() => { confirmDeleteDialog.onOk(); setConfirmDeleteDialog(null); }}
+                style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: 0, background: "#FF5C5C", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                {tr("ag_excluir")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2512,4 +2547,14 @@ const hubBtnStyle: React.CSSProperties = {
   fontFamily: "inherit", fontSize: 13, fontWeight: 700,
   background: "#1a1530", color: "#9e96b5",
   border: "1px solid rgba(167,139,250,0.15)",
+};
+
+// Cartão que separa visualmente cada seção do hub Lista (antes tudo ficava
+// embaixo do outro e parecia uma lista única).
+const sectionCardStyle: React.CSSProperties = {
+  marginBottom: 14,
+  background: "#1a1530",
+  border: "1px solid rgba(167,139,250,0.15)",
+  borderRadius: 16,
+  padding: "14px",
 };
