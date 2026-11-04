@@ -16,6 +16,7 @@ import type { AgendaItem, EisenhowerPriority, TaskArea } from "@/types";
 import { MetasPanel } from "@/components/MetasPanel";
 import { PlanejamentoPanel } from "@/components/PlanejamentoPanel";
 import { GoalDetailSheet } from "@/components/GoalDetailSheet";
+import { MayaAvatar } from "@/components/MayaAvatar";
 import { toast } from "sonner";
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -261,6 +262,7 @@ function AgendaPage() {
     setConfirmDialog({ message, onOk, ...opts });
   const [editingItem, setEditingItem] = useState<AgendaItem | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<AgendaItem | null>(null);
+  const [repeatScopeDialog, setRepeatScopeDialog] = useState<{ body: Record<string, unknown> } | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDone, setEditDone] = useState(false);
   const [editDate, setEditDate] = useState("");
@@ -293,7 +295,6 @@ function AgendaPage() {
 
   const handleSave = async () => {
     if (!newTitle.trim()) return;
-    setSaving(true);
 
     const body: Record<string, unknown> = {
       title: newTitle.trim(),
@@ -313,13 +314,24 @@ function AgendaPage() {
       show_in_hub: newShowInHub,
     };
 
+    // Editando ocorrência repetida: pergunta o escopo (todos vs apenas este)
+    // num diálogo com a marca da Maya, em vez do confirm nativo do navegador.
     if (editingId && editingIsRepeat) {
-      // Editing a repeated occurrence — ask: this one or all?
-      const applyAll = confirm(tr("ag_aplicar_todos"));
+      setRepeatScopeDialog({ body });
+      return;
+    }
+
+    await submitNewItem(body);
+  };
+
+  const submitNewItem = async (body: Record<string, unknown>, applyAll?: boolean) => {
+    setSaving(true);
+
+    if (editingId && editingIsRepeat) {
       if (applyAll) {
         body.id = editingId;
       } else {
-        // Create a standalone copy for this date
+        // Cria uma cópia avulsa só para esta data
         delete body.id;
         // Se título, data ou horário mudou, a ocorrência original desta data
         // precisa ser marcada como excluída — senão continua aparecendo ao lado
@@ -362,6 +374,7 @@ function AgendaPage() {
       fetchItems(selectedDate, true);
     }
     setSaving(false);
+    setRepeatScopeDialog(null);
   };
 
   const closeNewItemModal = () => {
@@ -1742,6 +1755,30 @@ function AgendaPage() {
           </div>
         </div>
       )}
+
+      {/* ── Escopo da edição repetida (Maya) ─────────────── */}
+      {repeatScopeDialog && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 220, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ width: "100%", maxWidth: 320, background: "#1a1530", borderRadius: 20, padding: 24, border: "1px solid rgba(167,139,250,0.25)", textAlign: "center" }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+              <MayaAvatar state="mini" size={40} />
+            </div>
+            <p style={{ margin: "0 0 18px", fontSize: 14, fontWeight: 600, color: "#e0d6ff", lineHeight: 1.5 }}>{tr("ag_aplicar_todos")}</p>
+            <button type="button" onClick={() => submitNewItem(repeatScopeDialog.body, true)}
+              style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              {tr("ag_aplicar_todos_btn")}
+            </button>
+            <button type="button" onClick={() => submitNewItem(repeatScopeDialog.body, false)}
+              style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.06)", color: "#e0d6ff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              {tr("ag_apenas_este")}
+            </button>
+            <button type="button" onClick={() => setRepeatScopeDialog(null)}
+              style={{ width: "100%", padding: "10px 0", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              {tr("cancelar")}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1785,6 +1822,7 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
   const [detailGoalId, setDetailGoalId] = useState<string | null>(null);
   const [movingId, setMovingId] = useState<string | null>(null);
   const [deleteOpts, setDeleteOpts] = useState<any | null>(null);
+  const [repeatEditDialog, setRepeatEditDialog] = useState<{ item: any; title: string; newDate: string; statusChanged: boolean; editDone: boolean; newStatus: string; originalDate: string } | null>(null);
 
   const refreshGoals = () => {
     setGoalsLoading(true);
@@ -2040,27 +2078,8 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
         // é sempre per-ocorrência (nunca PATCH na regra para não concluir a série).
         const keyChanged = titleChanged || dateChanged;
         if (keyChanged) {
-          const applyAll = confirm(tr("ag_aplicar_todos"));
-          if (applyAll) {
-            await fetch("/api/agenda", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: (editingItem as any)._origId || editingItem.id, title, date: newDate }),
-            });
-            if (statusChanged) await toggleOccurrenceDone(editingItem, editDone);
-          } else {
-            // Apenas este: exclui a original e cria a avulsa com o novo título/data/status.
-            await fetch("/api/agenda", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(standaloneBody(editingItem, { title: editingItem.title, date: originalDate, excluded: true })),
-            });
-            await fetch("/api/agenda", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(standaloneBody(editingItem, { title, date: newDate, status: newStatus })),
-            });
-          }
+          setRepeatEditDialog({ item: editingItem, title, newDate, statusChanged, editDone, newStatus, originalDate });
+          return;
         } else if (statusChanged) {
           await toggleOccurrenceDone(editingItem, editDone);
         }
@@ -2102,6 +2121,33 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
       setEditingItem(null);
     }
     toast.success(dayChanged ? tr("ag_movida_para", { date: shortDate(editDate) }) : (isWeeklyOpen && editDone ? tr("ag_toast_concluida_hoje", { title: editTitle.trim() }) : tr("ag_alteracoes_salvas")));
+  };
+
+  const finishRepeatEdit = async (d: { item: any; title: string; newDate: string; statusChanged: boolean; editDone: boolean; newStatus: string; originalDate: string }, applyAll: boolean) => {
+    setRepeatEditDialog(null);
+    if (applyAll) {
+      await fetch("/api/agenda", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: (d.item as any)._origId || d.item.id, title: d.title, date: d.newDate }),
+      });
+      if (d.statusChanged) await toggleOccurrenceDone(d.item, d.editDone);
+    } else {
+      // Apenas este: exclui a original e cria a avulsa com o novo título/data/status.
+      await fetch("/api/agenda", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(standaloneBody(d.item, { title: d.item.title, date: d.originalDate, excluded: true })),
+      });
+      await fetch("/api/agenda", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(standaloneBody(d.item, { title: d.title, date: d.newDate, status: d.newStatus })),
+      });
+    }
+    setEditingItem(null);
+    refreshItems();
+    toast.success(tr("ag_alteracoes_salvas"));
   };
 
   const realItemId = (item: any) => item._origId || item.id;
@@ -2420,6 +2466,30 @@ function ListView({ allWeekTasks, compromissos, selectedDate, setAllWeekTasks, r
             <button type="button" onClick={deleteItem}
               style={{ width: "100%", marginTop: 8, padding: "12px 0", borderRadius: 14, border: 0, background: "rgba(255,92,92,0.1)", color: "#FF5C5C", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
               🗑 {tr("ag_excluir")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Escopo da edição repetida (Maya) ─────────────── */}
+      {repeatEditDialog && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 220, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ width: "100%", maxWidth: 320, background: "#1a1530", borderRadius: 20, padding: 24, border: "1px solid rgba(167,139,250,0.25)", textAlign: "center" }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+              <MayaAvatar state="mini" size={40} />
+            </div>
+            <p style={{ margin: "0 0 18px", fontSize: 14, fontWeight: 600, color: "#e0d6ff", lineHeight: 1.5 }}>{tr("ag_aplicar_todos")}</p>
+            <button type="button" onClick={() => finishRepeatEdit(repeatEditDialog, true)}
+              style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              {tr("ag_aplicar_todos_btn")}
+            </button>
+            <button type="button" onClick={() => finishRepeatEdit(repeatEditDialog, false)}
+              style={{ width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.06)", color: "#e0d6ff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              {tr("ag_apenas_este")}
+            </button>
+            <button type="button" onClick={() => setRepeatEditDialog(null)}
+              style={{ width: "100%", padding: "10px 0", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              {tr("cancelar")}
             </button>
           </div>
         </div>

@@ -1865,7 +1865,8 @@ const translations: Record<Lang, Record<string, string>> = {
     ag_excluir_compromisso: "Excluir este compromisso?",
     ag_duplicar: "Duplicar",
     ag_aplicar_todos:
-      "Aplicar alterações a TODOS os compromissos desta repetição?\n\nOK = Todos\nCancelar = Apenas este",
+      "Aplicar alterações a TODOS os compromissos desta repetição?",
+    ag_aplicar_todos_btn: "Aplicar a todos",
     ag_excluir_tarefa: "Excluir esta tarefa?",
     ag_certeza_excluir: "Tem certeza que deseja excluir?",
     ag_editar_tarefa_plano: "Editar tarefa do plano",
@@ -4471,7 +4472,8 @@ const translations: Record<Lang, Record<string, string>> = {
     ag_excluir_compromisso: "¿Eliminar este compromiso?",
     ag_duplicar: "Duplicar",
     ag_aplicar_todos:
-      "¿Aplicar cambios a TODOS los compromisos de esta repetición?\n\nOK = Todos\nCancelar = Solo este",
+      "¿Aplicar cambios a TODOS los compromisos de esta repetición?",
+    ag_aplicar_todos_btn: "Aplicar a todos",
     ag_excluir_tarefa: "¿Eliminar esta tarea?",
     ag_certeza_excluir: "¿Seguro que deseas eliminar?",
     ag_editar_tarefa_plano: "Editar tarea del plan",
@@ -7077,7 +7079,8 @@ const translations: Record<Lang, Record<string, string>> = {
     ag_excluir_compromisso: "Delete this appointment?",
     ag_duplicar: "Duplicate",
     ag_aplicar_todos:
-      "Apply changes to ALL appointments in this repeat?\n\nOK = All\nCancel = Only this one",
+      "Apply changes to ALL appointments in this repeat?",
+    ag_aplicar_todos_btn: "Apply to all",
     ag_excluir_tarefa: "Delete this task?",
     ag_certeza_excluir: "Are you sure you want to delete?",
     ag_editar_tarefa_plano: "Edit plan task",
