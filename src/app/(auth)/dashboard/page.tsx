@@ -200,19 +200,21 @@ export default function DashboardPage() {
 
   // ── Fetch core data ──────────────────────────────────────────
 
-  // Mensagem + nudge da Maya: restauradas do snapshot e refetchadas apenas no
-  // primeiro load ou quando um gatilho (care-data-changed) dispara — nunca a
-  // cada montagem (evita a fala aparecer por último e re-disparar o LLM).
-  const loadMayaMessage = useCallback(async () => {
+  // Mensagem da Maya (home): refetchada a cada montagem — é barato (cache no
+  // servidor, sem re-disparar o LLM) e garante que a fala reflita o check-in e
+  // os últimos dados. O snapshot segura a renderização instantânea (sem flicker).
+  const loadHomeMessage = useCallback(async () => {
     const userTz = getUserTimezone();
-    // Busca fresca (sem cache do cliente): só roda no primeiro load ou num
-    // gatilho — nesses casos queremos o estado mais recente, não o cache.
     try {
       const res = await fetch(`/api/maya/home-message?tz=${encodeURIComponent(userTz)}`);
       const data = await res.json();
       if (data.message) setHomeMessage((prev) => ({ message: data.message, state: data.state, action: prev?.action }));
     } catch {}
+  }, []);
 
+  // Nudge: só no primeiro load ou num gatilho (care-data-changed) — refetchar a
+  // cada montagem re-dispararia o motor de sinais sem necessidade.
+  const loadNudge = useCallback(async () => {
     try {
       const res = await fetch("/api/maya/nudge");
       const data = await res.json();
@@ -230,13 +232,16 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (snap) return; // snapshot já restaurado — não refetcha sem gatilho
-    loadMayaMessage();
-  }, [snap, loadMayaMessage]);
+    loadHomeMessage();
+    if (!snap) loadNudge();
+  }, [snap, loadHomeMessage, loadNudge]);
 
   useEffect(() => {
-    return onCareDataChanged(() => loadMayaMessage());
-  }, [loadMayaMessage]);
+    return onCareDataChanged(() => {
+      loadHomeMessage();
+      loadNudge();
+    });
+  }, [loadHomeMessage, loadNudge]);
 
   useEffect(() => {
     const today = getLocalDate();

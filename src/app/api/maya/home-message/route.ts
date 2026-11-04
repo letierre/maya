@@ -52,6 +52,8 @@ export async function GET(req: NextRequest) {
   const userTz = req.nextUrl.searchParams.get("tz") || getUserTimezone();
   const today = getLocalDate(userTz);
   const currentHour = getCurrentHour(userTz);
+  const firstName = ((user.user_metadata?.name as string) || "").split(" ")[0];
+  const greeting = currentHour < 12 ? "Bom dia" : currentHour < 18 ? "Boa tarde" : "Boa noite";
 
   try {
     // ── Check cache ──
@@ -89,8 +91,6 @@ export async function GET(req: NextRequest) {
       computeCareSignals(user.id),
     ]);
 
-    const userName = (user.user_metadata?.name as string) || "";
-    const firstName = userName.split(" ")[0];
     const gender = (context.gender as string) || "nao_dizer";
 
     const checks = ctx.checkIns as any[];
@@ -151,7 +151,11 @@ export async function GET(req: NextRequest) {
     let usedFallback = false;
 
     try {
-      message = await callLLM(system, userPrompt, { maxTokens: 150, temperature: 0.75, feature: "maya_home", userId: user.id });
+      const llmPromise = callLLM(system, userPrompt, { maxTokens: 150, temperature: 0.75, feature: "maya_home", userId: user.id });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("LLM timeout")), 12000),
+      );
+      message = await Promise.race([llmPromise, timeoutPromise]);
       // Clean up common LLM artifacts
       message = message.replace(/^["']|["']$/g, "").trim();
       if (!message || message.length < 10) {
@@ -161,7 +165,6 @@ export async function GET(req: NextRequest) {
       console.error("LLM home-message failed, using fallback:", String(llmError).slice(0, 100));
       usedFallback = true;
       // ── Fallback: simple template (same spirit as old MayaHero but simpler) ──
-      const greeting = currentHour < 12 ? "Bom dia" : currentHour < 18 ? "Boa tarde" : "Boa noite";
       if (!hasTodayCheckIn) {
         if (badSleepCount >= 2) {
           message = `${greeting}, ${firstName}! Vi que você não dormiu bem de novo. Se quiser conversar sobre isso, estou aqui. 💜`;
@@ -186,10 +189,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message, state });
   } catch (error) {
     console.error("GET /api/maya/home-message error:", error);
-    return NextResponse.json(
-      { error: "Erro ao gerar mensagem", detail: String(error) },
-      { status: 500 }
-    );
+    // Nunca deixa a home "carregando" para sempre: devolve uma saudação simples
+    // mesmo que o contexto, os sinais ou o LLM tenham falhado.
+    return NextResponse.json({
+      message: firstName
+        ? `${greeting}, ${firstName}! Como está se sentindo hoje? 💜`
+        : `${greeting}! Como está se sentindo hoje? 💜`,
+      state: "greeting",
+    });
   }
 }
 
