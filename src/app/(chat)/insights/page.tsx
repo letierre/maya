@@ -211,7 +211,7 @@ function TypingIndicator({ kind = "text" }: { kind?: "text" | "audio" }) {
 // ── Main Page ─────────────────────────────────────────────────────────
 
 export default function MayaChatPage() {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -764,8 +764,9 @@ export default function MayaChatPage() {
       duration: number;
       clientId: string;
       isResend: boolean;
+      existingTranscript?: string; // já transcrito (reenvio pós-STT) → pula a etapa 1
     }) => {
-      const { blob, mime, duration: recDuration, clientId, isResend } = payload;
+      const { blob, mime, duration: recDuration, clientId, isResend, existingTranscript } = payload;
       const patch = (p: Partial<Message>) =>
         setMessages((prev) =>
           prev.map((m) => (m.clientId === clientId ? { ...m, ...p } : m)),
@@ -805,33 +806,48 @@ export default function MayaChatPage() {
 
       try {
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const ext = mime.includes("mp4") ? "m4a" : mime.includes("ogg") ? "ogg" : "webm";
-        const fd = new FormData();
-        fd.append("audio", blob, `audio.${ext}`);
-        fd.append("timezone", tz);
-        fd.append("localHour", String(new Date().getHours()));
-        fd.append("localDate", formatDate());
+        const localDate = formatDate();
+        const localHour = new Date().getHours();
 
-        const res = await fetch("/api/maya/voice", { method: "POST", body: fd });
-        if (!res.ok) {
-          console.error("[voice] status", res.status, await res.text().catch(() => ""));
-          throw new Error("API error");
+        // ── Etapa 1/3: transcrição (STT). No reenvio, se a fala já foi transcrita
+        // e persistida (falhou a resposta, não a transcrição), pula esta etapa. ──
+        let transcript = (existingTranscript || "").trim();
+        let userAudioUrl: string | null = null;
+        let audioDuration: number = recDuration;
+
+        if (!transcript) {
+          const ext = mime.includes("mp4") ? "m4a" : mime.includes("ogg") ? "ogg" : "webm";
+          const fd = new FormData();
+          fd.append("audio", blob, `audio.${ext}`);
+          fd.append("timezone", tz);
+          fd.append("localHour", String(localHour));
+          fd.append("localDate", localDate);
+
+          const res = await fetch("/api/maya/voice", { method: "POST", body: fd });
+          if (!res.ok) {
+            console.error("[voice] transcribe status", res.status, await res.text().catch(() => ""));
+            throw new Error("transcribe error");
+          }
+          const data = await res.json();
+          transcript = (data.transcript || "").trim();
+          userAudioUrl = data.userAudioUrl || null;
+          audioDuration = data.audioDuration ?? recDuration;
         }
-        const data = await res.json();
-
-        const transcript = (data.transcript || "").trim();
-        const reply = (data.reply || "").trim();
 
         // Transcrição preenche a nota de voz (sai do esqueleto) → 1 check.
-        patch({
+        const transcriptPatch: Partial<Message> = {
           content: transcript,
           status: "sent",
           pending: false,
           sending: false,
           failed: false,
-          audioUrl: data.userAudioUrl || null,
-          audioDuration: data.audioDuration ?? recDuration,
-        });
+        };
+        if (!existingTranscript) {
+          // recém-transcrito → atualiza o áudio da nota de voz
+          transcriptPatch.audioUrl = userAudioUrl;
+          transcriptPatch.audioDuration = audioDuration;
+        }
+        patch(transcriptPatch);
         scrollNow(); // mostra a transcrição inteira (de baixo p/ cima)
 
         // 2 checks (entregue)…
@@ -846,14 +862,48 @@ export default function MayaChatPage() {
         const readingSeconds = Math.min(6, Math.max(2, transcript.length / 30));
         await sleep(Math.round(readingSeconds * 1000));
 
-        // "Maya gravando áudio" por ~60% da duração estimada da fala dela.
+        // ── Etapa 2/3: resposta (LLM, mesmo pipeline do chat) ──
+        const replyRes = await fetch("/api/maya/voice/reply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript, timezone: tz, localHour, localDate }),
+        });
+        if (!replyRes.ok) {
+          console.error("[voice] reply status", replyRes.status, await replyRes.text().catch(() => ""));
+          throw new Error("reply error");
+        }
+        const replyData = await replyRes.json();
+        const reply = (replyData.reply || "").trim();
+        const assistantMessageId = (replyData.assistantMessageId as string | null) ?? null;
+
+        // ── Etapa 3/3: voz (TTS). "Maya gravando áudio" enquanto sintetiza. Se
+        // falhar, a resposta vira texto — degrada, não derruba a conversa. ──
         setMayaRecording(true);
         scrollNow();
-        const estSeconds = Math.max(2.5, reply.length / 13);
-        await sleep(Math.round(estSeconds * 1000 * 0.6));
 
-        // Resposta da Maya em voz.
+        let assistantAudioUrl: string | null = null;
+        let ttsError: string | null = null;
+        try {
+          const ttsRes = await fetch("/api/maya/voice/tts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reply, assistantMessageId, language: lang }),
+          });
+          if (ttsRes.ok) {
+            const ttsData = await ttsRes.json();
+            assistantAudioUrl = ttsData.audioUrl || null;
+            ttsError = ttsData.ttsError || null;
+          } else {
+            ttsError = `tts http ${ttsRes.status}`;
+          }
+        } catch (ttsErr) {
+          ttsError = String(ttsErr);
+          console.warn("[voice] TTS falhou:", ttsErr);
+        }
+
         setMayaRecording(false);
+
+        // Resposta da Maya (voz ou texto).
         setMessages((prev) => [
           ...prev,
           {
@@ -862,18 +912,18 @@ export default function MayaChatPage() {
             time: formatTime(),
             date: formatDate(),
             createdAt: Date.now(),
-            audioUrl: data.audioUrl || null,
+            audioUrl: assistantAudioUrl,
           },
         ]);
         scrollNow();
 
         // Toca a voz da Maya (desktop). No iOS o autoplay é bloqueado — o usuário
         // usa o play da bolha de áudio, que é gesto e sempre funciona.
-        if (data.audioUrl) {
-          const url = photoUrl(data.audioUrl);
+        if (assistantAudioUrl) {
+          const url = photoUrl(assistantAudioUrl);
           if (url) new Audio(url).play().catch((e) => console.warn("[voice] autoplay bloqueado:", e));
-        } else if (data.ttsError) {
-          console.warn("[voice] TTS falhou no servidor:", data.ttsError);
+        } else if (ttsError) {
+          console.warn("[voice] TTS falhou no servidor:", ttsError);
         }
 
         voicePayloadsRef.current.delete(clientId); // enviou — não precisa mais reenviar
@@ -888,7 +938,7 @@ export default function MayaChatPage() {
         sendingRef.current = false;
       }
     },
-    [scrollToBottom],
+    [scrollToBottom, lang],
   );
 
   // Dispara o envio de voz quando uma gravação é concluída (voiceBlob).
@@ -917,6 +967,7 @@ export default function MayaChatPage() {
           duration: payload.duration,
           clientId: msg.clientId,
           isResend: true,
+          existingTranscript: msg.content?.trim() || undefined,
         });
       } else {
         performTextSend(msg, messages);
