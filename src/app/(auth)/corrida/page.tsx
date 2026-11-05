@@ -5,7 +5,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Play, Square, Timer, Footprints, Zap, ChevronLeft, Share2 } from "lucide-react";
+import { Play, Square, Timer, Footprints, Zap, ChevronLeft, Share2, Lock } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { uploadToCloud, photoUrl } from "@/lib/photo-storage";
@@ -281,6 +281,7 @@ export default function CorridaPage() {
     persistSnapshot();
     beginTracking();
     startSyncInterval();
+    toast.info(t("co_aviso_pausa"), { duration: 6000 });
   };
 
   // Pausa a corrida: congela o cronômetro e desliga GPS/timer, acumulando o tempo ativo.
@@ -647,20 +648,32 @@ export default function CorridaPage() {
     setSharing(false);
   };
 
+  // Tela "travada" durante a corrida ativa: esconde navegação e controles extras
+  // para o celular no bolso não disparar toques acidentais.
+  const locked = running && !paused;
+
   return (
     <div style={{ height: "100dvh", background: "#0B0B10", display: "flex", flexDirection: "column" }}>
       {/* Header */}
       <div style={{ padding: "22px 16px", display: "flex", alignItems: "center", gap: 12, zIndex: 10, background: "#0B0B10" }}>
-        <button type="button" onClick={() => router.push("/dashboard")} style={{ width: 36, height: 36, borderRadius: "50%", background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#A78BFA" }}>
-          <ChevronLeft size={18} />
-        </button>
+        {locked ? (
+          <span style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", color: "#5a5470" }}>
+            <Lock size={16} />
+          </span>
+        ) : (
+          <button type="button" onClick={() => router.push("/dashboard")} style={{ width: 36, height: 36, borderRadius: "50%", background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#A78BFA" }}>
+            <ChevronLeft size={18} />
+          </button>
+        )}
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>{t("co_titulo")}</h1>
         </div>
-        <button type="button" onClick={() => setShowHistory(!showHistory)}
-          style={{ padding: "6px 12px", borderRadius: 9999, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#A78BFA", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-          {showHistory ? t("co_mapa") : t("co_historico")}
-        </button>
+        {!locked && (
+          <button type="button" onClick={() => setShowHistory(!showHistory)}
+            style={{ padding: "6px 12px", borderRadius: 9999, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#A78BFA", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+            {showHistory ? t("co_mapa") : t("co_historico")}
+          </button>
+        )}
       </div>
 
       {/* Stats bar */}
