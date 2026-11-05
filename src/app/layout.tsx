@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ServiceWorkerInit } from "@/components/ServiceWorkerInit";
 import { PageViewTracker } from "@/components/PageViewTracker";
 import { MetaPixel } from "@/components/MetaPixel";
+import { VersionGuard } from "@/components/VersionGuard";
 import "./globals.css";
 
 const inter = Inter({
@@ -49,6 +50,7 @@ export default function RootLayout({
     >
       <body className="h-full overflow-hidden flex flex-col">
         <ServiceWorkerInit />
+        <VersionGuard />
         <PageViewTracker />
         <MetaPixel />
         <div className="app-frame">{children}</div>
