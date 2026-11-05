@@ -27,6 +27,9 @@ export async function transcribeAudio(
   const url = `${DEEPGRAM_URL}?model=nova-3&language=${lang}&smart_format=true&punctuate=true`;
 
   let response: Response;
+  const controller = new AbortController();
+  const STT_TIMEOUT_MS = 45000; // áudio longo ainda cabe; evita pendurar o request
+  const timer = setTimeout(() => controller.abort(), STT_TIMEOUT_MS);
   try {
     response = await fetch(url, {
       method: "POST",
@@ -36,10 +39,17 @@ export async function transcribeAudio(
       },
       // Node runtime aceita Buffer como body; TS tipa como BodyInit.
       body: audio as unknown as BodyInit,
+      signal: controller.signal,
     });
   } catch (err) {
-    logError({ path: "stt.transcribeAudio", message: String(err), userId: opts.userId });
-    throw err;
+    logError({
+      path: "stt.transcribeAudio",
+      message: controller.signal.aborted ? `Deepgram timeout após ${STT_TIMEOUT_MS}ms` : String(err),
+      userId: opts.userId,
+    });
+    throw controller.signal.aborted ? new Error(`Deepgram STT timeout (${STT_TIMEOUT_MS}ms)`) : err;
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!response.ok) {

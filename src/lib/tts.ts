@@ -55,6 +55,9 @@ export async function synthesizeSpeech(
   const url = `${ELEVENLABS_TTS_URL}/${voiceId}?output_format=mp3_44100_128`;
 
   let response: Response;
+  const controller = new AbortController();
+  const TTS_TIMEOUT_MS = 30000;
+  const timer = setTimeout(() => controller.abort(), TTS_TIMEOUT_MS);
   try {
     response = await fetch(url, {
       method: "POST",
@@ -64,10 +67,17 @@ export async function synthesizeSpeech(
         Accept: "audio/mpeg",
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
   } catch (err) {
-    logError({ path: "tts.synthesizeSpeech", message: String(err), userId: opts.userId });
-    throw err;
+    logError({
+      path: "tts.synthesizeSpeech",
+      message: controller.signal.aborted ? `ElevenLabs timeout após ${TTS_TIMEOUT_MS}ms` : String(err),
+      userId: opts.userId,
+    });
+    throw controller.signal.aborted ? new Error(`ElevenLabs TTS timeout (${TTS_TIMEOUT_MS}ms)`) : err;
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!response.ok) {

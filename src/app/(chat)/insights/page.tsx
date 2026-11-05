@@ -819,6 +819,7 @@ export default function MayaChatPage() {
           const ext = mime.includes("mp4") ? "m4a" : mime.includes("ogg") ? "ogg" : "webm";
           const fd = new FormData();
           fd.append("audio", blob, `audio.${ext}`);
+          fd.append("clientId", clientId);
           fd.append("timezone", tz);
           fd.append("localHour", String(localHour));
           fd.append("localDate", localDate);

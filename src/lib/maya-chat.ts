@@ -53,6 +53,9 @@ export async function chatLLM(
   );
 
   let response: Response;
+  const controller = new AbortController();
+  const LLM_TIMEOUT_MS = 30000; // evita pendurar chat/voz se a API demorar demais
+  const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
   try {
     response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -68,10 +71,18 @@ export async function chatLLM(
         system,
         messages: anthropicMessages,
       }),
+      signal: controller.signal,
     });
   } catch (err) {
-    logError({ path: "maya-chat chatLLM", message: String(err), userId: meta?.userId, meta: { feature: meta?.feature } });
-    throw err;
+    logError({
+      path: "maya-chat chatLLM",
+      message: controller.signal.aborted ? `Claude API timeout após ${LLM_TIMEOUT_MS}ms` : String(err),
+      userId: meta?.userId,
+      meta: { feature: meta?.feature },
+    });
+    throw controller.signal.aborted ? new Error(`Claude API timeout (${LLM_TIMEOUT_MS}ms)`) : err;
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!response.ok) {
