@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ChevronDown, ChevronRight, Check } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Check, Trophy, AlertOctagon } from "lucide-react";
 import { GoalCreateSheet } from "@/components/GoalCreateSheet";
 import { GoalDetailSheet } from "@/components/GoalDetailSheet";
 import { QuarterlyOKRPanel } from "@/components/QuarterlyOKRPanel";
@@ -432,6 +432,34 @@ export function MetasPanel() {
                                 </p>
                               </div>
                             ) : null}
+
+                            {/* Recompensa / Punição */}
+                            {(goal.reward || goal.punishment) && (
+                              <div style={{ padding: "8px 0 6px", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
+                                {goal.reward && (
+                                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                                    <Trophy size={13} color="#22c55e" style={{ marginTop: 2, flexShrink: 0 }} />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <span style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#22c55e", textTransform: "uppercase", letterSpacing: ".06em" }}>
+                                        {t("goal_recompensa")}
+                                      </span>
+                                      <span style={{ display: "block", fontSize: 12, color: "#c9c2e0", lineHeight: 1.45, marginTop: 1 }}>{goal.reward}</span>
+                                    </div>
+                                  </div>
+                                )}
+                                {goal.punishment && (
+                                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: goal.reward ? 8 : 0 }}>
+                                    <AlertOctagon size={13} color="#FF5C5C" style={{ marginTop: 2, flexShrink: 0 }} />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <span style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#FF5C5C", textTransform: "uppercase", letterSpacing: ".06em" }}>
+                                        {t("goal_punicao")}
+                                      </span>
+                                      <span style={{ display: "block", fontSize: 12, color: "#c9c2e0", lineHeight: 1.45, marginTop: 1 }}>{goal.punishment}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
 
                             {/* Etapas */}
                             {goal.goal_stages?.length > 0 && (
