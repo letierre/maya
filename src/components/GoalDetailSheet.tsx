@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { Plus, CheckCircle2, Shield, Trophy, AlertOctagon, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "@/lib/useTranslation";
@@ -19,6 +19,35 @@ const inputS: React.CSSProperties = {
   background: "#0B0B10", color: "#e0d6ff", fontSize: 14,
   fontFamily: "inherit", outline: "none",
 };
+
+// Campo de texto que quebra linha e cresce verticalmente conforme o conteúdo.
+function AutoTextarea({ value, onChange, placeholder, style, autoFocus }: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string;
+  style?: React.CSSProperties;
+  autoFocus?: boolean;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const resize = (el: HTMLTextAreaElement) => {
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  useEffect(() => {
+    if (ref.current) resize(ref.current);
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      rows={1}
+      autoFocus={autoFocus}
+      placeholder={placeholder}
+      onChange={(e) => { onChange(e); resize(e.currentTarget); }}
+      style={{ ...inputS, resize: "none", overflow: "hidden", minHeight: 44, lineHeight: 1.4, ...style }}
+    />
+  );
+}
 
 export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string; onClose: () => void; onUpdated: () => void }) {
   const { t } = useTranslation();
@@ -199,8 +228,8 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
           <span style={{ fontSize: 32 }}>{area.emoji}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             {editing ? (
-              <input value={draftTitle} onChange={e => setDraftTitle(e.target.value)} placeholder={t("goal_titulo_meta")} autoFocus
-                style={{ ...inputS, fontSize: 16, fontWeight: 700 }} />
+              <AutoTextarea value={draftTitle} onChange={e => setDraftTitle(e.target.value)} placeholder={t("goal_titulo_meta")} autoFocus
+                style={{ fontSize: 16, fontWeight: 700 }} />
             ) : (
               <>
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>{goal.title}</h2>
@@ -220,12 +249,12 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
         {editing ? (
           <>
             {/* Porquê */}
-            <textarea value={draftWhy} onChange={e => setDraftWhy(e.target.value)} rows={2} placeholder={t("goal_porque_importa")}
-              style={{ ...inputS, resize: "none", height: 60, marginBottom: 8 }} />
+            <AutoTextarea value={draftWhy} onChange={e => setDraftWhy(e.target.value)} placeholder={t("goal_porque_importa")}
+              style={{ marginBottom: 8 }} />
             {/* Guardião / Recompensa / Punição */}
-            <input value={draftGuardian} onChange={e => setDraftGuardian(e.target.value)} placeholder={t("goal_guardiao")} style={{ ...inputS, marginBottom: 8 }} />
-            <input value={draftReward} onChange={e => setDraftReward(e.target.value)} placeholder={t("goal_recompensa")} style={{ ...inputS, marginBottom: 8 }} />
-            <input value={draftPunishment} onChange={e => setDraftPunishment(e.target.value)} placeholder={t("goal_punicao")} style={inputS} />
+            <AutoTextarea value={draftGuardian} onChange={e => setDraftGuardian(e.target.value)} placeholder={t("goal_guardiao")} style={{ marginBottom: 8 }} />
+            <AutoTextarea value={draftReward} onChange={e => setDraftReward(e.target.value)} placeholder={t("goal_recompensa")} style={{ marginBottom: 8 }} />
+            <AutoTextarea value={draftPunishment} onChange={e => setDraftPunishment(e.target.value)} placeholder={t("goal_punicao")} style={{ marginBottom: 8 }} />
           </>
         ) : (
           <>
@@ -292,8 +321,8 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
 
                 {editing ? (
                   <>
-                    <input value={stageDraft?.title ?? ""} onChange={e => setDraftStages(prev => prev.map(ds => ds.id === stage.id ? { ...ds, title: e.target.value } : ds))}
-                      style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none", minWidth: 0 }} />
+                    <AutoTextarea value={stageDraft?.title ?? ""} onChange={e => setDraftStages(prev => prev.map(ds => ds.id === stage.id ? { ...ds, title: e.target.value } : ds))}
+                      style={{ flex: 1, padding: "6px 10px", borderRadius: 8, fontSize: 13, minWidth: 0, minHeight: 34 }} />
                     <button type="button" onClick={() => setDeleteTarget({ kind: "stage", id: stage.id })} title={t("deletar")}
                       style={{ background: "none", border: 0, color: "#FF5C5C", cursor: "pointer", padding: 2, flexShrink: 0, display: "inline-flex" }}>
                       <Trash2 size={14} />
@@ -320,8 +349,8 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
                   </button>
                   {editing ? (
                     <>
-                      <input value={draftActions[action.id] ?? ""} onChange={e => setDraftActions(prev => ({ ...prev, [action.id]: e.target.value }))}
-                        style={{ flex: 1, padding: "4px 8px", borderRadius: 6, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#9e96b5", fontSize: 11, fontFamily: "inherit", outline: "none", minWidth: 0 }} />
+                      <AutoTextarea value={draftActions[action.id] ?? ""} onChange={e => setDraftActions(prev => ({ ...prev, [action.id]: e.target.value }))}
+                        style={{ flex: 1, padding: "4px 8px", borderRadius: 6, fontSize: 11, minWidth: 0, minHeight: 24 }} />
                       <button type="button" onClick={() => setDeleteTarget({ kind: "action", id: action.id })} title={t("deletar")}
                         style={{ background: "none", border: 0, color: "#FF5C5C", cursor: "pointer", padding: 2, flexShrink: 0, display: "inline-flex" }}>
                         <Trash2 size={12} />
