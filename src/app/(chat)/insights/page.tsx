@@ -35,7 +35,7 @@ interface Message {
 // ── Helpers ──────────────────────────────────────────────────────────
 
 async function persistWithRetry(
-  messages: Array<{ role: string; content: string; image_urls?: string[] }>,
+  messages: Array<{ role: string; content: string; image_urls?: string[]; client_id?: string }>,
   retries = 3,
 ): Promise<boolean> {
   for (let i = 0; i < retries; i++) {
@@ -356,11 +356,11 @@ export default function MayaChatPage() {
               time: formatTime(),
               date: formatDate(),
               createdAt: Date.now(),
-              synced: false, // will be saved below
+              synced: false, // efêmero: não vai para o banco (assistant é server-side)
             };
             initialMessages = [...serverMsgs, contextEntry];
-            // Persist the context message
-            persistWithRetry([{ role: "assistant", content: contextMsg }]);
+            // Não persiste aqui: mensagens "assistant" são gravadas só server-side.
+            // A saudação vinda da home é contexto efêmero (já existe na home).
           }
         }
 
@@ -594,9 +594,11 @@ export default function MayaChatPage() {
       setPresence("online");
 
       // Persiste a mensagem do usuário (só na 1ª tentativa — evita duplicar no reenvio).
+      // client_id + upsert server-side tornam o persist idempotente: um retry de
+      // rede não cria a mensagem duas vezes.
       if (!msg.synced) {
         const ok = await persistWithRetry([
-          { role: "user", content: msg.content, image_urls: msg.imageUrls },
+          { role: "user", content: msg.content, image_urls: msg.imageUrls, client_id: clientId },
         ]);
         if (ok) patch({ synced: true, status: "delivered" });
       }

@@ -40,21 +40,38 @@ export async function POST(req: NextRequest) {
   if (authError || !user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const messages = body.messages as Array<{ role: string; content: string; image_urls?: string[] }> | undefined;
+  const messages = body.messages as Array<{ role: string; content: string; image_urls?: string[]; client_id?: string }> | undefined;
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json({ error: "messages array obrigatório" }, { status: 400 });
   }
 
   const admin = getSupabaseAdmin();
-  const rows = messages.map((m) => ({
+
+  // ── Só mensagens do usuário ──
+  // As respostas da Maya são persistidas SERVER-SIDE (/api/maya, /api/maya/voice,
+  // /api/maya/nudge). Ignorar "assistant" aqui protege contra clientes antigos
+  // (PWA em cache) que ainda tentavam salvar a resposta em partes — a causa da
+  // duplicação de mensagens. O cliente nunca deve gravar mensagens da Maya.
+  const userMessages = messages.filter((m) => m.role === "user");
+  if (userMessages.length === 0) {
+    return NextResponse.json({ saved: 0 });
+  }
+
+  const rows = userMessages.map((m) => ({
     user_id: user.id,
-    role: m.role,
+    role: "user",
     content: m.content,
     image_urls: m.image_urls || [],
     chat_type: "maya",
+    // client_id torna o envio idempotente: um retry de rede reenvia a MESMA
+    // chave e o upsert abaixo ignora a linha repetida em vez de duplicar.
+    ...(m.client_id ? { client_id: m.client_id } : {}),
   }));
 
-  const { error } = await admin.from("chat_messages").insert(rows);
+  const { error } = await admin.from("chat_messages").upsert(rows, {
+    onConflict: "user_id,client_id",
+    ignoreDuplicates: true,
+  });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Invalidate home-message cache so next dashboard load reflects chat conversation.
