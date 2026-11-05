@@ -14,12 +14,12 @@ function shiftYMD(dateStr: string, days: number): string {
 // (tabela onboarding_responses). Agregados por resposta, sem PII (admin only).
 export async function GET() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
   const { data: role } = await admin
-    .from("user_roles").select("is_admin").eq("user_id", session.user.id).maybeSingle();
+    .from("user_roles").select("is_admin").eq("user_id", user.id).maybeSingle();
   if (!role?.is_admin) return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
 
   const goal: Record<string, number> = {};

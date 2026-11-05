@@ -7,8 +7,8 @@ import type { SleepSource } from "@/types";
 
 export async function GET(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const from = searchParams.get("from");
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   let query = admin
     .from("sleep_logs")
     .select("*")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .order("date", { ascending: false })
     .limit(limit);
 
@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const admin = getSupabaseAdmin();
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   const source: SleepSource = body.source ?? "checkin";
 
   const row = {
-    user_id: session.user.id,
+    user_id: user.id,
     date,
     sleep_start: body.sleep_start ?? null,
     sleep_end: body.sleep_end ?? null,
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
   const { data: existing } = await admin
     .from("sleep_logs")
     .select("id")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .eq("date", date)
     .eq("source", source)
     .limit(1)
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
 	    const { data: existingCi } = await admin
 	      .from("check_ins")
 	      .select("id")
-	      .eq("user_id", session.user.id)
+	      .eq("user_id", user.id)
 	      .eq("date", date)
 	      .maybeSingle();
 	    if (existingCi) {

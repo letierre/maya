@@ -5,8 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
 // PATCH /api/shopping-lists/[id] — renomeia / troca emoji
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { id } = await params;
   const body = await req.json();
@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .from("shopping_lists")
     .update(updates)
     .eq("id", id)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .select()
     .single();
 
@@ -36,8 +36,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 // DELETE /api/shopping-lists/[id] — remove lista (itens caem por CASCADE)
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { id } = await params;
   const admin = getSupabaseAdmin();
@@ -45,7 +45,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     .from("shopping_lists")
     .delete()
     .eq("id", id)
-    .eq("user_id", session.user.id);
+    .eq("user_id", user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return new NextResponse(null, { status: 204 });

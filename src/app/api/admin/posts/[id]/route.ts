@@ -9,11 +9,11 @@ import { NextRequest, NextResponse } from "next/server";
 // então a limpeza é automática.
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
-  const { data: role } = await admin.from("user_roles").select("is_admin").eq("user_id", session.user.id).maybeSingle();
+  const { data: role } = await admin.from("user_roles").select("is_admin").eq("user_id", user.id).maybeSingle();
   if (!role?.is_admin) return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
 
   const { id } = await params;

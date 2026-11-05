@@ -115,18 +115,18 @@ async function callLLMWithHistory(
 
 export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  if (!(await hasActiveSubscription(session.user.id))) return subscriptionRequired();
+  if (!(await hasActiveSubscription(user.id))) return subscriptionRequired();
 
   const body = await req.json();
   const messages: { role: string; content: string }[] = body.messages || [];
   if (!messages.length) return NextResponse.json({ error: "Mensagens vazias" }, { status: 400 });
 
   const admin = getSupabaseAdmin();
-  const userId = session.user.id;
-  const userName = (session.user.user_metadata?.name as string) || "";
+  const userId = user.id;
+  const userName = (user.user_metadata?.name as string) || "";
   const weekStart = getWeekMondayDate();
 
   const [goalsRes, planRes] = await Promise.all([

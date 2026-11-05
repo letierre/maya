@@ -7,8 +7,7 @@ const DEFAULTS = { daily_goal_type: "minutes", daily_goal_value: 15 };
 // GET /api/leitura/settings — meta diária do usuário
 export async function GET() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -41,8 +40,7 @@ export async function GET() {
 // PATCH /api/leitura/settings — atualizar meta diária
 export async function PATCH(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });

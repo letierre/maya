@@ -8,15 +8,15 @@ export async function GET(
 ) {
   const { id } = await params;
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
   const { data: cycle, error } = await admin
     .from("quarterly_cycles")
     .select(`*, key_results(*), quarterly_reviews(*)`)
     .eq("id", id)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .order("position", { foreignTable: "key_results", ascending: true })
     .single();
 
@@ -38,8 +38,8 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
   const body = await req.json();
@@ -49,7 +49,7 @@ export async function PATCH(
     .from("quarterly_cycles")
     .select("id, user_id")
     .eq("id", id)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .single();
 
   if (!existing) return NextResponse.json({ error: "Ciclo não encontrado" }, { status: 404 });

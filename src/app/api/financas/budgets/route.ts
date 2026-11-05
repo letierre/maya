@@ -39,8 +39,8 @@ async function ensureSubcategorySchema() {
 
 export async function GET(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const month = req.nextUrl.searchParams.get("month") ?? new Date().toISOString().slice(0, 7);
 
@@ -50,12 +50,12 @@ export async function GET(req: NextRequest) {
     supabase
       .from("financial_budgets")
       .select("*")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .eq("month", month),
     supabase
       .from("recurring_budgets")
       .select("*")
-      .eq("user_id", session.user.id),
+      .eq("user_id", user.id),
   ]);
 
   if (explicitRes.error) return NextResponse.json({ error: explicitRes.error.message }, { status: 500 });
@@ -98,8 +98,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const { category, monthly_limit, month, subcategory } = body;
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase
     .from("financial_budgets")
     .upsert({
-      user_id: session.user.id,
+      user_id: user.id,
       category,
       subcategory: subcategory || "",
       monthly_limit: Number(monthly_limit),
@@ -131,15 +131,15 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { category, month, subcategory } = await req.json();
 
   let query = supabase
     .from("financial_budgets")
     .delete()
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .eq("category", category)
     .eq("month", month);
 

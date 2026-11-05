@@ -8,11 +8,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
-  const userId = session.user.id;
+  const userId = user.id;
 
   if (!(await hasActiveSubscription(userId))) return subscriptionRequired();
 
@@ -22,7 +22,7 @@ export async function GET() {
   const lastFeeling = recentCI?.[0]?.feeling || "";
 
   const { data: prefs } = await admin.from("user_preferences").select("context").eq("user_id", userId).maybeSingle();
-  const userName = ((prefs?.context as any)?.name as string) || session.user.user_metadata?.name || "";
+  const userName = ((prefs?.context as any)?.name as string) || user.user_metadata?.name || "";
   const lang = ((prefs?.context as any)?.language as string) || "pt";
   const L = (key: string) => tUser(lang, key);
 
@@ -73,14 +73,14 @@ export async function GET() {
 // POST /api/community/inspire — feedback: this post helped or not
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { post_id, helpful } = await req.json();
   if (!post_id || helpful === undefined) return NextResponse.json({ error: "post_id e helpful obrigatórios" }, { status: 400 });
 
   const admin = getSupabaseAdmin();
-  await admin.from("community_post_helpful").upsert({ post_id, user_id: session.user.id, helpful }, { onConflict: "post_id,user_id" });
+  await admin.from("community_post_helpful").upsert({ post_id, user_id: user.id, helpful }, { onConflict: "post_id,user_id" });
   return NextResponse.json({ ok: true });
 }
 

@@ -8,8 +8,8 @@ export async function POST(
 ) {
   const { id: goal_id, stageId } = await params;
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const { title, if_then, due_date } = body;
@@ -19,7 +19,7 @@ export async function POST(
 
   // Verify ownership
   const { data: goal } = await admin
-    .from("goals").select("id").eq("id", goal_id).eq("user_id", session.user.id).single();
+    .from("goals").select("id").eq("id", goal_id).eq("user_id", user.id).single();
   if (!goal) return NextResponse.json({ error: "Meta não encontrada" }, { status: 404 });
 
   const { data: action, error } = await admin

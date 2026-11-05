@@ -43,11 +43,11 @@ function computeStreak(dates: Set<string>, today: string, yesterday: string): nu
 // GET /api/admin/patterns — padrões avançados de uso (admin only)
 export async function GET() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
-  const { data: role } = await admin.from("user_roles").select("is_admin").eq("user_id", session.user.id).maybeSingle();
+  const { data: role } = await admin.from("user_roles").select("is_admin").eq("user_id", user.id).maybeSingle();
   if (!role?.is_admin) return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
 
   const today = getLocalDate();

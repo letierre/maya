@@ -6,8 +6,7 @@ import { getStripe, priceIdFor, type Plan } from "@/lib/stripe";
 // POST /api/stripe/checkout — cria uma sessão de Checkout (cobrança imediata, sem trial).
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { plan } = await req.json();

@@ -7,8 +7,8 @@ export async function PATCH(
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { taskId } = await params;
   const body = await req.json();
@@ -25,7 +25,7 @@ export async function PATCH(
     .from("weekly_tasks")
     .update(updates)
     .eq("id", taskId)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .select()
     .single();
 
@@ -38,8 +38,8 @@ export async function DELETE(
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { taskId } = await params;
   const admin = getSupabaseAdmin();
@@ -48,7 +48,7 @@ export async function DELETE(
     .from("weekly_tasks")
     .delete()
     .eq("id", taskId)
-    .eq("user_id", session.user.id);
+    .eq("user_id", user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

@@ -7,8 +7,8 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   try {
     const supabase = await createServerSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return new NextResponse(null, { status: 204 });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return new NextResponse(null, { status: 204 });
 
     const body = await req.json().catch(() => ({}));
     const module = typeof body?.module === "string" ? body.module.slice(0, 64) : "";
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
     const admin = getSupabaseAdmin();
     await admin.from("app_events").insert({
-      user_id: session.user.id,
+      user_id: user.id,
       event_name: "pageview",
       module,
       path: typeof body?.path === "string" ? body.path.slice(0, 256) : null,

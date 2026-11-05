@@ -6,8 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 // GET /api/agenda?date=YYYY-MM-DD  OR  /api/agenda?from=YYYY-MM-DD&to=YYYY-MM-DD
 export async function GET(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
@@ -47,8 +46,7 @@ export async function GET(req: NextRequest) {
 // POST /api/agenda
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
@@ -99,8 +97,7 @@ export async function POST(req: NextRequest) {
 // PATCH /api/agenda — update status, title, etc.
 export async function PATCH(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
@@ -151,8 +148,7 @@ export async function PATCH(req: NextRequest) {
 // DELETE /api/agenda?id=...
 export async function DELETE(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);

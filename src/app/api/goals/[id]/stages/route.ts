@@ -5,8 +5,8 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: goal_id } = await params;
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const { title, description, due_date } = body;
@@ -19,7 +19,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .from("goals")
     .select("id")
     .eq("id", goal_id)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .single();
   if (!goal) return NextResponse.json({ error: "Meta não encontrada" }, { status: 404 });
 

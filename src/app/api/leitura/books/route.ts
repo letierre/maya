@@ -5,8 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 // GET /api/leitura/books — listar livros do usuário
 export async function GET(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -40,8 +39,7 @@ export async function GET(req: NextRequest) {
 // POST /api/leitura/books — adicionar livro
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -86,8 +84,7 @@ export async function POST(req: NextRequest) {
 // PATCH /api/leitura/books — atualizar livro
 export async function PATCH(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -149,8 +146,7 @@ export async function PATCH(req: NextRequest) {
 // DELETE /api/leitura/books?id=UUID
 export async function DELETE(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });

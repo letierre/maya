@@ -4,8 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const sub = await req.json();
   if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) {
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
   const admin = getSupabaseAdmin();
   const row = {
-    user_id: session.user.id,
+    user_id: user.id,
     endpoint: sub.endpoint,
     p256dh: sub.keys.p256dh,
     auth: sub.keys.auth,
@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { endpoint } = await req.json();
   if (!endpoint) return NextResponse.json({ error: "endpoint obrigatório" }, { status: 400 });
@@ -43,7 +43,7 @@ export async function DELETE(req: NextRequest) {
   const admin = getSupabaseAdmin();
   await admin.from("push_subscriptions")
     .delete()
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .eq("endpoint", endpoint);
 
   return NextResponse.json({ ok: true });

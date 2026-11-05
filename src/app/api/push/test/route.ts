@@ -4,10 +4,10 @@ import { sendPushToUser } from "@/lib/push-send";
 
 export async function POST() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const sent = await sendPushToUser(session.user.id, {
+  const sent = await sendPushToUser(user.id, {
     title: "🌙 Teste de notificação",
     body: "As notificações de sono estão funcionando!",
     tag: "test",

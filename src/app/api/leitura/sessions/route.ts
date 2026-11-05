@@ -21,8 +21,7 @@ async function markReadCheckIn(admin: any, userId: string, date: string) {
 // GET /api/leitura/sessions — listar sessões (opcional ?from=YYYY-MM-DD&to=YYYY-MM-DD)
 export async function GET(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -59,8 +58,7 @@ export async function GET(req: NextRequest) {
 // POST /api/leitura/sessions — registrar sessão de leitura
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -153,8 +151,7 @@ export async function POST(req: NextRequest) {
 // DELETE /api/leitura/sessions?id=UUID
 export async function DELETE(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });

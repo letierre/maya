@@ -8,8 +8,8 @@ export async function PATCH(
 ) {
   const { actionId } = await params;
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const admin = getSupabaseAdmin();
@@ -31,8 +31,8 @@ export async function DELETE(
 ) {
   const { actionId } = await params;
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
 
@@ -46,7 +46,7 @@ export async function DELETE(
   if (!stage) return NextResponse.json({ error: "Etapa não encontrada" }, { status: 404 });
 
   const { data: goal } = await admin
-    .from("goals").select("id").eq("id", stage.goal_id).eq("user_id", session.user.id).single();
+    .from("goals").select("id").eq("id", stage.goal_id).eq("user_id", user.id).single();
   if (!goal) return NextResponse.json({ error: "Não autorizado" }, { status: 404 });
 
   const { error } = await admin.from("goal_actions").delete().eq("id", actionId);

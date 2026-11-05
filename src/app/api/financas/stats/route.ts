@@ -6,8 +6,8 @@ import { addMonths } from "@/lib/financas-budget";
 // Retorna 6 meses (o mês âncora + 5 anteriores), ordem crescente.
 export async function GET(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const anchor = req.nextUrl.searchParams.get("month") ?? new Date().toISOString().slice(0, 7);
 
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabase
     .from("financial_transactions")
     .select("date, type, amount")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .gte("date", start)
     .lt("date", endExclusive);
 

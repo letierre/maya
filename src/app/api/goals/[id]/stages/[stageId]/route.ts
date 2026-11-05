@@ -8,15 +8,15 @@ export async function PATCH(
 ) {
   const { id: goal_id, stageId } = await params;
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const admin = getSupabaseAdmin();
 
   // Verify ownership via goal
   const { data: goal } = await admin
-    .from("goals").select("id").eq("id", goal_id).eq("user_id", session.user.id).single();
+    .from("goals").select("id").eq("id", goal_id).eq("user_id", user.id).single();
   if (!goal) return NextResponse.json({ error: "Meta não encontrada" }, { status: 404 });
 
   const { data: stage, error } = await admin
@@ -48,12 +48,12 @@ export async function DELETE(
 ) {
   const { id: goal_id, stageId } = await params;
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
   const { data: goal } = await admin
-    .from("goals").select("id").eq("id", goal_id).eq("user_id", session.user.id).single();
+    .from("goals").select("id").eq("id", goal_id).eq("user_id", user.id).single();
   if (!goal) return NextResponse.json({ error: "Meta não encontrada" }, { status: 404 });
 
   const { error } = await admin.from("goal_stages").delete().eq("id", stageId).eq("goal_id", goal_id);

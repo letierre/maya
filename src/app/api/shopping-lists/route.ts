@@ -5,8 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 // GET /api/shopping-lists — listas do usuário, ordenadas por posição
 export async function GET() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -35,8 +34,7 @@ export async function GET() {
 // POST /api/shopping-lists — cria lista
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });

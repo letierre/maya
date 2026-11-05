@@ -54,8 +54,7 @@ function mapOnboarding(o: Record<string, unknown> | undefined) {
 
 export async function GET() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   // Usuário não logado (ex.: páginas públicas /login e /cadastro usam useTranslation,
   // que dispara GET /api/preferences) — responde defaults em vez de 401 pra não
@@ -105,8 +104,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });

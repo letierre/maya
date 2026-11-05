@@ -4,13 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   let { display_name, display_emoji } = await req.json();
 
   const admin = getSupabaseAdmin();
-  const userId = session.user.id;
+  const userId = user.id;
 
   // Load existing preferences
   const { data: prefs } = await admin.from("user_preferences").select("context").eq("user_id", userId).maybeSingle();

@@ -11,8 +11,8 @@ interface PassiveEvent {
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body: { events: PassiveEvent[]; estimatedSleepStart?: string; estimatedWake?: string; durationMin?: number } = await req.json();
 
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   const row = {
-    user_id: session.user.id,
+    user_id: user.id,
     date,
     sleep_start: sleepStart,
     sleep_end: sleepEnd,
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   const { data: existing } = await admin
     .from("sleep_logs")
     .select("id")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .eq("date", date)
     .eq("source", source)
     .limit(1)

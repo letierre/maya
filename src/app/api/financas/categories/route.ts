@@ -4,15 +4,15 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
 
   const { data: cats, error } = await admin
     .from("user_categories")
     .select("*")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -21,7 +21,7 @@ export async function GET() {
   const { data: prefs, error: prefsErr } = await admin
     .from("user_preferences")
     .select("context")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .maybeSingle();
 
   const ctx = prefsErr ? {} : (prefs?.context ?? {});
@@ -35,8 +35,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const { type, name, emoji, hue, subcats } = body;
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   const { data, error } = await admin
     .from("user_categories")
     .insert({
-      user_id: session.user.id,
+      user_id: user.id,
       type,
       name,
       emoji: emoji || "⭐",

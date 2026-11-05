@@ -70,10 +70,10 @@ function normalizeAmount(v: unknown): number | null {
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  if (!(await hasActiveSubscription(session.user.id))) return subscriptionRequired();
+  if (!(await hasActiveSubscription(user.id))) return subscriptionRequired();
 
   const { photoBase64, mediaType, categories } = await req.json();
   if (!photoBase64) return NextResponse.json({ error: "Foto obrigatória" }, { status: 400 });
@@ -133,7 +133,7 @@ IMPORTANTE: responda SEMPRE com o JSON válido, mesmo que precise estimar a cate
     const text = await callLLM(systemPrompt, [
       { type: "text", text: "Extraia todas as transações desta imagem e retorne o JSON." },
       toImageBlock(imageDataUrl),
-    ], { maxTokens: 1200, temperature: 0.1, feature: "financas", userId: session.user.id });
+    ], { maxTokens: 1200, temperature: 0.1, feature: "financas", userId: user.id });
 
     try {
       const parsed = JSON.parse(extractJson(text));

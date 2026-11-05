@@ -4,8 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
   const { searchParams } = new URL(req.url);
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   let likedSet = new Set<string>();
   if (postIds.length > 0) {
     const { data: likes } = await admin.from("community_likes")
-      .select("post_id").eq("user_id", session.user.id).in("post_id", postIds);
+      .select("post_id").eq("user_id", user.id).in("post_id", postIds);
     likedSet = new Set((likes || []).map(l => l.post_id));
   }
 
@@ -46,8 +46,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   if (!body.content?.trim()) return NextResponse.json({ error: "Conteúdo obrigatório" }, { status: 400 });
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   const admin = getSupabaseAdmin();
 
   // Get or create community display name
-  const { data: prefs } = await admin.from("user_preferences").select("context").eq("user_id", session.user.id).maybeSingle();
+  const { data: prefs } = await admin.from("user_preferences").select("context").eq("user_id", user.id).maybeSingle();
   const ctx = (prefs?.context || {}) as Record<string, unknown>;
   let displayName = (ctx.community_name as string) || "";
   const displayEmoji = (ctx.community_emoji as string) || null;
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     displayName = `Anônimo${rnd}`;
     ctx.community_name = displayName;
     await admin.from("user_preferences").upsert({
-      user_id: session.user.id,
+      user_id: user.id,
       context: ctx,
       enabled_questions: (prefs?.enabled_questions as any) || [],
       onboarding_completed: (prefs as any)?.onboarding_completed ?? true,
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { data, error } = await admin.from("community_posts").insert({
-    user_id: session.user.id,
+    user_id: user.id,
     display_name: displayName,
     display_emoji: displayEmoji,
     category: body.category || "reflexao",

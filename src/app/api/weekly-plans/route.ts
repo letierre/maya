@@ -5,8 +5,8 @@ import { getWeekMondayDate } from "@/lib/utils";
 
 export async function GET(req: Request) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
   const url = new URL(req.url);
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     let query = admin
       .from("weekly_plans")
       .select(`*, weekly_reviews(*), weekly_focus_goals(goal_id), weekly_tasks(*)`)
-      .eq("user_id", session.user.id);
+      .eq("user_id", user.id);
     if (from) query = query.gte("week_start", from);
     if (to) query = query.lte("week_start", to);
     query = query.order("week_start", { ascending: true });
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
   const { data: plan, error } = await admin
     .from("weekly_plans")
     .select(`*, weekly_reviews(*), weekly_focus_goals(goal_id, goals(*)), weekly_tasks(*)`)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .eq("week_start", weekStart)
     .maybeSingle();
 
@@ -41,7 +41,7 @@ export async function GET(req: Request) {
   const { data: history } = await admin
     .from("weekly_plans")
     .select(`*, weekly_reviews(*), weekly_focus_goals(goal_id), weekly_tasks(*)`)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .neq("week_start", weekStart)
     .order("week_start", { ascending: false })
     .limit(4);
@@ -51,8 +51,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const { main_focus, main_focus_2, main_focus_3, linked_goal_id, focus_goal_ids, week_start } = body;
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
   const { data: existing } = await admin
     .from("weekly_plans")
     .select("main_focus, main_focus_2, main_focus_3, linked_goal_id")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .eq("week_start", weekStart)
     .maybeSingle();
 
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     .from("weekly_plans")
     .upsert(
       {
-        user_id: session.user.id,
+        user_id: user.id,
         week_start: weekStart,
         main_focus: finalMainFocus,
         main_focus_2: finalMainFocus2,

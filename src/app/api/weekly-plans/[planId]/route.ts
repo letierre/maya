@@ -7,8 +7,8 @@ export async function PATCH(
   { params }: { params: Promise<{ planId: string }> }
 ) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { planId } = await params;
   const body = await req.json();
@@ -24,7 +24,7 @@ export async function PATCH(
     .from("weekly_plans")
     .update(updates)
     .eq("id", planId)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .select()
     .single();
 

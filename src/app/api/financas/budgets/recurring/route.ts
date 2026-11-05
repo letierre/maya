@@ -4,15 +4,15 @@ import { ensureRecurringSchema } from "@/lib/db/recurring-budgets";
 
 export async function GET() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   await ensureRecurringSchema();
 
   const { data, error } = await supabase
     .from("recurring_budgets")
     .select("*")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -21,8 +21,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const { category, subcategory, monthly_limit, start_month, end_month } = body;
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase
     .from("recurring_budgets")
     .upsert({
-      user_id: session.user.id,
+      user_id: user.id,
       category,
       subcategory: subcategory || "",
       monthly_limit: Number(monthly_limit),
@@ -52,8 +52,8 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { category, subcategory } = await req.json();
   if (!category) return NextResponse.json({ error: "Categoria obrigatória" }, { status: 400 });
@@ -63,7 +63,7 @@ export async function DELETE(req: NextRequest) {
   let query = supabase
     .from("recurring_budgets")
     .delete()
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .eq("category", category);
 
   if (subcategory !== undefined && subcategory !== null) {

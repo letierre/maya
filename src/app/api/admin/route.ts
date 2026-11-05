@@ -18,12 +18,12 @@ function shiftYMD(dateStr: string, days: number): string {
 // ── Auth + verificação de admin (canônico: user_roles.is_admin) ──────
 async function requireAdmin(): Promise<{ ok: boolean; status: number; admin: Admin | null }> {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return { ok: false, status: 401, admin: null };
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, status: 401, admin: null };
 
   const admin = getSupabaseAdmin();
   const { data: role } = await admin
-    .from("user_roles").select("is_admin").eq("user_id", session.user.id).maybeSingle();
+    .from("user_roles").select("is_admin").eq("user_id", user.id).maybeSingle();
   if (!role?.is_admin) return { ok: false, status: 403, admin: null };
   return { ok: true, status: 200, admin };
 }

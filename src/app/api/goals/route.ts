@@ -4,14 +4,14 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
   const { data: goals, error } = await admin
     .from("goals")
     .select(`*, goal_stages(*, goal_actions(*))`)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .neq("status", "arquivada")
     .order("created_at", { ascending: true })
     .order("position", { foreignTable: "goal_stages", ascending: true })
@@ -23,8 +23,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const { title, description, why_it_matters, type, area, target_date,
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   const { count } = await admin
     .from("goals")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .eq("status", "ativa");
 
   if ((count ?? 0) >= 5) {
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   const { data: goal, error } = await admin
     .from("goals")
     .insert({
-      user_id: session.user.id,
+      user_id: user.id,
       title, description, why_it_matters, type, area,
       target_date: target_date || null,
       guardian_name: guardian_name || null,

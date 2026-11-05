@@ -5,8 +5,8 @@ import { getWeekMondayDate } from "@/lib/utils";
 
 export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const { biggest_win, blocked_lesson, main_learning, week_score, week_start } = body;
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   const { data: existing } = await admin
     .from("weekly_plans")
     .select("id")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .eq("week_start", weekStart)
     .maybeSingle();
 
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     const { data: newPlan, error: createErr } = await admin
       .from("weekly_plans")
       .upsert(
-        { user_id: session.user.id, week_start: weekStart, main_focus: "" },
+        { user_id: user.id, week_start: weekStart, main_focus: "" },
         { onConflict: "user_id,week_start" }
       )
       .select("id")

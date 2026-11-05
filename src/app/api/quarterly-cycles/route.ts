@@ -4,14 +4,14 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
   const { data: cycles, error } = await admin
     .from("quarterly_cycles")
     .select(`*, key_results(*), quarterly_reviews(*)`)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .order("year", { ascending: false })
     .order("quarter", { ascending: false })
     .order("position", { foreignTable: "key_results", ascending: true });
@@ -31,8 +31,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
   const { label, year, quarter, start_date, end_date, theme } = body;
@@ -48,13 +48,13 @@ export async function POST(req: Request) {
   await admin
     .from("quarterly_cycles")
     .update({ status: "completed" })
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .eq("status", "active");
 
   const { data: cycle, error } = await admin
     .from("quarterly_cycles")
     .insert({
-      user_id: session.user.id,
+      user_id: user.id,
       label: cycleLabel,
       year,
       quarter,

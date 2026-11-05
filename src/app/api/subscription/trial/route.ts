@@ -9,8 +9,7 @@ const TRIAL_DAYS = 7;
 // Só cria a linha se o usuário ainda não tiver assinatura (não reativa quem cancelou/expirou).
 export async function POST() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();

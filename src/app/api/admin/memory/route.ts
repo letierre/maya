@@ -6,10 +6,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 async function requireAdmin() {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return { ok: false as const, status: 401 };
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false as const, status: 401 };
   const admin = getSupabaseAdmin();
-  const { data: role } = await admin.from("user_roles").select("is_admin").eq("user_id", session.user.id).maybeSingle();
+  const { data: role } = await admin.from("user_roles").select("is_admin").eq("user_id", user.id).maybeSingle();
   if (!role?.is_admin) return { ok: false as const, status: 403 };
   return { ok: true as const, status: 200, admin };
 }
