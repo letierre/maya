@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Check } from "lucide-react";
 import { GoalCreateSheet } from "@/components/GoalCreateSheet";
 import { GoalDetailSheet } from "@/components/GoalDetailSheet";
 import { QuarterlyOKRPanel } from "@/components/QuarterlyOKRPanel";
@@ -205,6 +205,35 @@ export function MetasPanel() {
     } catch {}
   };
 
+  const toggleStage = async (goalId: string, stageId: string, current: string) => {
+    const next = current === "concluida" ? "pendente" : "concluida";
+    setGoals((prev) => prev.map((g) => g.id === goalId ? {
+      ...g,
+      goal_stages: g.goal_stages?.map((s: any) => s.id === stageId ? { ...s, status: next } : s),
+    } : g));
+    await fetch(`/api/goals/${goalId}/stages/${stageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: next }),
+    });
+  };
+
+  const toggleAction = async (goalId: string, actionId: string, current: string) => {
+    const next = current === "concluida" ? "pendente" : "concluida";
+    setGoals((prev) => prev.map((g) => g.id === goalId ? {
+      ...g,
+      goal_stages: g.goal_stages?.map((s: any) => ({
+        ...s,
+        goal_actions: s.goal_actions?.map((a: any) => a.id === actionId ? { ...a, status: next } : a),
+      })),
+    } : g));
+    await fetch(`/api/goals/actions/${actionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: next }),
+    });
+  };
+
   const activeGoals = goals.filter((g) => g.status === "ativa" || g.status === "pausada");
   const completedGoals = goals.filter((g) => g.status === "concluida");
 
@@ -403,6 +432,54 @@ export function MetasPanel() {
                                 </p>
                               </div>
                             ) : null}
+
+                            {/* Etapas */}
+                            {goal.goal_stages?.length > 0 && (
+                              <div style={{ padding: "8px 0 6px", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
+                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>🧩 {t("goal_etapas")}</p>
+                                {goal.goal_stages.map((stage: any) => {
+                                  const done = stage.status === "concluida";
+                                  return (
+                                    <div key={stage.id} style={{ marginTop: 6 }}>
+                                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                        <button type="button" onClick={() => toggleStage(goal.id, stage.id, stage.status)}
+                                          style={{
+                                            width: 18, height: 18, borderRadius: "50%", flexShrink: 0, padding: 0,
+                                            border: done ? "none" : "2px solid rgba(167,139,250,0.3)",
+                                            background: done ? "#7C5CFF" : "transparent",
+                                            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                                          }}>
+                                          {done && <Check size={11} color="#fff" />}
+                                        </button>
+                                        <span style={{ flex: 1, fontSize: 12.5, color: done ? "#5a5470" : "#c9c2e0", textDecoration: done ? "line-through" : "none", lineHeight: 1.4 }}>
+                                          {stage.title}
+                                        </span>
+                                      </div>
+                                      {stage.goal_actions?.length > 0 && (
+                                        <div style={{ marginLeft: 26, marginTop: 3 }}>
+                                          {stage.goal_actions.map((a: any) => (
+                                            <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
+                                              <button type="button" onClick={() => toggleAction(goal.id, a.id, a.status)}
+                                                style={{
+                                                  width: 13, height: 13, borderRadius: "50%", flexShrink: 0, padding: 0,
+                                                  border: a.status === "concluida" ? "none" : "1.5px solid rgba(167,139,250,0.2)",
+                                                  background: a.status === "concluida" ? "#7C5CFF" : "transparent",
+                                                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                                                }}>
+                                                {a.status === "concluida" && <Check size={8} color="#fff" />}
+                                              </button>
+                                              <span style={{ flex: 1, fontSize: 11, color: a.status === "concluida" ? "#5a5470" : "#9e96b5", textDecoration: a.status === "concluida" ? "line-through" : "none", lineHeight: 1.4 }}>
+                                                {a.title}
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
 
                             {/* OKR do trimestre */}
                             <div style={{ padding: "8px 0 6px", borderBottom: "1px solid rgba(167,139,250,0.05)" }}>
