@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { Plus, CheckCircle2, Shield, Trophy, AlertOctagon, Pencil } from "lucide-react";
+import { Plus, CheckCircle2, Shield, Trophy, AlertOctagon, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "@/lib/useTranslation";
+import { MayaAvatar } from "@/components/MayaAvatar";
 
 const AREA_CONFIG: Record<string, { emoji: string; hue: number }> = {
   saude: { emoji: "💚", hue: 160 }, carreira: { emoji: "💼", hue: 220 },
@@ -37,6 +38,7 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
   const [draftPunishment, setDraftPunishment] = useState("");
   const [draftStages, setDraftStages] = useState<{ id: string; title: string }[]>([]);
   const [draftActions, setDraftActions] = useState<Record<string, string>>({});
+  const [deleteTarget, setDeleteTarget] = useState<{ kind: "stage" | "action"; id: string } | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/goals/${goalId}`);
@@ -161,6 +163,21 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
     setSaving(false);
   };
 
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const { kind, id } = deleteTarget;
+    try {
+      if (kind === "stage") {
+        await fetch(`/api/goals/${goalId}/stages/${id}`, { method: "DELETE" });
+      } else {
+        await fetch(`/api/goals/actions/${id}`, { method: "DELETE" });
+      }
+      setDeleteTarget(null);
+      await load();
+      onUpdated();
+    } catch {}
+  };
+
   if (loading) return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <p style={{ color: "#9e96b5" }}>{t("carregando")}</p>
@@ -274,8 +291,14 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
                 </button>
 
                 {editing ? (
-                  <input value={stageDraft?.title ?? ""} onChange={e => setDraftStages(prev => prev.map(ds => ds.id === stage.id ? { ...ds, title: e.target.value } : ds))}
-                    style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none", minWidth: 0 }} />
+                  <>
+                    <input value={stageDraft?.title ?? ""} onChange={e => setDraftStages(prev => prev.map(ds => ds.id === stage.id ? { ...ds, title: e.target.value } : ds))}
+                      style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none", minWidth: 0 }} />
+                    <button type="button" onClick={() => setDeleteTarget({ kind: "stage", id: stage.id })} title={t("deletar")}
+                      style={{ background: "none", border: 0, color: "#FF5C5C", cursor: "pointer", padding: 2, flexShrink: 0, display: "inline-flex" }}>
+                      <Trash2 size={14} />
+                    </button>
+                  </>
                 ) : (
                   <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: done ? "#5a5470" : "#e0d6ff", textDecoration: done ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {stage.title}
@@ -296,8 +319,14 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
                     {action.status === "concluida" && <CheckCircle2 size={10} color="#fff" />}
                   </button>
                   {editing ? (
-                    <input value={draftActions[action.id] ?? ""} onChange={e => setDraftActions(prev => ({ ...prev, [action.id]: e.target.value }))}
-                      style={{ flex: 1, padding: "4px 8px", borderRadius: 6, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#9e96b5", fontSize: 11, fontFamily: "inherit", outline: "none", minWidth: 0 }} />
+                    <>
+                      <input value={draftActions[action.id] ?? ""} onChange={e => setDraftActions(prev => ({ ...prev, [action.id]: e.target.value }))}
+                        style={{ flex: 1, padding: "4px 8px", borderRadius: 6, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#9e96b5", fontSize: 11, fontFamily: "inherit", outline: "none", minWidth: 0 }} />
+                      <button type="button" onClick={() => setDeleteTarget({ kind: "action", id: action.id })} title={t("deletar")}
+                        style={{ background: "none", border: 0, color: "#FF5C5C", cursor: "pointer", padding: 2, flexShrink: 0, display: "inline-flex" }}>
+                        <Trash2 size={12} />
+                      </button>
+                    </>
                   ) : (
                     <span style={{ fontSize: 11, color: action.status === "concluida" ? "#5a5470" : "#9e96b5", textDecoration: action.status === "concluida" ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {action.title}
@@ -357,6 +386,28 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
           </div>
         )}
 
+        {deleteTarget && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 130, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div style={{ width: "100%", maxWidth: 320, background: "#1a1530", borderRadius: 20, padding: 24, border: "1px solid rgba(167,139,250,0.25)", textAlign: "center" }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+                <MayaAvatar state="mini" size={40} />
+              </div>
+              <p style={{ margin: "0 0 18px", fontSize: 14, fontWeight: 600, color: "#e0d6ff", lineHeight: 1.5 }}>
+                {deleteTarget.kind === "stage" ? t("goal_excluir_etapa_confirm") : t("goal_excluir_acao_confirm")}
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button type="button" onClick={() => setDeleteTarget(null)}
+                  style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#9e96b5", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  {t("cancelar")}
+                </button>
+                <button type="button" onClick={confirmDelete}
+                  style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: 0, background: "#FF5C5C", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  {t("deletar")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

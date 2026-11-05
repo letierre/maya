@@ -2077,6 +2077,8 @@ const translations: Record<Lang, Record<string, string>> = {
     goal_nova_etapa: "Nova etapa...",
     goal_adicionar_etapa: "+ Adicionar etapa",
     goal_adicionar_acao: "+ Adicionar ação",
+    goal_excluir_etapa_confirm: "Excluir esta etapa?",
+    goal_excluir_acao_confirm: "Excluir esta ação?",
 
     plan_visualizar: "Visualizar",
     plan_planejar: "Planejar",
@@ -4688,6 +4690,8 @@ const translations: Record<Lang, Record<string, string>> = {
     goal_nova_etapa: "Nueva etapa...",
     goal_adicionar_etapa: "+ Añadir etapa",
     goal_adicionar_acao: "+ Añadir acción",
+    goal_excluir_etapa_confirm: "¿Eliminar esta etapa?",
+    goal_excluir_acao_confirm: "¿Eliminar esta acción?",
 
     plan_visualizar: "Visualizar",
     plan_planejar: "Planificar",
@@ -7299,6 +7303,8 @@ const translations: Record<Lang, Record<string, string>> = {
     goal_nova_etapa: "New step...",
     goal_adicionar_etapa: "+ Add step",
     goal_adicionar_acao: "+ Add action",
+    goal_excluir_etapa_confirm: "Delete this step?",
+    goal_excluir_acao_confirm: "Delete this action?",
 
     plan_visualizar: "View",
     plan_planejar: "Plan",

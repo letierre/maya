@@ -35,6 +35,20 @@ export async function DELETE(
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const admin = getSupabaseAdmin();
+
+  // Verifica que a ação pertence a uma meta do usuário (ação → etapa → meta).
+  const { data: action } = await admin
+    .from("goal_actions").select("stage_id").eq("id", actionId).single();
+  if (!action) return NextResponse.json({ error: "Ação não encontrada" }, { status: 404 });
+
+  const { data: stage } = await admin
+    .from("goal_stages").select("goal_id").eq("id", action.stage_id).single();
+  if (!stage) return NextResponse.json({ error: "Etapa não encontrada" }, { status: 404 });
+
+  const { data: goal } = await admin
+    .from("goals").select("id").eq("id", stage.goal_id).eq("user_id", session.user.id).single();
+  if (!goal) return NextResponse.json({ error: "Não autorizado" }, { status: 404 });
+
   const { error } = await admin.from("goal_actions").delete().eq("id", actionId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
