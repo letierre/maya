@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { Plus, CheckCircle2, Shield, Trophy, AlertOctagon, Pencil, Trash2 } from "lucide-react";
+import { Plus, CheckCircle2, Shield, Trophy, AlertOctagon, Pencil, Trash2, X } from "lucide-react";
 import { useTranslation } from "@/lib/useTranslation";
 import { MayaAvatar } from "@/components/MayaAvatar";
 
@@ -239,11 +239,14 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
           </div>
           {!editing && (
             <button type="button" onClick={startEdit} title={t("editar")}
-              style={{ background: "none", border: 0, color: "#A78BFA", cursor: "pointer", padding: 4, display: "inline-flex", flexShrink: 0 }}>
+              style={{ background: "none", border: 0, color: "#A78BFA", cursor: "pointer", padding: 0, width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, borderRadius: 8 }}>
               <Pencil size={16} />
             </button>
           )}
-          <button type="button" onClick={onClose} style={{ background: "none", border: 0, color: "#9e96b5", fontSize: 18, cursor: "pointer", padding: 4, flexShrink: 0 }}>✕</button>
+          <button type="button" onClick={onClose}
+            style={{ background: "none", border: 0, color: "#9e96b5", cursor: "pointer", padding: 0, width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <X size={18} />
+          </button>
         </div>
 
         {editing ? (
@@ -337,7 +340,7 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
 
               {/* Actions (sub-etapas) */}
               {actions.map((action: any) => (
-                <div key={action.id} style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 34, marginTop: 4 }}>
+                <div key={action.id} style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 8, marginTop: 4 }}>
                   <button type="button" onClick={() => !editing && toggleAction(action.id, action.status)}
                     style={{
                       width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
@@ -353,7 +356,7 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
                         style={{ flex: 1, padding: "4px 8px", borderRadius: 6, fontSize: 11, minWidth: 0, minHeight: 24 }} />
                       <button type="button" onClick={() => setDeleteTarget({ kind: "action", id: action.id })} title={t("deletar")}
                         style={{ background: "none", border: 0, color: "#FF5C5C", cursor: "pointer", padding: 2, flexShrink: 0, display: "inline-flex" }}>
-                        <Trash2 size={12} />
+                        <Trash2 size={14} />
                       </button>
                     </>
                   ) : (
@@ -373,6 +376,10 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
                     style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
                   <button type="button" onClick={() => addAction(stage.id)}
                     style={{ padding: "6px 10px", borderRadius: 8, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>OK</button>
+                  <button type="button" onClick={() => setAddingActions(prev => { const n = { ...prev }; delete n[stage.id]; return n; })}
+                    style={{ padding: "6px 8px", borderRadius: 8, border: 0, background: "transparent", color: "#9e96b5", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                    <X size={14} />
+                  </button>
                 </div>
               ) : (
                 <button type="button" onClick={() => setAddingActions(prev => ({ ...prev, [stage.id]: "" }))}
@@ -393,6 +400,10 @@ export function GoalDetailSheet({ goalId, onClose, onUpdated }: { goalId: string
               style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(167,139,250,0.2)", background: "#0B0B10", color: "#e0d6ff", fontSize: 13, fontFamily: "inherit", outline: "none" }} />
             <button type="button" onClick={addStage}
               style={{ padding: "8px 12px", borderRadius: 10, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>OK</button>
+            <button type="button" onClick={() => setAddingStage(false)}
+              style={{ padding: "8px 10px", borderRadius: 10, border: 0, background: "transparent", color: "#9e96b5", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+              <X size={14} />
+            </button>
           </div>
         ) : (
           <button type="button" onClick={() => setAddingStage(true)}
