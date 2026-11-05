@@ -101,6 +101,21 @@ export async function POST(request: Request) {
       .replace(/\[\s*(?:hoje|ontem|anteontem|há\s*\d+\s*dias)?\s*\d{1,2}:\d{2}\s*\]\s*/gi, "")
       .trim();
 
+    // ── Persiste a resposta da Maya (server-side) ──
+    // A resposta não pode depender do cliente voltar a tempo: se a pessoa sair
+    // do chat logo após enviar, a resposta já fica salva aqui e aparece ao
+    // reabrir (o chat recarrega do banco). Best-effort: se falhar, a resposta
+    // ainda é devolvida — o cliente a mostra ao vivo.
+    const { error: persistError } = await admin.from("chat_messages").insert({
+      user_id: user.id,
+      role: "assistant",
+      content: reply,
+      chat_type: "maya",
+    });
+    if (persistError) {
+      logError({ path: "api/maya persist-reply", message: String(persistError), userId: user.id, meta: { feature: "maya_chat" } });
+    }
+
     // ── Memória de longo prazo (após a resposta, não bloqueia o chat) ──
     // Extrai fatos estruturados, embeds e faz dedup/merge via vetor — em
     // background via `after()`, então a resposta ao usuário sai na hora.

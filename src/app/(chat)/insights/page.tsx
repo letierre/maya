@@ -476,8 +476,7 @@ export default function MayaChatPage() {
           },
         ];
         setMessages(current);
-        // Fire-and-forget persist
-        persistWithRetry([{ role: "assistant", content: parts[i] }]);
+        // A resposta já é persistida server-side em /api/maya — aqui só anima.
         if (i < parts.length - 1) {
           await new Promise((r) => setTimeout(r, 400));
         }
