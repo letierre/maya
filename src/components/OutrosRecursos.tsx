@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { calculateStreak } from "@/lib/utils";
 import { useTranslation } from "@/lib/useTranslation";
 import { ModuloPreviewCard } from "@/components/ModuloPreviewCard";
@@ -79,19 +80,47 @@ export function VisualizacaoCard() {
 
 export function CorridaCard({ sessions }: { sessions: RunningSession[] | null }) {
   const { t } = useTranslation();
+  const [active, setActive] = useState<RunningSession | null>(null);
+
+  // Sessão ativa (end_time NULL) — se o app for fechado/recarregado em segundo
+  // plano, a corrida continua salva no servidor. Mostra "em andamento" p/ o
+  // usuário voltar a /corrida e retomar (o card de histórico só traz concluídas).
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/running?active=1")
+      .then((r) => r.json())
+      .then((list) => {
+        if (cancelled) return;
+        const a = Array.isArray(list) && list.length > 0 ? list[0] : null;
+        if (a?.start_time) {
+          const age = Date.now() - new Date(a.start_time).getTime();
+          if (age > 24 * 60 * 60 * 1000) return; // abandonada — ignora
+          setActive(a as RunningSession);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   const loading = sessions === null;
-  const s = sessions && sessions.length > 0 ? sessions[0] : null;
+  const s = active ?? (sessions && sessions.length > 0 ? sessions[0] : null);
   const preview = loading
     ? null
     : s
       ? `${(s.distance_meters / 1000).toFixed(2)} km`
       : t("or_comece_correr");
-  const sub = loading ? "" : s ? `${formatDuration(s.duration_seconds)} · ${formatPace(s.avg_pace || 0)}` : t("or_rastreie_gps");
+  const sub = loading
+    ? ""
+    : active
+      ? t("or_em_andamento")
+      : s
+        ? `${formatDuration(s.duration_seconds)} · ${formatPace(s.avg_pace || 0)}`
+        : t("or_rastreie_gps");
 
   return (
     <ModuloPreviewCard
       emoji="🏃"
-      label={t("or_lbl_corrida")}
+      label={active ? t("or_em_andamento_lbl") : t("or_lbl_corrida")}
       preview={preview}
       sub={sub}
       href="/corrida"

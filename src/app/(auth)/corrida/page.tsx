@@ -293,6 +293,28 @@ export default function CorridaPage() {
       startSyncInterval();
     };
 
+    const resumeFromLocal = () => {
+      let raw: string | null = null;
+      try { raw = localStorage.getItem(RUN_KEY); } catch { return; }
+      if (!raw) return;
+      try {
+        const snap = JSON.parse(raw) as { sessionId?: string | null; startedAt: number; totalDist: number; maxSpeed: number; coords: Coord[] };
+        if (!snap?.startedAt) return;
+        if (Date.now() - snap.startedAt > MAX_AGE) { try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ } return; }
+        resume({ sessionId: snap.sessionId || null, startedAt: snap.startedAt, totalDist: snap.totalDist || 0, maxSpeed: snap.maxSpeed || 0, coords: snap.coords || [] });
+        // Se o id se perdeu, recria a sessão no servidor
+        if (!snap.sessionId) {
+          fetch("/api/running", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ start_time: new Date(snap.startedAt).toISOString() }),
+          }).then((r) => r.json()).then((d) => { if (d?.id) sessionIdRef.current = d.id; }).catch(() => {});
+        }
+      } catch {
+        try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ }
+      }
+    };
+
     fetch("/api/running?active=1")
       .then((r) => r.json())
       .then((list) => {
@@ -316,27 +338,12 @@ export default function CorridaPage() {
           return;
         }
         // Fallback: sem sessão ativa no servidor — tenta o cache local
-        let raw: string | null = null;
-        try { raw = localStorage.getItem(RUN_KEY); } catch { return; }
-        if (!raw) return;
-        try {
-          const snap = JSON.parse(raw) as { sessionId?: string | null; startedAt: number; totalDist: number; maxSpeed: number; coords: Coord[] };
-          if (!snap?.startedAt) return;
-          if (Date.now() - snap.startedAt > MAX_AGE) { try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ } return; }
-          resume({ sessionId: snap.sessionId || null, startedAt: snap.startedAt, totalDist: snap.totalDist || 0, maxSpeed: snap.maxSpeed || 0, coords: snap.coords || [] });
-          // Se o id se perdeu, recria a sessão no servidor
-          if (!snap.sessionId) {
-            fetch("/api/running", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ start_time: new Date(snap.startedAt).toISOString() }),
-            }).then((r) => r.json()).then((d) => { if (d?.id) sessionIdRef.current = d.id; }).catch(() => {});
-          }
-        } catch {
-          try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ }
-        }
+        resumeFromLocal();
       })
-      .catch(() => {});
+      .catch(() => {
+        // Rede falhou ao buscar o servidor — ainda tenta restaurar do cache local
+        if (!cancelled) resumeFromLocal();
+      });
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
