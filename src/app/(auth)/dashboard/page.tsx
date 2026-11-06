@@ -219,15 +219,11 @@ export default function DashboardPage() {
       const res = await fetch("/api/maya/nudge");
       const data = await res.json();
       const n = data.nudges?.[0];
+      // O nudge define SÓ a ação do CTA. A fala da Maya na home vem única e
+      // exclusivamente de /api/maya/home-message — duas fontes competindo para
+      // escrever na mesma mensagem causavam o flicker de "três falas" até uma
+      // delas "escolher" ficar.
       if (n?.action) setMayaNudgeAction(n.action);
-      // Se o nudge trouxer mensagem própria, ela substitui a home message.
-      if (n?.message) {
-        setHomeMessage((prev) => ({
-          message: n.message!,
-          state: prev?.state,
-          action: n.action || prev?.action,
-        }));
-      }
     } catch {}
   }, []);
 
