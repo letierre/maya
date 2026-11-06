@@ -89,6 +89,7 @@ export default function CorridaPage() {
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [confirmStop, setConfirmStop] = useState(false);
 
   // Init map — cria imediatamente (sem aguardar geolocalização) e recentraliza depois
   useEffect(() => {
@@ -739,11 +740,30 @@ export default function CorridaPage() {
               </button>
             </>
           ) : (
-            <button type="button" onClick={stopRun} disabled={saving}
+            <button type="button" onClick={() => setConfirmStop(true)} disabled={saving}
               style={{ width: 72, height: 72, borderRadius: "50%", background: "#FF4D4D", border: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(255,77,77,0.5)", opacity: saving ? 0.5 : 1 }}>
               <Square size={24} color="#fff" />
             </button>
           )}
+        </div>
+      )}
+
+      {/* Confirmação de encerrar — evita toque acidental no bolso durante a corrida */}
+      {confirmStop && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setConfirmStop(false)}>
+          <div style={{ background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 20, width: "100%", maxWidth: 340, padding: 20 }} onClick={(e) => e.stopPropagation()}>
+            <p style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700, color: "#e0d6ff", textAlign: "center" }}>{t("co_encerrar_confirm")}</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="button" onClick={() => setConfirmStop(false)}
+                style={{ flex: 1, padding: "12px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#A78BFA", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                {t("cancelar")}
+              </button>
+              <button type="button" onClick={() => { setConfirmStop(false); stopRun(); }} disabled={saving}
+                style={{ flex: 1, padding: "12px", borderRadius: 12, border: 0, background: "#FF4D4D", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.5 : 1 }}>
+                {t("co_encerrar")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
