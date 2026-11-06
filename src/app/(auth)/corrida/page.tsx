@@ -9,7 +9,7 @@ import { Play, Square, Timer, Footprints, Zap, ChevronLeft, Share2, Lock } from 
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { uploadToCloud, photoUrl } from "@/lib/photo-storage";
-import { emitCareDataChanged } from "@/lib/care-events";
+import { emitCareDataChanged, emitRunLockChanged } from "@/lib/care-events";
 
 interface Coord { lat: number; lng: number; timestamp: number; }
 interface Session { id: string; start_time: string; end_time: string | null; distance_meters: number; duration_seconds: number; avg_pace: number | null; max_speed: number | null; calories_estimate: number | null; notes: string | null; route_coordinates: Coord[]; map_snapshot: string | null; }
@@ -652,6 +652,11 @@ export default function CorridaPage() {
   // Tela "travada" durante a corrida ativa: esconde navegação e controles extras
   // para o celular no bolso não disparar toques acidentais.
   const locked = running && !paused;
+
+  // Avisa a BottomNav global que a tela está travada durante a corrida ativa,
+  // escondendo a barra de navegação para evitar saídas acidentais.
+  useEffect(() => { emitRunLockChanged(locked); }, [locked]);
+  useEffect(() => () => emitRunLockChanged(false), []);
 
   return (
     <div style={{ height: "100dvh", background: "#0B0B10", display: "flex", flexDirection: "column" }}>

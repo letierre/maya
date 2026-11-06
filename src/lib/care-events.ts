@@ -18,3 +18,19 @@ export function onCareDataChanged(cb: () => void): () => void {
   window.addEventListener(CARE_DATA_CHANGED, cb);
   return () => window.removeEventListener(CARE_DATA_CHANGED, cb);
 }
+
+export const RUN_LOCK_CHANGED = "maya:run-lock-changed";
+
+/** Avisa a BottomNav global que a tela de corrida está travada (rodando em 1º plano). */
+export function emitRunLockChanged(locked: boolean) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent<{ locked: boolean }>(RUN_LOCK_CHANGED, { detail: { locked } }));
+}
+
+/** Registra um listener que recebe o estado do lock; devolve a função de limpeza. */
+export function onRunLockChanged(cb: (locked: boolean) => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handler = (e: Event) => cb((e as CustomEvent<{ locked: boolean }>).detail?.locked === true);
+  window.addEventListener(RUN_LOCK_CHANGED, handler);
+  return () => window.removeEventListener(RUN_LOCK_CHANGED, handler);
+}

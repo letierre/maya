@@ -7,6 +7,7 @@ import { Home, BarChart3, CalendarDays, User } from "lucide-react";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { useTranslation } from "@/lib/useTranslation";
 import { withinNextDay } from "@/lib/utils";
+import { onRunLockChanged } from "@/lib/care-events";
 
 const NAV_ITEMS: { href: string; icon: React.ComponentType<{ size?: number }> | null; label?: string; labelKey?: string; slug: string }[] = [
   { href: "/dashboard",    icon: Home,        labelKey: "nav_inicio",  slug: "dashboard" },
@@ -39,6 +40,10 @@ export function BottomNav() {
   const { t } = useTranslation();
   const [hasNudge, setHasNudge] = useState(false);
   const [subAttention, setSubAttention] = useState(false);
+  const [runLocked, setRunLocked] = useState(false);
+
+  // Corrida rodando em 1º plano trava a tela — esconde a barra de navegação.
+  useEffect(() => onRunLockChanged(setRunLocked), []);
 
   // Check for unread Maya nudge
   useEffect(() => {
@@ -56,6 +61,8 @@ export function BottomNav() {
       .catch(() => {});
   }, []);
 
+  // Corrida rodando em 1º plano → trava a navegação (evita sair sem querer)
+  if (runLocked) return null;
   // Hide on full-screen experiences
   if (HIDE_ON.includes(pathname)) return null;
   // Editor do check-in (histórico) também é fullscreen
