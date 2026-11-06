@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getLatestInsights, type SpecialistInsights } from "@/lib/specialists";
-import { calculateStreak, getWeekMondayDate, getLocalDate, getLocalDateFromISO, getLocalTimeFromISO, relativeDayLabel } from "@/lib/utils";
+import { calculateStreak, getWeekMondayDate, getLocalDate, getLocalDateFromISO, getLocalTimeFromISO, relativeDayLabel, relativeDayOffset, relativeDayWordRegex, addDaysToYMD } from "@/lib/utils";
 import { habitAnswered } from "@/lib/checkin-answered";
 import { getMoodById, getMoodLabel } from "@/lib/checkin-moods";
 import { embedQuery, toPgVector } from "@/lib/embeddings";
@@ -57,12 +57,28 @@ export interface MayaContext {
  *  de data crua, e acrescenta QUANDO o acontecimento ocorre (event_date ou
  *  temporal_hint) — a Maya nunca faz conta de calendário. */
 function formatMemory(m: Record<string, unknown>, todayStr?: string, tz?: string): string {
-  const fact = (m.fact as string) || "";
+  let fact = (m.fact as string) || "";
   const createdAt = m.created_at as string | undefined;
   const day = createdAt ? relativeDayLabel(getLocalDateFromISO(createdAt, tz), todayStr) : "";
   let when = "";
-  if (m.event_date) when = relativeDayLabel(String(m.event_date), todayStr) || `em ${String(m.event_date)}`;
-  else if (m.temporal_hint) when = m.temporal_hint as string;
+  if (m.event_date) {
+    when = relativeDayLabel(String(m.event_date), todayStr) || `em ${String(m.event_date)}`;
+  } else if (m.temporal_hint) {
+    // Uma referência vaga ("amanhã") gravada ontem não pode ficar "amanhã" para
+    // sempre: re-ancora pelo DIA em que a memória foi escrita. "amanhã" dito
+    // ontem → "hoje"; "amanhã" dito há 3 dias → já passou.
+    const hint = String(m.temporal_hint);
+    const offset = relativeDayOffset(hint);
+    if (offset !== null && createdAt) {
+      const eventDate = addDaysToYMD(getLocalDateFromISO(createdAt, tz), offset);
+      const label = relativeDayLabel(eventDate, todayStr);
+      when = label || hint;
+      // Corrige também a palavra relativa embutida no texto do fato.
+      fact = fact.replace(relativeDayWordRegex(offset), when);
+    } else {
+      when = hint;
+    }
+  }
   const prefix = day ? `${day}: ` : "";
   const suffix = when ? ` (${when})` : "";
   return `${prefix}${fact}${suffix}`;

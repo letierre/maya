@@ -1,7 +1,7 @@
 "use client";
 import { getLocale } from "@/lib/language";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { getLocalDate, getLocalDateDaysAgo, getUserTimezone } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
@@ -203,13 +203,26 @@ export default function DashboardPage() {
   // Mensagem da Maya (home): refetchada a cada montagem — é barato (cache no
   // servidor, sem re-disparar o LLM) e garante que a fala reflita o check-in e
   // os últimos dados. O snapshot segura a renderização instantânea (sem flicker).
+  // Dedup de chamadas concorrentes: mount + remount (router.refresh) disparam
+  // loadHomeMessage ao mesmo tempo; sem esta trava, cada uma re-gerava uma fala
+  // no LLM (cache stampede) e a home "piscava" 3 mensagens até uma delas ficar.
+  const loadHomeMessageInFlight = useRef<Promise<void> | null>(null);
+
   const loadHomeMessage = useCallback(async () => {
-    const userTz = getUserTimezone();
-    try {
-      const res = await fetch(`/api/maya/home-message?tz=${encodeURIComponent(userTz)}`);
-      const data = await res.json();
-      if (data.message) setHomeMessage((prev) => ({ message: data.message, state: data.state, action: prev?.action }));
-    } catch {}
+    if (loadHomeMessageInFlight.current) return loadHomeMessageInFlight.current;
+    const p = (async () => {
+      const userTz = getUserTimezone();
+      try {
+        const res = await fetch(`/api/maya/home-message?tz=${encodeURIComponent(userTz)}`);
+        const data = await res.json();
+        if (data.message) setHomeMessage((prev) => ({ message: data.message, state: data.state, action: prev?.action }));
+      } catch {}
+    })();
+    loadHomeMessageInFlight.current = p;
+    p.finally(() => {
+      if (loadHomeMessageInFlight.current === p) loadHomeMessageInFlight.current = null;
+    });
+    return p;
   }, []);
 
   // Nudge: só no primeiro load ou num gatilho (care-data-changed) — refetchar a

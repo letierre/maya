@@ -12,6 +12,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { callLLM, responseLanguageLine } from "@/lib/llm";
 import { embedDocuments, toPgVector } from "@/lib/embeddings";
 import { logError } from "@/lib/error-log";
+import { getLocalDate, relativeDayOffset, relativeDayWordRegex, addDaysToYMD } from "@/lib/utils";
 
 const MEMORY_MODEL = "claude-sonnet-5"; // raciocínio de memória ≠ Haiku do chat
 const DEDUP_SIM_THRESHOLD = 0.75; // abaixo disso é claramente novo (não chama LLM)
@@ -69,10 +70,15 @@ async function extractFacts(
   recentMessages: { role: string; content: string }[],
   reply: string,
   language?: string,
+  today?: string,
 ): Promise<ExtractedFact[]> {
   const transcript = recentMessages
     .map((m) => `${m.role === "assistant" ? "Maya" : "Usuário"}: ${m.content.slice(0, 400)}`)
     .join("\n");
+
+  const todayLine = today
+    ? `Hoje é ${today}. `
+    : "";
 
   const system = `Você é o sistema de MEMÓRIA de longo prazo da Maya. Extraia fatos DURÁVEIS e NOVOS sobre a vida da pessoa a partir da conversa. ${responseLanguageLine(language)}`;
 
@@ -92,8 +98,8 @@ Resposta da Maya:
    - "preference": gosto duradouro ("adora cozinhar", "gosta de caminhar à noite").
    - "event": acontecimento com data concreta ("consulta na sexta", "viagem em julho").
    - "episode": acontecimento emocional significativo sem data exata ("teve uma conversa difícil com a mãe").
-6. "event_date": APENAS se houver data concreta no formato AAAA-MM-DD; senão null.
-7. "temporal_hint": referência temporal vaga ("semana que vem", "em julho"); senão null.
+6. "event_date": data concreta AAAA-MM-DD. ${todayLine}Referências relativas de DIA ("amanhã", "hoje", "ontem", "anteontem", "depois de amanhã") viram DATA concreta (calcule a partir de hoje). NÃO deixe essas palavras no texto do fato — tire do texto e ponha a data em event_date.
+7. "temporal_hint": SOMENTE referência temporal verdadeiramente vaga ("semana que vem", "em julho", "na sexta"); senão null. NUNCA use "amanhã"/"hoje"/"ontem" aqui.
 8. "importance": 1 (trivial) a 3 (muito importante/identidade).
 9. "confidence": 0.5 a 1.0. Dito explicitamente: 0.8–1.0. Inferido: no máximo 0.6 — e na prática, prefira NÃO extrair o que foi inferido.
 10. Máximo 4 fatos.
@@ -133,6 +139,23 @@ Se não houver fatos novos: {"facts":[]}`;
       confidence: clamp(it.confidence, 0.5, 1, 0.8),
     });
   }
+
+  // Pós-processamento (rede de segurança): se o LLM ainda devolveu uma referência
+  // relativa de dia ("amanhã") em temporal_hint, converte em data concreta para o
+  // READ re-ancorar com o passar dos dias — e tira a palavra do texto do fato.
+  if (today) {
+    for (const f of out) {
+      if (!f.event_date && f.temporal_hint) {
+        const offset = relativeDayOffset(f.temporal_hint);
+        if (offset !== null) {
+          f.event_date = addDaysToYMD(today, offset);
+          f.temporal_hint = null;
+          f.fact = f.fact.replace(relativeDayWordRegex(offset), "").replace(/\s{2,}/g, " ").trim();
+        }
+      }
+    }
+  }
+
   return out;
 }
 
@@ -238,10 +261,12 @@ export async function extractAndStoreMemory(opts: {
   recentMessages: { role: string; content: string }[];
   reply: string;
   language?: string;
+  tz?: string;
 }): Promise<{ extracted: number; stored: number; skipped: number }> {
-  const { userId, recentMessages, reply, language } = opts;
+  const { userId, recentMessages, reply, language, tz } = opts;
 
-  const facts = await extractFacts(recentMessages, reply, language);
+  const today = getLocalDate(tz);
+  const facts = await extractFacts(recentMessages, reply, language, today);
   if (facts.length === 0) return { extracted: 0, stored: 0, skipped: 0 };
 
   const embeddings = await embedDocuments(facts.map((f) => f.fact), { userId, feature: "maya_memory_embeddings" });

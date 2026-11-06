@@ -130,7 +130,7 @@ export async function POST(request: Request) {
     // ── Memória de longo prazo (background, não bloqueia) ──
     const recentForMemory = rawHistory.slice(-6).map((m) => ({ role: m.role, content: m.content }));
     after(() => {
-      extractAndStoreMemory({ userId: user.id, recentMessages: recentForMemory, reply, language }).catch((err) => {
+      extractAndStoreMemory({ userId: user.id, recentMessages: recentForMemory, reply, language, tz: clientTz }).catch((err) => {
         logError({ path: "api/maya/voice/reply memory-write", message: String(err), userId: user.id, meta: { feature: "maya_memory_write" } });
       });
     });

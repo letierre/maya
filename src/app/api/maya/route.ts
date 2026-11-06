@@ -126,6 +126,7 @@ export async function POST(request: Request) {
         recentMessages: recentForMemory,
         reply,
         language: (context.language as string) || "pt",
+        tz: clientTz,
       }).catch((err) => {
         logError({ path: "api/maya memory-write", message: String(err), userId: user.id, meta: { feature: "maya_memory_write" } });
       });

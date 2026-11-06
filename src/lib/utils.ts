@@ -130,8 +130,9 @@ export function getLocalTimeFromISO(isoStr: string, tz?: string): string {
   }
 }
 
-/** Converte "YYYY-MM-DD" em rótulo relativo ("hoje", "ontem", "há N dias")
- *  em relação a `todayStr` (também "YYYY-MM-DD"). Usa UTC para evitar DST. */
+/** Converte "YYYY-MM-DD" em rótulo relativo em relação a `todayStr` (também
+ *  "YYYY-MM-DD"): passado → "ontem"/"há N dias"; futuro → "amanhã"/"depois de
+ *  amanhã"/"em N dias". Usa UTC para evitar DST. */
 export function relativeDayLabel(dateStr: string, todayStr?: string): string {
   if (!dateStr) return "";
   const d = new Date(dateStr + "T00:00:00Z").getTime();
@@ -142,11 +143,44 @@ export function relativeDayLabel(dateStr: string, todayStr?: string): string {
     const n = new Date();
     ref = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate());
   }
-  const diff = Math.round((ref - d) / 86400000);
-  if (diff <= 0) return "hoje";
+  const diff = Math.round((ref - d) / 86400000); // negativo = futuro
+  if (diff === 0) return "hoje";
   if (diff === 1) return "ontem";
   if (diff === 2) return "anteontem";
-  return `há ${diff} dias`;
+  if (diff === -1) return "amanhã";
+  if (diff === -2) return "depois de amanhã";
+  if (diff > 2) return `há ${diff} dias`;
+  return `em ${-diff} dias`;
+}
+
+/** Offset em dias de uma referência temporal relativa ("amanhã" → +1, "ontem"
+ *  → -1, "hoje" → 0). Normaliza acentos e cobre pt/es/en. null = não reconhecida. */
+export function relativeDayOffset(hint: string): number | null {
+  const h = hint.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  if (/depois\s+de\s+amanha|pasado\s+manana|day\s+after\s+tomorrow/.test(h)) return 2;
+  if (/anteontem|antier|antes\s+de\s+ayer|day\s+before\s+yesterday/.test(h)) return -2;
+  if (/amanha|manana|tomorrow/.test(h)) return 1;
+  if (/ontem|ayer|yesterday/.test(h)) return -1;
+  if (/hoje|hoy|today/.test(h)) return 0;
+  return null;
+}
+
+/** Regex (case-insensitive) que casa a palavra temporal relativa do offset em
+ *  dias — usada para corrigir/limpar "amanhã"/"ontem" dentro do texto de um fato. */
+export function relativeDayWordRegex(offset: number): RegExp {
+  if (offset === 2) return /(depois\s+de\s+amanh[ãa]|pasado\s+ma[ñn]ana|day\s+after\s+tomorrow)/gi;
+  if (offset === -2) return /(anteontem|antier|antes\s+de\s+ayer|day\s+before\s+yesterday)/gi;
+  if (offset === 1) return /(amanh[ãa]|ma[ñn]ana|tomorrow)/gi;
+  if (offset === -1) return /(ontem|ayer|yesterday)/gi;
+  if (offset === 0) return /(hoje|hoy|today)/gi;
+  return /(?!)\./; // nunca casa
+}
+
+/** Soma `offset` dias a uma data "YYYY-MM-DD" (UTC, sem DST). */
+export function addDaysToYMD(ymd: string, offset: number): string {
+  const d = new Date(ymd + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + offset);
+  return d.toISOString().slice(0, 10);
 }
 
 /** True se `iso` está no futuro e a ≤ 24h de agora (janela de aviso de renovação). */
