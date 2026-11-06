@@ -833,8 +833,9 @@ export default function CheckInPage() {
       }
       invalidateFetchCache("/api/check-ins");
       invalidateFetchCache("/api/maya");
+      // Sem router.refresh(): o push já monta a home (que busca os dados client-side).
+      // O refresh duplicava a montagem e disparava a geração da fala 2× (flicker).
       router.push("/dashboard");
-      router.refresh();
     } catch {
       toast.error(t("ck_erro_salvar"));
       setSaving(false);
@@ -1030,7 +1031,6 @@ export default function CheckInPage() {
         invalidateFetchCache("/api/check-ins");
         invalidateFetchCache("/api/maya");
         router.push("/dashboard");
-        router.refresh();
       }} />
     );
     return null;

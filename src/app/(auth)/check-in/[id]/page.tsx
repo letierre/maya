@@ -148,7 +148,6 @@ export default function EditCheckInPage({
       }
       invalidateFetchCache("/api/check-ins");
       router.push("/historico");
-      router.refresh();
     } catch {
       toast.error(t("ck_erro_salvar"));
       setSaving(false);
