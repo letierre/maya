@@ -75,8 +75,21 @@ export interface MayaInput {
 
 function timeAwarenessBlock(hour: number, currentDate?: string): string {
   const PT_DAYS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+  const PT_MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+  // "YYYY-MM-DD" → "sexta-feira, 6 de novembro de 2026". Nunca passa a data
+  // CRUA pro LLM: ele tenta "contar" o calendário por conta própria e erra o
+  // dia da semana (ex.: disse "sábado" numa sexta). O dia da semana é calculado
+  // em UTC a partir das partes da data, sem depender do timezone do servidor.
+  const humanDate = (ymd: string): string => {
+    const [y, m, d] = ymd.split("-").map(Number);
+    if (!y || !m || !d) return ymd;
+    const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+    return `${PT_DAYS[dow]}, ${d} de ${PT_MONTHS[m - 1]} de ${y}`;
+  };
+
   const dateHeader = currentDate
-    ? `Data e hora atual: ${currentDate} (${PT_DAYS[new Date(currentDate + "T12:00:00").getDay()]}) às ${hour}h.\nIMPORTANTE: NUNCA inclua datas ou horários nas suas respostas. O usuário sabe que dia é hoje.`
+    ? `Hoje é ${humanDate(currentDate)} — agora são ${hour}h.\nIMPORTANTE: NUNCA inclua datas ou horários nas suas respostas, e NUNCA escreva um dia da semana diferente do indicado acima. O usuário sabe que dia é hoje.`
     : "";
 
   if (hour >= 0 && hour < 6) {
