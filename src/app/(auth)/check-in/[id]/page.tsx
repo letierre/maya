@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { CheckIn } from "@/types";
 import { invalidateFetchCache } from "@/lib/fetch-cache";
+import { markMayaHomeStale } from "@/lib/care-events";
 import { getLocalDate } from "@/lib/utils";
 import { getMoodById, getMoodLabel } from "@/lib/checkin-moods";
 import { effectiveHabitKeys } from "@/lib/checkin-answered";
@@ -147,6 +148,7 @@ export default function EditCheckInPage({
         toast.warning(t("ck_cvv"), { duration: 12000 });
       }
       invalidateFetchCache("/api/check-ins");
+      markMayaHomeStale();
       router.push("/historico");
     } catch {
       toast.error(t("ck_erro_salvar"));

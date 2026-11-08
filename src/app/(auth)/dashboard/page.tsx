@@ -34,7 +34,7 @@ import { MetasSemanaCard, type Goal } from "@/components/MetasSemanaCard";
 import { CheckinProgress } from "@/components/CheckinProgress";
 import { InsightsCarousel } from "@/components/InsightsCarousel";
 import { CareList } from "@/components/CareList";
-import { onCareDataChanged } from "@/lib/care-events";
+import { onCareDataChanged, consumeMayaHomeStale } from "@/lib/care-events";
 import { TrialBanner, SubscriptionNotice } from "@/components/SubscriptionStatus";
 import type { CheckIn, SleepLog, WeeklyTask } from "@/types";
 
@@ -90,6 +90,10 @@ export default function DashboardPage() {
   // Restaura o último estado renderizado (se houver) para a volta ser instantânea.
   const snap = dashboardSnapshot;
 
+  // Se um check-in foi salvo/editado, a fala da home está obsoleta: mostra
+  // "carregando" (skeleton) em vez de piscar a fala antiga e trocar em seguida.
+  const [homeStale] = useState(() => consumeMayaHomeStale());
+
   // Core state
   const [loading, setLoading] = useState(snap == null);
   const [checkIns, setCheckIns] = useState<CheckIn[]>(snap?.checkIns ?? []);
@@ -112,7 +116,7 @@ export default function DashboardPage() {
     message: string;
     state?: string;
     action?: { label: string; href: string };
-  } | null>(snap?.homeMessage ?? null);
+  } | null>(homeStale ? null : (snap?.homeMessage ?? null));
 
   // Finance
   const [todaySpending, setTodaySpending] = useState<number | null>(snap?.todaySpending ?? null);

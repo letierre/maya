@@ -34,3 +34,23 @@ export function onRunLockChanged(cb: (locked: boolean) => void): () => void {
   window.addEventListener(RUN_LOCK_CHANGED, handler);
   return () => window.removeEventListener(RUN_LOCK_CHANGED, handler);
 }
+
+// ── Fala da Maya (home) obsoleta ─────────────────────────────────────────
+
+// Quando um check-in é salvo/editado, o cache da fala da home é invalidado no
+// servidor. Esta flag marca isso para a home, na PRÓXIMA montagem, mostrar
+// "carregando" em vez de piscar a fala antiga do snapshot. Vive no módulo (não
+// usa evento) justamente para sobreviver à navegação — o evento seria perdido
+// por disparar antes de a home montar.
+let mayaHomeStale = false;
+
+export function markMayaHomeStale() {
+  mayaHomeStale = true;
+}
+
+export function consumeMayaHomeStale(): boolean {
+  if (typeof window === "undefined") return false;
+  const v = mayaHomeStale;
+  mayaHomeStale = false;
+  return v;
+}

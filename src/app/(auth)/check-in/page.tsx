@@ -9,6 +9,7 @@ import { SLEPT_WELL_MIN_QUALITY } from "@/lib/checkin-constants";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { MOOD_CHIPS, getMoodLabel } from "@/lib/checkin-moods";
 import { invalidateFetchCache } from "@/lib/fetch-cache";
+import { markMayaHomeStale } from "@/lib/care-events";
 import { useTranslation } from "@/lib/useTranslation";
 import {
   EditCheckInView,
@@ -835,6 +836,7 @@ export default function CheckInPage() {
       invalidateFetchCache("/api/maya");
       // Sem router.refresh(): o push já monta a home (que busca os dados client-side).
       // O refresh duplicava a montagem e disparava a geração da fala 2× (flicker).
+      markMayaHomeStale();
       router.push("/dashboard");
     } catch {
       toast.error(t("ck_erro_salvar"));
@@ -1030,6 +1032,7 @@ export default function CheckInPage() {
       <DoneStep onFinish={() => {
         invalidateFetchCache("/api/check-ins");
         invalidateFetchCache("/api/maya");
+        markMayaHomeStale();
         router.push("/dashboard");
       }} />
     );
