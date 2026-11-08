@@ -58,6 +58,10 @@ async function persistWithRetry(
 
 const CHAT_CACHE_KEY = "maya_chat";
 
+// Feature flag: ligação em tempo real (voz full-duplex). Escondida por enquanto;
+// para liberar, setar NEXT_PUBLIC_ENABLE_MAYA_CALL=true no build/redeploy.
+const ENABLE_MAYA_CALL = process.env.NEXT_PUBLIC_ENABLE_MAYA_CALL === "true";
+
 // Depois de quantos ms sem atividade a Maya passa de "online" para
 // "Visto por último ..." (presença estilo WhatsApp).
 const IDLE_MS = 5 * 60 * 1000; // 5 minutos
@@ -1610,17 +1614,19 @@ export default function MayaChatPage() {
             <Plus className="size-5" />
           </button>
 
-          {/* Ligar (voz em tempo real) — terceira opção, sem remover texto nem mic */}
-          <button
-            type="button"
-            onClick={startCall}
-            disabled={busy || recording || callState !== "idle"}
-            className="size-10 shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer transition-transform active:scale-90 disabled:opacity-40"
-            style={{ background: "rgba(124,92,255,0.14)", color: "#A78BFA" }}
-            aria-label={t("maya_call_start")}
-          >
-            <Phone className="size-5" />
-          </button>
+          {/* Ligar (voz em tempo real) — terceira opção, escondida até liberar a flag */}
+          {ENABLE_MAYA_CALL && (
+            <button
+              type="button"
+              onClick={startCall}
+              disabled={busy || recording || callState !== "idle"}
+              className="size-10 shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer transition-transform active:scale-90 disabled:opacity-40"
+              style={{ background: "rgba(124,92,255,0.14)", color: "#A78BFA" }}
+              aria-label={t("maya_call_start")}
+            >
+              <Phone className="size-5" />
+            </button>
+          )}
 
           {recording ? (
             <div
