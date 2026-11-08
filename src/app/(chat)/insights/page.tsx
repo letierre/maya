@@ -3,8 +3,9 @@ import { getLocale } from "@/lib/language";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "@/lib/useTranslation";
-import { Send, ArrowLeft, Plus, Camera, X, Image as ImageIcon, ArrowDown, Mic, Square } from "lucide-react";
+import { Send, ArrowLeft, Plus, Camera, X, Image as ImageIcon, ArrowDown, Mic, Square, Phone, PhoneOff } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useConversation } from "@11labs/react";
 import { MayaAvatar } from "@/components/MayaAvatar";
 import { VoiceNote } from "@/components/VoiceNote";
 import { MessageTicks } from "@/components/MessageTicks";
@@ -96,6 +97,31 @@ function formatLastSeen(ts: number, t: (key: string, vars?: Record<string, strin
   const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const time = d.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" });
   return t("maya_visto_ultimo", { day: getDateLabel(dateStr, t), time });
+}
+
+// Mapeia uma mensagem crua do servidor (/api/maya/messages) para o tipo Message.
+// Usado no carregamento inicial E na atualização pós-ligação (voz em tempo real).
+function mapServerMessage(m: {
+  role: string;
+  content: string;
+  image_urls?: string[];
+  audio_url?: string | null;
+  audio_duration?: number | null;
+  created_at: string;
+}): Message {
+  return {
+    role: m.role as "user" | "assistant",
+    content: m.content,
+    imageUrls: m.image_urls || [],
+    audioUrl: m.audio_url || null,
+    audioDuration: typeof m.audio_duration === "number" ? m.audio_duration : undefined,
+    time: new Date(m.created_at).toLocaleTimeString(getLocale(), {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    date: localDateFromTimestamp(m.created_at),
+    createdAt: m.created_at ? new Date(m.created_at).getTime() : undefined,
+  };
 }
 
 // ── Sub-components ────────────────────────────────────────────────────
@@ -238,6 +264,9 @@ export default function MayaChatPage() {
   const [voiceBlob, setVoiceBlob] = useState<{ blob: Blob; mime: string; duration: number } | null>(null);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [mayaRecording, setMayaRecording] = useState(false);
+  // Ligação em tempo real (voz full-duplex) — terceira opção do composer.
+  const [callState, setCallState] = useState<"idle" | "starting" | "active" | "ending">("idle");
+  const [callError, setCallError] = useState<string | null>(null);
 
   // ── Refs ──
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -257,6 +286,97 @@ export default function MayaChatPage() {
   // Instante da última atividade (mensagem enviada/recebida). Semeado do
   // histórico no load; atualizado para "agora" a cada nova troca.
   const lastActivityAtRef = useRef(Date.now());
+
+  // ── Ligação em tempo real (voz full-duplex, terceira opção do composer) ──
+  const { status: callStatus, isSpeaking, startSession, endSession } = useConversation();
+
+  // Re-busca o histórico do servidor (após a ligação, o webhook já persistiu os
+  // turnos no chat_messages — a conversa aparece aqui sem recarregar a página).
+  const refreshMessages = useCallback(async () => {
+    try {
+      const res = await fetch("/api/maya/messages", { cache: "no-store" });
+      const data = await res.json();
+      const serverMsgs: Message[] = Array.isArray(data)
+        ? (data as Array<{
+            role: string; content: string; image_urls?: string[]; audio_url?: string | null;
+            audio_duration?: number | null; created_at: string;
+          }>)
+            .map(mapServerMessage)
+            .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))
+        : [];
+      setMessages(serverMsgs);
+      if (serverMsgs.length > 0) {
+        localStorage.setItem(CHAT_CACHE_KEY, JSON.stringify(serverMsgs.slice(-50)));
+      }
+      const latest = serverMsgs[serverMsgs.length - 1];
+      if (latest?.createdAt) lastActivityAtRef.current = latest.createdAt;
+    } catch {
+      /* mantém o histórico atual */
+    }
+  }, []);
+
+  const finishCall = useCallback(() => {
+    setCallState("idle");
+    markMayaHomeStale();
+    refreshMessages();
+    // O webhook pós-chamada da ElevenLabs persiste os turnos alguns segundos
+    // depois do fim da ligação — re-busca de novo para capturar a conversa.
+    setTimeout(() => refreshMessages(), 3500);
+  }, [refreshMessages]);
+
+  const startCall = useCallback(async () => {
+    if (callState !== "idle") return;
+    setCallError(null);
+    setCallState("starting");
+
+    // Microfone primeiro (melhor UX + trata permissão bloqueada pelo navegador).
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setCallState("idle");
+      setCallError(t("maya_call_mic_denied"));
+      return;
+    }
+
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const res = await fetch("/api/maya/realtime", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          timezone: tz,
+          localHour: new Date().getHours(),
+          localDate: formatDate(),
+        }),
+      });
+      if (!res.ok) throw new Error("realtime api error");
+      const data = await res.json();
+      if (!data.signedUrl) throw new Error("sem signedUrl");
+
+      await startSession({ signedUrl: data.signedUrl, connectionType: "websocket" });
+      setCallState("active");
+    } catch (err) {
+      console.error("[call] start error:", err);
+      setCallState("idle");
+      setCallError(t("maya_call_error"));
+    }
+  }, [callState, startSession, t]);
+
+  const endCall = useCallback(async () => {
+    setCallState("ending");
+    try {
+      await endSession();
+    } catch {
+      /* o status cai para "disconnected" e o effect abaixo limpa */
+    }
+  }, [endSession]);
+
+  // Quando a ligação termina (encerrada pelo usuário ou pela Maya/remoto), limpa.
+  useEffect(() => {
+    if ((callState === "active" || callState === "ending") && callStatus === "disconnected") {
+      finishCall();
+    }
+  }, [callState, callStatus, finishCall]);
 
   // Instante (raw) da última mensagem da Maya, para o "Visto por último ...".
   const lastMayaSeenAt = useMemo(() => {
@@ -1471,6 +1591,12 @@ export default function MayaChatPage() {
           </div>
         )}
 
+        {callError && (
+          <div className="mb-2 text-center text-xs font-medium" style={{ color: "#F87171" }}>
+            {callError}
+          </div>
+        )}
+
         <div className="flex items-end gap-2">
           {/* Attach button */}
           <button
@@ -1482,6 +1608,18 @@ export default function MayaChatPage() {
             aria-label={t("anexar")}
           >
             <Plus className="size-5" />
+          </button>
+
+          {/* Ligar (voz em tempo real) — terceira opção, sem remover texto nem mic */}
+          <button
+            type="button"
+            onClick={startCall}
+            disabled={busy || recording || callState !== "idle"}
+            className="size-10 shrink-0 inline-flex items-center justify-center rounded-full border-0 cursor-pointer transition-transform active:scale-90 disabled:opacity-40"
+            style={{ background: "rgba(124,92,255,0.14)", color: "#A78BFA" }}
+            aria-label={t("maya_call_start")}
+          >
+            <Phone className="size-5" />
           </button>
 
           {recording ? (
@@ -1572,6 +1710,60 @@ export default function MayaChatPage() {
           )}
         </div>
       </div>
+
+      {/* Ligação em tempo real — overlay full-screen */}
+      {callState !== "idle" && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 90,
+            background: "oklch(0.12 0.012 270)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 18,
+            padding: "0 28px",
+            textAlign: "center",
+          }}
+        >
+          <MayaAvatar
+            state={isSpeaking ? "speaking" : callState === "starting" ? "processing" : "idle"}
+            size={132}
+          />
+          <p style={{ color: "#e0d6ff", fontSize: 19, fontWeight: 600, margin: 0, letterSpacing: "-0.01em" }}>
+            {callState === "starting"
+              ? t("maya_call_connecting")
+              : callState === "ending"
+                ? t("maya_call_ending")
+                : t("maya_call_active")}
+          </p>
+          <p style={{ color: "#9d8cc7", fontSize: 13, margin: 0 }}>
+            {isSpeaking ? t("maya_call_speaking") : t("maya_call_listening")}
+          </p>
+
+          <button
+            type="button"
+            onClick={endCall}
+            disabled={callState === "ending"}
+            className="inline-flex items-center gap-2 rounded-full border-0 cursor-pointer disabled:opacity-60"
+            style={{
+              marginTop: 14,
+              height: 52,
+              padding: "0 26px",
+              background: "#EF4444",
+              color: "#fff",
+              fontSize: 15,
+              fontWeight: 600,
+              boxShadow: "0 4px 16px rgba(239,68,68,0.4)",
+            }}
+          >
+            <PhoneOff className="size-5" />
+            {t("maya_call_end")}
+          </button>
+        </div>
+      )}
 
       {/* Lightbox — visualização em tela cheia das fotos enviadas no chat */}
       {viewerImage && (
