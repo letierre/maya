@@ -74,30 +74,8 @@ export async function POST(req: NextRequest) {
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Invalidate home-message cache so next dashboard load reflects chat conversation.
-  // Awaited — in serverless, fire-and-forget work may be dropped before it completes.
-  await invalidateHomeMessageCache(admin, user.id);
-
+  // NÃO invalida mais o cache da home aqui. A fala da home agora é estável: o
+  // GET /api/maya/home-message compara a conversa recente com a fala atual e só
+  // regenera quando há CONTRADIÇÃO real (a mesma Maya do chat é a da home).
   return NextResponse.json({ saved: rows.length });
-}
-
-// ── Cache invalidation ───────────────────────────────────────────────────
-
-async function invalidateHomeMessageCache(
-  admin: ReturnType<typeof getSupabaseAdmin>,
-  userId: string,
-) {
-  try {
-    const { data } = await admin
-      .from("user_preferences")
-      .select("context")
-      .eq("user_id", userId)
-      .single();
-    if (!data) return;
-    const ctx = { ...(data.context as Record<string, unknown>) };
-    delete ctx.maya_home_message;
-    await admin.from("user_preferences").update({ context: ctx }).eq("user_id", userId);
-  } catch {
-    /* best-effort */
-  }
 }

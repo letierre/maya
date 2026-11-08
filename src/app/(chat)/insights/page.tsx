@@ -12,6 +12,7 @@ import { RecordingWaveform } from "@/components/RecordingWaveform";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
 import { useChatScroll } from "@/hooks/useChatScroll";
 import { compressImage, uploadToCloud, photoUrl } from "@/lib/photo-storage";
+import { markMayaHomeStale } from "@/lib/care-events";
 
 interface Message {
   role: "user" | "assistant";
@@ -592,6 +593,9 @@ export default function MayaChatPage() {
       sendingRef.current = true;
       lastActivityAtRef.current = Date.now();
       setPresence("online");
+      // A conversa pode mudar a fala da home → marca como obsoleta para a home
+      // mostrar "carregando" (em vez da fala antiga) na próxima visita.
+      markMayaHomeStale();
 
       // Persiste a mensagem do usuário (só na 1ª tentativa — evita duplicar no reenvio).
       // client_id + upsert server-side tornam o persist idempotente: um retry de
@@ -772,6 +776,7 @@ export default function MayaChatPage() {
         setMessages((prev) =>
           prev.map((m) => (m.clientId === clientId ? { ...m, ...p } : m)),
         );
+      markMayaHomeStale();
 
       const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
       // Força o scroll pro fim (só no fluxo de voz), aguardando um frame p/ o

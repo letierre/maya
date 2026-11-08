@@ -41,6 +41,49 @@ function detectState(input: {
   return "greeting";
 }
 
+// ── Continuidade inteligente (chat ⇄ home) ──────────────────────────────
+// A mesma Maya do chat é a da home. Mas a fala da home NÃO deve trocar a cada
+// mensagem trocada — só quando a conversa recente realmente a contradiz ou traz
+// algo que a invalida. Esta comparação rápida (Haiku, barata e determinística)
+// decide isso; se falhar, é mais seguro MANTER a fala atual do que regenerar à toa.
+async function chatContradictsHome(
+  homeMessage: string,
+  recentChat: Array<{ role: string; content: string }>,
+  userId: string,
+): Promise<boolean> {
+  const transcript = recentChat
+    .map((m) => `${m.role === "assistant" ? "Maya" : "Usuária(o)"}: ${m.content}`)
+    .join("\n")
+    .slice(0, 3000);
+
+  const system =
+    "Você é a guardiã da continuidade entre o chat da Maya e a fala dela na tela inicial (home). " +
+    "Decida se a conversa recente torna a fala da home desatualizada ou contraditória.";
+
+  const user =
+    `Fala ATUAL da home da Maya:\n"${homeMessage}"\n\n` +
+    `Conversa recente (da mais antiga para a mais nova):\n${transcript}\n\n` +
+    `A fala da home precisa MUDAR porque a conversa a contradiz ou traz informação nova que a invalida ` +
+    `(ex.: a home diz "vai treinar hoje" mas a pessoa acabou de dizer que não vai conseguir)? ` +
+    `Responda SOMENTE "sim" ou "não".`;
+
+  try {
+    const llmPromise = callLLM(system, user, {
+      maxTokens: 3,
+      temperature: 0,
+      feature: "maya_home_continuity",
+      userId,
+    });
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("continuity timeout")), 8000),
+    );
+    const raw = await Promise.race([llmPromise, timeoutPromise]);
+    return /^(sim|yes)\b/i.test(raw.trim());
+  } catch {
+    return false;
+  }
+}
+
 // ── GET ──────────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
@@ -74,17 +117,31 @@ export async function GET(req: NextRequest) {
       | undefined;
 
     if (cached?.date === today && cached.message) {
-      // Continuidade: se a pessoa conversou no chat DEPOIS de esta mensagem
-      // ter sido gerada, regenera — para a Maya da home não contradizer o chat.
-      const { data: latestChat } = await admin
+      // Continuidade inteligente: a mesma Maya do chat é a da home, mas a fala
+      // NÃO deve trocar a cada mensagem trocada. Só regenera se a conversa mais
+      // recente (desde que esta fala foi gerada) realmente a contradiz/desatualiza.
+      const since = cached.generatedAt || new Date(0).toISOString();
+      const { data: recentChat } = await admin
         .from("chat_messages")
-        .select("created_at")
+        .select("role, content, created_at")
         .eq("user_id", user.id)
+        .or("chat_type.is.null,chat_type.eq.maya")
+        .gt("created_at", since)
         .order("created_at", { ascending: false })
-        .limit(1);
-      const lastChatAt = latestChat?.[0]?.created_at;
-      const generatedAt = cached.generatedAt ? new Date(cached.generatedAt).getTime() : 0;
-      if (!lastChatAt || new Date(lastChatAt).getTime() <= generatedAt) {
+        .limit(20);
+
+      const chatSinceGen = (recentChat ?? [])
+        .slice()
+        .reverse()
+        .filter((m) => (m.role === "user" || m.role === "assistant") && m.content);
+
+      if (chatSinceGen.length === 0) {
+        return NextResponse.json({ message: cached.message, state: cached.state });
+      }
+
+      // Comparação rápida (Haiku, barata): a conversa invalida a fala da home?
+      const contradicts = await chatContradictsHome(cached.message, chatSinceGen, user.id);
+      if (!contradicts) {
         return NextResponse.json({ message: cached.message, state: cached.state });
       }
       // senão, cai no fluxo de regeneração abaixo com o contexto do chat fresco
