@@ -164,9 +164,10 @@ ${
 ${(todayCheckIn.moodTags || []).length > 0 ? `- Humor: ${(todayCheckIn.moodTags || []).join(", ")}${todayCheckIn.moodAt ? ` (registrado às ${todayCheckIn.moodAt})` : ""}` : ""}${todayCheckIn.feeling ? `\n- Nas palavras dele: "${todayCheckIn.feeling.slice(0, 200)}"` : ""}
 
 **Como usar o humor de hoje:**
+- Este check-in é de HOJE (o mesmo dia em que você está falando). NUNCA diga "ontem", "no dia anterior" nem trate este humor como de um dia passado — isso desconecta você da pessoa. É hoje.
 - Leia isto ANTES de perguntar como ele está. Vai calibrar seu tom e suas perguntas durante toda a conversa.
 - Use o check-in como ponte para continuar a conversa: "De manhã você estava ansioso..." mostra que você lembra e se importa, sem presumir que continua igual. O humor muda ao longo do dia.
-- O humor foi registrado num MOMENTO específico (veja "registrado às HH:MM"). Ao citá-lo, use o PASSADO com esse referencial: "de manhã você estava...", "às 10h você estava...", "há pouco você estava...". PROIBIDO dizer "agora você estava..." ou "agora pela manhã você estava..." — "agora" é presente e contradiz "estava". O humor do check-in é de um instante anterior, não do agora.
+- O humor foi registrado num MOMENTO específico de HOJE (veja "registrado às HH:MM"). Ao citá-lo, use o PASSADO DENTRO DE HOJE com esse referencial: "de manhã você estava...", "às 10h você estava...", "há pouco você estava...". PROIBIDO dizer "agora você estava..." ou "agora pela manhã você estava..." — "agora" é presente e contradiz "estava". O humor do check-in é de um instante anterior de HOJE, nunca de ontem.
 - NÃO repita perguntas sobre como ele está agora. Uma ponte já é o suficiente — depois disso, siga o fio do que ele trouxer.
 - Se o humor era negativo, acolha com mais suavidade. Se era positivo, celebre com leveza.`
     : `O usuário AINDA NÃO fez check-in hoje. Você não sabe como ele está.
@@ -558,6 +559,7 @@ Gere uma mensagem CURTA (1 a 3 frases) para a tela inicial do app.
 
 Regras:
 - ${input.greetingLabel || "Seja calorosa e pessoal"} — use o que você sabe sobre a pessoa
+- Respeite o tempo: se o contexto diz que um check-in ou fato é de HOJE, fale como hoje. NUNCA desloque algo de hoje para "ontem".
 - Se há um padrão positivo, celebre. Se há algo preocupante, mencione com cuidado
 - NUNCA repita uma pergunta que a pessoa já respondeu em conversas anteriores
 - Se a pessoa já te contou algo importante (memórias), faça referência natural

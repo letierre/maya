@@ -278,7 +278,7 @@ async function regenerateHomeMessage(opts: {
   let usedFallback = false;
 
   try {
-    const llmPromise = callLLM(system, userPrompt, { maxTokens: 150, temperature: 0.75, feature: "maya_home", userId });
+    const llmPromise = callLLM(system, userPrompt, { maxTokens: 150, temperature: 0.75, model: "claude-sonnet-5", feature: "maya_home", userId });
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("LLM timeout")), 12000),
     );
