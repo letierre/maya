@@ -11,6 +11,7 @@
   "dependencies": {
     "@11labs/react": "^0.2.0",
     "@base-ui/react": "^1.4.1",
+    "@elevenlabs/client": "npm:@11labs/client@0.2.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "@types/web-push": "^3.6.4",
