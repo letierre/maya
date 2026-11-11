@@ -2,7 +2,7 @@
 import { getLocale, getLanguage } from "@/lib/language";
 import { useTranslation } from "@/lib/useTranslation";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Play, Square, Timer, Footprints, Zap, ChevronLeft, Share2, Lock } from "lucide-react";
@@ -11,8 +11,8 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { emitCareDataChanged, emitRunLockChanged } from "@/lib/care-events";
 
-interface Coord { lat: number; lng: number; timestamp: number; }
-interface Session { id: string; start_time: string; end_time: string | null; distance_meters: number; duration_seconds: number; avg_pace: number | null; max_speed: number | null; calories_estimate: number | null; notes: string | null; route_coordinates: Coord[]; map_snapshot: string | null; }
+interface Coord { lat: number; lng: number; timestamp: number; alt?: number; }
+interface Session { id: string; start_time: string; end_time: string | null; distance_meters: number; duration_seconds: number; avg_pace: number | null; max_speed: number | null; calories_estimate: number | null; notes: string | null; route_coordinates: Coord[]; map_snapshot: string | null; elevation_gain_m: number | null; steps: number | null; avg_cadence: number | null; }
 
 function formatPace(secPerKm: number): string {
   if (!secPerKm || secPerKm <= 0) return "--";
@@ -47,6 +47,19 @@ const AUTO_PAUSE_MS = 5000;    // ms
 // Usa o peso do perfil quando informado; senão 70 kg como padrão.
 const DEFAULT_WEIGHT_KG = 70;
 const CAL_KCAL_PER_KG_KM = 1.036;
+
+// Ganho de elevação (GPS): soma das subidas reais, com média móvel para filtrar
+// o ruído vertical do sinal. Delta abaixo de ELEV_MIN_DELTA é ignorado; acima de
+// ELEV_MAX_DELTA é descartado como salto espúrio.
+const ELEV_MIN_DELTA = 3;  // m — só conta subida acima disso
+const ELEV_MAX_DELTA = 40; // m — descarta saltos absurdos entre amostras
+const ELEV_WINDOW = 5;     // amostras da média móvel da altitude
+
+// Cadência (passos por minuto) via acelerômetro (DeviceMotion). Um passo é o
+// pico do balanço cruzando o limiar depois de ter caído abaixo do "vale".
+const STEP_ACCEL_THRESHOLD = 11.5; // m/s² — pico de um passo
+const STEP_ACCEL_VALLEY = 9.5;     // m/s² — precisa cair abaixo antes do próximo
+const STEP_MIN_MS = 250;           // debounce entre passos
 
 // ── Helpers de canvas para o compartilhamento (PNG estilo Roda da Vida) ──
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -88,11 +101,15 @@ export default function CorridaPage() {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const watchId = useRef<number | null>(null);
   const routeLineRef = useRef<mapboxgl.GeoJSONSource | null>(null);
-  const runStats = useRef<{ totalDist: number; maxSpeed: number; startedAt: number; accumulatedMs: number; activeSince: number | null; movingAccumulatedMs: number; movingSince: number | null } | null>(null);
+  const runStats = useRef<{ totalDist: number; maxSpeed: number; startedAt: number; accumulatedMs: number; activeSince: number | null; movingAccumulatedMs: number; movingSince: number | null; elevationGain: number; steps: number } | null>(null);
   const pointsRef = useRef<Coord[]>([]);
   const lastPointRef = useRef<Coord | null>(null);
   const paceWindowRef = useRef<{ t: number; dist: number }[]>([]);
   const stoppedSinceRef = useRef<number | null>(null);
+  const lastElevationRef = useRef<number | null>(null);
+  const elevationWindowRef = useRef<number[]>([]);
+  const cadencePeakRef = useRef(false);
+  const cadenceLastStepAtRef = useRef(0);
   const goalReachedRef = useRef(false);
   const coachAudioRef = useRef<HTMLAudioElement | null>(null);
   const coachRef = useRef<{ intro: string; km: string[] } | null>(null);
@@ -145,6 +162,45 @@ export default function CorridaPage() {
       a.src = photoUrl(path) || path;
       a.play().catch(() => { /* autoplay bloqueado — ignora */ });
     } catch { /* noop */ }
+  };
+
+  // Cadência (passos por minuto) via acelerômetro. O pico do balanço cruza o
+  // limiar depois de ter caído abaixo do "vale" — conta um passo por oscilação.
+  const onDeviceMotion = useCallback((e: DeviceMotionEvent) => {
+    const a = e.accelerationIncludingGravity || e.acceleration;
+    if (!a) return;
+    const mag = Math.sqrt((a.x || 0) ** 2 + (a.y || 0) ** 2 + (a.z || 0) ** 2);
+    const stats = runStats.current;
+    // Só conta passos em movimento (ignora pausas e segundo plano)
+    if (!stats || stats.movingSince == null) { cadencePeakRef.current = false; return; }
+    const now = Date.now();
+    if (mag > STEP_ACCEL_THRESHOLD && cadencePeakRef.current) {
+      if (now - cadenceLastStepAtRef.current > STEP_MIN_MS) {
+        stats.steps += 1;
+        cadenceLastStepAtRef.current = now;
+        cadencePeakRef.current = false;
+      }
+    } else if (mag < STEP_ACCEL_VALLEY) {
+      cadencePeakRef.current = true;
+    }
+  }, []);
+
+  const enableMotion = () => {
+    try { window.addEventListener("devicemotion", onDeviceMotion); } catch { /* noop */ }
+  };
+  const disableMotion = () => {
+    try { window.removeEventListener("devicemotion", onDeviceMotion); } catch { /* noop */ }
+  };
+  // iOS 13+ pede permissão de DeviceMotion dentro de um gesto do usuário.
+  const startMotionTracking = async () => {
+    try {
+      const DME = (window as any).DeviceMotionEvent;
+      if (DME && typeof DME.requestPermission === "function") {
+        const state = await DME.requestPermission();
+        if (state !== "granted") return;
+      }
+      enableMotion();
+    } catch { /* sem suporte a motion */ }
   };
 
   // Init map — cria imediatamente (sem aguardar geolocalização) e recentraliza depois
@@ -216,6 +272,7 @@ export default function CorridaPage() {
     }
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (syncTimerRef.current) { clearInterval(syncTimerRef.current); syncTimerRef.current = null; }
+    disableMotion();
     releaseWakeLock();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -225,6 +282,30 @@ export default function CorridaPage() {
     const stats = runStats.current;
     if (!stats) return 0;
     return stats.movingAccumulatedMs + (stats.movingSince != null ? Date.now() - stats.movingSince : 0);
+  };
+
+  // Registra a altitude do GPS e acumula o ganho de elevação (subidas reais,
+  // suavizadas por média móvel para filtrar o ruído vertical do sinal).
+  const recordAltitude = (alt: number) => {
+    const win = elevationWindowRef.current;
+    win.push(alt);
+    if (win.length > ELEV_WINDOW) win.shift();
+    if (win.length < ELEV_WINDOW) return;
+    const mean = win.reduce((a, b) => a + b, 0) / win.length;
+    const last = lastElevationRef.current;
+    if (last != null && runStats.current) {
+      const delta = mean - last;
+      if (delta > ELEV_MIN_DELTA && delta < ELEV_MAX_DELTA) runStats.current.elevationGain += delta;
+    }
+    lastElevationRef.current = mean;
+  };
+
+  // Cadência atual (passos por minuto) a partir dos passos acumulados em movimento.
+  const currentCadence = () => {
+    const stats = runStats.current;
+    if (!stats || stats.steps <= 0) return null;
+    const min = movingElapsedMs() / 60000;
+    return min >= 1 ? Math.round(stats.steps / min) : null;
   };
 
   // GPS tracking
@@ -237,6 +318,8 @@ export default function CorridaPage() {
         startedAt: stats.startedAt,
         totalDist: stats.totalDist,
         maxSpeed: stats.maxSpeed,
+        elevationGain: stats.elevationGain,
+        steps: stats.steps,
         coords: pointsRef.current,
         activeElapsedMs: movingElapsedMs(),
       }));
@@ -260,6 +343,9 @@ export default function CorridaPage() {
         duration_seconds: duration,
         avg_pace: avgPace ? Math.round(avgPace) : null,
         max_speed: Math.round(stats.maxSpeed * 10) / 10,
+        elevation_gain_m: Math.round(stats.elevationGain),
+        steps: stats.steps,
+        avg_cadence: currentCadence(),
         route_coordinates: pointsRef.current,
       }),
     }).catch(() => { /* rede falhou — localStorage ainda segura */ });
@@ -290,7 +376,9 @@ export default function CorridaPage() {
         // Ignora fixos imprecisos (GPS indoor/sinal fraco) que inflam a distância parado
         if (pos.coords.accuracy != null && pos.coords.accuracy > 20) return;
 
-        const pt: Coord = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
+        const alt = pos.coords.altitude != null && Number.isFinite(pos.coords.altitude) ? pos.coords.altitude : null;
+        const pt: Coord = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now(), ...(alt != null ? { alt } : {}) };
+        if (alt != null) recordAltitude(alt);
         if (pos.coords.speed != null) {
           const kmh = pos.coords.speed * 3.6;
           // Descarta velocidades absurdas (falha de sinal) que inflam a máxima
@@ -372,6 +460,7 @@ export default function CorridaPage() {
     nextCoachKmRef.current = 1;
     coachIdxRef.current = 0;
     if (coachRef.current?.intro) playCoach(coachRef.current.intro);
+    startMotionTracking(); // pede permissão de movimento ainda dentro do gesto do toque
 
     // Cria a sessão no servidor (end_time NULL) — o banco vira a fonte da verdade
     let id: string | null = null;
@@ -387,13 +476,17 @@ export default function CorridaPage() {
     sessionIdRef.current = id;
 
     setRunning(true); setPaused(false); setAutoPaused(false); setStartTime(new Date()); setDistance(0); setElapsed(0); setPace(0); setSpeed(0);
-    runStats.current = { totalDist: 0, maxSpeed: 0, startedAt: Date.now(), accumulatedMs: 0, activeSince: Date.now(), movingAccumulatedMs: 0, movingSince: Date.now() };
+    runStats.current = { totalDist: 0, maxSpeed: 0, startedAt: Date.now(), accumulatedMs: 0, activeSince: Date.now(), movingAccumulatedMs: 0, movingSince: Date.now(), elevationGain: 0, steps: 0 };
     pointsRef.current = [];
     lastPointRef.current = null;
     paceWindowRef.current = [];
     stoppedSinceRef.current = null;
     goalReachedRef.current = false;
     gpsErrorShownRef.current = false;
+    lastElevationRef.current = null;
+    elevationWindowRef.current = [];
+    cadencePeakRef.current = false;
+    cadenceLastStepAtRef.current = 0;
     persistSnapshot();
     beginTracking();
     startSyncInterval();
@@ -450,12 +543,12 @@ export default function CorridaPage() {
     let cancelled = false;
     const MAX_AGE = 24 * 60 * 60 * 1000; // 24h — acima disso é corrida abandonada
 
-    const resume = (snap: { sessionId: string | null; startedAt: number; totalDist: number; maxSpeed: number; coords: Coord[]; activeElapsedMs?: number }) => {
+    const resume = (snap: { sessionId: string | null; startedAt: number; totalDist: number; maxSpeed: number; elevationGain?: number; steps?: number; coords: Coord[]; activeElapsedMs?: number }) => {
       sessionIdRef.current = snap.sessionId || null;
       // Restaura SEMPRE como pausada: o tempo fora do app (segundo plano/cold start)
       // não deve ser contado — o usuário toca em "Retomar" para continuar.
       const activeMs = typeof snap.activeElapsedMs === "number" ? snap.activeElapsedMs : 0;
-      runStats.current = { totalDist: snap.totalDist || 0, maxSpeed: snap.maxSpeed || 0, startedAt: snap.startedAt, accumulatedMs: activeMs, activeSince: null, movingAccumulatedMs: activeMs, movingSince: null };
+      runStats.current = { totalDist: snap.totalDist || 0, maxSpeed: snap.maxSpeed || 0, startedAt: snap.startedAt, accumulatedMs: activeMs, activeSince: null, movingAccumulatedMs: activeMs, movingSince: null, elevationGain: snap.elevationGain || 0, steps: snap.steps || 0 };
       pointsRef.current = Array.isArray(snap.coords) ? snap.coords : [];
       lastPointRef.current = pointsRef.current.length ? pointsRef.current[pointsRef.current.length - 1] : null;
       stoppedSinceRef.current = null;
@@ -473,10 +566,10 @@ export default function CorridaPage() {
       try { raw = localStorage.getItem(RUN_KEY); } catch { return; }
       if (!raw) return;
       try {
-        const snap = JSON.parse(raw) as { sessionId?: string | null; startedAt: number; totalDist: number; maxSpeed: number; coords: Coord[]; activeElapsedMs?: number };
+        const snap = JSON.parse(raw) as { sessionId?: string | null; startedAt: number; totalDist: number; maxSpeed: number; elevationGain?: number; steps?: number; coords: Coord[]; activeElapsedMs?: number };
         if (!snap?.startedAt) return;
         if (Date.now() - snap.startedAt > MAX_AGE) { try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ } return; }
-        resume({ sessionId: snap.sessionId || null, startedAt: snap.startedAt, totalDist: snap.totalDist || 0, maxSpeed: snap.maxSpeed || 0, coords: snap.coords || [], activeElapsedMs: snap.activeElapsedMs });
+        resume({ sessionId: snap.sessionId || null, startedAt: snap.startedAt, totalDist: snap.totalDist || 0, maxSpeed: snap.maxSpeed || 0, elevationGain: snap.elevationGain, steps: snap.steps, coords: snap.coords || [], activeElapsedMs: snap.activeElapsedMs });
         // Se o id se perdeu, recria a sessão no servidor
         if (!snap.sessionId) {
           fetch("/api/running", {
@@ -508,6 +601,8 @@ export default function CorridaPage() {
             startedAt: new Date(active.start_time).getTime(),
             totalDist: active.distance_meters || 0,
             maxSpeed: active.max_speed || 0,
+            elevationGain: active.elevation_gain_m || 0,
+            steps: active.steps || 0,
             coords: Array.isArray(active.route_coordinates) ? active.route_coordinates : [],
             activeElapsedMs: (active.duration_seconds || 0) * 1000,
           });
@@ -568,6 +663,7 @@ export default function CorridaPage() {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (syncTimerRef.current) { clearInterval(syncTimerRef.current); syncTimerRef.current = null; }
     releaseWakeLock();
+    disableMotion();
     try { coachAudioRef.current?.pause(); } catch { /* noop */ }
     setRunning(false);
     setPaused(false);
@@ -591,6 +687,9 @@ export default function CorridaPage() {
     setSaving(true);
     const avgPace = dist > 10 ? duration / (dist / 1000) : 0;
     const calories = Math.round(weightKg * (dist / 1000) * CAL_KCAL_PER_KG_KM);
+    const elevationGain = stats ? Math.round(stats.elevationGain) : 0;
+    const steps = stats ? stats.steps : 0;
+    const avgCadence = currentCadence();
     const startedIso = startTime ? startTime.toISOString() : new Date().toISOString();
 
     // Melhor esforço: captura uma foto do mapa com o trajeto para o usuário compartilhar (ex.: Stories)
@@ -608,6 +707,9 @@ export default function CorridaPage() {
         avg_pace: Math.round(avgPace),
         max_speed: maxSpeed,
         calories_estimate: calories,
+        elevation_gain_m: elevationGain,
+        steps,
+        avg_cadence: avgCadence,
         route_coordinates: pointsRef.current,
         map_snapshot: mapSnapshotPath,
       };
@@ -642,6 +744,9 @@ export default function CorridaPage() {
           avg_pace: Math.round(avgPace),
           max_speed: maxSpeed,
           calories_estimate: calories,
+          elevation_gain_m: elevationGain,
+          steps,
+          avg_cadence: avgCadence,
           notes: null,
           route_coordinates: pointsRef.current,
           map_snapshot: mapSnapshotPath,
@@ -771,6 +876,8 @@ export default function CorridaPage() {
         { label: t("co_ritmo_medio"), value: formatPace(s.avg_pace || 0) },
         { label: t("co_velocidade_max"), value: s.max_speed ? `${s.max_speed.toFixed(1)} km/h` : "--" },
         { label: t("co_calorias"), value: s.calories_estimate ? `≈ ${s.calories_estimate} kcal` : "--" },
+        { label: t("co_elevacao"), value: s.elevation_gain_m ? `+${Math.round(s.elevation_gain_m)} m` : "--" },
+        { label: t("co_cadencia"), value: s.avg_cadence ? String(s.avg_cadence) : "--" },
       ];
       const gap = 20, cellW = (mapW - 80 - gap) / 2, cellH = 120, gridTop = statsY + 104;
       const rows = Math.ceil(stats.length / 2);
@@ -1059,6 +1166,8 @@ export default function CorridaPage() {
               <StatBox label={t("co_tempo")} value={formatDuration(selectedSession.duration_seconds)} />
               <StatBox label={t("co_ritmo_medio")} value={formatPace(selectedSession.avg_pace || 0)} />
               <StatBox label={t("co_velocidade_max")} value={selectedSession.max_speed ? `${selectedSession.max_speed.toFixed(1)} km/h` : "--"} />
+              <StatBox label={t("co_elevacao")} value={selectedSession.elevation_gain_m ? `+${Math.round(selectedSession.elevation_gain_m)} m` : "--"} />
+              <StatBox label={t("co_cadencia")} value={selectedSession.avg_cadence ? String(selectedSession.avg_cadence) : "--"} />
               <div style={{ gridColumn: "1 / -1" }}>
                 <StatBox label={t("co_calorias")} value={selectedSession.calories_estimate ? `≈ ${selectedSession.calories_estimate} kcal` : "--"} />
               </div>
