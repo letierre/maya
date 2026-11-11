@@ -29,6 +29,13 @@ function formatDuration(sec: number): string {
   return `${m}min ${s}s`;
 }
 
+function formatPaceShort(secPerKm: number): string {
+  if (!secPerKm || secPerKm <= 0) return "--";
+  const m = Math.floor(secPerKm / 60);
+  const s = Math.floor(secPerKm % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 const RUN_KEY = "maya_running_session";
 
 // Pausa automática: parado (GPS sem deslocamento) por alguns segundos congela o tempo.
@@ -755,6 +762,9 @@ export default function CorridaPage() {
   useEffect(() => { emitRunLockChanged(locked); }, [locked]);
   useEffect(() => () => emitRunLockChanged(false), []);
 
+  // Parciais por km da corrida selecionada (para o gráfico de ritmo)
+  const detailSplits = selectedSession ? computeSplits(selectedSession.route_coordinates || []) : [];
+
   return (
     <div style={{ height: "100dvh", background: "#0B0B10", position: "relative", overflow: "hidden" }}>
       {/* Header flutuante sobre o mapa */}
@@ -900,6 +910,13 @@ export default function CorridaPage() {
               <StatBox label={t("co_velocidade_max")} value={selectedSession.max_speed ? `${selectedSession.max_speed.toFixed(1)} km/h` : "--"} />
             </div>
 
+            {detailSplits.length >= 2 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: "#9e96b5", fontWeight: 600, marginBottom: 10 }}>{t("co_ritmo_por_km")}</div>
+                <PaceChart splits={detailSplits} />
+              </div>
+            )}
+
             <button type="button" onClick={() => setShowSharePicker(true)} disabled={sharing}
               style={{ width: "100%", padding: "12px", borderRadius: 12, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10, opacity: sharing ? 0.5 : 1 }}>
               <Share2 size={16} />
@@ -975,6 +992,25 @@ function StatBox({ label, value }: { label: string; value: string }) {
   );
 }
 
+function PaceChart({ splits }: { splits: Split[] }) {
+  const speeds = splits.map(s => 3600 / Math.max(1, s.paceSecPerKm));
+  const maxSpeed = Math.max(...speeds, 1);
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 132, padding: "0 2px" }}>
+      {splits.map((s, i) => {
+        const h = Math.round((speeds[i] / maxSpeed) * 92);
+        return (
+          <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 5, height: "100%" }}>
+            <span style={{ fontSize: 8, color: "#A78BFA", fontWeight: 700, whiteSpace: "nowrap" }}>{formatPaceShort(s.paceSecPerKm)}</span>
+            <div style={{ width: "100%", maxWidth: 24, height: Math.max(6, h), borderRadius: 6, background: s.partial ? "rgba(167,139,250,0.35)" : "#7C5CFF", boxShadow: "0 2px 8px rgba(124,92,255,0.25)" }} />
+            <span style={{ fontSize: 8, color: "#5a5470", whiteSpace: "nowrap" }}>{s.distKm < 1 ? `${s.distKm.toFixed(1)}km` : `${s.distKm.toFixed(0)}km`}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // Haversine formula for distance between two GPS points
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000; // Earth radius in meters
@@ -982,6 +1018,33 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
   const dLng = (lng2 - lng1) * Math.PI / 180;
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+interface Split { distKm: number; sec: number; paceSecPerKm: number; partial?: boolean; }
+
+// Divide a corrida em parciais por km usando as coordenadas com timestamp.
+function computeSplits(coords: Coord[]): Split[] {
+  const out: Split[] = [];
+  if (!coords || coords.length < 2) return out;
+  let cum = 0; // metros acumulados
+  let startT = coords[0].timestamp;
+  let nextKm = 1;
+  for (let i = 1; i < coords.length; i++) {
+    cum += haversine(coords[i - 1].lat, coords[i - 1].lng, coords[i].lat, coords[i].lng);
+    if (cum >= nextKm * 1000) {
+      const sec = (coords[i].timestamp - startT) / 1000;
+      out.push({ distKm: 1, sec, paceSecPerKm: sec });
+      startT = coords[i].timestamp;
+      nextKm++;
+    }
+  }
+  // Última parcial (restante inferior a 1 km), com ritmo extrapolado
+  const rest = cum - (nextKm - 1) * 1000;
+  if (rest > 100) {
+    const sec = (coords[coords.length - 1].timestamp - startT) / 1000;
+    if (sec > 3) out.push({ distKm: rest / 1000, sec, paceSecPerKm: sec / (rest / 1000), partial: true });
+  }
+  return out;
 }
 
 // Projeta as coordenadas da corrida num retângulo (x,y) preservando a proporção,
