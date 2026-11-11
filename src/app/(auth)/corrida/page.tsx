@@ -50,16 +50,6 @@ function drawRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
 }
 
-function drawImageCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, r: number) {
-  ctx.save();
-  drawRoundRect(ctx, x, y, w, h, r);
-  ctx.clip();
-  const scale = Math.max(w / img.width, h / img.height);
-  const dw = img.width * scale, dh = img.height * scale;
-  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
-  ctx.restore();
-}
-
 export default function CorridaPage() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -72,7 +62,10 @@ export default function CorridaPage() {
   const lastPointRef = useRef<Coord | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const gpsErrorShownRef = useRef(false);
+  const wakeLockRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -90,6 +83,16 @@ export default function CorridaPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [confirmStop, setConfirmStop] = useState(false);
+  const [showSharePicker, setShowSharePicker] = useState(false);
+
+  // Mantém a tela acesa durante a corrida ativa (iOS suspende o app se a tela dormir)
+  const requestWakeLock = async () => {
+    if (!("wakeLock" in navigator)) return;
+    try { wakeLockRef.current = await (navigator as any).wakeLock.request("screen"); } catch { /* baixa bateria / não suportado */ }
+  };
+  const releaseWakeLock = async () => {
+    try { if (wakeLockRef.current) { await wakeLockRef.current.release(); wakeLockRef.current = null; } } catch { /* noop */ }
+  };
 
   // Init map — cria imediatamente (sem aguardar geolocalização) e recentraliza depois
   useEffect(() => {
@@ -150,10 +153,12 @@ export default function CorridaPage() {
   useEffect(() => () => {
     if (watchId.current) {
       navigator.geolocation.clearWatch(watchId.current);
-      clearInterval((watchId as any).timer);
       watchId.current = null;
     }
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (syncTimerRef.current) { clearInterval(syncTimerRef.current); syncTimerRef.current = null; }
+    releaseWakeLock();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Tempo ATIVO acumulado (exclui períodos pausados/em segundo plano)
@@ -255,7 +260,7 @@ export default function CorridaPage() {
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
     );
     watchId.current = id as unknown as number;
-    (watchId as any).timer = timer;
+    timerRef.current = timer;
   };
 
   const startRun = async () => {
@@ -282,6 +287,7 @@ export default function CorridaPage() {
     persistSnapshot();
     beginTracking();
     startSyncInterval();
+    requestWakeLock();
     toast.info(t("co_aviso_pausa"), { duration: 6000 });
   };
 
@@ -297,10 +303,11 @@ export default function CorridaPage() {
     }
     if (watchId.current) {
       navigator.geolocation.clearWatch(watchId.current);
-      clearInterval((watchId as any).timer);
       watchId.current = null;
     }
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (syncTimerRef.current) { clearInterval(syncTimerRef.current); syncTimerRef.current = null; }
+    releaseWakeLock();
     setPaused(true);
     setElapsed(Math.floor(stats.accumulatedMs / 1000));
     persistSnapshot();
@@ -316,6 +323,7 @@ export default function CorridaPage() {
     setPaused(false);
     beginTracking();
     startSyncInterval();
+    requestWakeLock();
   };
 
   // Restaura uma corrida ativa: 1) servidor (fonte da verdade) → 2) localStorage (cache)
@@ -435,8 +443,10 @@ export default function CorridaPage() {
   };
 
   const stopRun = async () => {
-    if (watchId.current) { navigator.geolocation.clearWatch(watchId.current); clearInterval((watchId as any).timer); watchId.current = null; }
+    if (watchId.current) { navigator.geolocation.clearWatch(watchId.current); watchId.current = null; }
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (syncTimerRef.current) { clearInterval(syncTimerRef.current); syncTimerRef.current = null; }
+    releaseWakeLock();
     setRunning(false);
     setPaused(false);
     try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ }
@@ -543,8 +553,9 @@ export default function CorridaPage() {
     setDeleting(false);
   };
 
-  // Monta uma imagem de compartilhamento (mapa completo + estatísticas) no estilo Roda da Vida
-  const shareRun = async () => {
+  // Monta a imagem de compartilhamento: foto de fundo (ou degradê escuro) + percurso
+  // desenhado só em linhas + estatísticas da corrida.
+  const doShare = async (bgUrl: string | null) => {
     const s = selectedSession;
     if (!s) return;
     setSharing(true);
@@ -557,11 +568,24 @@ export default function CorridaPage() {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
 
-      // 1. Fundo escuro + vinheta
-      ctx.fillStyle = "#0F0F14"; ctx.fillRect(0, 0, W, H);
-      const vg = ctx.createRadialGradient(W / 2, H * 0.35, W * 0.3, W / 2, H * 0.55, W * 0.95);
-      vg.addColorStop(0, "transparent"); vg.addColorStop(1, "rgba(0,0,0,0.5)");
-      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+      // 1. Fundo: foto escolhida (cover) ou degradê escuro
+      let hasBg = false;
+      if (bgUrl) {
+        try {
+          const bg = await loadImage(bgUrl);
+          const scale = Math.max(W / bg.width, H / bg.height);
+          const dw = bg.width * scale, dh = bg.height * scale;
+          ctx.drawImage(bg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+          ctx.fillStyle = "rgba(0,0,0,0.28)"; ctx.fillRect(0, 0, W, H);
+          hasBg = true;
+        } catch { /* segue sem foto */ }
+      }
+      if (!hasBg) {
+        ctx.fillStyle = "#0F0F14"; ctx.fillRect(0, 0, W, H);
+        const vg = ctx.createRadialGradient(W / 2, H * 0.35, W * 0.3, W / 2, H * 0.55, W * 0.95);
+        vg.addColorStop(0, "transparent"); vg.addColorStop(1, "rgba(0,0,0,0.5)");
+        ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+      }
 
       // 2. Header — avatar Maya + MAYA APP (alinhados verticalmente, mesmo offset da Roda da Vida)
       let avatar: HTMLImageElement | null = null;
@@ -587,16 +611,25 @@ export default function CorridaPage() {
       ctx.fillStyle = "#A0A0B3"; ctx.font = "400 28px Inter, system-ui, sans-serif";
       ctx.fillText(dateStr, W / 2, titleY + 50);
 
-      // 5. Mapa (trajeto completo)
+      // 5. Percurso — só as linhas (transparente), sem mapa de fundo
       const mapX = 90, mapY = titleY + 110, mapW = W - 180, mapH = 700;
-      const mapUrl = photoUrl(s.map_snapshot);
-      if (mapUrl) {
-        try {
-          const mapImg = await loadImage(mapUrl);
-          drawImageCover(ctx, mapImg, mapX, mapY, mapW, mapH, 32);
-          ctx.strokeStyle = "rgba(167,139,250,0.25)"; ctx.lineWidth = 2;
-          drawRoundRect(ctx, mapX, mapY, mapW, mapH, 32); ctx.stroke();
-        } catch { /* sem mapa */ }
+      const pts = projectRoute(s.route_coordinates || [], mapX, mapY, mapW, mapH, 60);
+      if (pts.length >= 2) {
+        ctx.save();
+        ctx.beginPath();
+        pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+        ctx.strokeStyle = "#7C5CFF";
+        ctx.lineWidth = 14; ctx.lineCap = "round"; ctx.lineJoin = "round";
+        ctx.shadowColor = "rgba(124,92,255,0.9)"; ctx.shadowBlur = 24;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = "rgba(255,255,255,0.9)";
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        // início (verde) e fim (vermelho)
+        ctx.fillStyle = "#22D18B"; ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 13, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#FF4D4D"; ctx.beginPath(); ctx.arc(pts[pts.length - 1].x, pts[pts.length - 1].y, 13, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
       }
 
       // 6. Card de estatísticas
@@ -649,6 +682,15 @@ export default function CorridaPage() {
     setSharing(false);
   };
 
+  const onSharePhotoPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { setShowSharePicker(false); doShare(reader.result as string); };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   // Tela "travada" durante a corrida ativa: esconde navegação e controles extras
   // para o celular no bolso não disparar toques acidentais.
   const locked = running && !paused;
@@ -659,43 +701,43 @@ export default function CorridaPage() {
   useEffect(() => () => emitRunLockChanged(false), []);
 
   return (
-    <div style={{ height: "100dvh", background: "#0B0B10", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
-      <div style={{ padding: "22px 16px", display: "flex", alignItems: "center", gap: 12, zIndex: 10, background: "#0B0B10" }}>
+    <div style={{ height: "100dvh", background: "#0B0B10", position: "relative", overflow: "hidden" }}>
+      {/* Header flutuante sobre o mapa */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, padding: "calc(env(safe-area-inset-top) + 12px) 16px 12px", display: "flex", alignItems: "center", gap: 10, background: "linear-gradient(to bottom, rgba(11,11,16,0.92) 0%, rgba(11,11,16,0.55) 60%, rgba(11,11,16,0) 100%)" }}>
         {locked ? (
           <span style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", color: "#5a5470" }}>
             <Lock size={16} />
           </span>
         ) : (
-          <button type="button" onClick={() => router.push("/dashboard")} style={{ width: 36, height: 36, borderRadius: "50%", background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#A78BFA" }}>
+          <button type="button" onClick={() => showHistory ? setShowHistory(false) : router.push("/dashboard")} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(26,21,48,0.85)", border: "1px solid rgba(167,139,250,0.25)", backdropFilter: "blur(8px)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#A78BFA" }}>
             <ChevronLeft size={18} />
           </button>
         )}
         <div style={{ flex: 1 }}>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>{t("co_titulo")}</h1>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff", textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}>{showHistory ? t("co_historico") : t("co_titulo")}</h1>
         </div>
-        {!locked && (
-          <button type="button" onClick={() => setShowHistory(!showHistory)}
-            style={{ padding: "6px 12px", borderRadius: 9999, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#A78BFA", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-            {showHistory ? t("co_mapa") : t("co_historico")}
+        {!locked && !showHistory && (
+          <button type="button" onClick={() => setShowHistory(true)}
+            style={{ padding: "8px 14px", borderRadius: 9999, border: "1px solid rgba(167,139,250,0.25)", background: "rgba(26,21,48,0.85)", backdropFilter: "blur(8px)", color: "#A78BFA", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+            {t("co_historico")}
           </button>
         )}
       </div>
 
-      {/* Stats bar */}
+      {/* Stats flutuante sobre o mapa */}
       {!showHistory && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1, background: "rgba(167,139,250,0.1)", padding: 2, margin: "0 12px", borderRadius: 14, marginBottom: 8 }}>
+        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top) + 66px)", left: 12, right: 12, zIndex: 20, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           <StatChip icon={<Timer size={14} />} label={t("co_tempo")} value={running ? formatDuration(elapsed) : "--"} />
           <StatChip icon={<Footprints size={14} />} label={t("co_distancia")} value={running ? `${(distance / 1000).toFixed(2)} km` : "--"} />
           <StatChip icon={<Zap size={14} />} label={t("co_ritmo")} value={running ? formatPace(pace) : "--"} />
         </div>
       )}
 
-      {/* Map (sempre montado — o histórico sobrepõe, para não recriar o mapa) */}
-      <div style={{ position: "relative", flex: 1, minHeight: 300 }}>
+      {/* Mapa em tela cheia (sempre montado — o histórico sobrepõe, para não recriar o mapa) */}
+      <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
         <div ref={mapContainer} style={{ position: "absolute", inset: 0 }} />
         {running && paused && (
-          <div style={{ position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 5, padding: "8px 16px", borderRadius: 9999, background: "rgba(34,209,139,0.15)", border: "1px solid rgba(34,209,139,0.4)" }}>
+          <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top) + 122px)", left: "50%", transform: "translateX(-50%)", zIndex: 5, padding: "8px 16px", borderRadius: 9999, background: "rgba(34,209,139,0.15)", border: "1px solid rgba(34,209,139,0.4)" }}>
             <span style={{ color: "#22D18B", fontSize: 12, fontWeight: 700 }}>{t("co_pausado")}</span>
           </div>
         )}
@@ -705,9 +747,9 @@ export default function CorridaPage() {
           </div>
         )}
 
-        {/* History overlay */}
+        {/* History overlay (tela cheia) */}
         {showHistory && (
-          <div style={{ position: "absolute", inset: 0, overflowY: "auto", padding: "0 16px", background: "#0B0B10", zIndex: 5 }}>
+          <div style={{ position: "absolute", inset: 0, overflowY: "auto", padding: "calc(env(safe-area-inset-top) + 64px) 16px 20px", background: "#0B0B10", zIndex: 5 }}>
             {history.length === 0 ? (
               <p style={{ textAlign: "center", color: "#9e96b5", padding: 40 }}>{t("co_nenhuma_corrida")}</p>
             ) : history.map(s => (
@@ -798,7 +840,7 @@ export default function CorridaPage() {
               <StatBox label={t("co_velocidade_max")} value={selectedSession.max_speed ? `${selectedSession.max_speed.toFixed(1)} km/h` : "--"} />
             </div>
 
-            <button type="button" onClick={shareRun} disabled={sharing}
+            <button type="button" onClick={() => setShowSharePicker(true)} disabled={sharing}
               style={{ width: "100%", padding: "12px", borderRadius: 12, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10, opacity: sharing ? 0.5 : 1 }}>
               <Share2 size={16} />
               {sharing ? t("co_preparando") : t("co_compartilhar")}
@@ -829,13 +871,32 @@ export default function CorridaPage() {
           </div>
         </div>
       )}
+
+      {/* Escolher foto de fundo para compartilhar */}
+      {showSharePicker && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setShowSharePicker(false)}>
+          <div style={{ background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 20, width: "100%", maxWidth: 340, padding: 20 }} onClick={(e) => e.stopPropagation()}>
+            <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 700, color: "#e0d6ff", textAlign: "center" }}>{t("co_share_foto_titulo")}</p>
+            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#9e96b5", textAlign: "center", lineHeight: 1.5 }}>{t("co_share_foto_hint")}</p>
+            <button type="button" onClick={() => fileInputRef.current?.click()}
+              style={{ width: "100%", padding: "12px", borderRadius: 12, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}>
+              📷 {t("co_share_foto_btn")}
+            </button>
+            <button type="button" onClick={() => { setShowSharePicker(false); doShare(null); }}
+              style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#A78BFA", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              {t("co_share_sem_foto")}
+            </button>
+          </div>
+        </div>
+      )}
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={onSharePhotoPicked} style={{ display: "none" }} />
     </div>
   );
 }
 
 function StatChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div style={{ background: "#1a1530", borderRadius: 12, padding: "10px 12px", textAlign: "center" }}>
+    <div style={{ background: "rgba(26,21,48,0.82)", backdropFilter: "blur(8px)", boxShadow: "0 2px 12px rgba(0,0,0,0.3)", borderRadius: 12, padding: "10px 12px", textAlign: "center" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 4 }}>
         <span style={{ color: "#A78BFA" }}>{icon}</span>
         <span style={{ fontSize: 10, color: "#9e96b5", fontWeight: 500 }}>{label}</span>
@@ -861,4 +922,25 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
   const dLng = (lng2 - lng1) * Math.PI / 180;
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Projeta as coordenadas da corrida num retângulo (x,y) preservando a proporção,
+// para desenhar o percurso (só as linhas) sobre uma foto de fundo.
+function projectRoute(coords: Coord[], x: number, y: number, w: number, h: number, pad: number) {
+  if (!coords || coords.length < 2) return [];
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  for (const c of coords) {
+    if (c.lat < minLat) minLat = c.lat; if (c.lat > maxLat) maxLat = c.lat;
+    if (c.lng < minLng) minLng = c.lng; if (c.lng > maxLng) maxLng = c.lng;
+  }
+  const cosLat = Math.cos((minLat + maxLat) / 2 * Math.PI / 180);
+  const spanX = (maxLng - minLng) * cosLat || 1e-9;
+  const spanY = (maxLat - minLat) || 1e-9;
+  const scale = Math.min((w - pad * 2) / spanX, (h - pad * 2) / spanY);
+  const drawW = spanX * scale, drawH = spanY * scale;
+  const ox = x + (w - drawW) / 2, oy = y + (h - drawH) / 2;
+  return coords.map(c => ({
+    x: ox + (c.lng - minLng) * cosLat * scale,
+    y: oy + (maxLat - c.lat) * scale,
+  }));
 }
