@@ -74,6 +74,7 @@ export default function CorridaPage() {
   const lastPointRef = useRef<Coord | null>(null);
   const paceWindowRef = useRef<{ t: number; dist: number }[]>([]);
   const stoppedSinceRef = useRef<number | null>(null);
+  const goalReachedRef = useRef(false);
   const sessionIdRef = useRef<string | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -84,6 +85,7 @@ export default function CorridaPage() {
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
   const [autoPaused, setAutoPaused] = useState(false);
+  const [goal, setGoal] = useState<{ type: "distance" | "duration"; value: number } | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
@@ -235,7 +237,13 @@ export default function CorridaPage() {
     if (!stats) return;
 
     const timer = setInterval(() => {
-      setElapsed(Math.floor(movingElapsedMs() / 1000));
+      const el = Math.floor(movingElapsedMs() / 1000);
+      setElapsed(el);
+      // Meta atingida — avisa uma única vez por corrida
+      if (goal && !goalReachedRef.current) {
+        const reached = goal.type === "distance" ? stats.totalDist >= goal.value * 1000 : el >= goal.value * 60;
+        if (reached) { goalReachedRef.current = true; toast.success(t("co_meta_atingida")); }
+      }
       persistSnapshot();
     }, 1000);
 
@@ -332,6 +340,7 @@ export default function CorridaPage() {
     lastPointRef.current = null;
     paceWindowRef.current = [];
     stoppedSinceRef.current = null;
+    goalReachedRef.current = false;
     gpsErrorShownRef.current = false;
     persistSnapshot();
     beginTracking();
@@ -771,6 +780,22 @@ export default function CorridaPage() {
   // Recordes pessoais desta corrida (comparado ao histórico completo)
   const detailPRs = selectedSession && historyStats ? sessionPRs(selectedSession, historyStats) : [];
 
+  // Meta da corrida (distância ou duração) — definida antes de começar
+  const goalChips: { id: { type: "distance" | "duration"; value: number } | null; label: string }[] = [
+    { id: null, label: t("co_sem_meta") },
+    { id: { type: "distance", value: 3 }, label: "3 km" },
+    { id: { type: "distance", value: 5 }, label: "5 km" },
+    { id: { type: "distance", value: 10 }, label: "10 km" },
+    { id: { type: "duration", value: 30 }, label: "30 min" },
+    { id: { type: "duration", value: 60 }, label: "60 min" },
+  ];
+  const goalText = goal
+    ? (goal.type === "distance"
+      ? `${(distance / 1000).toFixed(2)} / ${goal.value} km`
+      : `${formatDuration(elapsed)} / ${goal.value} min`)
+    : "";
+  const goalPct = goal ? Math.min(100, Math.round((goal.type === "distance" ? distance / (goal.value * 1000) : elapsed / (goal.value * 60)) * 100)) : 0;
+
   return (
     <div style={{ height: "100dvh", background: "#0B0B10", position: "relative", overflow: "hidden" }}>
       {/* Header flutuante sobre o mapa */}
@@ -797,10 +822,23 @@ export default function CorridaPage() {
 
       {/* Stats flutuante sobre o mapa */}
       {!showHistory && (
-        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top) + 66px)", left: 12, right: 12, zIndex: 20, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          <StatChip icon={<Timer size={14} />} label={t("co_tempo")} value={running ? formatDuration(elapsed) : "--"} />
-          <StatChip icon={<Footprints size={14} />} label={t("co_distancia")} value={running ? `${(distance / 1000).toFixed(2)} km` : "--"} />
-          <StatChip icon={<Zap size={14} />} label={t("co_ritmo")} value={running ? formatPace(pace) : "--"} />
+        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top) + 66px)", left: 12, right: 12, zIndex: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+            <StatChip icon={<Timer size={14} />} label={t("co_tempo")} value={running ? formatDuration(elapsed) : "--"} />
+            <StatChip icon={<Footprints size={14} />} label={t("co_distancia")} value={running ? `${(distance / 1000).toFixed(2)} km` : "--"} />
+            <StatChip icon={<Zap size={14} />} label={t("co_ritmo")} value={running ? formatPace(pace) : "--"} />
+          </div>
+          {goal && running && (
+            <div style={{ background: "rgba(26,21,48,0.82)", backdropFilter: "blur(8px)", borderRadius: 12, padding: "10px 12px", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 10, color: "#9e96b5", fontWeight: 700 }}>🏁 {t("co_meta")}</span>
+                <span style={{ fontSize: 11, color: "#e0d6ff", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{goalText}</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 9999, background: "rgba(255,255,255,0.1)", overflow: "hidden" }}>
+                <div style={{ height: "100%", borderRadius: 9999, background: "#22D18B", width: `${goalPct}%`, transition: "width .4s ease" }} />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -850,6 +888,22 @@ export default function CorridaPage() {
           </div>
         )}
       </div>
+
+      {/* Meta da corrida (só quando ocioso) */}
+      {!showHistory && !running && (
+        <div style={{ position: "fixed", bottom: "calc(64px + env(safe-area-inset-bottom) + 104px)", left: 0, right: 0, zIndex: 20, padding: "0 16px", display: "flex", alignItems: "center", gap: 8, overflowX: "auto" }}>
+          <span style={{ fontSize: 11, color: "#9e96b5", fontWeight: 700, flexShrink: 0 }}>🏁 {t("co_meta")}</span>
+          {goalChips.map(chip => {
+            const active = chip.id === null ? !goal : (goal !== null && goal.type === chip.id.type && goal.value === chip.id.value);
+            return (
+              <button key={chip.label} type="button" onClick={() => setGoal(chip.id)}
+                style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 9999, border: "1px solid", borderColor: active ? "#22D18B" : "rgba(167,139,250,0.25)", background: active ? "rgba(34,209,139,0.15)" : "rgba(26,21,48,0.85)", color: active ? "#22D18B" : "#A78BFA", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", backdropFilter: "blur(8px)" }}>
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Action button — floating over map */}
       {!showHistory && (
