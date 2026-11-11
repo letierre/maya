@@ -129,7 +129,7 @@ export default function CorridaPage() {
   const gpsErrorShownRef = useRef(false);
   const wakeLockRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const shareBlockRef = useRef({ x: 90, y: 300, scale: 1, rotation: 0 });
+  const shareBlockRef = useRef({ x: 90, y: 350, scale: 1, rotation: 0, routeShiftY: 0 });
   const shareLayerRef = useRef<{ bg: (HTMLImageElement | HTMLCanvasElement) | null; avatar: HTMLImageElement | null } | null>(null);
   const sharePreviewRef = useRef<HTMLCanvasElement>(null);
   const shareDragRef = useRef<{ startLx: number; startLy: number; bx: number; by: number } | null>(null);
@@ -159,6 +159,7 @@ export default function CorridaPage() {
   const [showShareEditor, setShowShareEditor] = useState(false);
   const [shareScale, setShareScale] = useState(1);
   const [shareRotation, setShareRotation] = useState(0);
+  const [shareRouteShift, setShareRouteShift] = useState(0);
   const [activityType, setActivityType] = useState<"run" | "walk">("run");
 
   // Mantém a tela acesa durante a corrida ativa (iOS suspende o app se a tela dormir)
@@ -807,7 +808,7 @@ export default function CorridaPage() {
 
   // Desenha o bloco móvel de dados (percurso em linhas + card de 4 métricas)
   // em coordenadas locais: rota em (0,0,900,700), card em (0,770,900,404).
-  const drawDataBlock = (ctx: CanvasRenderingContext2D, s: Session, isWhite: boolean, rotationDeg: number) => {
+  const drawDataBlock = (ctx: CanvasRenderingContext2D, s: Session, isWhite: boolean, rotationDeg: number, routeShiftY: number) => {
     const mapW = SHARE_GROUP_W, mapH = SHARE_GROUP_ROUTE_H;
     const pts = projectRoute(s.route_coordinates || [], 0, 0, mapW, mapH, 60);
     if (pts.length >= 2) {
@@ -816,6 +817,8 @@ export default function CorridaPage() {
       ctx.translate(mapW / 2, mapH / 2);
       ctx.rotate((rotationDeg * Math.PI) / 180);
       ctx.translate(-mapW / 2, -mapH / 2);
+      // Aproxima/afasta o traçado do card (deslocamento vertical, sem distorcer)
+      ctx.translate(0, routeShiftY);
       ctx.beginPath();
       pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
       ctx.lineCap = "round"; ctx.lineJoin = "round";
@@ -868,7 +871,7 @@ export default function CorridaPage() {
 
   // Desenha a composição inteira em coordenadas lógicas 1080×1920. Header/título/
   // data e rodapé são fixos; o bloco de dados é posicionado/escalado por `block`.
-  const drawShare = (ctx: CanvasRenderingContext2D, s: Session, layer: { bg: (HTMLImageElement | HTMLCanvasElement) | null; avatar: HTMLImageElement | null }, block: { x: number; y: number; scale: number; rotation: number }) => {
+  const drawShare = (ctx: CanvasRenderingContext2D, s: Session, layer: { bg: (HTMLImageElement | HTMLCanvasElement) | null; avatar: HTMLImageElement | null }, block: { x: number; y: number; scale: number; rotation: number; routeShiftY: number }) => {
     const W = 1080, H = 1920;
     const isWhite = !layer.bg;
 
@@ -891,7 +894,7 @@ export default function CorridaPage() {
     ctx.shadowBlur = 0;
 
     // Título (respeita o toggle: Corrida ou Caminhada)
-    const titleY = headerY + 60;
+    const titleY = headerY + 46;
     const titulo = s.activity_type === "walk" ? t("co_caminhada") : t("co_titulo");
     ctx.font = "700 84px Inter, system-ui, sans-serif";
     const tw = ctx.measureText(titulo).width;
@@ -919,12 +922,12 @@ export default function CorridaPage() {
     ctx.save();
     ctx.translate(block.x, block.y);
     ctx.scale(block.scale, block.scale);
-    drawDataBlock(ctx, s, isWhite, block.rotation);
+    drawDataBlock(ctx, s, isWhite, block.rotation, block.routeShiftY);
     ctx.restore();
 
     // Rodapé — sombra no fundo de foto
     const footerY = H - 130;
-    ctx.fillStyle = isWhite ? "#6a657a" : "#FFFFFF"; ctx.font = "500 20px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
+    ctx.fillStyle = isWhite ? "#6a657a" : "#FFFFFF"; ctx.font = "600 24px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
     if (!isWhite) { ctx.shadowColor = "rgba(0,0,0,0.75)"; ctx.shadowBlur = 8; }
     ctx.fillText(t("co_footer_share"), W / 2, footerY);
     ctx.shadowBlur = 0;
@@ -959,9 +962,10 @@ export default function CorridaPage() {
       let avatar: HTMLImageElement | null = null;
       try { avatar = await loadImage("/maya-avatar.webp"); } catch { avatar = null; }
       shareLayerRef.current = { bg, avatar };
-      shareBlockRef.current = { x: 90, y: 300, scale: 1, rotation: 0 };
+      shareBlockRef.current = { x: 90, y: 350, scale: 1, rotation: 0, routeShiftY: 0 };
       setShareScale(1);
       setShareRotation(0);
+      setShareRouteShift(0);
       setShowShareEditor(true);
     } catch { toast.error(t("co_erro_salvar")); }
     setSharing(false);
@@ -1042,6 +1046,13 @@ export default function CorridaPage() {
   const onShareRotation = (v: number) => {
     setShareRotation(v);
     shareBlockRef.current = { ...shareBlockRef.current, rotation: v };
+    renderSharePreview();
+  };
+
+  // Slider de aproximação: aproxima/afasta o percurso do card (deslocamento vertical).
+  const onShareRouteShift = (v: number) => {
+    setShareRouteShift(v);
+    shareBlockRef.current = { ...shareBlockRef.current, routeShiftY: v };
     renderSharePreview();
   };
 
@@ -1383,6 +1394,11 @@ export default function CorridaPage() {
               <span style={{ fontSize: 16, lineHeight: 1 }}>⟲</span>
               <input type="range" min={-180} max={180} step={5} value={shareRotation} onChange={(e) => onShareRotation(Number(e.target.value))} style={{ flex: 1, accentColor: "#7C5CFF" }} />
               <span style={{ fontSize: 12, color: "#9e96b5", width: 38, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{shareRotation}°</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 16, lineHeight: 1 }}>↕</span>
+              <input type="range" min={-300} max={300} step={5} value={shareRouteShift} onChange={(e) => onShareRouteShift(Number(e.target.value))} style={{ flex: 1, accentColor: "#7C5CFF" }} />
+              <span style={{ fontSize: 12, color: "#9e96b5", width: 38, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{shareRouteShift > 0 ? `+${shareRouteShift}` : shareRouteShift}</span>
             </div>
             <button type="button" onClick={downloadShare} disabled={sharing}
               style={{ width: "100%", padding: "14px", borderRadius: 14, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: sharing ? 0.5 : 1 }}>
