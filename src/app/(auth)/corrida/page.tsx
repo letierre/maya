@@ -1,5 +1,5 @@
 "use client";
-import { getLocale } from "@/lib/language";
+import { getLocale, getLanguage } from "@/lib/language";
 import { useTranslation } from "@/lib/useTranslation";
 
 import { useEffect, useState, useRef } from "react";
@@ -80,6 +80,10 @@ export default function CorridaPage() {
   const paceWindowRef = useRef<{ t: number; dist: number }[]>([]);
   const stoppedSinceRef = useRef<number | null>(null);
   const goalReachedRef = useRef(false);
+  const coachAudioRef = useRef<HTMLAudioElement | null>(null);
+  const coachRef = useRef<{ intro: string; km: string[] } | null>(null);
+  const nextCoachKmRef = useRef(1);
+  const coachIdxRef = useRef(0);
   const sessionIdRef = useRef<string | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -116,6 +120,17 @@ export default function CorridaPage() {
   };
   const releaseWakeLock = async () => {
     try { if (wakeLockRef.current) { await wakeLockRef.current.release(); wakeLockRef.current = null; } } catch { /* noop */ }
+  };
+
+  // Toca uma fala da Maya usando um único Audio persistente (destravado no gesto
+  // de iniciar a corrida, para o iOS permitir as falas seguintes a cada km).
+  const playCoach = (path: string) => {
+    try {
+      if (!coachAudioRef.current) coachAudioRef.current = new Audio();
+      const a = coachAudioRef.current;
+      a.src = photoUrl(path) || path;
+      a.play().catch(() => { /* autoplay bloqueado — ignora */ });
+    } catch { /* noop */ }
   };
 
   // Init map — cria imediatamente (sem aguardar geolocalização) e recentraliza depois
@@ -175,6 +190,8 @@ export default function CorridaPage() {
     fetch("/api/running?limit=20").then(r => r.json()).then(d => { if (Array.isArray(d)) setHistory(d); }).catch(() => {});
     fetch("/api/running/stats").then(r => r.json()).then(d => { if (d && typeof d.total_runs === "number") setHistoryStats(d); }).catch(() => {});
     fetch("/api/profile").then(r => r.json()).then(d => { if (d?.body?.weight_kg) setWeightKg(d.body.weight_kg); }).catch(() => {});
+    fetch("/api/running/coach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ language: getLanguage() }) })
+      .then(r => r.json()).then(d => { if (d?.intro && Array.isArray(d.km)) coachRef.current = d; }).catch(() => {});
   }, []);
 
   // Limpa GPS/timer se o usuário sair da tela durante uma corrida
@@ -293,6 +310,15 @@ export default function CorridaPage() {
           if (d < 1) return;
           stats.totalDist += d;
           setDistance(Math.round(stats.totalDist));
+          // Voz da Maya a cada km completo (cicla pelo pool de frases)
+          if (coachRef.current && stats.totalDist >= nextCoachKmRef.current * 1000) {
+            nextCoachKmRef.current++;
+            const pool = coachRef.current.km;
+            if (pool.length) {
+              playCoach(pool[coachIdxRef.current % pool.length]);
+              coachIdxRef.current++;
+            }
+          }
           // Ritmo rolante (últimos ~30s) em vez do ritmo médio acumulado
           paceWindowRef.current.push({ t: pt.timestamp, dist: stats.totalDist });
           const cutoff = Date.now() - 30000;
@@ -327,6 +353,11 @@ export default function CorridaPage() {
 
   const startRun = async () => {
     if (!navigator.geolocation) { toast.error(t("co_gps_indisponivel")); return; }
+
+    // Destrava o áudio no gesto e dá o "boa corrida" da Maya antes de qualquer await
+    nextCoachKmRef.current = 1;
+    coachIdxRef.current = 0;
+    if (coachRef.current?.intro) playCoach(coachRef.current.intro);
 
     // Cria a sessão no servidor (end_time NULL) — o banco vira a fonte da verdade
     let id: string | null = null;
@@ -523,6 +554,7 @@ export default function CorridaPage() {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (syncTimerRef.current) { clearInterval(syncTimerRef.current); syncTimerRef.current = null; }
     releaseWakeLock();
+    try { coachAudioRef.current?.pause(); } catch { /* noop */ }
     setRunning(false);
     setPaused(false);
     try { localStorage.removeItem(RUN_KEY); } catch { /* noop */ }
