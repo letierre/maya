@@ -813,12 +813,13 @@ export default function CorridaPage() {
     const pts = projectRoute(s.route_coordinates || [], 0, 0, mapW, mapH, 60);
     if (pts.length >= 2) {
       ctx.save();
+      // Aproxima/afasta do card: deslocamento vertical aplicado NA TELA (depois da rotação),
+      // para que o movimento seja sempre para cima/baixo independente do ângulo do percurso.
+      ctx.translate(0, routeShiftY);
       // Rotaciona o percurso em torno do centro da área da rota (o card fica reto)
       ctx.translate(mapW / 2, mapH / 2);
       ctx.rotate((rotationDeg * Math.PI) / 180);
       ctx.translate(-mapW / 2, -mapH / 2);
-      // Aproxima/afasta o traçado do card (deslocamento vertical, sem distorcer)
-      ctx.translate(0, routeShiftY);
       ctx.beginPath();
       pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
       ctx.lineCap = "round"; ctx.lineJoin = "round";
