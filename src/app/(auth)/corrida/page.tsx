@@ -91,6 +91,7 @@ export default function CorridaPage() {
   const [speed, setSpeed] = useState(0);
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState<Session[]>([]);
+  const [historyStats, setHistoryStats] = useState<{ total_runs: number; total_distance_m: number; best_distance_m: number; best_pace: number; longest_duration: number } | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -162,7 +163,10 @@ export default function CorridaPage() {
   }, []);
 
   // Load history
-  useEffect(() => { fetch("/api/running?limit=20").then(r => r.json()).then(d => { if (Array.isArray(d)) setHistory(d); }).catch(() => {}); }, []);
+  useEffect(() => {
+    fetch("/api/running?limit=20").then(r => r.json()).then(d => { if (Array.isArray(d)) setHistory(d); }).catch(() => {});
+    fetch("/api/running/stats").then(r => r.json()).then(d => { if (d && typeof d.total_runs === "number") setHistoryStats(d); }).catch(() => {});
+  }, []);
 
   // Limpa GPS/timer se o usuário sair da tela durante uma corrida
   useEffect(() => () => {
@@ -764,6 +768,8 @@ export default function CorridaPage() {
 
   // Parciais por km da corrida selecionada (para o gráfico de ritmo)
   const detailSplits = selectedSession ? computeSplits(selectedSession.route_coordinates || []) : [];
+  // Recordes pessoais desta corrida (comparado ao histórico completo)
+  const detailPRs = selectedSession && historyStats ? sessionPRs(selectedSession, historyStats) : [];
 
   return (
     <div style={{ height: "100dvh", background: "#0B0B10", position: "relative", overflow: "hidden" }}>
@@ -820,6 +826,14 @@ export default function CorridaPage() {
         {/* History overlay (tela cheia) */}
         {showHistory && (
           <div style={{ position: "absolute", inset: 0, overflowY: "auto", padding: "calc(env(safe-area-inset-top) + 64px) 16px 20px", background: "#0B0B10", zIndex: 5 }}>
+            {historyStats && historyStats.total_runs > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+                <StatBox label={t("co_corridas")} value={String(historyStats.total_runs)} />
+                <StatBox label={t("co_distancia_total")} value={`${(historyStats.total_distance_m / 1000).toFixed(1)} km`} />
+                <StatBox label={t("co_melhor_distancia")} value={`${(historyStats.best_distance_m / 1000).toFixed(2)} km`} />
+                <StatBox label={t("co_melhor_ritmo")} value={historyStats.best_pace ? formatPace(historyStats.best_pace) : "--"} />
+              </div>
+            )}
             {history.length === 0 ? (
               <p style={{ textAlign: "center", color: "#9e96b5", padding: 40 }}>{t("co_nenhuma_corrida")}</p>
             ) : history.map(s => (
@@ -902,6 +916,15 @@ export default function CorridaPage() {
               </div>
               <button type="button" onClick={() => setSelectedSession(null)} style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(167,139,250,0.1)", border: 0, color: "#A78BFA", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>✕</button>
             </div>
+
+            {detailPRs.length > 0 && (
+              <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 12, background: "rgba(250,204,21,0.1)", border: "1px solid rgba(250,204,21,0.3)", display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>🏆</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#FACC15" }}>
+                  {detailPRs.map(p => t(p === "dist" ? "co_record_dist" : p === "pace" ? "co_record_pace" : "co_record_dur")).join(" · ")}
+                </span>
+              </div>
+            )}
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
               <StatBox label={t("co_distancia")} value={`${(selectedSession.distance_meters / 1000).toFixed(2)} km`} />
@@ -1045,6 +1068,15 @@ function computeSplits(coords: Coord[]): Split[] {
     if (sec > 3) out.push({ distKm: rest / 1000, sec, paceSecPerKm: sec / (rest / 1000), partial: true });
   }
   return out;
+}
+
+// Quais recordes pessoais esta corrida bateu (distância, ritmo, duração).
+function sessionPRs(s: Session, st: { best_distance_m: number; best_pace: number; longest_duration: number }): ("dist" | "pace" | "dur")[] {
+  const prs: ("dist" | "pace" | "dur")[] = [];
+  if (st.best_distance_m > 0 && Math.round(s.distance_meters) === st.best_distance_m) prs.push("dist");
+  if (st.best_pace > 0 && s.avg_pace && Math.round(s.avg_pace) === st.best_pace) prs.push("pace");
+  if (st.longest_duration > 0 && s.duration_seconds === st.longest_duration) prs.push("dur");
+  return prs;
 }
 
 // Projeta as coordenadas da corrida num retângulo (x,y) preservando a proporção,
