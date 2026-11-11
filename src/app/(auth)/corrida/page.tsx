@@ -31,6 +31,11 @@ function formatDuration(sec: number): string {
 
 const RUN_KEY = "maya_running_session";
 
+// Pausa automática: parado (GPS sem deslocamento) por alguns segundos congela o tempo.
+// Abaixo de ~3,6 km/h (1 m/s) considera-se que o usuário parou (farol, descanso, etc.).
+const AUTO_PAUSE_SPEED = 1.0; // m/s
+const AUTO_PAUSE_MS = 5000;    // ms
+
 // ── Helpers de canvas para o compartilhamento (PNG estilo Roda da Vida) ──
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -57,10 +62,11 @@ export default function CorridaPage() {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const watchId = useRef<number | null>(null);
   const routeLineRef = useRef<mapboxgl.GeoJSONSource | null>(null);
-  const runStats = useRef<{ totalDist: number; maxSpeed: number; startedAt: number; accumulatedMs: number; activeSince: number | null } | null>(null);
+  const runStats = useRef<{ totalDist: number; maxSpeed: number; startedAt: number; accumulatedMs: number; activeSince: number | null; movingAccumulatedMs: number; movingSince: number | null } | null>(null);
   const pointsRef = useRef<Coord[]>([]);
   const lastPointRef = useRef<Coord | null>(null);
   const paceWindowRef = useRef<{ t: number; dist: number }[]>([]);
+  const stoppedSinceRef = useRef<number | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -70,6 +76,7 @@ export default function CorridaPage() {
 
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [autoPaused, setAutoPaused] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
@@ -162,11 +169,11 @@ export default function CorridaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Tempo ATIVO acumulado (exclui períodos pausados/em segundo plano)
-  const activeElapsedMs = () => {
+  // Tempo EM MOVIMENTO acumulado (exclui pausas manuais, segundo plano e paradas)
+  const movingElapsedMs = () => {
     const stats = runStats.current;
     if (!stats) return 0;
-    return stats.accumulatedMs + (stats.activeSince != null ? Date.now() - stats.activeSince : 0);
+    return stats.movingAccumulatedMs + (stats.movingSince != null ? Date.now() - stats.movingSince : 0);
   };
 
   // GPS tracking
@@ -180,7 +187,7 @@ export default function CorridaPage() {
         totalDist: stats.totalDist,
         maxSpeed: stats.maxSpeed,
         coords: pointsRef.current,
-        activeElapsedMs: activeElapsedMs(),
+        activeElapsedMs: movingElapsedMs(),
       }));
     } catch { /* storage indisponível/cheio — ignora */ }
   };
@@ -190,7 +197,7 @@ export default function CorridaPage() {
     const stats = runStats.current;
     const id = sessionIdRef.current;
     if (!stats || !id) return;
-    const duration = Math.floor(activeElapsedMs() / 1000);
+    const duration = Math.floor(movingElapsedMs() / 1000);
     const dist = Math.round(stats.totalDist);
     const avgPace = dist > 10 ? duration / (dist / 1000) : null;
     fetch("/api/running", {
@@ -217,7 +224,7 @@ export default function CorridaPage() {
     if (!stats) return;
 
     const timer = setInterval(() => {
-      setElapsed(Math.floor(activeElapsedMs() / 1000));
+      setElapsed(Math.floor(movingElapsedMs() / 1000));
       persistSnapshot();
     }, 1000);
 
@@ -241,6 +248,21 @@ export default function CorridaPage() {
           const instSpeed = dtSec > 0 ? d / dtSec : 0; // m/s
           // Outlier: velocidade instantânea impossível (>45 km/h) = falha de GPS
           if (instSpeed > 12.5) return;
+
+          // ── Pausa automática ──
+          // Deslocamento real religa o tempo; parado por alguns segundos congela (farol, descanso).
+          if (instSpeed >= AUTO_PAUSE_SPEED) {
+            stoppedSinceRef.current = null;
+            if (stats.movingSince == null) { stats.movingSince = Date.now(); setAutoPaused(false); }
+          } else if (stats.movingSince != null) {
+            if (stoppedSinceRef.current == null) stoppedSinceRef.current = pt.timestamp;
+            else if (pt.timestamp - stoppedSinceRef.current >= AUTO_PAUSE_MS) {
+              stats.movingAccumulatedMs += stoppedSinceRef.current - stats.movingSince;
+              stats.movingSince = null;
+              setAutoPaused(true);
+            }
+          }
+
           // Ignora micro-jitter (< 1 m) que o GPS gera mesmo parado
           if (d < 1) return;
           stats.totalDist += d;
@@ -293,11 +315,12 @@ export default function CorridaPage() {
     } catch { id = null; }
     sessionIdRef.current = id;
 
-    setRunning(true); setPaused(false); setStartTime(new Date()); setDistance(0); setElapsed(0); setPace(0); setSpeed(0);
-    runStats.current = { totalDist: 0, maxSpeed: 0, startedAt: Date.now(), accumulatedMs: 0, activeSince: Date.now() };
+    setRunning(true); setPaused(false); setAutoPaused(false); setStartTime(new Date()); setDistance(0); setElapsed(0); setPace(0); setSpeed(0);
+    runStats.current = { totalDist: 0, maxSpeed: 0, startedAt: Date.now(), accumulatedMs: 0, activeSince: Date.now(), movingAccumulatedMs: 0, movingSince: Date.now() };
     pointsRef.current = [];
     lastPointRef.current = null;
     paceWindowRef.current = [];
+    stoppedSinceRef.current = null;
     gpsErrorShownRef.current = false;
     persistSnapshot();
     beginTracking();
@@ -316,6 +339,10 @@ export default function CorridaPage() {
       stats.accumulatedMs += Date.now() - stats.activeSince;
       stats.activeSince = null;
     }
+    if (stats.movingSince != null) {
+      stats.movingAccumulatedMs += Date.now() - stats.movingSince;
+      stats.movingSince = null;
+    }
     if (watchId.current) {
       navigator.geolocation.clearWatch(watchId.current);
       watchId.current = null;
@@ -324,9 +351,10 @@ export default function CorridaPage() {
     if (syncTimerRef.current) { clearInterval(syncTimerRef.current); syncTimerRef.current = null; }
     releaseWakeLock();
     setPaused(true);
-    setElapsed(Math.floor(stats.accumulatedMs / 1000));
+    setAutoPaused(false);
+    setElapsed(Math.floor(movingElapsedMs() / 1000));
     persistSnapshot();
-    syncToServer(); // grava o tempo ativo até a pausa
+    syncToServer(); // grava o tempo em movimento até a pausa
   };
 
   // Retoma a corrida após uma pausa: abre um novo segmento ativo e religa GPS/timer.
@@ -334,9 +362,12 @@ export default function CorridaPage() {
     const stats = runStats.current;
     if (!stats) return;
     if (stats.activeSince == null) stats.activeSince = Date.now();
+    if (stats.movingSince == null) stats.movingSince = Date.now();
     lastPointRef.current = null; // não conta o deslocamento feito durante a pausa
     paceWindowRef.current = [];
+    stoppedSinceRef.current = null;
     setPaused(false);
+    setAutoPaused(false);
     beginTracking();
     startSyncInterval();
     requestWakeLock();
@@ -352,11 +383,13 @@ export default function CorridaPage() {
       // Restaura SEMPRE como pausada: o tempo fora do app (segundo plano/cold start)
       // não deve ser contado — o usuário toca em "Retomar" para continuar.
       const activeMs = typeof snap.activeElapsedMs === "number" ? snap.activeElapsedMs : 0;
-      runStats.current = { totalDist: snap.totalDist || 0, maxSpeed: snap.maxSpeed || 0, startedAt: snap.startedAt, accumulatedMs: activeMs, activeSince: null };
+      runStats.current = { totalDist: snap.totalDist || 0, maxSpeed: snap.maxSpeed || 0, startedAt: snap.startedAt, accumulatedMs: activeMs, activeSince: null, movingAccumulatedMs: activeMs, movingSince: null };
       pointsRef.current = Array.isArray(snap.coords) ? snap.coords : [];
       lastPointRef.current = pointsRef.current.length ? pointsRef.current[pointsRef.current.length - 1] : null;
+      stoppedSinceRef.current = null;
       setRunning(true);
       setPaused(true);
+      setAutoPaused(false);
       setStartTime(new Date(snap.startedAt));
       setDistance(Math.round(snap.totalDist || 0));
       setElapsed(Math.floor(activeMs / 1000));
@@ -470,7 +503,7 @@ export default function CorridaPage() {
     const stats = runStats.current;
     const dist = stats ? Math.round(stats.totalDist) : distance;
     const maxSpeed = stats ? Math.round(stats.maxSpeed * 10) / 10 : Math.round(speed * 10) / 10;
-    const duration = stats ? Math.max(1, Math.floor(activeElapsedMs() / 1000)) : elapsed;
+    const duration = stats ? Math.max(1, Math.floor(movingElapsedMs() / 1000)) : elapsed;
 
     if (dist < 10) {
       // corrida curta demais — descarta (remove a sessão ativa do servidor)
@@ -761,6 +794,11 @@ export default function CorridaPage() {
         {running && paused && (
           <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top) + 122px)", left: "50%", transform: "translateX(-50%)", zIndex: 5, padding: "8px 16px", borderRadius: 9999, background: "rgba(34,209,139,0.15)", border: "1px solid rgba(34,209,139,0.4)" }}>
             <span style={{ color: "#22D18B", fontSize: 12, fontWeight: 700 }}>{t("co_pausado")}</span>
+          </div>
+        )}
+        {running && !paused && autoPaused && (
+          <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top) + 122px)", left: "50%", transform: "translateX(-50%)", zIndex: 5, padding: "8px 16px", borderRadius: 9999, background: "rgba(250,204,21,0.15)", border: "1px solid rgba(250,204,21,0.4)" }}>
+            <span style={{ color: "#FACC15", fontSize: 12, fontWeight: 700 }}>{t("co_pausa_auto")}</span>
           </div>
         )}
         {mapError && (
