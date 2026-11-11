@@ -4,8 +4,8 @@
   "description": "Sua IA pessoal que conecta sono, humor, hábitos, metas e dinheiro para mostrar o que você sozinho não enxerga.",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#0F0F14",
-  "theme_color": "#0F0F14",
+  "background_color": "#04060a",
+  "theme_color": "#04060a",
   "orientation": "portrait-primary",
   "lang": "pt-BR",
   "icons": [
