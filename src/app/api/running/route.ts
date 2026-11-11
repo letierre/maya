@@ -3,8 +3,9 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getTimezoneOffset, getLocalDateFromISO } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 
-// Marca "correu" + exercício no check-in do dia (só se a linha já existir)
-async function markRanCheckIn(admin: any, userId: string, startTime: string) {
+// Marca o check-in do dia (só se a linha já existir). Caminhada marca "walked";
+// corrida marca "ran". Ambos entram no agregado exercise_walk.
+async function markRanCheckIn(admin: any, userId: string, startTime: string, activityType?: string | null) {
   const runDate = getLocalDateFromISO(startTime);
   const { data: existingCi } = await admin
     .from("check_ins")
@@ -13,10 +14,10 @@ async function markRanCheckIn(admin: any, userId: string, startTime: string) {
     .eq("date", runDate)
     .maybeSingle();
   if (existingCi) {
-    await admin
-      .from("check_ins")
-      .update({ ran: true, exercise_walk: true, updated_at: new Date().toISOString() })
-      .eq("id", existingCi.id);
+    const patch = activityType === "walk"
+      ? { walked: true, exercise_walk: true, updated_at: new Date().toISOString() }
+      : { ran: true, exercise_walk: true, updated_at: new Date().toISOString() };
+    await admin.from("check_ins").update(patch).eq("id", existingCi.id);
   }
 }
 
@@ -85,13 +86,14 @@ export async function POST(req: NextRequest) {
       elevation_gain_m: body.elevation_gain_m || null,
       steps: body.steps || null,
       avg_cadence: body.avg_cadence || null,
+      activity_type: body.activity_type || "run",
       route_coordinates: body.route_coordinates || [],
       map_snapshot: body.map_snapshot || null,
       notes: body.notes || null,
     }).select().single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    await markRanCheckIn(admin, user.id, body.start_time);
+    await markRanCheckIn(admin, user.id, body.start_time, body.activity_type);
     return NextResponse.json(data, { status: 201 });
   }
 
@@ -122,8 +124,8 @@ export async function PATCH(req: NextRequest) {
 
   // Finalização (end_time) → marca "correu" no check-in do dia
   if (updates.end_time) {
-    const { data: run } = await admin.from("running_sessions").select("start_time").eq("id", id).eq("user_id", user.id).single();
-    if (run?.start_time) await markRanCheckIn(admin, user.id, run.start_time);
+    const { data: run } = await admin.from("running_sessions").select("start_time, activity_type").eq("id", id).eq("user_id", user.id).single();
+    if (run?.start_time) await markRanCheckIn(admin, user.id, run.start_time, updates.activity_type || run.activity_type);
   }
 
   return NextResponse.json({ ok: true });
