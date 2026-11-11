@@ -14,6 +14,7 @@ import { InstallAppCard } from "@/components/InstallAppCard";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
 import { PlanCard, SubscriptionNotice } from "@/components/SubscriptionStatus";
 import { APP_VERSION } from "@/lib/version";
+import { computeAge, computeBMI, computeBMR, computeTDEE, bmiClass, type BodyData } from "@/lib/body-metrics";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,45 @@ const GENDER_OPTIONS = [
   { id: "feminino",   labelKey: "ob_gender_fem" },
   { id: "nao_dizer",  labelKey: "ob_gender_nao_dizer" },
 ] as const;
+
+const MEASURE_FIELDS = [
+  { key: "neck_cm", labelKey: "perfil_pescoco" },
+  { key: "chest_cm", labelKey: "perfil_peito" },
+  { key: "waist_cm", labelKey: "perfil_cintura" },
+  { key: "hip_cm", labelKey: "perfil_quadril" },
+  { key: "arm_cm", labelKey: "perfil_braco" },
+  { key: "thigh_cm", labelKey: "perfil_coxa" },
+  { key: "calf_cm", labelKey: "perfil_panturrilha" },
+] as const;
+
+const ACTIVITY_OPTIONS = [
+  { id: "sedentary", labelKey: "perfil_atividade_sedentario" },
+  { id: "light", labelKey: "perfil_atividade_leve" },
+  { id: "moderate", labelKey: "perfil_atividade_moderado" },
+  { id: "active", labelKey: "perfil_atividade_intenso" },
+  { id: "very_active", labelKey: "perfil_atividade_atleta" },
+] as const;
+
+const GOAL_OPTIONS = [
+  { id: "lose", labelKey: "perfil_objetivo_perder" },
+  { id: "maintain", labelKey: "perfil_objetivo_manter" },
+  { id: "gain", labelKey: "perfil_objetivo_ganhar" },
+] as const;
+
+function SegBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" onClick={onClick}
+      style={{
+        flex: 1, minHeight: 36, padding: "4px 8px", borderRadius: 10, border: 0,
+        cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700,
+        transition: "all .15s ease",
+        background: active ? "#7C5CFF" : "#1e1840",
+        color: active ? "#fff" : "#7C5CFF",
+      }}>
+      {children}
+    </button>
+  );
+}
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -75,6 +115,7 @@ export default function PerfilPage() {
   const [cropImage, setCropImage] = useState<string | null>(null);
   const [pushState, setPushState] = useState<"unknown" | "granted" | "denied" | "loading" | "unsupported">("unknown");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [body, setBody] = useState<BodyData>({});
 
   // ── Push notifications ────────────────────────────────────────────────────────
 
@@ -128,6 +169,7 @@ export default function PerfilPage() {
         if (data.avatar_url) setAvatarUrl(data.avatar_url);
         if (data.gender) setGender(data.gender);
         if (data.language) setLanguage(data.language);
+        if (data.body) setBody(data.body);
         if (data.created_at) {
           const d = new Date(data.created_at);
           if (!isNaN(d.getTime())) {
@@ -150,13 +192,13 @@ export default function PerfilPage() {
         const res = await fetch("/api/profile", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, gender, language }),
+          body: JSON.stringify({ name, gender, language, body }),
         });
         if (res.ok) toast.success(t("perfil_salvo"));
       } catch { /* silent */ }
     }, 900);
     return () => clearTimeout(autoSaveRef.current);
-  }, [name, gender, language]);
+  }, [name, gender, language, body]);
 
   const handleFilePick = (file: File) => {
     const reader = new FileReader();
@@ -199,6 +241,26 @@ export default function PerfilPage() {
     }
     setChangingPassword(false);
   };
+
+  // ── Dados do corpo ──────────────────────────────────────────────────────────
+  const setBodyField = (key: keyof BodyData, value: unknown) => {
+    userEdited.current = true;
+    setBody(prev => {
+      const next = { ...prev };
+      if (value === "" || value === undefined || value === null) delete next[key];
+      else (next as Record<string, unknown>)[key] = value;
+      return next;
+    });
+  };
+  const setNum = (key: keyof BodyData) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setBodyField(key, v === "" ? "" : Number(v));
+  };
+
+  const bodyAge = computeAge(body.birth_date);
+  const bodyBmi = computeBMI(body.weight_kg, body.height_cm);
+  const bodyBmr = computeBMR(body.sex, body.weight_kg, body.height_cm, bodyAge);
+  const bodyTdee = computeTDEE(bodyBmr, body.activity_level);
 
   if (loading) {
     return (
@@ -338,6 +400,100 @@ export default function PerfilPage() {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Corpo & medidas */}
+        <div style={card}>
+          {label11(t("perfil_corpo_titulo"))}
+          <p style={{ margin: "0 0 16px", fontSize: 12, color: "#9e96b5", lineHeight: 1.5 }}>{t("perfil_corpo_sub")}</p>
+
+          {/* Sexo biológico */}
+          <div style={{ marginBottom: 14 }}>
+            {label11(t("perfil_sexo"))}
+            <div style={{ display: "flex", gap: 8 }}>
+              <SegBtn active={body.sex === "male"} onClick={() => setBodyField("sex", "male")}>{t("perfil_sexo_masc")}</SegBtn>
+              <SegBtn active={body.sex === "female"} onClick={() => setBodyField("sex", "female")}>{t("perfil_sexo_fem")}</SegBtn>
+            </div>
+          </div>
+
+          {/* Nascimento */}
+          <div style={{ marginBottom: 14 }}>
+            {label11(t("perfil_nascimento"))}
+            <input type="date" value={body.birth_date || ""} onChange={(e) => setBodyField("birth_date", e.target.value)} style={inputStyle} />
+            {bodyAge != null && (
+              <p style={{ margin: "6px 0 0", fontSize: 11, color: "#9e96b5" }}>{t("perfil_anos", { n: String(bodyAge) })}</p>
+            )}
+          </div>
+
+          {/* Peso + altura */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+            <div>
+              {label11(t("perfil_peso"))}
+              <input type="number" inputMode="decimal" step="0.1" value={body.weight_kg ?? ""} onChange={setNum("weight_kg")} placeholder="70" style={inputStyle} />
+            </div>
+            <div>
+              {label11(t("perfil_altura"))}
+              <input type="number" inputMode="decimal" value={body.height_cm ?? ""} onChange={setNum("height_cm")} placeholder="175" style={inputStyle} />
+            </div>
+          </div>
+
+          {/* Gordura */}
+          <div style={{ marginBottom: 14 }}>
+            {label11(t("perfil_gordura"))}
+            <input type="number" inputMode="decimal" step="0.1" value={body.body_fat_pct ?? ""} onChange={setNum("body_fat_pct")} placeholder="—" style={inputStyle} />
+          </div>
+
+          {/* Circunferências */}
+          <div style={{ marginBottom: 14 }}>
+            {label11(t("perfil_medidas"))}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {MEASURE_FIELDS.map((f) => (
+                <div key={f.key}>
+                  <label style={{ fontSize: 11, color: "#9e96b5", marginBottom: 4, display: "block" }}>{t(f.labelKey)}</label>
+                  <input type="number" inputMode="decimal" step="0.1" value={body[f.key] ?? ""} onChange={setNum(f.key)} placeholder="—" style={inputStyle} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Atividade */}
+          <div style={{ marginBottom: 14 }}>
+            {label11(t("perfil_atividade"))}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {ACTIVITY_OPTIONS.map((o) => (
+                <SegBtn key={o.id} active={body.activity_level === o.id} onClick={() => setBodyField("activity_level", o.id)}>{t(o.labelKey)}</SegBtn>
+              ))}
+            </div>
+          </div>
+
+          {/* Objetivo */}
+          <div style={{ marginBottom: 8 }}>
+            {label11(t("perfil_objetivo_corpo"))}
+            <div style={{ display: "flex", gap: 8 }}>
+              {GOAL_OPTIONS.map((o) => (
+                <SegBtn key={o.id} active={body.goal === o.id} onClick={() => setBodyField("goal", o.id)}>{t(o.labelKey)}</SegBtn>
+              ))}
+            </div>
+          </div>
+
+          {/* Métricas calculadas */}
+          {(bodyBmi || bodyBmr || bodyTdee) && (
+            <div style={{ marginTop: 16, padding: "14px", borderRadius: 14, background: "rgba(124,92,255,0.06)", border: "1px solid rgba(167,139,250,0.15)" }}>
+              {label11(t("perfil_derivados"))}
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
+                <span style={{ color: "#9e96b5" }}>{t("perfil_imc")}</span>
+                <span style={{ color: "#e0d6ff", fontWeight: 700 }}>{bodyBmi ? `${bodyBmi} · ${t(`perfil_imc_${bmiClass(bodyBmi)}`)}` : "—"}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
+                <span style={{ color: "#9e96b5" }}>{t("perfil_tmb")}</span>
+                <span style={{ color: "#e0d6ff", fontWeight: 700 }}>{bodyBmr ? `${bodyBmr} kcal/dia` : "—"}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                <span style={{ color: "#9e96b5" }}>{t("perfil_tdee")}</span>
+                <span style={{ color: "#e0d6ff", fontWeight: 700 }}>{bodyTdee ? `${bodyTdee} kcal/dia` : "—"}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Notificações Push */}

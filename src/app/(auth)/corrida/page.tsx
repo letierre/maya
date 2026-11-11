@@ -44,7 +44,7 @@ const AUTO_PAUSE_SPEED = 1.0; // m/s
 const AUTO_PAUSE_MS = 5000;    // ms
 
 // Estimativa de calorias da corrida (fórmula ACSM: kcal = peso × km × 1.036).
-// Peso padrão até existir campo de peso no perfil.
+// Usa o peso do perfil quando informado; senão 70 kg como padrão.
 const DEFAULT_WEIGHT_KG = 70;
 const CAL_KCAL_PER_KG_KM = 1.036;
 
@@ -99,6 +99,7 @@ export default function CorridaPage() {
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState<Session[]>([]);
   const [historyStats, setHistoryStats] = useState<{ total_runs: number; total_distance_m: number; best_distance_m: number; best_pace: number; longest_duration: number } | null>(null);
+  const [weightKg, setWeightKg] = useState(DEFAULT_WEIGHT_KG);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -173,6 +174,7 @@ export default function CorridaPage() {
   useEffect(() => {
     fetch("/api/running?limit=20").then(r => r.json()).then(d => { if (Array.isArray(d)) setHistory(d); }).catch(() => {});
     fetch("/api/running/stats").then(r => r.json()).then(d => { if (d && typeof d.total_runs === "number") setHistoryStats(d); }).catch(() => {});
+    fetch("/api/profile").then(r => r.json()).then(d => { if (d?.body?.weight_kg) setWeightKg(d.body.weight_kg); }).catch(() => {});
   }, []);
 
   // Limpa GPS/timer se o usuário sair da tela durante uma corrida
@@ -542,7 +544,7 @@ export default function CorridaPage() {
     }
     setSaving(true);
     const avgPace = dist > 10 ? duration / (dist / 1000) : 0;
-    const calories = Math.round(DEFAULT_WEIGHT_KG * (dist / 1000) * CAL_KCAL_PER_KG_KM);
+    const calories = Math.round(weightKg * (dist / 1000) * CAL_KCAL_PER_KG_KM);
     const startedIso = startTime ? startTime.toISOString() : new Date().toISOString();
 
     // Melhor esforço: captura uma foto do mapa com o trajeto para o usuário compartilhar (ex.: Stories)

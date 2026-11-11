@@ -3,6 +3,26 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendOryenEvent, type OryenUserData } from "@/lib/oryen";
 import { NextRequest, NextResponse } from "next/server";
 
+const BODY_FIELDS = [
+  "sex", "birth_date", "weight_kg", "height_cm", "body_fat_pct",
+  "neck_cm", "chest_cm", "waist_cm", "hip_cm", "arm_cm", "thigh_cm", "calf_cm",
+  "activity_level", "goal",
+] as const;
+
+// Aceita só os campos conhecidos de BodyData (numéricos e strings), descarta o resto.
+function sanitizeBody(raw: unknown): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (!raw || typeof raw !== "object") return out;
+  const src = raw as Record<string, unknown>;
+  for (const f of BODY_FIELDS) {
+    const v = src[f];
+    if (v === undefined || v === null || v === "") continue;
+    if (typeof v === "number") { if (Number.isFinite(v)) out[f] = v; }
+    else if (typeof v === "string") out[f] = v;
+  }
+  return out;
+}
+
 export async function PUT(req: NextRequest) {
   const supabase = await createServerSupabaseClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -33,6 +53,11 @@ export async function PUT(req: NextRequest) {
     if (body.gender !== undefined) context.gender = body.gender;
     if (body.language !== undefined) context.language = body.language;
     if (body.porques !== undefined) context.porques = body.porques;
+    if (body.body !== undefined) {
+      const clean = sanitizeBody(body.body);
+      if (Object.keys(clean).length === 0) delete context.body;
+      else context.body = clean;
+    }
 
     await admin
       .from("user_preferences")
@@ -109,6 +134,7 @@ export async function GET() {
       gender: ctx.gender || "nao_dizer",
       language: ctx.language || "pt",
       porques: (ctx.porques as Array<{ id: string; text: string; photoPath: string | null }>) || [],
+      body: (ctx.body as Record<string, unknown>) || null,
       is_admin: role?.is_admin ?? false,
     });
   } catch (error) {
