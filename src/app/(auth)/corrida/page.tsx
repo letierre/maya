@@ -5,36 +5,15 @@ import { useTranslation } from "@/lib/useTranslation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Play, Square, Timer, Footprints, Zap, ChevronLeft, Share2, Lock } from "lucide-react";
+import { Play, Square, Timer, Footprints, Zap, ChevronLeft, Lock } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { uploadToCloud, photoUrl } from "@/lib/photo-storage";
 import { emitCareDataChanged, emitRunLockChanged } from "@/lib/care-events";
-
-interface Coord { lat: number; lng: number; timestamp: number; alt?: number; }
-interface Session { id: string; start_time: string; end_time: string | null; distance_meters: number; duration_seconds: number; avg_pace: number | null; max_speed: number | null; calories_estimate: number | null; notes: string | null; route_coordinates: Coord[]; map_snapshot: string | null; elevation_gain_m: number | null; steps: number | null; avg_cadence: number | null; activity_type: string | null; }
-
-function formatPace(secPerKm: number): string {
-  if (!secPerKm || secPerKm <= 0) return "--";
-  const m = Math.floor(secPerKm / 60);
-  const s = Math.floor(secPerKm % 60);
-  return `${m}:${String(s).padStart(2, "0")} /km`;
-}
-
-function formatDuration(sec: number): string {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-  if (h > 0) return `${h}h ${m}min`;
-  return `${m}min ${s}s`;
-}
-
-function formatPaceShort(secPerKm: number): string {
-  if (!secPerKm || secPerKm <= 0) return "--";
-  const m = Math.floor(secPerKm / 60);
-  const s = Math.floor(secPerKm % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
+import type { Coord, Session } from "@/lib/running/types";
+import { formatPace, formatDuration } from "@/lib/running/format";
+import { haversine } from "@/lib/running/geo";
+import { StatChip, StatBox } from "@/components/running/RunningUI";
 
 const RUN_KEY = "maya_running_session";
 
@@ -60,47 +39,6 @@ const ELEV_WINDOW = 5;     // amostras da média móvel da altitude
 const STEP_ACCEL_THRESHOLD = 11.5; // m/s² — pico de um passo
 const STEP_ACCEL_VALLEY = 9.5;     // m/s² — precisa cair abaixo antes do próximo
 const STEP_MIN_MS = 250;           // debounce entre passos
-
-// Layout do bloco móvel de dados no compartilhamento (rota + card), em px
-// lógicos do canvas 1080×1920. O bloco é arrastado e redimensionado pelo usuário.
-const SHARE_GROUP_W = 900;
-const SHARE_GROUP_ROUTE_H = 700;
-const SHARE_GROUP_GAP = 70;
-const SHARE_GROUP_STATS_H = 404; // 4 métricas em grade 2×2
-const SHARE_GROUP_H = SHARE_GROUP_ROUTE_H + SHARE_GROUP_GAP + SHARE_GROUP_STATS_H; // 1174
-
-// ── Helpers de canvas para o compartilhamento (PNG estilo Roda da Vida) ──
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
-}
-
-function drawRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
-}
-
-// Reduz a foto de fundo para caber no canvas (evita estourar memória no iOS
-// com HEIC/12MP da galeria). Devolve um canvas, que serve direto no drawImage.
-function limitImage(img: HTMLImageElement, maxDim: number): HTMLImageElement | HTMLCanvasElement {
-  const longest = Math.max(img.width, img.height);
-  if (longest <= maxDim) return img;
-  const scale = maxDim / longest;
-  const c = document.createElement("canvas");
-  c.width = Math.max(1, Math.round(img.width * scale));
-  c.height = Math.max(1, Math.round(img.height * scale));
-  const cx = c.getContext("2d")!;
-  cx.drawImage(img, 0, 0, c.width, c.height);
-  return c;
-}
 
 export default function CorridaPage() {
   const { t } = useTranslation();
@@ -128,11 +66,6 @@ export default function CorridaPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const gpsErrorShownRef = useRef(false);
   const wakeLockRef = useRef<any>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const shareBlockRef = useRef({ x: 90, y: 350, scale: 1, rotation: 0, routeShiftY: 0 });
-  const shareLayerRef = useRef<{ bg: (HTMLImageElement | HTMLCanvasElement) | null; avatar: HTMLImageElement | null } | null>(null);
-  const sharePreviewRef = useRef<HTMLCanvasElement>(null);
-  const shareDragRef = useRef<{ startLx: number; startLy: number; bx: number; by: number } | null>(null);
   const activityTypeRef = useRef<"run" | "walk">("run");
 
   const [running, setRunning] = useState(false);
@@ -149,18 +82,12 @@ export default function CorridaPage() {
   const [historyStats, setHistoryStats] = useState<{ total_runs: number; total_distance_m: number; best_distance_m: number; best_pace: number; longest_duration: number } | null>(null);
   const [weightKg, setWeightKg] = useState(DEFAULT_WEIGHT_KG);
   const [showHistory, setShowHistory] = useState(false);
-  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [sharing, setSharing] = useState(false);
   const [confirmStop, setConfirmStop] = useState(false);
-  const [showSharePicker, setShowSharePicker] = useState(false);
-  const [showShareEditor, setShowShareEditor] = useState(false);
-  const [shareScale, setShareScale] = useState(1);
-  const [shareRotation, setShareRotation] = useState(0);
-  const [shareRouteShift, setShareRouteShift] = useState(0);
   const [activityType, setActivityType] = useState<"run" | "walk">("run");
+  const [customGoalOpen, setCustomGoalOpen] = useState(false);
+  const [customGoalValue, setCustomGoalValue] = useState("");
+  const [customGoalUnit, setCustomGoalUnit] = useState<"distance" | "duration">("distance");
 
   // Mantém a tela acesa durante a corrida ativa (iOS suspende o app se a tela dormir)
   const requestWakeLock = async () => {
@@ -776,7 +703,7 @@ export default function CorridaPage() {
           map_snapshot: mapSnapshotPath,
         };
         setShowHistory(true);
-        setSelectedSession(saved);
+        if (saved.id) router.push(`/corrida/${saved.id}`);
       } else {
         const err = await res.json().catch(() => ({}));
         toast.error(err.error || t("co_erro_salvar"));
@@ -787,290 +714,7 @@ export default function CorridaPage() {
     sessionIdRef.current = null;
   };
 
-  const deleteSession = async () => {
-    if (!selectedSession) return;
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/running?id=${selectedSession.id}`, { method: "DELETE" });
-      if (res.ok) {
-        emitCareDataChanged();
-        toast.success(t("co_corrida_excluida"));
-        setHistory(prev => prev.filter(s => s.id !== selectedSession.id));
-        setSelectedSession(null);
-        setConfirmDelete(false);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || t("co_erro_excluir"));
-      }
-    } catch { toast.error(t("co_erro_excluir")); }
-    setDeleting(false);
-  };
 
-  // Desenha o bloco móvel de dados (percurso em linhas + card de 4 métricas)
-  // em coordenadas locais: rota em (0,0,900,700), card em (0,770,900,404).
-  const drawDataBlock = (ctx: CanvasRenderingContext2D, s: Session, isWhite: boolean, rotationDeg: number, routeShiftY: number) => {
-    const mapW = SHARE_GROUP_W, mapH = SHARE_GROUP_ROUTE_H;
-    const pts = projectRoute(s.route_coordinates || [], 0, 0, mapW, mapH, 60);
-    if (pts.length >= 2) {
-      ctx.save();
-      // Aproxima/afasta do card: deslocamento vertical aplicado NA TELA (depois da rotação),
-      // para que o movimento seja sempre para cima/baixo independente do ângulo do percurso.
-      ctx.translate(0, routeShiftY);
-      // Rotaciona o percurso em torno do centro da área da rota (o card fica reto)
-      ctx.translate(mapW / 2, mapH / 2);
-      ctx.rotate((rotationDeg * Math.PI) / 180);
-      ctx.translate(-mapW / 2, -mapH / 2);
-      ctx.beginPath();
-      pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-      ctx.lineCap = "round"; ctx.lineJoin = "round";
-      if (isWhite) {
-        ctx.strokeStyle = "#7C5CFF";
-        ctx.lineWidth = 12;
-        ctx.shadowColor = "rgba(124,92,255,0.3)"; ctx.shadowBlur = 10;
-        ctx.stroke();
-      } else {
-        ctx.strokeStyle = "#7C5CFF";
-        ctx.lineWidth = 14;
-        ctx.shadowColor = "rgba(124,92,255,0.9)"; ctx.shadowBlur = 24;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = "rgba(255,255,255,0.9)";
-        ctx.lineWidth = 5;
-        ctx.stroke();
-      }
-      ctx.fillStyle = "#22D18B"; ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 13, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#FF4D4D"; ctx.beginPath(); ctx.arc(pts[pts.length - 1].x, pts[pts.length - 1].y, 13, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-    }
-
-    // Card de 4 métricas (distância, tempo, ritmo, velocidade máx)
-    const statsY = mapH + SHARE_GROUP_GAP;
-    const stats = [
-      { label: t("co_distancia"), value: `${(s.distance_meters / 1000).toFixed(2)} km` },
-      { label: t("co_tempo"), value: formatDuration(s.duration_seconds) },
-      { label: t("co_ritmo_medio"), value: formatPace(s.avg_pace || 0) },
-      { label: t("co_velocidade_max"), value: s.max_speed ? `${s.max_speed.toFixed(1)} km/h` : "--" },
-    ];
-    const gap = 20, cellW = (mapW - 80 - gap) / 2, cellH = 120, gridTop = statsY + 104;
-    const statsH = SHARE_GROUP_STATS_H;
-    ctx.fillStyle = "rgba(26,26,36,0.85)"; ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
-    drawRoundRect(ctx, 0, statsY, mapW, statsH, 28); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "#FFFFFF"; ctx.font = "600 28px Inter, system-ui, sans-serif"; ctx.textAlign = "left";
-    ctx.fillText(t("co_estatisticas"), 40, statsY + 64);
-    stats.forEach((st, i) => {
-      const col = i % 2, row = Math.floor(i / 2);
-      const cx = 40 + col * (cellW + gap);
-      const cy = gridTop + row * (cellH + gap);
-      ctx.fillStyle = "rgba(15,15,20,0.7)"; ctx.strokeStyle = "rgba(167,139,250,0.15)"; ctx.lineWidth = 1;
-      drawRoundRect(ctx, cx, cy, cellW, cellH, 18); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = "#e0d6ff"; ctx.font = "700 38px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
-      ctx.fillText(st.value, cx + cellW / 2, cy + 50);
-      ctx.fillStyle = "#A0A0B3"; ctx.font = "600 20px Inter, system-ui, sans-serif";
-      ctx.fillText(st.label.toUpperCase(), cx + cellW / 2, cy + 88);
-    });
-  };
-
-  // Desenha a composição inteira em coordenadas lógicas 1080×1920. Header/título/
-  // data e rodapé são fixos; o bloco de dados é posicionado/escalado por `block`.
-  const drawShare = (ctx: CanvasRenderingContext2D, s: Session, layer: { bg: (HTMLImageElement | HTMLCanvasElement) | null; avatar: HTMLImageElement | null }, block: { x: number; y: number; scale: number; rotation: number; routeShiftY: number }) => {
-    const W = 1080, H = 1920;
-    const isWhite = !layer.bg;
-
-    if (layer.bg) {
-      const scale = Math.max(W / layer.bg.width, H / layer.bg.height);
-      const dw = layer.bg.width * scale, dh = layer.bg.height * scale;
-      ctx.drawImage(layer.bg, (W - dw) / 2, (H - dh) / 2, dw, dh);
-      ctx.fillStyle = "rgba(0,0,0,0.28)"; ctx.fillRect(0, 0, W, H);
-    } else {
-      ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H);
-    }
-
-    // Header — sombra no fundo de foto para manter contraste
-    const headerY = 130;
-    const avatarSize = 44, avatarCx = W / 2 - 82, avatarCy = headerY - 58;
-    if (layer.avatar) ctx.drawImage(layer.avatar, avatarCx - avatarSize / 2, avatarCy - avatarSize / 2, avatarSize, avatarSize);
-    ctx.fillStyle = isWhite ? "#0F0F14" : "#FFFFFF"; ctx.font = "600 24px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
-    if (!isWhite) { ctx.shadowColor = "rgba(0,0,0,0.75)"; ctx.shadowBlur = 8; }
-    ctx.fillText("MAYA APP", W / 2 + 12, headerY - 48);
-    ctx.shadowBlur = 0;
-
-    // Título (respeita o toggle: Corrida ou Caminhada)
-    const titleY = headerY + 46;
-    const titulo = s.activity_type === "walk" ? t("co_caminhada") : t("co_titulo");
-    ctx.font = "700 84px Inter, system-ui, sans-serif";
-    const tw = ctx.measureText(titulo).width;
-    const tg = ctx.createLinearGradient(W / 2 - tw / 2, titleY, W / 2 + tw / 2, titleY);
-    tg.addColorStop(0, "#7C5CFF"); tg.addColorStop(1, "#A78BFA");
-    ctx.fillStyle = tg;
-    if (!isWhite) { ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 18; }
-    ctx.fillText(titulo, W / 2, titleY);
-    ctx.shadowBlur = 0;
-
-    // Data — branca com sombra forte no fundo de foto; escura no fundo branco
-    const dateStr = new Date(s.start_time).toLocaleDateString(getLocale(), { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
-    ctx.font = "500 28px Inter, system-ui, sans-serif";
-    if (isWhite) {
-      ctx.fillStyle = "#3f3a52";
-      ctx.fillText(dateStr, W / 2, titleY + 50);
-    } else {
-      ctx.fillStyle = "#FFFFFF";
-      ctx.shadowColor = "rgba(0,0,0,0.9)"; ctx.shadowBlur = 12;
-      ctx.fillText(dateStr, W / 2, titleY + 50);
-      ctx.shadowBlur = 0;
-    }
-
-    // Bloco móvel (rota + card)
-    ctx.save();
-    ctx.translate(block.x, block.y);
-    ctx.scale(block.scale, block.scale);
-    drawDataBlock(ctx, s, isWhite, block.rotation, block.routeShiftY);
-    ctx.restore();
-
-    // Rodapé — sombra no fundo de foto
-    const footerY = H - 130;
-    ctx.fillStyle = isWhite ? "#6a657a" : "#FFFFFF"; ctx.font = "600 24px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
-    if (!isWhite) { ctx.shadowColor = "rgba(0,0,0,0.75)"; ctx.shadowBlur = 8; }
-    ctx.fillText(t("co_footer_share"), W / 2, footerY);
-    ctx.shadowBlur = 0;
-  };
-
-  // Renderiza o preview (meia resolução) no canvas do editor.
-  const renderSharePreview = () => {
-    const canvas = sharePreviewRef.current;
-    const s = selectedSession;
-    const layer = shareLayerRef.current;
-    if (!canvas || !s || !layer) return;
-    const W = 1080, H = 1920, PREV = 0.5;
-    canvas.width = W * PREV; canvas.height = H * PREV;
-    const ctx = canvas.getContext("2d")!;
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-    ctx.scale(PREV, PREV);
-    drawShare(ctx, s, layer, shareBlockRef.current);
-  };
-
-  // Abre o editor: carrega foto/avatar, reseta o bloco e mostra o preview.
-  const openShareEditor = async (bgUrl: string | null) => {
-    const s = selectedSession;
-    if (!s) return;
-    setShowSharePicker(false);
-    setSharing(true);
-    try {
-      let bg: (HTMLImageElement | HTMLCanvasElement) | null = null;
-      if (bgUrl) {
-        try { bg = limitImage(await loadImage(bgUrl), 1080 * 2); } catch { bg = null; }
-      }
-      let avatar: HTMLImageElement | null = null;
-      try { avatar = await loadImage("/maya-avatar.webp"); } catch { avatar = null; }
-      shareLayerRef.current = { bg, avatar };
-      shareBlockRef.current = { x: 90, y: 350, scale: 1, rotation: 0, routeShiftY: 0 };
-      setShareScale(1);
-      setShareRotation(0);
-      setShareRouteShift(0);
-      setShowShareEditor(true);
-    } catch { toast.error(t("co_erro_salvar")); }
-    setSharing(false);
-  };
-
-  // Exporta o PNG em resolução final e baixa (ou compartilha, quando suportado).
-  const downloadShare = async () => {
-    const s = selectedSession;
-    const layer = shareLayerRef.current;
-    if (!s || !layer) return;
-    setSharing(true);
-    try {
-      const W = 1080, H = 1920, SCALE = 2;
-      const canvas = document.createElement("canvas");
-      canvas.width = W * SCALE; canvas.height = H * SCALE;
-      const ctx = canvas.getContext("2d")!;
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.scale(SCALE, SCALE);
-      drawShare(ctx, s, layer, shareBlockRef.current);
-
-      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
-      if (!blob) { toast.error(t("co_erro_salvar")); return; }
-      const file = new File([blob], "corrida.png", { type: "image/png" });
-      let shared = false;
-      if (navigator.canShare?.({ files: [file] })) {
-        try { await navigator.share({ files: [file], title: t("co_minha_corrida") }); shared = true; } catch { /* cai no download */ }
-      }
-      if (!shared) {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "corrida.png";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-        toast.success(t("co_imagem_baixada"));
-      }
-    } catch (err) {
-      console.error("downloadShare error:", err);
-      toast.error(t("co_erro_salvar"));
-    }
-    setSharing(false);
-  };
-
-  // Drag no preview: move o bloco de dados (coordenadas lógicas 1080×1920).
-  const onPreviewPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const lx = ((e.clientX - rect.left) / rect.width) * 1080;
-    const ly = ((e.clientY - rect.top) / rect.height) * 1920;
-    const b = shareBlockRef.current;
-    shareDragRef.current = { startLx: lx, startLy: ly, bx: b.x, by: b.y };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-  const onPreviewPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const d = shareDragRef.current;
-    if (!d) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const lx = ((e.clientX - rect.left) / rect.width) * 1080;
-    const ly = ((e.clientY - rect.top) / rect.height) * 1920;
-    shareBlockRef.current = { ...shareBlockRef.current, x: d.bx + (lx - d.startLx), y: d.by + (ly - d.startLy) };
-    renderSharePreview();
-  };
-  const onPreviewPointerUp = () => { shareDragRef.current = null; };
-
-  // Slider de escala: redimensiona o bloco ancorado no centro.
-  const onShareScale = (v: number) => {
-    setShareScale(v);
-    const b = shareBlockRef.current;
-    const s = Math.min(2.5, Math.max(0.4, v));
-    const cx = b.x + (SHARE_GROUP_W * b.scale) / 2;
-    const cy = b.y + (SHARE_GROUP_H * b.scale) / 2;
-    shareBlockRef.current = { ...shareBlockRef.current, scale: s, x: cx - (SHARE_GROUP_W * s) / 2, y: cy - (SHARE_GROUP_H * s) / 2 };
-    renderSharePreview();
-  };
-
-  // Slider de rotação: gira o percurso em torno do centro (o card fica reto).
-  const onShareRotation = (v: number) => {
-    setShareRotation(v);
-    shareBlockRef.current = { ...shareBlockRef.current, rotation: v };
-    renderSharePreview();
-  };
-
-  // Slider de aproximação: aproxima/afasta o percurso do card (deslocamento vertical).
-  const onShareRouteShift = (v: number) => {
-    setShareRouteShift(v);
-    shareBlockRef.current = { ...shareBlockRef.current, routeShiftY: v };
-    renderSharePreview();
-  };
-
-  // Renderiza o preview assim que o canvas do editor monta.
-  useEffect(() => {
-    if (showShareEditor) renderSharePreview();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showShareEditor]);
-
-  const onSharePhotoPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => openShareEditor(reader.result as string);
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  };
 
   // Tela "travada" durante a corrida ativa: esconde navegação e controles extras
   // para o celular no bolso não disparar toques acidentais.
@@ -1081,10 +725,6 @@ export default function CorridaPage() {
   useEffect(() => { emitRunLockChanged(locked); }, [locked]);
   useEffect(() => () => emitRunLockChanged(false), []);
 
-  // Parciais por km da corrida selecionada (para o gráfico de ritmo)
-  const detailSplits = selectedSession ? computeSplits(selectedSession.route_coordinates || []) : [];
-  // Recordes pessoais desta corrida (comparado ao histórico completo)
-  const detailPRs = selectedSession && historyStats ? sessionPRs(selectedSession, historyStats) : [];
 
   // Meta da corrida (distância ou duração) — definida antes de começar
   const goalChips: { id: { type: "distance" | "duration"; value: number } | null; label: string }[] = [
@@ -1191,7 +831,7 @@ export default function CorridaPage() {
             {history.length === 0 ? (
               <p style={{ textAlign: "center", color: "#9e96b5", padding: 40 }}>{t("co_nenhuma_corrida")}</p>
             ) : history.map(s => (
-              <button key={s.id} type="button" onClick={() => { setSelectedSession(s); setConfirmDelete(false); }}
+              <button key={s.id} type="button" onClick={() => router.push(`/corrida/${s.id}`)}
                 style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, border: "1px solid rgba(167,139,250,0.1)", background: "#1a1530", marginBottom: 8, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
                 <span style={{ fontSize: 22 }}>{s.activity_type === "walk" ? "🚶" : "🏃"}</span>
                 <div style={{ flex: 1 }}>
@@ -1207,7 +847,7 @@ export default function CorridaPage() {
 
       {/* Meta da corrida (só quando ocioso) */}
       {!showHistory && !running && (
-        <div style={{ position: "fixed", bottom: "calc(64px + env(safe-area-inset-bottom) + 104px)", left: 0, right: 0, zIndex: 20, padding: "0 16px", display: "flex", alignItems: "center", gap: 8, overflowX: "auto" }}>
+        <div style={{ position: "fixed", bottom: "calc(env(safe-area-inset-bottom) + 104px)", left: 0, right: 0, zIndex: 20, padding: "0 16px", display: "flex", alignItems: "center", gap: 8, overflowX: "auto" }}>
           <span style={{ fontSize: 11, color: "#9e96b5", fontWeight: 700, flexShrink: 0 }}>🏁 {t("co_meta")}</span>
           {goalChips.map(chip => {
             const active = chip.id === null ? !goal : (goal !== null && goal.type === chip.id.type && goal.value === chip.id.value);
@@ -1218,12 +858,32 @@ export default function CorridaPage() {
               </button>
             );
           })}
+          <button key="custom" type="button" onClick={() => setCustomGoalOpen(v => !v)}
+            style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 9999, border: "1px solid", borderColor: customGoalOpen ? "#22D18B" : "rgba(167,139,250,0.25)", background: customGoalOpen ? "rgba(34,209,139,0.15)" : "rgba(26,21,48,0.85)", color: customGoalOpen ? "#22D18B" : "#A78BFA", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", backdropFilter: "blur(8px)" }}>
+            ✏️ {t("co_meta_custom")}
+          </button>
+        </div>
+      )}
+
+      {customGoalOpen && !running && (
+        <div style={{ position: "fixed", bottom: "calc(env(safe-area-inset-bottom) + 156px)", left: 16, right: 16, zIndex: 20, display: "flex", gap: 8, alignItems: "center", background: "rgba(26,21,48,0.95)", border: "1px solid rgba(167,139,250,0.25)", borderRadius: 14, padding: 10, backdropFilter: "blur(8px)" }}>
+          <input type="number" inputMode="decimal" min={0.1} step={0.1} value={customGoalValue}
+            onChange={(e) => setCustomGoalValue(e.target.value)}
+            placeholder={customGoalUnit === "distance" ? "4" : "45"}
+            style={{ flex: 1, minWidth: 0, background: "rgba(15,15,20,0.7)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 10, color: "#e0d6ff", fontSize: 14, padding: "10px 12px", fontFamily: "inherit", outline: "none" }} />
+          <button type="button" onClick={() => setCustomGoalUnit("distance")}
+            style={{ flexShrink: 0, padding: "10px 14px", borderRadius: 10, border: "1px solid", borderColor: customGoalUnit === "distance" ? "#22D18B" : "rgba(167,139,250,0.25)", background: customGoalUnit === "distance" ? "rgba(34,209,139,0.15)" : "transparent", color: customGoalUnit === "distance" ? "#22D18B" : "#A78BFA", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>km</button>
+          <button type="button" onClick={() => setCustomGoalUnit("duration")}
+            style={{ flexShrink: 0, padding: "10px 14px", borderRadius: 10, border: "1px solid", borderColor: customGoalUnit === "duration" ? "#22D18B" : "rgba(167,139,250,0.25)", background: customGoalUnit === "duration" ? "rgba(34,209,139,0.15)" : "transparent", color: customGoalUnit === "duration" ? "#22D18B" : "#A78BFA", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>min</button>
+          <button type="button"
+            onClick={() => { const v = Number(customGoalValue); if (v > 0) { setGoal({ type: customGoalUnit, value: v }); setCustomGoalOpen(false); setCustomGoalValue(""); } }}
+            style={{ flexShrink: 0, padding: "10px 16px", borderRadius: 10, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>OK</button>
         </div>
       )}
 
       {/* Action button — floating over map */}
       {!showHistory && (
-        <div style={{ position: "fixed", bottom: "calc(64px + env(safe-area-inset-bottom) + 20px)", left: "50%", transform: "translateX(-50%)", zIndex: 20, display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ position: "fixed", bottom: "calc(env(safe-area-inset-bottom) + 20px)", left: "50%", transform: "translateX(-50%)", zIndex: 20, display: "flex", alignItems: "center", gap: 14 }}>
           {!running ? (
             <button type="button" onClick={startRun}
               style={{ width: 72, height: 72, borderRadius: "50%", background: "#7C5CFF", border: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(124,92,255,0.5)" }}>
@@ -1268,253 +928,7 @@ export default function CorridaPage() {
         </div>
       )}
 
-      {/* Detalhes da corrida selecionada */}
-      {selectedSession && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => { if (!deleting) setSelectedSession(null); }}>
-          <div style={{ background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 20, width: "100%", maxWidth: 400, maxHeight: "90vh", overflowY: "auto", padding: 20 }} onClick={(e) => e.stopPropagation()}>
-            {selectedSession.map_snapshot && (
-              <div style={{ margin: "-20px -20px 16px" }}>
-                <img src={photoUrl(selectedSession.map_snapshot) || ""} alt={t("co_trajeto_alt")} style={{ width: "100%", display: "block", maxHeight: 220, objectFit: "cover", borderRadius: "20px 20px 0 0" }} />
-              </div>
-            )}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>{selectedSession.activity_type === "walk" ? t("co_caminhada") : t("co_titulo")}</h2>
-                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#9e96b5" }}>
-                  {new Date(selectedSession.start_time).toLocaleDateString(getLocale(), { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                </p>
-              </div>
-              <button type="button" onClick={() => setSelectedSession(null)} style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(167,139,250,0.1)", border: 0, color: "#A78BFA", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>✕</button>
-            </div>
-
-            {detailPRs.length > 0 && (
-              <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 12, background: "rgba(250,204,21,0.1)", border: "1px solid rgba(250,204,21,0.3)", display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 16 }}>🏆</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#FACC15" }}>
-                  {detailPRs.map(p => t(p === "dist" ? "co_record_dist" : p === "pace" ? "co_record_pace" : "co_record_dur")).join(" · ")}
-                </span>
-              </div>
-            )}
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-              <StatBox label={t("co_distancia")} value={`${(selectedSession.distance_meters / 1000).toFixed(2)} km`} />
-              <StatBox label={t("co_tempo")} value={formatDuration(selectedSession.duration_seconds)} />
-              <StatBox label={t("co_ritmo_medio")} value={formatPace(selectedSession.avg_pace || 0)} />
-              <StatBox label={t("co_velocidade_max")} value={selectedSession.max_speed ? `${selectedSession.max_speed.toFixed(1)} km/h` : "--"} />
-              <StatBox label={t("co_elevacao")} value={selectedSession.elevation_gain_m ? `+${Math.round(selectedSession.elevation_gain_m)} m` : "--"} />
-              <StatBox label={t("co_cadencia")} value={selectedSession.avg_cadence ? String(selectedSession.avg_cadence) : "--"} />
-              <div style={{ gridColumn: "1 / -1" }}>
-                <StatBox label={t("co_calorias")} value={selectedSession.calories_estimate ? `≈ ${selectedSession.calories_estimate} kcal` : "--"} />
-              </div>
-            </div>
-
-            {detailSplits.length >= 2 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, color: "#9e96b5", fontWeight: 600, marginBottom: 10 }}>{t("co_ritmo_por_km")}</div>
-                <PaceChart splits={detailSplits} />
-              </div>
-            )}
-
-            <button type="button" onClick={() => setShowSharePicker(true)} disabled={sharing}
-              style={{ width: "100%", padding: "12px", borderRadius: 12, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10, opacity: sharing ? 0.5 : 1 }}>
-              <Share2 size={16} />
-              {sharing ? t("co_preparando") : t("co_compartilhar")}
-            </button>
-
-            {!confirmDelete ? (
-              <button type="button" onClick={() => setConfirmDelete(true)} disabled={deleting}
-                style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1px solid rgba(255,77,77,0.4)", background: "rgba(255,77,77,0.1)", color: "#FF4D4D", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                {t("co_excluir_corrida")}
-              </button>
-            ) : (
-              <div>
-                <p style={{ fontSize: 13, color: "#e0d6ff", marginBottom: 10, textAlign: "center" }}>
-                  {t("co_excluir_confirm")}
-                </p>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button type="button" onClick={() => setConfirmDelete(false)} disabled={deleting}
-                    style={{ flex: 1, padding: "12px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#A78BFA", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                    {t("cancelar")}
-                  </button>
-                  <button type="button" onClick={deleteSession} disabled={deleting}
-                    style={{ flex: 1, padding: "12px", borderRadius: 12, border: 0, background: "#FF4D4D", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: deleting ? 0.5 : 1 }}>
-                    {deleting ? t("co_excluindo") : t("co_excluir")}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Escolher foto de fundo para compartilhar */}
-      {showSharePicker && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setShowSharePicker(false)}>
-          <div style={{ background: "#1a1530", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 20, width: "100%", maxWidth: 340, padding: 20 }} onClick={(e) => e.stopPropagation()}>
-            <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 700, color: "#e0d6ff", textAlign: "center" }}>{t("co_share_foto_titulo")}</p>
-            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#9e96b5", textAlign: "center", lineHeight: 1.5 }}>{t("co_share_foto_hint")}</p>
-            <button type="button" onClick={() => fileInputRef.current?.click()}
-              style={{ width: "100%", padding: "12px", borderRadius: 12, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}>
-              📷 {t("co_share_foto_btn")}
-            </button>
-            <button type="button" onClick={() => openShareEditor(null)}
-              style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1px solid rgba(167,139,250,0.2)", background: "transparent", color: "#A78BFA", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              {t("co_share_sem_foto")}
-            </button>
-          </div>
-        </div>
-      )}
-      {/* Editor de compartilhamento: posiciona/redimensiona os dados e baixa */}
-      {showShareEditor && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 80, background: "#0B0B10", display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "calc(env(safe-area-inset-top) + 12px) 16px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <button type="button" onClick={() => setShowShareEditor(false)} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(26,21,48,0.85)", border: "1px solid rgba(167,139,250,0.25)", color: "#A78BFA", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>✕</button>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#e0d6ff" }}>{t("co_compartilhar")}</span>
-            <span style={{ width: 36 }} />
-          </div>
-          <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "4px 12px" }}>
-            <div style={{ height: "100%", maxWidth: "100%", aspectRatio: "9 / 16", position: "relative", borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }}>
-              <canvas
-                ref={sharePreviewRef}
-                onPointerDown={onPreviewPointerDown}
-                onPointerMove={onPreviewPointerMove}
-                onPointerUp={onPreviewPointerUp}
-                onPointerCancel={onPreviewPointerUp}
-                style={{ width: "100%", height: "100%", display: "block", touchAction: "none", cursor: "grab" }}
-              />
-            </div>
-          </div>
-          <div style={{ padding: "calc(env(safe-area-inset-bottom) + 16px) 20px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
-            <p style={{ margin: 0, fontSize: 12, color: "#9e96b5", textAlign: "center" }}>{t("co_share_editar")}</p>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 12, color: "#9e96b5", fontWeight: 700 }}>−</span>
-              <input type="range" min={0.4} max={2.5} step={0.05} value={shareScale} onChange={(e) => onShareScale(Number(e.target.value))} style={{ flex: 1, accentColor: "#7C5CFF" }} />
-              <span style={{ fontSize: 12, color: "#9e96b5", fontWeight: 700 }}>+</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 16, lineHeight: 1 }}>⟲</span>
-              <input type="range" min={-180} max={180} step={5} value={shareRotation} onChange={(e) => onShareRotation(Number(e.target.value))} style={{ flex: 1, accentColor: "#7C5CFF" }} />
-              <span style={{ fontSize: 12, color: "#9e96b5", width: 38, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{shareRotation}°</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 16, lineHeight: 1 }}>↕</span>
-              <input type="range" min={-300} max={300} step={5} value={shareRouteShift} onChange={(e) => onShareRouteShift(Number(e.target.value))} style={{ flex: 1, accentColor: "#7C5CFF" }} />
-              <span style={{ fontSize: 12, color: "#9e96b5", width: 38, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{shareRouteShift > 0 ? `+${shareRouteShift}` : shareRouteShift}</span>
-            </div>
-            <button type="button" onClick={downloadShare} disabled={sharing}
-              style={{ width: "100%", padding: "14px", borderRadius: 14, border: 0, background: "#7C5CFF", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: sharing ? 0.5 : 1 }}>
-              {sharing ? t("co_preparando") : t("co_baixar")}
-            </button>
-          </div>
-        </div>
-      )}
-      <input ref={fileInputRef} type="file" accept="image/*" onChange={onSharePhotoPicked} style={{ display: "none" }} />
     </div>
   );
 }
 
-function StatChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div style={{ background: "rgba(26,21,48,0.82)", backdropFilter: "blur(8px)", boxShadow: "0 2px 12px rgba(0,0,0,0.3)", borderRadius: 12, padding: "10px 12px", textAlign: "center" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 4 }}>
-        <span style={{ color: "#A78BFA" }}>{icon}</span>
-        <span style={{ fontSize: 10, color: "#9e96b5", fontWeight: 500 }}>{label}</span>
-      </div>
-      <span style={{ fontSize: 14, fontWeight: 700, color: "#e0d6ff" }}>{value}</span>
-    </div>
-  );
-}
-
-function StatBox({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.1)", borderRadius: 12, padding: "12px", textAlign: "center" }}>
-      <div style={{ fontSize: 10, color: "#9e96b5", fontWeight: 500, marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: "#e0d6ff", fontVariantNumeric: "tabular-nums" }}>{value}</div>
-    </div>
-  );
-}
-
-function PaceChart({ splits }: { splits: Split[] }) {
-  const speeds = splits.map(s => 3600 / Math.max(1, s.paceSecPerKm));
-  const maxSpeed = Math.max(...speeds, 1);
-  return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 132, padding: "0 2px" }}>
-      {splits.map((s, i) => {
-        const h = Math.round((speeds[i] / maxSpeed) * 92);
-        return (
-          <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 5, height: "100%" }}>
-            <span style={{ fontSize: 8, color: "#A78BFA", fontWeight: 700, whiteSpace: "nowrap" }}>{formatPaceShort(s.paceSecPerKm)}</span>
-            <div style={{ width: "100%", maxWidth: 24, height: Math.max(6, h), borderRadius: 6, background: s.partial ? "rgba(167,139,250,0.35)" : "#7C5CFF", boxShadow: "0 2px 8px rgba(124,92,255,0.25)" }} />
-            <span style={{ fontSize: 8, color: "#5a5470", whiteSpace: "nowrap" }}>{s.distKm < 1 ? `${s.distKm.toFixed(1)}km` : `${s.distKm.toFixed(0)}km`}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// Haversine formula for distance between two GPS points
-function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371000; // Earth radius in meters
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-interface Split { distKm: number; sec: number; paceSecPerKm: number; partial?: boolean; }
-
-// Divide a corrida em parciais por km usando as coordenadas com timestamp.
-function computeSplits(coords: Coord[]): Split[] {
-  const out: Split[] = [];
-  if (!coords || coords.length < 2) return out;
-  let cum = 0; // metros acumulados
-  let startT = coords[0].timestamp;
-  let nextKm = 1;
-  for (let i = 1; i < coords.length; i++) {
-    cum += haversine(coords[i - 1].lat, coords[i - 1].lng, coords[i].lat, coords[i].lng);
-    if (cum >= nextKm * 1000) {
-      const sec = (coords[i].timestamp - startT) / 1000;
-      out.push({ distKm: 1, sec, paceSecPerKm: sec });
-      startT = coords[i].timestamp;
-      nextKm++;
-    }
-  }
-  // Última parcial (restante inferior a 1 km), com ritmo extrapolado
-  const rest = cum - (nextKm - 1) * 1000;
-  if (rest > 100) {
-    const sec = (coords[coords.length - 1].timestamp - startT) / 1000;
-    if (sec > 3) out.push({ distKm: rest / 1000, sec, paceSecPerKm: sec / (rest / 1000), partial: true });
-  }
-  return out;
-}
-
-// Quais recordes pessoais esta corrida bateu (distância, ritmo, duração).
-function sessionPRs(s: Session, st: { best_distance_m: number; best_pace: number; longest_duration: number }): ("dist" | "pace" | "dur")[] {
-  const prs: ("dist" | "pace" | "dur")[] = [];
-  if (st.best_distance_m > 0 && Math.round(s.distance_meters) === st.best_distance_m) prs.push("dist");
-  if (st.best_pace > 0 && s.avg_pace && Math.round(s.avg_pace) === st.best_pace) prs.push("pace");
-  if (st.longest_duration > 0 && s.duration_seconds === st.longest_duration) prs.push("dur");
-  return prs;
-}
-
-// Projeta as coordenadas da corrida num retângulo (x,y) preservando a proporção,
-// para desenhar o percurso (só as linhas) sobre uma foto de fundo.
-function projectRoute(coords: Coord[], x: number, y: number, w: number, h: number, pad: number) {
-  if (!coords || coords.length < 2) return [];
-  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-  for (const c of coords) {
-    if (c.lat < minLat) minLat = c.lat; if (c.lat > maxLat) maxLat = c.lat;
-    if (c.lng < minLng) minLng = c.lng; if (c.lng > maxLng) maxLng = c.lng;
-  }
-  const cosLat = Math.cos((minLat + maxLat) / 2 * Math.PI / 180);
-  const spanX = (maxLng - minLng) * cosLat || 1e-9;
-  const spanY = (maxLat - minLat) || 1e-9;
-  const scale = Math.min((w - pad * 2) / spanX, (h - pad * 2) / spanY);
-  const drawW = spanX * scale, drawH = spanY * scale;
-  const ox = x + (w - drawW) / 2, oy = y + (h - drawH) / 2;
-  return coords.map(c => ({
-    x: ox + (c.lng - minLng) * cosLat * scale,
-    y: oy + (maxLat - c.lat) * scale,
-  }));
-}
