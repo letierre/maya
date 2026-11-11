@@ -67,6 +67,20 @@ function drawRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
 }
 
+// Reduz a foto de fundo para caber no canvas (evita estourar memória no iOS
+// com HEIC/12MP da galeria). Devolve um canvas, que serve direto no drawImage.
+function limitImage(img: HTMLImageElement, maxDim: number): HTMLImageElement | HTMLCanvasElement {
+  const longest = Math.max(img.width, img.height);
+  if (longest <= maxDim) return img;
+  const scale = maxDim / longest;
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(img.width * scale));
+  c.height = Math.max(1, Math.round(img.height * scale));
+  const cx = c.getContext("2d")!;
+  cx.drawImage(img, 0, 0, c.width, c.height);
+  return c;
+}
+
 export default function CorridaPage() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -682,7 +696,8 @@ export default function CorridaPage() {
       let hasBg = false;
       if (bgUrl) {
         try {
-          const bg = await loadImage(bgUrl);
+          const src = await loadImage(bgUrl);
+          const bg = limitImage(src, W * SCALE);
           const scale = Math.max(W / bg.width, H / bg.height);
           const dw = bg.width * scale, dh = bg.height * scale;
           ctx.drawImage(bg, (W - dw) / 2, (H - dh) / 2, dw, dh);
@@ -785,20 +800,34 @@ export default function CorridaPage() {
       ctx.fillStyle = isWhite ? "#6a657a" : "#A0A0B3"; ctx.font = "500 20px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
       ctx.fillText(t("co_footer_share"), W / 2, footerY);
 
-      // 8. Exporta e compartilha (mantém dentro do app)
+      // 8. Exporta o PNG e baixa. O share nativo (iOS/Android) exige gesto do
+      // usuário e costuma falhar aqui porque o fluxo é assíncrono (carrega a
+      // foto/avatar antes de chegar no share) — qualquer falha cai no download,
+      // que é o que o usuário espera ao tocar em "Compartilhar".
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
-      if (!blob) return;
+      if (!blob) { toast.error(t("co_erro_salvar")); return; }
       const file = new File([blob], "corrida.png", { type: "image/png" });
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: t("co_minha_corrida") });
-      } else {
+      let shared = false;
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: t("co_minha_corrida") });
+          shared = true;
+        } catch { /* share cancelado/não suportado → baixa a imagem */ }
+      }
+      if (!shared) {
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = "corrida.png";
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(a.href);
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        toast.success(t("co_imagem_baixada"));
       }
-    } catch { /* usuário cancelou o share */ }
+    } catch (err) {
+      console.error("doShare error:", err);
+      toast.error(t("co_erro_salvar"));
+    }
     setSharing(false);
   };
 
