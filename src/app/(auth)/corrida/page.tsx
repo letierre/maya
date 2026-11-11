@@ -43,6 +43,11 @@ const RUN_KEY = "maya_running_session";
 const AUTO_PAUSE_SPEED = 1.0; // m/s
 const AUTO_PAUSE_MS = 5000;    // ms
 
+// Estimativa de calorias da corrida (fórmula ACSM: kcal = peso × km × 1.036).
+// Peso padrão até existir campo de peso no perfil.
+const DEFAULT_WEIGHT_KG = 70;
+const CAL_KCAL_PER_KG_KM = 1.036;
+
 // ── Helpers de canvas para o compartilhamento (PNG estilo Roda da Vida) ──
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -537,6 +542,7 @@ export default function CorridaPage() {
     }
     setSaving(true);
     const avgPace = dist > 10 ? duration / (dist / 1000) : 0;
+    const calories = Math.round(DEFAULT_WEIGHT_KG * (dist / 1000) * CAL_KCAL_PER_KG_KM);
     const startedIso = startTime ? startTime.toISOString() : new Date().toISOString();
 
     // Melhor esforço: captura uma foto do mapa com o trajeto para o usuário compartilhar (ex.: Stories)
@@ -553,6 +559,7 @@ export default function CorridaPage() {
         duration_seconds: duration,
         avg_pace: Math.round(avgPace),
         max_speed: maxSpeed,
+        calories_estimate: calories,
         route_coordinates: pointsRef.current,
         map_snapshot: mapSnapshotPath,
       };
@@ -586,7 +593,7 @@ export default function CorridaPage() {
           duration_seconds: duration,
           avg_pace: Math.round(avgPace),
           max_speed: maxSpeed,
-          calories_estimate: null,
+          calories_estimate: calories,
           notes: null,
           route_coordinates: pointsRef.current,
           map_snapshot: mapSnapshotPath,
@@ -709,30 +716,34 @@ export default function CorridaPage() {
 
       // 6. Card de estatísticas
       const statsY = mapY + mapH + 70;
-      const statsH = 400;
+      const stats = [
+        { label: t("co_distancia"), value: `${(s.distance_meters / 1000).toFixed(2)} km` },
+        { label: t("co_tempo"), value: formatDuration(s.duration_seconds) },
+        { label: t("co_ritmo_medio"), value: formatPace(s.avg_pace || 0) },
+        { label: t("co_velocidade_max"), value: s.max_speed ? `${s.max_speed.toFixed(1)} km/h` : "--" },
+        { label: t("co_calorias"), value: s.calories_estimate ? `≈ ${s.calories_estimate} kcal` : "--" },
+      ];
+      const gap = 20, cellW = (mapW - 80 - gap) / 2, cellH = 120, gridTop = statsY + 104;
+      const rows = Math.ceil(stats.length / 2);
+      const statsH = 104 + rows * cellH + (rows - 1) * gap + 40;
       ctx.fillStyle = "rgba(26,26,36,0.85)"; ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
       drawRoundRect(ctx, mapX, statsY, mapW, statsH, 28); ctx.fill(); ctx.stroke();
 
       ctx.fillStyle = "#FFFFFF"; ctx.font = "600 28px Inter, system-ui, sans-serif"; ctx.textAlign = "left";
       ctx.fillText(t("co_estatisticas"), mapX + 40, statsY + 64);
 
-      const stats = [
-        { label: t("co_distancia"), value: `${(s.distance_meters / 1000).toFixed(2)} km` },
-        { label: t("co_tempo"), value: formatDuration(s.duration_seconds) },
-        { label: t("co_ritmo_medio"), value: formatPace(s.avg_pace || 0) },
-        { label: t("co_velocidade_max"), value: s.max_speed ? `${s.max_speed.toFixed(1)} km/h` : "--" },
-      ];
-      const gap = 20, cellW = (mapW - 80 - gap) / 2, cellH = 120, gridTop = statsY + 104;
       stats.forEach((st, i) => {
-        const col = i % 2, row = Math.floor(i / 2);
+        const spanFull = i === stats.length - 1 && stats.length % 2 === 1;
+        const col = spanFull ? 0 : i % 2, row = Math.floor(i / 2);
+        const w = spanFull ? cellW * 2 + gap : cellW;
         const cx = mapX + 40 + col * (cellW + gap);
         const cy = gridTop + row * (cellH + gap);
         ctx.fillStyle = "rgba(15,15,20,0.7)"; ctx.strokeStyle = "rgba(167,139,250,0.15)"; ctx.lineWidth = 1;
-        drawRoundRect(ctx, cx, cy, cellW, cellH, 18); ctx.fill(); ctx.stroke();
+        drawRoundRect(ctx, cx, cy, w, cellH, 18); ctx.fill(); ctx.stroke();
         ctx.fillStyle = "#e0d6ff"; ctx.font = "700 38px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
-        ctx.fillText(st.value, cx + cellW / 2, cy + 50);
+        ctx.fillText(st.value, cx + w / 2, cy + 50);
         ctx.fillStyle = "#A0A0B3"; ctx.font = "600 20px Inter, system-ui, sans-serif";
-        ctx.fillText(st.label.toUpperCase(), cx + cellW / 2, cy + 88);
+        ctx.fillText(st.label.toUpperCase(), cx + w / 2, cy + 88);
       });
 
       // 7. Rodapé
@@ -985,6 +996,9 @@ export default function CorridaPage() {
               <StatBox label={t("co_tempo")} value={formatDuration(selectedSession.duration_seconds)} />
               <StatBox label={t("co_ritmo_medio")} value={formatPace(selectedSession.avg_pace || 0)} />
               <StatBox label={t("co_velocidade_max")} value={selectedSession.max_speed ? `${selectedSession.max_speed.toFixed(1)} km/h` : "--"} />
+              <div style={{ gridColumn: "1 / -1" }}>
+                <StatBox label={t("co_calorias")} value={selectedSession.calories_estimate ? `≈ ${selectedSession.calories_estimate} kcal` : "--"} />
+              </div>
             </div>
 
             {detailSplits.length >= 2 && (
