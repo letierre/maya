@@ -60,6 +60,7 @@ export default function CorridaPage() {
   const runStats = useRef<{ totalDist: number; maxSpeed: number; startedAt: number; accumulatedMs: number; activeSince: number | null } | null>(null);
   const pointsRef = useRef<Coord[]>([]);
   const lastPointRef = useRef<Coord | null>(null);
+  const paceWindowRef = useRef<{ t: number; dist: number }[]>([]);
   const sessionIdRef = useRef<string | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -228,17 +229,30 @@ export default function CorridaPage() {
         const pt: Coord = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
         if (pos.coords.speed != null) {
           const kmh = pos.coords.speed * 3.6;
-          if (kmh > stats.maxSpeed) stats.maxSpeed = kmh;
-          setSpeed(kmh);
+          // Descarta velocidades absurdas (falha de sinal) que inflam a máxima
+          if (kmh <= 45) {
+            if (kmh > stats.maxSpeed) stats.maxSpeed = kmh;
+            setSpeed(kmh);
+          }
         }
         if (lastPointRef.current) {
           const d = haversine(lastPointRef.current.lat, lastPointRef.current.lng, pt.lat, pt.lng);
+          const dtSec = (pt.timestamp - lastPointRef.current.timestamp) / 1000;
+          const instSpeed = dtSec > 0 ? d / dtSec : 0; // m/s
+          // Outlier: velocidade instantânea impossível (>45 km/h) = falha de GPS
+          if (instSpeed > 12.5) return;
           // Ignora micro-jitter (< 1 m) que o GPS gera mesmo parado
           if (d < 1) return;
           stats.totalDist += d;
           setDistance(Math.round(stats.totalDist));
-          const elapsedSec = activeElapsedMs() / 1000;
-          if (stats.totalDist > 10) setPace(elapsedSec / (stats.totalDist / 1000));
+          // Ritmo rolante (últimos ~30s) em vez do ritmo médio acumulado
+          paceWindowRef.current.push({ t: pt.timestamp, dist: stats.totalDist });
+          const cutoff = Date.now() - 30000;
+          while (paceWindowRef.current.length > 1 && paceWindowRef.current[0].t < cutoff) paceWindowRef.current.shift();
+          const w0 = paceWindowRef.current[0];
+          const d30 = stats.totalDist - w0.dist;
+          const t30 = (pt.timestamp - w0.t) / 1000;
+          if (d30 > 10 && t30 > 5) setPace(t30 / (d30 / 1000));
         }
         lastPointRef.current = pt;
         pointsRef.current = [...pointsRef.current, pt];
@@ -283,6 +297,7 @@ export default function CorridaPage() {
     runStats.current = { totalDist: 0, maxSpeed: 0, startedAt: Date.now(), accumulatedMs: 0, activeSince: Date.now() };
     pointsRef.current = [];
     lastPointRef.current = null;
+    paceWindowRef.current = [];
     gpsErrorShownRef.current = false;
     persistSnapshot();
     beginTracking();
@@ -320,6 +335,7 @@ export default function CorridaPage() {
     if (!stats) return;
     if (stats.activeSince == null) stats.activeSince = Date.now();
     lastPointRef.current = null; // não conta o deslocamento feito durante a pausa
+    paceWindowRef.current = [];
     setPaused(false);
     beginTracking();
     startSyncInterval();
