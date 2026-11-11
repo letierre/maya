@@ -584,7 +584,7 @@ export default function CorridaPage() {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
 
-      // 1. Fundo: foto escolhida (cover) ou degradê escuro
+      // 1. Fundo: foto escolhida (cover) ou fundo branco (sem foto/falha)
       let hasBg = false;
       if (bgUrl) {
         try {
@@ -596,11 +596,9 @@ export default function CorridaPage() {
           hasBg = true;
         } catch { /* segue sem foto */ }
       }
+      const isWhite = !hasBg;
       if (!hasBg) {
-        ctx.fillStyle = "#0F0F14"; ctx.fillRect(0, 0, W, H);
-        const vg = ctx.createRadialGradient(W / 2, H * 0.35, W * 0.3, W / 2, H * 0.55, W * 0.95);
-        vg.addColorStop(0, "transparent"); vg.addColorStop(1, "rgba(0,0,0,0.5)");
-        ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H);
       }
 
       // 2. Header — avatar Maya + MAYA APP (alinhados verticalmente, mesmo offset da Roda da Vida)
@@ -609,7 +607,7 @@ export default function CorridaPage() {
       const headerY = 130;
       const avatarSize = 44, avatarCx = W / 2 - 82, avatarCy = headerY - 58;
       if (avatar) ctx.drawImage(avatar, avatarCx - avatarSize / 2, avatarCy - avatarSize / 2, avatarSize, avatarSize);
-      ctx.fillStyle = "#FFFFFF"; ctx.font = "600 24px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillStyle = isWhite ? "#0F0F14" : "#FFFFFF"; ctx.font = "600 24px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
       ctx.fillText("MAYA APP", W / 2 + 12, headerY - 48);
 
       // 3. Título
@@ -624,7 +622,7 @@ export default function CorridaPage() {
 
       // 4. Data da corrida
       const dateStr = new Date(s.start_time).toLocaleDateString(getLocale(), { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
-      ctx.fillStyle = "#A0A0B3"; ctx.font = "400 28px Inter, system-ui, sans-serif";
+      ctx.fillStyle = isWhite ? "#6a657a" : "#A0A0B3"; ctx.font = "400 28px Inter, system-ui, sans-serif";
       ctx.fillText(dateStr, W / 2, titleY + 50);
 
       // 5. Percurso — só as linhas (transparente), sem mapa de fundo
@@ -634,14 +632,22 @@ export default function CorridaPage() {
         ctx.save();
         ctx.beginPath();
         pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-        ctx.strokeStyle = "#7C5CFF";
-        ctx.lineWidth = 14; ctx.lineCap = "round"; ctx.lineJoin = "round";
-        ctx.shadowColor = "rgba(124,92,255,0.9)"; ctx.shadowBlur = 24;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = "rgba(255,255,255,0.9)";
-        ctx.lineWidth = 5;
-        ctx.stroke();
+        ctx.lineCap = "round"; ctx.lineJoin = "round";
+        if (isWhite) {
+          ctx.strokeStyle = "#7C5CFF";
+          ctx.lineWidth = 12;
+          ctx.shadowColor = "rgba(124,92,255,0.3)"; ctx.shadowBlur = 10;
+          ctx.stroke();
+        } else {
+          ctx.strokeStyle = "#7C5CFF";
+          ctx.lineWidth = 14;
+          ctx.shadowColor = "rgba(124,92,255,0.9)"; ctx.shadowBlur = 24;
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = "rgba(255,255,255,0.9)";
+          ctx.lineWidth = 5;
+          ctx.stroke();
+        }
         // início (verde) e fim (vermelho)
         ctx.fillStyle = "#22D18B"; ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 13, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = "#FF4D4D"; ctx.beginPath(); ctx.arc(pts[pts.length - 1].x, pts[pts.length - 1].y, 13, 0, Math.PI * 2); ctx.fill();
@@ -678,7 +684,7 @@ export default function CorridaPage() {
 
       // 7. Rodapé
       const footerY = H - 130;
-      ctx.fillStyle = "#A0A0B3"; ctx.font = "500 20px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillStyle = isWhite ? "#6a657a" : "#A0A0B3"; ctx.font = "500 20px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
       ctx.fillText(t("co_footer_share"), W / 2, footerY);
 
       // 8. Exporta e compartilha (mantém dentro do app)
