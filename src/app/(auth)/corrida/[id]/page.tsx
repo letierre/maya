@@ -68,7 +68,7 @@ export default function CorridaDetailPage() {
     <div style={{ height: "100dvh", background: "#0B0B10", overflowY: "auto" }}>
       {/* Header fixo */}
       <div style={{ position: "sticky", top: 0, zIndex: 20, padding: "calc(env(safe-area-inset-top) + 12px) 16px 12px", display: "flex", alignItems: "center", gap: 10, background: "rgba(11,11,16,0.92)", backdropFilter: "blur(8px)" }}>
-        <button type="button" onClick={() => router.push("/corrida")} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(26,21,48,0.85)", border: "1px solid rgba(167,139,250,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#A78BFA" }}>
+        <button type="button" onClick={() => router.push("/corrida?history=1")} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(26,21,48,0.85)", border: "1px solid rgba(167,139,250,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#A78BFA" }}>
           <ChevronLeft size={18} />
         </button>
         <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#e0d6ff" }}>

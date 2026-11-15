@@ -5,7 +5,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Play, Square, Timer, Footprints, Zap, ChevronLeft, Lock } from "lucide-react";
+import { Play, Square, Timer, Footprints, Zap, ChevronLeft, Lock, Settings } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { uploadToCloud, photoUrl } from "@/lib/photo-storage";
@@ -207,6 +207,15 @@ export default function CorridaPage() {
     fetch("/api/profile").then(r => r.json()).then(d => { if (d?.body?.weight_kg) setWeightKg(d.body.weight_kg); }).catch(() => {});
     fetch("/api/running/coach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ language: getLanguage() }) })
       .then(r => r.json()).then(d => { if (d?.intro && Array.isArray(d.km)) coachRef.current = d; }).catch(() => {});
+  }, []);
+
+  // Volta do detalhe (/corrida/[id]) deve reabrir o histórico, não o mapa.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("history") === "1") {
+      setShowHistory(true);
+      window.history.replaceState(null, "", "/corrida");
+    }
   }, []);
 
   // Limpa GPS/timer se o usuário sair da tela durante uma corrida
@@ -762,6 +771,12 @@ export default function CorridaPage() {
           <button type="button" onClick={() => setShowHistory(true)}
             style={{ padding: "8px 14px", borderRadius: 9999, border: "1px solid rgba(167,139,250,0.25)", background: "rgba(26,21,48,0.85)", backdropFilter: "blur(8px)", color: "#A78BFA", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             {t("co_historico")}
+          </button>
+        )}
+        {!locked && (
+          <button type="button" onClick={() => router.push("/corpo")} aria-label={t("corpo_titulo")}
+            style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid rgba(167,139,250,0.25)", background: "rgba(26,21,48,0.85)", backdropFilter: "blur(8px)", color: "#A78BFA", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Settings size={16} />
           </button>
         )}
       </div>

@@ -21,6 +21,32 @@ export interface BodyData {
   goal?: BodyGoal;
 }
 
+// Um lançamento no histórico de medidas (tabela body_measurements).
+export interface Measurement {
+  id?: string;
+  recorded_at?: string; // ISO timestamp
+  weight_kg?: number | null;
+  height_cm?: number | null;
+  body_fat_pct?: number | null;
+  neck_cm?: number | null;
+  chest_cm?: number | null;
+  waist_cm?: number | null;
+  hip_cm?: number | null;
+  arm_cm?: number | null;
+  thigh_cm?: number | null;
+  calf_cm?: number | null;
+  activity_level?: ActivityLevel | null;
+  goal?: BodyGoal | null;
+}
+
+// Campos que mudam ao longo do tempo (entram no histórico). Sexo e data de
+// nascimento são dados fixos e ficam fora desta lista.
+export const MEASUREMENT_FIELDS = [
+  "weight_kg", "height_cm", "body_fat_pct",
+  "neck_cm", "chest_cm", "waist_cm", "hip_cm", "arm_cm", "thigh_cm", "calf_cm",
+  "activity_level", "goal",
+] as const;
+
 // Fatores de atividade (multiplicador sobre o metabolismo basal)
 export const ACTIVITY_FACTORS: Record<ActivityLevel, number> = {
   sedentary: 1.2,
@@ -70,4 +96,26 @@ export function bmiClass(bmi: number): "baixo" | "normal" | "sobrepeso" | "obesi
   if (bmi < 25) return "normal";
   if (bmi < 30) return "sobrepeso";
   return "obesidade";
+}
+
+// Estimativa de gordura corporal pela fórmula US Navy (circunferências em cm).
+// - homem:  usa pescoço + cintura + altura
+// - mulher: usa pescoço + cintura + quadril + altura
+// Retorna null quando faltam as medidas necessárias ou o valor é incoerente.
+export function computeBodyFatNavy(
+  sex: BodySex | undefined,
+  heightCm?: number | null,
+  waistCm?: number | null,
+  neckCm?: number | null,
+  hipCm?: number | null,
+): number | null {
+  if (!heightCm || !waistCm || !neckCm || heightCm <= 0 || waistCm <= 0 || neckCm <= 0) return null;
+  const clamp = (v: number) => Math.min(60, Math.max(2, Math.round(v * 10) / 10));
+  if (sex === "female") {
+    if (!hipCm || hipCm <= 0) return null;
+    const v = 163.205 * Math.log10(waistCm + hipCm - neckCm) - 97.684 * Math.log10(heightCm) - 78.387;
+    return clamp(v);
+  }
+  const v = 86.010 * Math.log10(waistCm - neckCm) - 70.041 * Math.log10(heightCm) + 36.76;
+  return clamp(v);
 }
