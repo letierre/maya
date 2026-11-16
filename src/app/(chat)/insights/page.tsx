@@ -284,6 +284,9 @@ export default function MayaChatPage() {
   const recordingStartRef = useRef(0); // epoch ms — p/ cronometrar a duração do áudio
   // Payload de voz retido p/ reenvio (blob/mime/duração por clientId — não persiste).
   const voicePayloadsRef = useRef<Map<string, { blob: Blob; mime: string; duration: number }>>(new Map());
+  // Marca que a recuperação de resposta órfã já rodou nesta montagem (evita
+  // disparar de novo a cada mudança de mensagens).
+  const didRecoverRef = useRef(false);
 
   // ── Presença (online / digitando / visto por último) ──
   const [presence, setPresence] = useState<"online" | "lastSeen">("online");
@@ -611,6 +614,70 @@ export default function MayaChatPage() {
     },
     [],
   );
+
+  // ── Recuperação de resposta órfã ──
+  // Se o histórico carrega com a última mensagem sendo do usuário (enviada mas a
+  // Maya não respondeu — ex.: o app fechou no meio do envio), regenera a fala.
+  // A mensagem do usuário já está persistida; aqui NÃO re-persistimos (evita
+  // duplicar), apenas chamamos /api/maya de novo.
+  const recoverOrphanedReply = useCallback(
+    async (list: Message[]) => {
+      const last = list[list.length - 1];
+      if (!last || last.role !== "user" || last.audioUrl || last.clientId) return;
+
+      setSending(true);
+      sendingRef.current = true;
+      lastActivityAtRef.current = Date.now();
+      setPresence("online");
+
+      try {
+        const contextMsgs = list.slice(-40).map(({ role, content, imageUrls, date, time }) => ({
+          role,
+          content,
+          image_urls: imageUrls,
+          date,
+          time,
+        }));
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const res = await fetch("/api/maya", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: contextMsgs,
+            timezone: tz,
+            localHour: new Date().getHours(),
+            localDate: formatDate(),
+          }),
+        });
+        if (!res.ok) throw new Error("API error");
+        const data = await res.json();
+        const parts = splitIntoParts(data.reply);
+        setSending(false);
+        sendingRef.current = false;
+        deliverParts(parts, list);
+      } catch {
+        setSending(false);
+        sendingRef.current = false;
+        // Marca a última mensagem como falha → mostra o botão "Reenviar".
+        setMessages((prev) =>
+          prev.map((m, i) =>
+            i === prev.length - 1 && m.role === "user"
+              ? { ...m, failed: true, status: "sent" }
+              : m,
+          ),
+        );
+        setPresence("lastSeen");
+      }
+    },
+    [deliverParts],
+  );
+
+  // Dispara a recuperação uma única vez, assim que o histórico é hidratado.
+  useEffect(() => {
+    if (!hydrated || didRecoverRef.current) return;
+    didRecoverRef.current = true;
+    recoverOrphanedReply(messages);
+  }, [hydrated, messages, recoverOrphanedReply]);
 
   // ── Load older messages ──
   const loadOlder = async () => {

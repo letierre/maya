@@ -93,7 +93,26 @@ export async function POST(request: Request) {
 
     const systemPrompt = buildMayaSystemPrompt(mayaInput);
 
-    const rawReply = await chatLLM(systemPrompt, anthropicMessages, 1000, { userId: user.id, feature: "maya_chat" });
+    // Resposta com retry + fallback suave: se o LLM falhar (timeout/erro), tenta
+    // uma segunda vez e, se ainda falhar, devolve uma fala honesta em vez de
+    // deixar a mensagem do usuário órfã (a fala é persistida server-side abaixo).
+    const fallbackByLang: Record<string, string> = {
+      pt: "Desculpa, me perdi um pouco aqui. Pode repetir? 💜",
+      es: "Perdona, me perdí un poco. ¿Puedes repetirlo? 💜",
+      en: "Sorry, I got a little lost there. Could you repeat that? 💜",
+    };
+    const lang = (context.language as string) || "pt";
+    let rawReply: string;
+    try {
+      rawReply = await chatLLM(systemPrompt, anthropicMessages, 1000, { userId: user.id, feature: "maya_chat" });
+    } catch {
+      try {
+        rawReply = await chatLLM(systemPrompt, anthropicMessages, 1000, { userId: user.id, feature: "maya_chat" });
+      } catch {
+        rawReply = fallbackByLang[lang] ?? fallbackByLang.pt;
+      }
+    }
+
     // Belt-and-suspenders: strip any "[dia HH:MM]" timestamp tokens Maya may echo
     // (e.g. "[21:06]", "[hoje 23:07]", "[ontem 14:30]", "[há 3 dias 09:10]").
     // These are internal rhythm context only — never shown to the user.
