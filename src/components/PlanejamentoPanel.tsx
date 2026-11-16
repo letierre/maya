@@ -228,7 +228,7 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
     } else {
       const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
       console.error("addTask error:", err);
-      alert(`${t("plan_erro_criar_tarefa")}\n${err.error || err.message || JSON.stringify(err)}\nweek: ${currentWeekStart}`);
+      toast.error(t("plan_erro_criar_tarefa"));
     }
 
     // Define a pedra da semana (cria o plano se ainda não existir)

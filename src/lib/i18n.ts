@@ -1974,6 +1974,8 @@ const translations: Record<Lang, Record<string, string>> = {
     ag_aplicar_todos:
       "Aplicar alterações a TODOS os compromissos desta repetição?",
     ag_aplicar_todos_btn: "Aplicar a todos",
+    ag_editar_repete:
+      "Este compromisso se repete. Onde aplicar as alterações?",
     ag_excluir_tarefa: "Excluir esta tarefa?",
     ag_certeza_excluir: "Tem certeza que deseja excluir?",
     ag_editar_tarefa_plano: "Editar tarefa do plano",
@@ -1986,6 +1988,9 @@ const translations: Record<Lang, Record<string, string>> = {
     ag_tarefa: "Tarefa",
     ag_emoji_opcional: "Emoji (opcional)",
     ag_data: "Data",
+    ag_deixar_aberto: "Deixar em aberto (sem dia)",
+    ag_sem_data_aberto: "Sem data definida — ficará em aberto",
+    ag_tarefa_criada_aberto: "Tarefa adicionada em aberto",
     ag_inicio: "Início",
     ag_fim: "Fim",
     ag_descricao_opcional: "Descrição (opcional)",
@@ -4695,6 +4700,8 @@ const translations: Record<Lang, Record<string, string>> = {
     ag_aplicar_todos:
       "¿Aplicar cambios a TODOS los compromisos de esta repetición?",
     ag_aplicar_todos_btn: "Aplicar a todos",
+    ag_editar_repete:
+      "Este compromiso se repite. ¿Dónde aplicar los cambios?",
     ag_excluir_tarefa: "¿Eliminar esta tarea?",
     ag_certeza_excluir: "¿Seguro que deseas eliminar?",
     ag_editar_tarefa_plano: "Editar tarea del plan",
@@ -4707,6 +4714,9 @@ const translations: Record<Lang, Record<string, string>> = {
     ag_tarefa: "Tarea",
     ag_emoji_opcional: "Emoji (opcional)",
     ag_data: "Fecha",
+    ag_deixar_aberto: "Dejar pendiente (sin fecha)",
+    ag_sem_data_aberto: "Sin fecha definida — quedará pendiente",
+    ag_tarefa_criada_aberto: "Tarea añadida como pendiente",
     ag_inicio: "Inicio",
     ag_fim: "Fin",
     ag_descricao_opcional: "Descripción (opcional)",
@@ -7416,6 +7426,8 @@ const translations: Record<Lang, Record<string, string>> = {
     ag_aplicar_todos:
       "Apply changes to ALL appointments in this repeat?",
     ag_aplicar_todos_btn: "Apply to all",
+    ag_editar_repete:
+      "This event repeats. Where should the changes apply?",
     ag_excluir_tarefa: "Delete this task?",
     ag_certeza_excluir: "Are you sure you want to delete?",
     ag_editar_tarefa_plano: "Edit plan task",
@@ -7428,6 +7440,9 @@ const translations: Record<Lang, Record<string, string>> = {
     ag_tarefa: "Task",
     ag_emoji_opcional: "Emoji (optional)",
     ag_data: "Date",
+    ag_deixar_aberto: "Leave open (no date)",
+    ag_sem_data_aberto: "No date set — will stay open",
+    ag_tarefa_criada_aberto: "Task added as open",
     ag_inicio: "Start",
     ag_fim: "End",
     ag_descricao_opcional: "Description (optional)",
