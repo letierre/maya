@@ -279,8 +279,24 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
 
   const selectedDayTasks = tasks.filter((t: any) => t.day_of_week === selectedDay)
     .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
-  const doneSelectedDay = selectedDayTasks.filter((t: any) => t.status === "concluida").length;
   const openTasks = tasks.filter((t: any) => t.day_of_week == null);
+
+  // Data (YYYY-MM-DD) do dia da semana selecionado dentro da semana atual.
+  const dayDateOf = (dow: number): string => {
+    const mon = new Date(currentWeekStart + "T12:00:00");
+    mon.setDate(mon.getDate() + dow);
+    return `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
+  };
+  // Tarefas criadas direto na agenda (hub dia) caem em agenda_items com data —
+  // aparecem aqui também para não "sumirem" quando o usuário olha a semana.
+  const agendaTasksForDay = (dow: number) =>
+    agendaItems.filter((it: any) => it.item_type === "tarefa" && it.date === dayDateOf(dow));
+  const selectedDayAgendaTasks = agendaTasksForDay(selectedDay);
+  const selectedDayItems = [
+    ...selectedDayTasks.map((t: any) => ({ ...t, _kind: "plan" })),
+    ...selectedDayAgendaTasks.map((a: any) => ({ ...a, _kind: "agenda" })),
+  ];
+  const doneSelectedDayItems = selectedDayItems.filter((it: any) => it.status === "concluida").length;
 
   const assignToToday = async (task: any) => {
     const today = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
@@ -292,6 +308,17 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
       const updated = await res.json();
       setTasks((prev: any[]) => prev.map(t => t.id === task.id ? updated : t));
     }
+  };
+
+  // Conclui/reabre uma tarefa da agenda (criada no hub dia) direto daqui.
+  const toggleAgendaTask = async (item: any, coords?: { x: number; y: number }) => {
+    const next = item.status === "concluida" ? "pendente" : "concluida";
+    if (next === "concluida") celebrate(coords?.x, coords?.y);
+    setAgendaItems((prev: any[]) => prev.map(a => a.id === item.id ? { ...a, status: next } : a));
+    await fetch("/api/agenda", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: item.id, status: next }),
+    });
   };
 
   // ── Planning Companion callbacks ──
@@ -569,7 +596,7 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
         <div suppressHydrationWarning style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3, marginBottom: 12 }}>
           {[0, 1, 2, 3, 4, 5, 6].map((i) => {
             const today = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
-            const dt = tasks.filter((t: any) => t.day_of_week === i);
+            const dt = [...tasks.filter((t: any) => t.day_of_week === i), ...agendaTasksForDay(i)];
             const isToday = i === today;
             const load = dt.length === 0 ? "—" : dt.length <= 2 ? t("plan_leve") : dt.length <= 4 ? t("plan_medio") : dt.length <= 6 ? t("plan_cheio") : t("plan_pesado");
             return (
@@ -586,7 +613,7 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
         {/* Selected day tasks */}
         <div style={{ background: "#151520", borderRadius: 18, border: "1px solid rgba(167,139,250,0.08)", padding: "12px 16px" }}>
           <p suppressHydrationWarning style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 600, color: "#9e96b5" }}>
-            {dayFullName(selectedDay)} · {selectedDayTasks.length > 0 ? t("plan_feitas", { done: String(doneSelectedDay), total: String(selectedDayTasks.length) }) : t("plan_sem_tarefas")}
+            {dayFullName(selectedDay)} · {selectedDayItems.length > 0 ? t("plan_feitas", { done: String(doneSelectedDayItems), total: String(selectedDayItems.length) }) : t("plan_sem_tarefas")}
           </p>
           {/* Current time indicator */}
           {selectedDay === clientTodayDow && now && (
@@ -595,39 +622,41 @@ export function PlanejamentoPanel({ selectedDate }: { selectedDate?: string }) {
               <span style={{ fontSize: 10, fontWeight: 600, color: "#FF7070" }}>{t("plan_agora", { time: now.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" }) })}</span>
             </div>
           )}
-          {selectedDayTasks.length === 0 ? (
+          {selectedDayItems.length === 0 ? (
             <p style={{ color: "#5a5470", fontSize: 12, textAlign: "center", padding: 12, margin: 0 }}>{t("plan_nenhuma_tarefa")}</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {selectedDayTasks.map((task: any) => {
-                const area = AREA_CONFIG[task.area as TaskArea] || AREA_CONFIG.outros;
-                const done = task.status === "concluida";
+              {selectedDayItems.map((item: any) => {
+                const isAgenda = item._kind === "agenda";
+                const area = AREA_CONFIG[item.area as TaskArea] || AREA_CONFIG.outros;
+                const done = item.status === "concluida";
                 return (
-                  <div key={task.id}
+                  <div key={`${item._kind}-${item.id}`}
                     onClick={() => {
-                      setEditingPlanTask(task);
-                      setPlanEditTitle(task.title || "");
-                      setPlanEditDay(task.day_of_week ?? 0);
-                      setPlanEditArea(task.area || "saude");
-                      setPlanEditType(task.task_type || "manutencao");
-                      setPlanEditTime(task.scheduled_time?.slice(0, 5) || "");
-                      setPlanEditStone(!!task.stone_rank);
-                      setPlanEditStoneRank(task.stone_rank || 1);
+                      if (isAgenda) return; // edição de item da agenda fica no hub dia
+                      setEditingPlanTask(item);
+                      setPlanEditTitle(item.title || "");
+                      setPlanEditDay(item.day_of_week ?? 0);
+                      setPlanEditArea(item.area || "saude");
+                      setPlanEditType(item.task_type || "manutencao");
+                      setPlanEditTime(item.scheduled_time?.slice(0, 5) || "");
+                      setPlanEditStone(!!item.stone_rank);
+                      setPlanEditStoneRank(item.stone_rank || 1);
                       setPlanShowMore(false);
                     }}
-                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid rgba(167,139,250,0.04)", cursor: "pointer" }}>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); toggleTask(task.id, task.status, { x: e.clientX, y: e.clientY }); }}
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid rgba(167,139,250,0.04)", cursor: isAgenda ? "default" : "pointer" }}>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); if (isAgenda) toggleAgendaTask(item, { x: e.clientX, y: e.clientY }); else toggleTask(item.id, item.status, { x: e.clientX, y: e.clientY }); }}
                       style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, border: done ? "none" : "1.5px solid rgba(167,139,250,0.3)", background: done ? "#7C5CFF" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: done ? "checkPop 0.3s ease" : "none" }}>
                       {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10" /></svg>}
                     </button>
                     <span style={{ fontSize: 11 }}>{area.emoji}</span>
-                    {task.stone_rank && (
+                    {item.stone_rank && !isAgenda && (
                       <span style={{ fontSize: 8, fontWeight: 800, color: "#A78BFA", background: "rgba(167,139,250,0.12)", padding: "1px 4px", borderRadius: 4, fontFamily: "monospace", flexShrink: 0 }}>
-                        {["I","II","III"][task.stone_rank - 1]}
+                        {["I","II","III"][item.stone_rank - 1]}
                       </span>
                     )}
-                    <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: done ? "#5a5470" : "#e0d6ff", textDecoration: done ? "line-through" : "none" }}>{task.title}</span>
-                    {task.scheduled_time && <span style={{ fontSize: 9, color: "#6a657a", fontFamily: "monospace" }}>{task.scheduled_time.slice(0,5)}</span>}
+                    <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: done ? "#5a5470" : "#e0d6ff", textDecoration: done ? "line-through" : "none" }}>{item.title}</span>
+                    {item.scheduled_time && !isAgenda && <span style={{ fontSize: 9, color: "#6a657a", fontFamily: "monospace" }}>{item.scheduled_time.slice(0,5)}</span>}
                   </div>
                 );
               })}
