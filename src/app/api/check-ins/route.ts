@@ -4,6 +4,7 @@ import { getLocalDate, getTimezoneOffset } from "@/lib/utils";
 import { ateWellFromMeals } from "@/lib/meal-utils";
 import { SLEPT_WELL_MIN_QUALITY } from "@/lib/checkin-constants";
 import { analyzeAllSpecialists } from "@/lib/specialists";
+import { invalidateMayaContextKeys } from "@/lib/maya-cache";
 import { sendPushToAdmins } from "@/lib/push-send";
 import { logError } from "@/lib/error-log";
 import { NextRequest, NextResponse } from "next/server";
@@ -350,18 +351,5 @@ async function invalidateMayaNudgeCache(
   admin: ReturnType<typeof import("@/lib/supabase/admin").getSupabaseAdmin>,
   userId: string
 ) {
-  try {
-    const { data } = await admin
-      .from("user_preferences")
-      .select("context")
-      .eq("user_id", userId)
-      .single();
-    if (!data) return;
-    const ctx = { ...(data.context as Record<string, unknown>) };
-    delete ctx.maya_nudge;
-    delete ctx.maya_home_message;
-    await admin.from("user_preferences").update({ context: ctx }).eq("user_id", userId);
-  } catch {
-    /* best-effort */
-  }
+  await invalidateMayaContextKeys(admin, userId, ["maya_nudge", "maya_home_message"]);
 }

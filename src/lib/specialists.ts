@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getLocalDate } from "@/lib/utils";
+import { getLocalDate, getLocalDateDaysAgo } from "@/lib/utils";
 import { callLLM, responseLanguageLine } from "@/lib/llm";
+import { invalidateMayaHomeMessage } from "@/lib/maya-cache";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -337,6 +338,11 @@ export async function analyzeAllSpecialists(userId: string): Promise<SpecialistI
     .upsert(rows, { onConflict: "user_id,date,specialist" })
     .throwOnError();
 
+  // Força a home a regenerar a fala com os insights frescos. Os callers disparam
+  // `analyzeAllSpecialists` em fire-and-forget (sem await), então é AQUI — depois
+  // do upsert — que garantimos que a home não leia o banco antes de gravar.
+  await invalidateMayaHomeMessage(admin, userId);
+
   return insights;
 }
 
@@ -344,22 +350,22 @@ export async function analyzeAllSpecialists(userId: string): Promise<SpecialistI
 
 export async function getLatestInsights(userId: string): Promise<SpecialistInsights | null> {
   const admin = getSupabaseAdmin();
-  const today = getLocalDate();
 
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yd = yesterday.toISOString().split("T")[0];
+  // Últimos 7 dias (hoje + 6 atrás): a leitura de cada especialista vale por uma
+  // semana, não só "hoje/ontem". Assim, mesmo sem check-in diário, a análise mais
+  // recente continua informando a Maya (o order desc + dedup abaixo pega a última).
+  const since7 = getLocalDateDaysAgo(6);
 
   const { data } = await admin
     .from("specialist_insights")
     .select("specialist,patterns,concerns,strengths,summary,date")
     .eq("user_id", userId)
-    .in("date", [today, yd])
+    .gte("date", since7)
     .order("date", { ascending: false });
 
   if (!data || data.length === 0) return null;
 
-  // Take most recent entry per specialist (today preferred over yesterday)
+  // Take most recent entry per specialist within the window
   const seen = new Set<string>();
   const insights: SpecialistInsights = {};
   for (const row of data) {

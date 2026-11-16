@@ -297,7 +297,7 @@ ${input.areaVisions.filter(v => !v.statement.trim()).map(v => {
     : "";
 
   const specialistBlock = specialistSummaries && Object.values(specialistSummaries).some(Boolean)
-    ? `## ANÁLISE DO CONSELHO DE ESPECIALISTAS (hoje)
+    ? `## ANÁLISE DO CONSELHO DE ESPECIALISTAS (últimos dias)
 ${specialistSummaries.psychology   ? `🧠 Psicólogo: ${specialistSummaries.psychology}`   : ""}
 ${specialistSummaries.sleep        ? `😴 Sono: ${specialistSummaries.sleep}`              : ""}
 ${specialistSummaries.nutrition    ? `🥗 Nutrição: ${specialistSummaries.nutrition}`       : ""}
@@ -553,6 +553,11 @@ REGRAS (a progressão importa):
 - No máximo uma menção.`
     : "";
 
+  const hasSpecialists = input.specialistSummaries && Object.values(input.specialistSummaries).some(Boolean);
+  const specialistHint = hasSpecialists
+    ? `- Consulte a ANÁLISE DO CONSELHO DE ESPECIALISTAS: se houver uma leitura relevante para o momento (sono, energia, humor, metas, dinheiro), deixe ela transparecer na fala — sem citar "especialista" nem parecer relatório. Vale tanto quanto o humor de hoje.\n`
+    : "";
+
   const user = `## SUA TAREFA AGORA
 Gere uma mensagem CURTA (1 a 3 frases) para a tela inicial do app.
 É a primeira coisa que ${input.profile.name?.split(" ")[0] || "a pessoa"} vai ver hoje.
@@ -568,7 +573,7 @@ Regras:
 - Inclua no MÁXIMO um emoji
 - NÃO faça perguntas genéricas como "como você está?" — seja específica
 - NUNCA escreva o check-in na primeira pessoa ("fiz", "não fiz seu check-in"). Quem faz o check-in é a PESSOA, não você. Use sempre "você": "você ainda não fez seu check-in hoje" / "você já fez seu check-in".
-- Retorne APENAS a mensagem final, sem aspas, sem markdown, sem "Bom dia, [nome]!" como prefixo fixo
+${specialistHint}- Retorne APENAS a mensagem final, sem aspas, sem markdown, sem "Bom dia, [nome]!" como prefixo fixo
 ${chatContext}${careBlock}`;
 
   return { system, user };
