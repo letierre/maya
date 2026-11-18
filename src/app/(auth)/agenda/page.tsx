@@ -5,7 +5,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ChevronLeft, ChevronRight, Calendar, Sun, List,
+  ChevronLeft, ChevronRight, ChevronDown, Calendar, Sun, List,
   CheckCircle2, GripVertical, Plus, Clock, Star, Zap, Leaf, AlertCircle, Target,
 } from "lucide-react";
 import { getLocalDate } from "@/lib/utils";
@@ -152,6 +152,17 @@ const PRIORITY_CONFIG: Record<EisenhowerPriority, { icon: typeof AlertCircle; co
   nao_importante_urgente:      { icon: Zap,  color: "#FFD43B", labelKey: "prio_urgente_nao_importante", shortLabelKey: "prio_short_delegar" },
   nao_importante_nao_urgente:  { icon: Leaf, color: "#4CD97B", labelKey: "prio_nem_urgente_nem_importante", shortLabelKey: "prio_short_depois" },
 };
+
+const COLOR_OPTIONS = [
+  { hex: "#7C5CFF", key: "ag_cor_roxo" },
+  { hex: "#FF4D4D", key: "ag_cor_vermelho" },
+  { hex: "#FF9F43", key: "ag_cor_laranja" },
+  { hex: "#FFD43B", key: "ag_cor_amarelo" },
+  { hex: "#4CD97B", key: "ag_cor_verde" },
+  { hex: "#5EEAD4", key: "ag_cor_turquesa" },
+  { hex: "#F472B6", key: "ag_cor_rosa" },
+  { hex: "#818CF8", key: "ag_cor_azul" },
+];
 
 // ── PriorityBadge ────────────────────────────────────────────────
 
@@ -1520,14 +1531,24 @@ function AgendaPage() {
             padding: 20, overflow: "hidden",
             border: "1px solid rgba(167,139,250,0.15)",
           }}>
-            <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>
+            <h2 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 700, color: "#e0d6ff" }}>
               {editingId
                 ? (newItemType === "compromisso" ? tr("ag_editar_compromisso") : tr("ag_editar_tarefa"))
                 : newItemType === "compromisso" ? tr("ag_novo_compromisso") : tr("ag_nova_tarefa")}
             </h2>
-            <p style={{ margin: "0 0 20px", fontSize: 12, color: "#9e96b5" }}>
-              {formatDateLabel(selectedDate)}
-            </p>
+
+            {/* Data — texto clicável logo abaixo do título (▾ troca a data) */}
+            {!newOpen && (
+              <div style={{ position: "relative", display: "flex", justifyContent: "center", marginBottom: 14 }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 9999, background: "rgba(124,92,255,0.08)", border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer" }}>
+                  <Calendar size={13} color="#A78BFA" />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#e0d6ff" }}>{formatDateLabel(newDate || selectedDate)}</span>
+                  <ChevronDown size={14} color="#A78BFA" />
+                </div>
+                <input type="date" value={newDate || selectedDate} onChange={(e) => setNewDate(e.target.value)}
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", border: 0, background: "transparent" }} />
+              </div>
+            )}
 
             {/* Type toggle */}
             <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
@@ -1552,72 +1573,31 @@ function AgendaPage() {
               placeholder={tr("titulo")}
               style={modalInput} autoFocus />
 
-            {/* Emoji */}
-            <input value={newEmoji} onChange={(e) => setNewEmoji(e.target.value)}
-              placeholder={tr("ag_emoji_opcional")}
-              style={{ ...modalInput, marginTop: 10 }} />
-
-            {/* Date — some quando a tarefa é "em aberto" */}
-            {newOpen ? (
-              <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 12, border: "1px dashed rgba(167,139,250,0.35)", background: "rgba(124,92,255,0.06)", fontSize: 12, color: "#A78BFA" }}>
-                ☁️ {tr("ag_sem_data_aberto")}
-              </div>
-            ) : (
-              <div style={{ marginTop: 10 }}>
-                <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>{tr("ag_data")}</label>
-                <div style={nativeInputWrapper}>
-                  <input type="date" value={newDate || selectedDate} onChange={(e) => setNewDate(e.target.value)}
-                    style={nativeInputInner} />
-                </div>
-              </div>
-            )}
-
-            {/* Deixar em aberto (só tarefa nova) */}
-            {newItemType === "tarefa" && !editingId && (
-              <button type="button" onClick={() => setNewOpen(v => !v)}
-                style={{
-                  marginTop: 10, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "10px 12px", borderRadius: 12, border: newOpen ? "1px solid rgba(124,92,255,0.5)" : "1px solid rgba(167,139,250,0.15)",
-                  background: newOpen ? "rgba(124,92,255,0.12)" : "#0B0B10", cursor: "pointer", fontFamily: "inherit",
-                }}>
-                <span style={{ fontSize: 12, color: newOpen ? "#e0d6ff" : "#9e96b5" }}>☁️ {tr("ag_deixar_aberto")}</span>
-                <span style={{
-                  width: 40, height: 22, borderRadius: 9999, position: "relative", flexShrink: 0,
-                  background: newOpen ? "#7C5CFF" : "#2a2440", transition: "background .15s",
-                }}>
-                  <span style={{
-                    position: "absolute", top: 2, left: newOpen ? 20 : 2, width: 18, height: 18,
-                    borderRadius: "50%", background: "#fff", transition: "left .15s",
-                  }} />
-                </span>
-              </button>
-            )}
-
             {/* Time (only for compromisso) */}
             {newItemType === "compromisso" && (
-              <>
-                <div style={{ marginTop: 10 }}>
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <div style={{ flex: 1 }}>
                   <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>{tr("ag_inicio")}</label>
                   <div style={nativeInputWrapper}>
                     <input type="time" value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)}
                       style={nativeInputInner} />
                   </div>
                 </div>
-                <div style={{ marginTop: 10 }}>
+                <div style={{ flex: 1 }}>
                   <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 4, display: "block" }}>{tr("ag_fim")}</label>
                   <div style={nativeInputWrapper}>
                     <input type="time" value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)}
                       style={nativeInputInner} />
                   </div>
                 </div>
-              </>
+              </div>
             )}
 
-            {/* Description */}
+            {/* Description — maior e com destaque */}
             <textarea value={newDescription} onChange={e => setNewDescription(e.target.value)}
               placeholder={tr("ag_descricao_opcional")}
-              rows={2}
-              style={{ ...modalInput, marginTop: 10, resize: "none", height: 56 }} />
+              rows={3}
+              style={{ ...modalInput, marginTop: 10, resize: "none", minHeight: 84, border: "1px solid rgba(167,139,250,0.28)" }} />
 
             {/* Área — vincula à Roda da Vida */}
             <div style={{ marginTop: 14 }}>
@@ -1675,16 +1655,39 @@ function AgendaPage() {
               </div>
             )}
 
-            {/* Color picker */}
-            <div style={{ marginTop: 14 }}>
-              <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>{tr("ag_cor")}</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                {["#7C5CFF", "#FF4D4D", "#FF9F43", "#FFD43B", "#4CD97B", "#5EEAD4", "#F472B6", "#818CF8"].map(c => (
-                  <button key={c} type="button" onClick={() => setNewColor(c)}
-                    style={{
-                      width: 28, height: 28, borderRadius: "50%", background: c, border: newColor === c ? "2.5px solid #fff" : "2px solid transparent", cursor: "pointer", transition: "all .1s", boxShadow: newColor === c ? "0 0 8px " + c + "66" : "none",
-                    }} />
-                ))}
+            {/* Em aberto + Cor + Prioridade (lado a lado) */}
+            <div style={{ display: "flex", gap: 8, marginTop: 14, alignItems: "stretch" }}>
+              {newItemType === "tarefa" && !editingId && (
+                <button type="button" onClick={() => setNewOpen(v => !v)}
+                  style={{
+                    flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
+                    padding: "8px 10px", borderRadius: 12, border: newOpen ? "1px solid rgba(124,92,255,0.5)" : "1px solid rgba(167,139,250,0.15)",
+                    background: newOpen ? "rgba(124,92,255,0.12)" : "#0B0B10", cursor: "pointer", fontFamily: "inherit",
+                  }}>
+                  <span style={{ width: 34, height: 20, borderRadius: 9999, position: "relative", background: newOpen ? "#7C5CFF" : "#2a2440", transition: "background .15s" }}>
+                    <span style={{ position: "absolute", top: 2, left: newOpen ? 16 : 2, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
+                  </span>
+                  <span style={{ fontSize: 9, fontWeight: 600, color: newOpen ? "#e0d6ff" : "#9e96b5", whiteSpace: "nowrap" }}>{tr("ag_em_aberto")}</span>
+                </button>
+              )}
+
+              {/* Cor (dropdown) */}
+              <div style={{ position: "relative", flex: 1 }}>
+                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, borderRadius: "50%", background: newColor, border: "1px solid rgba(255,255,255,0.3)", pointerEvents: "none", zIndex: 1 }} />
+                <select value={newColor} onChange={(e) => setNewColor(e.target.value)}
+                  style={{ ...modalInput, height: 44, paddingLeft: 34, appearance: "none", backgroundImage: selectChevronBg, backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center", paddingRight: 30, cursor: "pointer" }}>
+                  {COLOR_OPTIONS.map(c => <option key={c.hex} value={c.hex}>{tr(c.key)}</option>)}
+                </select>
+              </div>
+
+              {/* Prioridade (dropdown) */}
+              <div style={{ flex: 1.3 }}>
+                <select value={newPriority} onChange={(e) => setNewPriority(e.target.value as EisenhowerPriority)}
+                  style={{ ...modalInput, height: 44, appearance: "none", backgroundImage: selectChevronBg, backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center", paddingRight: 30, cursor: "pointer" }}>
+                  {(Object.entries(PRIORITY_CONFIG) as [EisenhowerPriority, typeof PRIORITY_CONFIG[EisenhowerPriority]][]).map(([key, cfg]) => (
+                    <option key={key} value={key}>{tr(cfg.shortLabelKey)}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -1734,38 +1737,24 @@ function AgendaPage() {
               </div>
             )}
 
-            {/* Due date (só tarefa) */}
+            {/* Due date (só tarefa) — checkbox; data aparece quando marcado */}
             {newItemType === "tarefa" && (
               <div style={{ marginTop: 14 }}>
-                <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>{tr("ag_data_limite")}</label>
-                <div style={nativeInputWrapper}>
-                  <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
-                    style={nativeInputInner} />
-                </div>
+                <button type="button" onClick={() => setNewDueDate(newDueDate ? "" : selectedDate)}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: 0, border: 0, background: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                  <span style={{ width: 20, height: 20, borderRadius: 6, border: newDueDate ? "none" : "1.5px solid rgba(167,139,250,0.35)", background: newDueDate ? "#7C5CFF" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {newDueDate && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="m5 12 5 5 9-10" /></svg>}
+                  </span>
+                  <span style={{ fontSize: 12, color: "#e0d6ff", fontWeight: 600 }}>⏰ {tr("ag_data_limite")}</span>
+                </button>
+                {newDueDate && (
+                  <div style={{ ...nativeInputWrapper, marginTop: 8 }}>
+                    <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
+                      style={nativeInputInner} />
+                  </div>
+                )}
               </div>
             )}
-
-            {/* Priority */}
-            <div style={{ marginTop: 14 }}>
-              <label style={{ fontSize: 10, color: "#9e96b5", marginBottom: 6, display: "block" }}>{tr("ag_prioridade")}</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {(Object.entries(PRIORITY_CONFIG) as [EisenhowerPriority, typeof PRIORITY_CONFIG[EisenhowerPriority]][]).map(([key, cfg]) => {
-                  const Icon = cfg.icon;
-                  return (
-                    <button key={key} type="button" onClick={() => setNewPriority(key)}
-                      style={{
-                        padding: "6px 10px", borderRadius: 9999, border: 0, cursor: "pointer",
-                        fontFamily: "inherit", fontSize: 10, fontWeight: 600,
-                        background: newPriority === key ? cfg.color + "22" : "#1a1530",
-                        color: newPriority === key ? cfg.color : "#9e96b5",
-                        display: "flex", alignItems: "center", gap: 4,
-                      }}>
-                      <Icon size={10} /> {tr(cfg.shortLabelKey)}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* Mostrar no hub (resumo da semana) */}
             <button type="button" onClick={() => setNewShowInHub(v => !v)}
@@ -1907,6 +1896,9 @@ const nativeInputInner: React.CSSProperties = {
   background: "transparent", color: "#e0d6ff",
   fontSize: 14, fontFamily: "inherit",
 };
+
+// Chevron roxo usado nos selects nativos (cor e prioridade).
+const selectChevronBg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A78BFA' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`;
 
 const navBtnStyle: React.CSSProperties = {
   width: 40, height: 40, borderRadius: 12,
