@@ -1537,18 +1537,38 @@ function AgendaPage() {
                 : newItemType === "compromisso" ? tr("ag_novo_compromisso") : tr("ag_nova_tarefa")}
             </h2>
 
-            {/* Data — texto clicável logo abaixo do título (▾ troca a data) */}
-            {!newOpen && (
-              <div style={{ position: "relative", display: "flex", justifyContent: "center", marginBottom: 14 }}>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 9999, background: "rgba(124,92,255,0.08)", border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer" }}>
-                  <Calendar size={13} color="#A78BFA" />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "#e0d6ff" }}>{formatDateLabel(newDate || selectedDate)}</span>
-                  <ChevronDown size={14} color="#A78BFA" />
+            {/* Data + Em aberto (lado a lado) */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              {!newOpen ? (
+                <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 12px", borderRadius: 12, background: "rgba(124,92,255,0.08)", border: "1px solid rgba(167,139,250,0.2)", cursor: "pointer" }}>
+                    <Calendar size={13} color="#A78BFA" />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#e0d6ff", whiteSpace: "nowrap" }}>{formatDateLabel(newDate || selectedDate)}</span>
+                    <ChevronDown size={14} color="#A78BFA" />
+                  </div>
+                  <input type="date" value={newDate || selectedDate} onChange={(e) => setNewDate(e.target.value)}
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", border: 0, background: "transparent" }} />
                 </div>
-                <input type="date" value={newDate || selectedDate} onChange={(e) => setNewDate(e.target.value)}
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", border: 0, background: "transparent" }} />
-              </div>
-            )}
+              ) : (
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 12px", borderRadius: 12, background: "rgba(124,92,255,0.06)", border: "1px dashed rgba(167,139,250,0.3)", fontSize: 12, color: "#A78BFA" }}>
+                  ☁️ {tr("ag_sem_data_aberto")}
+                </div>
+              )}
+
+              {newItemType === "tarefa" && !editingId && (
+                <button type="button" onClick={() => setNewOpen(v => !v)}
+                  style={{
+                    flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+                    padding: "5px 14px", borderRadius: 12, border: newOpen ? "1px solid rgba(124,92,255,0.5)" : "1px solid rgba(167,139,250,0.15)",
+                    background: newOpen ? "rgba(124,92,255,0.12)" : "#0B0B10", cursor: "pointer", fontFamily: "inherit",
+                  }}>
+                  <span style={{ width: 34, height: 20, borderRadius: 9999, position: "relative", background: newOpen ? "#7C5CFF" : "#2a2440", transition: "background .15s" }}>
+                    <span style={{ position: "absolute", top: 2, left: newOpen ? 16 : 2, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
+                  </span>
+                  <span style={{ fontSize: 9, fontWeight: 600, color: newOpen ? "#e0d6ff" : "#9e96b5", whiteSpace: "nowrap" }}>{tr("ag_em_aberto")}</span>
+                </button>
+              )}
+            </div>
 
             {/* Type toggle */}
             <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
@@ -1655,23 +1675,8 @@ function AgendaPage() {
               </div>
             )}
 
-            {/* Em aberto + Cor + Prioridade (lado a lado) */}
+            {/* Cor + Prioridade (lado a lado) */}
             <div style={{ display: "flex", gap: 8, marginTop: 14, alignItems: "stretch" }}>
-              {newItemType === "tarefa" && !editingId && (
-                <button type="button" onClick={() => setNewOpen(v => !v)}
-                  style={{
-                    flex: 1, minWidth: 0, boxSizing: "border-box",
-                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
-                    height: 44, padding: 0, borderRadius: 12, border: newOpen ? "1px solid rgba(124,92,255,0.5)" : "1px solid rgba(167,139,250,0.15)",
-                    background: newOpen ? "rgba(124,92,255,0.12)" : "#0B0B10", cursor: "pointer", fontFamily: "inherit",
-                  }}>
-                  <span style={{ width: 34, height: 20, borderRadius: 9999, position: "relative", background: newOpen ? "#7C5CFF" : "#2a2440", transition: "background .15s" }}>
-                    <span style={{ position: "absolute", top: 2, left: newOpen ? 16 : 2, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
-                  </span>
-                  <span style={{ fontSize: 9, fontWeight: 600, color: newOpen ? "#e0d6ff" : "#9e96b5", whiteSpace: "nowrap" }}>{tr("ag_em_aberto")}</span>
-                </button>
-              )}
-
               {/* Cor (dropdown) */}
               <div style={{ position: "relative", flex: 1 }}>
                 <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, borderRadius: "50%", background: newColor, border: "1px solid rgba(255,255,255,0.3)", pointerEvents: "none", zIndex: 1 }} />
