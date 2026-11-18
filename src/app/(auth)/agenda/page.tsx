@@ -1660,8 +1660,9 @@ function AgendaPage() {
               {newItemType === "tarefa" && !editingId && (
                 <button type="button" onClick={() => setNewOpen(v => !v)}
                   style={{
-                    flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
-                    padding: "8px 10px", borderRadius: 12, border: newOpen ? "1px solid rgba(124,92,255,0.5)" : "1px solid rgba(167,139,250,0.15)",
+                    flex: 1, minWidth: 0, boxSizing: "border-box",
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
+                    height: 44, padding: 0, borderRadius: 12, border: newOpen ? "1px solid rgba(124,92,255,0.5)" : "1px solid rgba(167,139,250,0.15)",
                     background: newOpen ? "rgba(124,92,255,0.12)" : "#0B0B10", cursor: "pointer", fontFamily: "inherit",
                   }}>
                   <span style={{ width: 34, height: 20, borderRadius: 9999, position: "relative", background: newOpen ? "#7C5CFF" : "#2a2440", transition: "background .15s" }}>
@@ -1681,7 +1682,7 @@ function AgendaPage() {
               </div>
 
               {/* Prioridade (dropdown) */}
-              <div style={{ flex: 1.3 }}>
+              <div style={{ flex: 1 }}>
                 <select value={newPriority} onChange={(e) => setNewPriority(e.target.value as EisenhowerPriority)}
                   style={{ ...modalInput, height: 44, appearance: "none", backgroundImage: selectChevronBg, backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center", paddingRight: 30, cursor: "pointer" }}>
                   {(Object.entries(PRIORITY_CONFIG) as [EisenhowerPriority, typeof PRIORITY_CONFIG[EisenhowerPriority]][]).map(([key, cfg]) => (
