@@ -51,6 +51,44 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="h-full overflow-hidden flex flex-col">
+        {/* Guarda contra falha intermitente de CSS: se o chunk do globals.css
+            (Tailwind + variáveis de tema em :root) não carregar — por build
+            cache corrompido no Vercel ou por uma falha de rede no Wi-Fi — a
+            tela renderiza "pelada" (fonte serifada, cor/layout sumidos, faixa
+            de degradê do iOS no topo). Este script detecta a ausência da
+            variável --maya-primary e faz UMA recarga com cache-busting por
+            sessão, para o app se auto-recuperar sem o usuário precisar
+            atualizar manualmente. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function () {
+  var KEY = "maya_css_retry";
+  function cssOk() {
+    try {
+      return !!getComputedStyle(document.documentElement).getPropertyValue("--maya-primary").trim();
+    } catch (e) {
+      return true;
+    }
+  }
+  function run() {
+    if (cssOk()) {
+      try { sessionStorage.removeItem(KEY); } catch (e) {}
+      return;
+    }
+    try {
+      if (sessionStorage.getItem(KEY)) return;
+      sessionStorage.setItem(KEY, "1");
+    } catch (e) {
+      return;
+    }
+    var sep = location.search ? "&" : "?";
+    location.replace(location.pathname + location.search + sep + "cssretry=" + Date.now());
+  }
+  if (document.readyState === "complete") setTimeout(run, 300);
+  else window.addEventListener("load", function () { setTimeout(run, 300); });
+})();`,
+          }}
+        />
         {/* iOS 26+ desenha um blur/degradê no topo do PWA instalado quando não
             consegue amostrar uma cor sólida no topo da página. Esta faixa fixa,
             na cor do fundo (--background), dá ao iOS uma cor chapada para a
