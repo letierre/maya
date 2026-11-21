@@ -64,8 +64,54 @@ export async function POST(req: NextRequest) {
 
   try {
     switch (event.type) {
+      case "checkout.session.created": {
+        // Fonte de verdade do funil: alguém abriu o checkout. O gráfico do
+        // Stripe não conta link de assinatura direito (marca 0 no dia da venda),
+        // então registramos aqui pra contar "chegou no checkout" por dia.
+        const created = event.data.object as Stripe.Checkout.Session;
+        admin.from("checkout_events")
+          .insert(
+            {
+              event_type: "session.created",
+              checkout_session_id: created.id,
+              payment_link: (created as { payment_link?: string | null }).payment_link ?? null,
+              customer_email: created.customer_details?.email || created.customer_email || null,
+              mode: created.mode,
+              amount_cents: created.amount_total ?? null,
+              currency: created.currency ?? null,
+              status: created.status ?? null,
+            },
+            { onConflict: "event_type,checkout_session_id" }
+          )
+          .then((r) => {
+            if (r.error) console.error("checkout_events (created) insert error:", r.error);
+          })
+          .catch(() => {});
+        break;
+      }
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+
+        // Registra o pagamento no funil (fonte de verdade p/ "pagou").
+        admin.from("checkout_events")
+          .insert(
+            {
+              event_type: "session.completed",
+              checkout_session_id: session.id,
+              payment_link: (session as { payment_link?: string | null }).payment_link ?? null,
+              customer_email: session.customer_details?.email || session.customer_email || null,
+              mode: session.mode,
+              amount_cents: session.amount_total ?? null,
+              currency: session.currency ?? null,
+              status: session.payment_status ?? null,
+            },
+            { onConflict: "event_type,checkout_session_id" }
+          )
+          .then((r) => {
+            if (r.error) console.error("checkout_events (completed) insert error:", r.error);
+          })
+          .catch(() => {});
+
         // "dahlia": session.subscription pode vir como string ou como objeto
         // aninhado (parent.subscription_details.subscription).
         const rawSub = session.subscription as unknown;
